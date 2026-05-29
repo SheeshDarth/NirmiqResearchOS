@@ -58,8 +58,8 @@ def test_exam_lab_profile_question_bank_and_diagram_contracts(tmp_path: Path) ->
             json={
                 "session_id": "exam-session",
                 "document_id": document_id,
-                "query": "Write a 10 mark answer on retrieval augmented generation.",
-                "mode": "exam_answer",
+                "query": "Generate a study guide from the imported question bank.",
+                "mode": "study_guide",
                 "retrieval_mode": "bm25",
                 "retrieval_profile": "precision",
                 "exam_profile": {
@@ -75,7 +75,10 @@ def test_exam_lab_profile_question_bank_and_diagram_contracts(tmp_path: Path) ->
         query_body = query_response.json()
         assert query_body["grounded"] is True
         assert query_body["retrieval_meta"]["exam_profile_used"] is True
+        assert query_body["retrieval_meta"]["exam_context_used"] is True
         assert query_body["retrieval_meta"]["exam_profile"]["marks"] == 10
+        assert query_body["retrieval_meta"]["exam_context"]["question_count"] == 2
+        assert query_body["retrieval_meta"]["exam_context"]["diagram_count"] == 0
 
         diagram_response = client.post(
             "/exam/diagrams/extract",
