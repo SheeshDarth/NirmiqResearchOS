@@ -45,7 +45,12 @@ class SynthesisService:
         self._max_context_tokens = policy.max_context_tokens
 
     async def synthesize(
-        self, query: str, bundle: RetrievalBundle, response_mode: str = "research"
+        self,
+        query: str,
+        bundle: RetrievalBundle,
+        response_mode: str = "research",
+        exam_profile: dict[str, object] | None = None,
+        exam_context: dict[str, object] | None = None,
     ) -> tuple[str, bool, dict[str, object]]:
         top_grounding_score = float(bundle.chunks[0].score if bundle.chunks else 0.0)
         citation_count = len(bundle.chunks)
@@ -65,11 +70,22 @@ class SynthesisService:
             )
 
         selected = self._select_context(bundle)
-        prompt = self._build_grounded_prompt(query, selected, response_mode=response_mode)
+        prompt = self._build_grounded_prompt(
+            query,
+            selected,
+            response_mode=response_mode,
+            exam_profile=exam_profile,
+            exam_context=exam_context,
+        )
         generated = await self._generator.answer(prompt=prompt, model=self._settings.generator_model_default)
 
         if not generated:
-            generated = self._fallback_answer(query=query, context_chunks=selected, response_mode=response_mode)
+            generated = self._fallback_answer(
+                query=query,
+                context_chunks=selected,
+                response_mode=response_mode,
+                exam_context=exam_context,
+            )
         elif not self._contains_citation_anchor(generated):
             generated = generated.rstrip() + "\n\nSources: [1]"
 
@@ -80,6 +96,10 @@ class SynthesisService:
             "context_chunks_used": len(selected),
             "grounding_state": grounding_state,
             "grounding_summary": self._grounding_summary(grounding_state, top_grounding_score, citation_count),
+            "exam_profile_used": bool(exam_profile),
+            "exam_context_used": bool(
+                exam_context and (exam_context.get("questions") or exam_context.get("diagrams"))
+            ),
         }
         return (generated, True, meta)
 
@@ -104,10 +124,16 @@ class SynthesisService:
 
     @staticmethod
     def _build_grounded_prompt(
-        query: str, context_blocks: list[tuple[int, str]], response_mode: str = "research"
+        query: str,
+        context_blocks: list[tuple[int, str]],
+        response_mode: str = "research",
+        exam_profile: dict[str, object] | None = None,
+        exam_context: dict[str, object] | None = None,
     ) -> str:
         context = "\n\n".join(block for _, block in context_blocks)
         mode_instruction = SynthesisService._mode_instruction(response_mode)
+        exam_instruction = SynthesisService._exam_instruction(exam_profile)
+        artifact_instruction = SynthesisService._exam_artifact_instruction(exam_context)
         return (
             "You are NIRMIQ local research assistant.\n"
             "Use ONLY the context below. Do not invent facts.\n"
@@ -116,6 +142,8 @@ class SynthesisService:
             "Prefer higher-scoring context blocks when multiple sources support the same claim.\n"
             "Keep the answer concise and factual.\n"
             f"{mode_instruction}\n\n"
+            f"{exam_instruction}\n"
+            f"{artifact_instruction}\n"
             f"User Query:\n{query}\n\n"
             f"Context:\n{context}\n\n"
             "Answer:"
@@ -123,8 +151,14 @@ class SynthesisService:
 
     @staticmethod
     def _fallback_answer(
-        query: str, context_chunks: list[tuple[int, str]], response_mode: str = "research"
+        query: str,
+        context_chunks: list[tuple[int, str]],
+        response_mode: str = "research",
+        exam_context: dict[str, object] | None = None,
     ) -> str:
+        if response_mode.strip().lower() == "study_guide" and exam_context and exam_context.get("questions"):
+            return SynthesisService._fallback_study_guide(context_chunks=context_chunks, exam_context=exam_context)
+
         query_terms = SynthesisService._query_terms(query)
         candidates: list[tuple[float, int, str]] = []
         for idx, block in context_chunks[:6]:
@@ -168,11 +202,124 @@ class SynthesisService:
             return "Format as an exam-ready answer with definition, key points, and cited support."
         if mode == "revision_notes":
             return "Format as compact revision notes with headings and high-yield bullets."
+        if mode == "study_guide":
+            return (
+                "Format as a study guide with important questions, concise expandable-style answers, "
+                "diagram references when source diagrams are available, and cited evidence."
+            )
         if mode == "important_questions":
             return "Generate likely exam questions only when they are supported by the context."
         if mode == "compare_concepts":
             return "Compare concepts in a small table or structured contrast when evidence supports it."
+        if mode == "general_chat":
+            return "Answer conversationally, but only from relevant uploaded document evidence. If the context is not relevant, abstain."
+        if mode == "deep_research":
+            return "Write a deeper research-style answer with clear sections, caveats, and evidence citations."
         return "Explain clearly for a student using short sections and citations."
+
+    @staticmethod
+    def _exam_instruction(exam_profile: dict[str, object] | None) -> str:
+        if not exam_profile:
+            return ""
+        marks = exam_profile.get("marks") or 10
+        answer_style = str(exam_profile.get("answer_style") or "exam-ready")
+        content_type = str(exam_profile.get("content_type") or "conceptual")
+        instructions = str(exam_profile.get("instructions") or "").strip()
+        parts = [
+            "Exam Lab settings:",
+            f"- Target marks: {marks}",
+            f"- Answer style: {answer_style}",
+            f"- Content type: {content_type}",
+            "- Use only retrieved source context; do not add outside textbook knowledge.",
+            "- If diagrams are requested but no source diagram context is provided, say that no source diagram was available.",
+        ]
+        if instructions:
+            parts.append(f"- Custom instructions: {instructions}")
+        return "\n".join(parts)
+
+    @staticmethod
+    def _exam_artifact_instruction(exam_context: dict[str, object] | None) -> str:
+        if not exam_context:
+            return ""
+        questions = exam_context.get("questions") or []
+        diagrams = exam_context.get("diagrams") or []
+        parts: list[str] = []
+        if isinstance(questions, list) and questions:
+            parts.append("Imported question bank:")
+            for index, item in enumerate(questions[:12], start=1):
+                if not isinstance(item, dict):
+                    continue
+                marks = item.get("marks")
+                mark_label = f" ({marks} marks)" if marks else ""
+                parts.append(f"- Q{index}: {item.get('question')}{mark_label}")
+        if isinstance(diagrams, list) and diagrams:
+            parts.append("Available source diagrams:")
+            for index, item in enumerate(diagrams[:8], start=1):
+                if not isinstance(item, dict):
+                    continue
+                page = item.get("page_number") or "?"
+                caption = item.get("caption") or "No caption detected"
+                path = item.get("image_path")
+                parts.append(f"- D{index}: page {page}, {caption}, local path: {path}")
+            parts.append("When useful, mention diagram IDs like D1 with page numbers instead of inventing drawings.")
+        return "\n".join(parts)
+
+    @staticmethod
+    def _fallback_study_guide(
+        context_chunks: list[tuple[int, str]], exam_context: dict[str, object]
+    ) -> str:
+        questions = [item for item in exam_context.get("questions", []) if isinstance(item, dict)]
+        diagrams = [item for item in exam_context.get("diagrams", []) if isinstance(item, dict)]
+        if not questions:
+            return "Study guide from the retrieved passages:\n- No imported questions were available."
+
+        sections = ["Study guide from imported questions and retrieved passages:"]
+        for index, item in enumerate(questions[:8], start=1):
+            question = str(item.get("question") or f"Question {index}")
+            marks = item.get("marks")
+            terms = SynthesisService._query_terms(question)
+            evidence = SynthesisService._best_evidence_sentences(context_chunks, terms, limit=2)
+            mark_label = f" ({marks} marks)" if marks else ""
+            sections.append(f"\nQ{index}. {question}{mark_label}")
+            if evidence:
+                sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in evidence)
+            else:
+                sections.append("- The retrieved passages did not contain enough readable support for this question.")
+
+        if diagrams:
+            sections.append("\nSource diagrams to review:")
+            for index, item in enumerate(diagrams[:5], start=1):
+                page = item.get("page_number") or "?"
+                caption = item.get("caption") or "No caption detected"
+                sections.append(f"- D{index}: page {page}, {caption}.")
+        else:
+            sections.append("\nSource diagrams: no extracted diagram assets are available yet.")
+        return "\n".join(sections)
+
+    @staticmethod
+    def _best_evidence_sentences(
+        context_chunks: list[tuple[int, str]], query_terms: set[str], limit: int
+    ) -> list[tuple[int, str]]:
+        candidates: list[tuple[float, int, str]] = []
+        for idx, block in context_chunks[:8]:
+            text = SynthesisService._context_text(block)
+            for sentence_index, sentence in enumerate(SynthesisService._split_sentences(text)[:10]):
+                if len(sentence.split()) < 6:
+                    continue
+                score = SynthesisService._sentence_score(sentence, query_terms)
+                rank_bonus = max(0, 9 - idx) * 0.08 + max(0, 10 - sentence_index) * 0.01
+                candidates.append((score + rank_bonus, idx, sentence))
+        selected: list[tuple[int, str]] = []
+        seen: set[str] = set()
+        for _, idx, sentence in sorted(candidates, key=lambda item: item[0], reverse=True):
+            normalized = re.sub(r"\W+", "", sentence.lower())[:96]
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            selected.append((idx, sentence))
+            if len(selected) >= limit:
+                break
+        return selected
 
     @staticmethod
     def _fallback_heading(response_mode: str) -> str:
@@ -181,10 +328,16 @@ class SynthesisService:
             return "Exam-ready answer from the retrieved passages:"
         if mode == "revision_notes":
             return "Revision notes from the retrieved passages:"
+        if mode == "study_guide":
+            return "Study guide from the retrieved passages:"
         if mode == "important_questions":
             return "Important question leads from the retrieved passages:"
         if mode == "compare_concepts":
             return "Grounded comparison from the retrieved passages:"
+        if mode == "general_chat":
+            return "I can answer this from the relevant uploaded material:"
+        if mode == "deep_research":
+            return "Deep research synthesis from the retrieved passages:"
         return "Based on the retrieved passages:"
 
     @staticmethod

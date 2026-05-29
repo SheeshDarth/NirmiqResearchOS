@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import documents, health, ingest, memory, query
+from app.api.routers import documents, exam, health, ingest, memory, query
 from app.core.config import Settings, get_settings
 from app.core.deps import AppContainer
 from app.core.logging import configure_logging
@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(query.router, prefix="/query", tags=["query"])
     app.include_router(memory.router, prefix="/memory", tags=["memory"])
     app.include_router(documents.router, prefix="/documents", tags=["documents"])
+    app.include_router(exam.router, prefix="/exam", tags=["exam"])
     return app
 
 

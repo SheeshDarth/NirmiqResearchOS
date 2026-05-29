@@ -1,21 +1,30 @@
-"use client";
+﻿"use client";
 
 import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  diagramAssetUrl,
   getDocument,
   getIngestJobs,
   getIngestStatus,
   getMemorySummary,
   getSessionTimeline,
   healthCheck,
+  extractDiagrams,
+  importQuestionBank,
   ingestDocument,
+  listDiagrams,
+  listQuestionBank,
   listDocuments,
   runQuery,
+  upsertExamProfile,
+  type DiagramAssetItem,
   type DocumentDetailResponse,
   type DocumentItem,
+  type ExamProfileItem,
   type IngestJobsResponse,
   type IngestStatusResponse,
+  type QuestionBankItem,
   type QueryResponse,
   type SessionSummaryResponse,
   type SessionTimelineResponse,
@@ -23,7 +32,16 @@ import {
 
 type RetrievalMode = "hybrid" | "bm25" | "vector";
 type RetrievalProfile = "fast" | "balanced" | "precision";
-type StudyMode = "research" | "exam_answer" | "revision_notes" | "important_questions" | "compare_concepts";
+type WorkspaceSection = "research" | "general" | "exam";
+type StudyMode =
+  | "research"
+  | "deep_research"
+  | "general_chat"
+  | "exam_answer"
+  | "revision_notes"
+  | "important_questions"
+  | "compare_concepts"
+  | "study_guide";
 type BusyState = "" | "health" | "ingest" | "query" | "status" | "documents";
 type DeepView = "evidence" | "context" | "compare" | "eval";
 type Chunk = DocumentDetailResponse["chunks"][number];
@@ -60,38 +78,99 @@ type DiffLine = {
   text: string;
 };
 
+type GuideCard = {
+  title: string;
+  body: string[];
+};
+
 const DEFAULT_SOURCE_PATH = "C:\\Downloads\\daily stoic.pdf";
 
-const STUDY_MODES: Array<{ value: StudyMode; label: string; hint: string; prompt: string }> = [
+const WORKSPACE_SECTIONS: Array<{
+  value: WorkspaceSection;
+  label: string;
+  hint: string;
+}> = [
   {
     value: "research",
+    label: "Research",
+    hint: "Deep reads with citations.",
+  },
+  {
+    value: "general",
+    label: "Chat",
+    hint: "Talk normally, local-first.",
+  },
+  {
+    value: "exam",
+    label: "Exam Lab",
+    hint: "Marks, guides, diagrams.",
+  },
+];
+
+const STUDY_MODES: Array<{
+  value: StudyMode;
+  section: WorkspaceSection;
+  label: string;
+  hint: string;
+  prompt: string;
+}> = [
+  {
+    value: "research",
+    section: "research",
     label: "Explain Topic",
-    hint: "Understand the source",
-    prompt: "Explain the selected material in simple exam-friendly language.",
+    hint: "Understand any source",
+    prompt: "Explain the selected material clearly with evidence.",
+  },
+  {
+    value: "deep_research",
+    section: "research",
+    label: "Deep Research",
+    hint: "Detailed evidence-led synthesis",
+    prompt: "Produce a deep research analysis of the selected document with citations and caveats.",
+  },
+  {
+    value: "general_chat",
+    section: "general",
+    label: "Local Chat",
+    hint: "Conversational, evidence-aware",
+    prompt:
+      "Answer conversationally if the uploaded documents are relevant. If not, say what context is missing.",
   },
   {
     value: "exam_answer",
+    section: "exam",
     label: "Exam Answer",
     hint: "Structured marks-ready response",
     prompt: "Write a 10-mark exam answer from the selected document.",
   },
   {
     value: "revision_notes",
+    section: "exam",
     label: "Revision Notes",
     hint: "Condensed study sheet",
     prompt: "Create concise revision notes with key points and citations.",
   },
   {
     value: "important_questions",
+    section: "exam",
     label: "Important Questions",
     hint: "Likely questions from source",
     prompt: "Generate important questions from this material with brief answer hints.",
   },
   {
     value: "compare_concepts",
+    section: "exam",
     label: "Compare Concepts",
     hint: "Side-by-side understanding",
     prompt: "Compare the key concepts in this material using cited evidence.",
+  },
+  {
+    value: "study_guide",
+    section: "exam",
+    label: "Study Guide",
+    hint: "Comprehensive guide from sources",
+    prompt:
+      "Generate a comprehensive study guide with important questions, answers, and source references.",
   },
 ];
 
@@ -163,6 +242,34 @@ function buildAnswerDiff(previous?: ChatRun, current?: ChatRun): DiffLine[] {
   ].slice(0, 36);
 }
 
+function parseStudyGuideCards(answer: string): GuideCard[] {
+  const lines = answer
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const cards: GuideCard[] = [];
+  let current: GuideCard | null = null;
+
+  for (const line of lines) {
+    const questionMatch = line.match(/^(?:Q\d+\.|Question\s+\d+[:.)]|#+\s+)(.+)$/i);
+    if (questionMatch) {
+      if (current) cards.push(current);
+      current = { title: questionMatch[1].trim(), body: [] };
+      continue;
+    }
+    if (!current && cards.length === 0 && /study guide|important questions/i.test(line)) {
+      continue;
+    }
+    if (!current) {
+      current = { title: "Study guide overview", body: [] };
+    }
+    current.body.push(line.replace(/^[-*]\s*/, ""));
+  }
+
+  if (current) cards.push(current);
+  return cards.filter((card) => card.title || card.body.length).slice(0, 12);
+}
+
 function getVisibleChunks(
   detail: DocumentDetailResponse | null,
   selectedChunkId: string,
@@ -188,6 +295,33 @@ function getVisibleChunks(
   return activeChunks.slice(0, 10);
 }
 
+function StudyGuideAnswer({ answer }: { answer: string }) {
+  const cards = parseStudyGuideCards(answer);
+  if (!cards.length) {
+    return <div className="answer">{answer}</div>;
+  }
+
+  return (
+    <div className="study-guide-cards">
+      {cards.map((card, index) => (
+        <details className="guide-card" key={`${card.title}-${index}`} open={index === 0}>
+          <summary>
+            <span>Question {index + 1}</span>
+            <strong>{card.title}</strong>
+          </summary>
+          <div className="guide-card-body">
+            {card.body.length ? (
+              card.body.map((line, lineIndex) => <p key={`${card.title}-${lineIndex}`}>{line}</p>)
+            ) : (
+              <p>No generated answer body was returned for this question.</p>
+            )}
+          </div>
+        </details>
+      ))}
+    </div>
+  );
+}
+
 function modeLabel(value: StudyMode): string {
   return STUDY_MODES.find((mode) => mode.value === value)?.label ?? "Study";
 }
@@ -210,6 +344,7 @@ export default function Home() {
   const [ingestStatus, setIngestStatus] = useState<IngestStatusResponse | null>(null);
   const [ingestJobs, setIngestJobs] = useState<IngestJobsResponse | null>(null);
   const [sessionId, setSessionId] = useState("siddharth-study-thread");
+  const [workspaceSection, setWorkspaceSection] = useState<WorkspaceSection>("research");
   const [studyMode, setStudyMode] = useState<StudyMode>("research");
   const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>("hybrid");
   const [retrievalProfile, setRetrievalProfile] = useState<RetrievalProfile>("balanced");
@@ -219,6 +354,15 @@ export default function Home() {
   const [memory, setMemory] = useState<SessionSummaryResponse | null>(null);
   const [timeline, setTimeline] = useState<SessionTimelineResponse | null>(null);
   const [deepView, setDeepView] = useState<DeepView>("evidence");
+  const [examAction, setExamAction] = useState("");
+  const [examProfile, setExamProfile] = useState<ExamProfileItem | null>(null);
+  const [examMarks, setExamMarks] = useState(10);
+  const [examAnswerStyle, setExamAnswerStyle] = useState("exam-ready");
+  const [examContentType, setExamContentType] = useState("conceptual");
+  const [examInstructions, setExamInstructions] = useState("Use concise headings, key points, and source-backed explanations.");
+  const [questionBankInput, setQuestionBankInput] = useState("");
+  const [questionBankItems, setQuestionBankItems] = useState<QuestionBankItem[]>([]);
+  const [diagramAssets, setDiagramAssets] = useState<DiagramAssetItem[]>([]);
   const [evalReportInput, setEvalReportInput] = useState("");
   const [evalReport, setEvalReport] = useState<EvalReportPayload | null>(null);
   const [evalReportError, setEvalReportError] = useState("");
@@ -253,7 +397,9 @@ export default function Home() {
   const previousRun = queryHistory.length >= 2 ? queryHistory[queryHistory.length - 2] : undefined;
   const currentRun = queryHistory.length >= 1 ? queryHistory[queryHistory.length - 1] : undefined;
   const answerDiff = useMemo(() => buildAnswerDiff(previousRun, currentRun), [currentRun, previousRun]);
-  const currentMode = STUDY_MODES.find((mode) => mode.value === studyMode) ?? STUDY_MODES[0];
+  const availableModes = STUDY_MODES.filter((mode) => mode.section === workspaceSection);
+  const currentMode = availableModes.find((mode) => mode.value === studyMode) ?? availableModes[0] ?? STUDY_MODES[0];
+  const currentSection = WORKSPACE_SECTIONS.find((section) => section.value === workspaceSection) ?? WORKSPACE_SECTIONS[0];
   const activeMaterialName = selectedDocumentDetail?.title || selectedDocument?.title || "No study material selected";
 
   useEffect(() => {
@@ -269,6 +415,11 @@ export default function Home() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [queryHistory, busy]);
+
+  useEffect(() => {
+    if (!mounted || !documentId) return;
+    void loadExamLabState(documentId);
+  }, [documentId, mounted]);
 
   async function loadHealth() {
     try {
@@ -314,6 +465,20 @@ export default function Home() {
     if (!targetId.trim()) return;
     const detail = await getDocument(targetId.trim());
     setSelectedDocumentDetail(detail);
+  }
+
+  async function loadExamLabState(targetId: string) {
+    if (!targetId.trim()) return;
+    try {
+      const [questions, diagrams] = await Promise.all([
+        listQuestionBank(targetId.trim()),
+        listDiagrams(targetId.trim()),
+      ]);
+      setQuestionBankItems(questions);
+      setDiagramAssets(diagrams);
+    } catch (err) {
+      setError(String(err));
+    }
   }
 
   async function loadSessionState(targetSessionId: string) {
@@ -380,10 +545,19 @@ export default function Home() {
       const response = await runQuery({
         session_id: sessionId.trim(),
         query: submittedQuery,
-        document_id: documentId || undefined,
-        mode: studyMode,
+        document_id: workspaceSection === "general" ? undefined : documentId || undefined,
+        mode: currentMode.value,
         retrieval_mode: retrievalMode,
         retrieval_profile: retrievalProfile,
+        exam_profile:
+          workspaceSection === "exam"
+            ? {
+                marks: examMarks,
+                answer_style: examAnswerStyle,
+                content_type: examContentType,
+                instructions: examInstructions.trim() || undefined,
+              }
+            : undefined,
         debug: true,
       });
       setQueryResult(response);
@@ -393,7 +567,7 @@ export default function Home() {
           {
             session_id: response.session_id,
             query: submittedQuery,
-            mode: studyMode,
+            mode: currentMode.value,
             profile: retrievalProfile,
             response,
             timestamp: new Date().toISOString(),
@@ -416,6 +590,72 @@ export default function Home() {
     setSelectedDocumentDetail(null);
     void Promise.all([loadDocumentState(item.id), loadDocumentDetail(item.id)]);
     setDeepView("evidence");
+  }
+
+  function selectWorkspaceSection(section: WorkspaceSection) {
+    setWorkspaceSection(section);
+    const nextMode = STUDY_MODES.find((mode) => mode.section === section)?.value ?? "research";
+    setStudyMode(nextMode);
+    if (section === "general") {
+      setRetrievalProfile("fast");
+    } else if (section === "exam") {
+      setRetrievalProfile("precision");
+    } else {
+      setRetrievalProfile("balanced");
+    }
+  }
+
+  async function onSaveExamProfile() {
+    if (!documentId || !sessionId.trim()) return;
+    setExamAction("profile");
+    setError("");
+    try {
+      const profile = await upsertExamProfile({
+        session_id: sessionId.trim(),
+        document_id: documentId,
+        title: `${activeMaterialName} Exam Profile`,
+        marks: examMarks,
+        answer_style: examAnswerStyle,
+        content_type: examContentType,
+        instructions: examInstructions.trim() || undefined,
+      });
+      setExamProfile(profile);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setExamAction("");
+    }
+  }
+
+  async function onImportQuestionBank() {
+    if (!documentId || !questionBankInput.trim()) return;
+    setExamAction("questions");
+    setError("");
+    try {
+      const response = await importQuestionBank({
+        document_id: documentId,
+        raw_text: questionBankInput,
+      });
+      setQuestionBankItems(response.items);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setExamAction("");
+    }
+  }
+
+  async function onExtractDiagrams(force = false) {
+    if (!documentId) return;
+    setExamAction("diagrams");
+    setError("");
+    try {
+      const response = await extractDiagrams({ document_id: documentId, force });
+      setDiagramAssets(response.assets);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setExamAction("");
+    }
   }
 
   function selectCitation(documentIdValue: string, chunkId: string) {
@@ -483,7 +723,7 @@ export default function Home() {
     return (
       <main className="nirmiq-v2" suppressHydrationWarning>
         <section className="client-boot">
-          <p className="eyebrow">Academic Intelligence Workspace</p>
+          <p className="eyebrow">Local Research OS</p>
           <h1>NIRMIQ</h1>
           <p>Preparing your local study workspace...</p>
         </section>
@@ -495,11 +735,11 @@ export default function Home() {
     <main className="nirmiq-v2">
       <aside className="material-rail">
         <section className="identity-card">
-          <p className="eyebrow">Academic Intelligence Workspace</p>
+          <p className="eyebrow">Local Research OS</p>
           <h1 className="identity-title">NIRMIQ</h1>
           <p className="copy">
-            Siddharth&apos;s local study command center for document-grounded answers,
-            exam prep, and evidence you can inspect.
+            Siddharth&apos;s private cockpit for documents, grounded chat, exam prep,
+            and evidence you can actually inspect.
           </p>
           <div className="chip-row">
             <button className="chip" type="button" onClick={onHealthCheck} disabled={busy !== ""}>
@@ -513,7 +753,7 @@ export default function Home() {
 
         <section className="rail-section">
           <div className="section-head">
-            <h2>Study Material</h2>
+            <h2>Source Intake</h2>
             <span className="chip copper">{documents.length} indexed</span>
           </div>
           <form className="material-form panel" onSubmit={onIngest}>
@@ -536,14 +776,14 @@ export default function Home() {
               />
             </label>
             <button className="button primary" disabled={!canIngest || busy !== ""} type="submit">
-              {busy === "ingest" ? "Indexing material..." : "Ingest / reindex"}
+              {busy === "ingest" ? "Indexing source..." : "Index source"}
             </button>
           </form>
         </section>
 
         <section className="rail-section">
           <div className="section-head">
-            <h2>Knowledge Base</h2>
+            <h2>Source Vault</h2>
             <button className="button ghost" type="button" onClick={() => void loadDocuments()} disabled={busy !== ""}>
               Refresh
             </button>
@@ -558,7 +798,7 @@ export default function Home() {
                   type="button"
                 >
                   <span className="material-title">{item.title || "Untitled material"}</span>
-                  <span className="tiny">{item.status} · {item.active_chunk_count} evidence chunks</span>
+                  <span className="tiny">{item.status} / {item.active_chunk_count} evidence chunks</span>
                   <span className="tiny path">{item.source_path}</span>
                 </button>
               ))
@@ -574,9 +814,24 @@ export default function Home() {
 
       <section className="study-thread">
         <header className="thread-top">
+          <div className="workspace-switcher">
+            {WORKSPACE_SECTIONS.map((section) => (
+              <button
+                className={cx("section-button", workspaceSection === section.value && "active")}
+                data-testid={`workspace-${section.value}`}
+                key={section.value}
+                onClick={() => selectWorkspaceSection(section.value)}
+                type="button"
+              >
+                <strong>{section.label}</strong>
+                <span>{section.hint}</span>
+              </button>
+            ))}
+          </div>
           <div className="thread-title">
-            <p className="eyebrow">Study Thread</p>
-            <h1>{activeMaterialName}</h1>
+            <p className="eyebrow">{currentSection.label} Workspace</p>
+            <h1>{workspaceSection === "general" ? "General Chat" : activeMaterialName}</h1>
+            <p className="copy" style={{ maxWidth: 680 }}>{currentSection.hint}</p>
             <div className="chip-row">
               <span className="chip copper">{modeLabel(studyMode)}</span>
               <span className="chip teal">{retrievalMode.toUpperCase()}</span>
@@ -585,7 +840,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mode-grid">
-            {STUDY_MODES.map((mode) => (
+            {availableModes.map((mode) => (
               <button
                 className={cx("mode-button", studyMode === mode.value && "active")}
                 key={mode.value}
@@ -606,19 +861,23 @@ export default function Home() {
                 <article className="turn" key={`${run.timestamp}-${index}`}>
                   <div className="bubble user">
                     <div className="message-meta">
-                      <span className="tiny">You · {modeLabel(run.mode)}</span>
+                      <span className="tiny">You / {modeLabel(run.mode)}</span>
                       <span className="chip">{run.profile}</span>
                     </div>
                     <div className="answer">{run.query}</div>
                   </div>
                   <div className="bubble assistant">
                     <div className="message-meta">
-                      <span className="tiny">Grounded Response · {formatDate(run.timestamp)}</span>
+                      <span className="tiny">NIRMIQ / {formatDate(run.timestamp)}</span>
                       <span className={cx("chip", run.response.grounded ? "sage" : "copper")}>
-                        {run.response.grounded ? "grounded" : "review"} · {run.response.citations.length} citations
+                        {run.response.grounded ? "grounded" : "review"} / {run.response.citations.length} citations
                       </span>
                     </div>
-                    <div className="answer">{run.response.answer}</div>
+                    {run.mode === "study_guide" ? (
+                      <StudyGuideAnswer answer={run.response.answer} />
+                    ) : (
+                      <div className="answer">{run.response.answer}</div>
+                    )}
                     {run.response.citations.length ? (
                       <div className="citation-row">
                         {run.response.citations.slice(0, 6).map((citation, citationIndex) => (
@@ -629,7 +888,7 @@ export default function Home() {
                             type="button"
                           >
                             Evidence {citationIndex + 1}
-                            {citation.page_start ? ` · p.${citation.page_start}` : ""}
+                            {citation.page_start ? ` / p.${citation.page_start}` : ""}
                           </button>
                         ))}
                       </div>
@@ -642,9 +901,15 @@ export default function Home() {
           ) : (
             <section className="empty-state">
               <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
-              <h2>Ask your material like you are preparing for tomorrow&apos;s exam.</h2>
+              <h2>
+                {workspaceSection === "general"
+                  ? "Chat freely, with local evidence when your documents are relevant."
+                  : workspaceSection === "exam"
+                    ? "Prepare answers and study guides from your exact notes."
+                    : "Drop a document in. Ask directly. Inspect every claim."}
+              </h2>
               <div className="suggestions">
-                {STUDY_MODES.slice(0, 4).map((mode) => (
+                {availableModes.slice(0, 4).map((mode) => (
                   <button
                     className="button ghost"
                     key={mode.value}
@@ -753,6 +1018,159 @@ export default function Home() {
           ))}
         </div>
 
+        {workspaceSection === "exam" ? (
+          <section className="tool-panel rail-section" data-testid="exam-lab-panel">
+            <div className="panel">
+              <div className="section-head">
+                <h2>Exam Lab Setup</h2>
+                <span className="chip copper">{examProfile ? "saved" : "draft"}</span>
+              </div>
+              <div className="exam-grid" style={{ marginTop: 12 }}>
+                <label className="label">
+                  Marks
+                  <input
+                    className="input"
+                    min={1}
+                    max={100}
+                    type="number"
+                    value={examMarks}
+                    onChange={(event) => setExamMarks(Number(event.target.value))}
+                  />
+                </label>
+                <label className="label">
+                  Answer style
+                  <select
+                    className="select"
+                    value={examAnswerStyle}
+                    onChange={(event) => setExamAnswerStyle(event.target.value)}
+                  >
+                    <option value="exam-ready">Exam-ready</option>
+                    <option value="stepwise">Stepwise</option>
+                    <option value="concise">Concise</option>
+                    <option value="long-form">Long-form</option>
+                  </select>
+                </label>
+                <label className="label">
+                  Content type
+                  <select
+                    className="select"
+                    value={examContentType}
+                    onChange={(event) => setExamContentType(event.target.value)}
+                  >
+                    <option value="conceptual">Conceptual</option>
+                    <option value="numerical">Numerical</option>
+                    <option value="diagram-heavy">Diagram-heavy</option>
+                    <option value="mixed">Mixed</option>
+                  </select>
+                </label>
+              </div>
+              <label className="label" style={{ marginTop: 12 }}>
+                Custom answer instructions
+                <textarea
+                  className="textarea"
+                  value={examInstructions}
+                  onChange={(event) => setExamInstructions(event.target.value)}
+                />
+              </label>
+              <button
+                className="button primary"
+                disabled={!documentId || examAction !== ""}
+                onClick={onSaveExamProfile}
+                style={{ marginTop: 12 }}
+                type="button"
+              >
+                {examAction === "profile" ? "Saving..." : "Save Exam Profile"}
+              </button>
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>Question Bank</h2>
+                <span className="chip">{questionBankItems.length} questions</span>
+              </div>
+              <label className="label" style={{ marginTop: 12 }}>
+                Paste questions
+                <textarea
+                  className="textarea"
+                  placeholder="1. Explain retrieval augmented generation. (10 marks)"
+                  value={questionBankInput}
+                  onChange={(event) => setQuestionBankInput(event.target.value)}
+                />
+              </label>
+              <button
+                className="button"
+                disabled={!documentId || !questionBankInput.trim() || examAction !== ""}
+                onClick={onImportQuestionBank}
+                style={{ marginTop: 12 }}
+                type="button"
+              >
+                {examAction === "questions" ? "Importing..." : "Import Questions"}
+              </button>
+              <div className="timeline-list" style={{ marginTop: 12 }}>
+                {questionBankItems.slice(0, 5).map((item, index) => (
+                  <div className="timeline-card" key={item.id}>
+                    <div className="message-meta">
+                      <strong>Q{index + 1}</strong>
+                      <span className="tiny">{item.marks ? `${item.marks} marks` : "marks unset"}</span>
+                    </div>
+                    <p className="chunk-text">{item.question}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>Source Diagrams</h2>
+                <span className="chip">{diagramAssets.length} assets</span>
+              </div>
+              <p className="copy">
+                Extracts embedded PDF images into local processed assets and links them back to pages.
+              </p>
+              <div className="chip-row">
+                <button
+                  className="button"
+                  disabled={!documentId || examAction !== ""}
+                  onClick={() => void onExtractDiagrams(false)}
+                  type="button"
+                >
+                  {examAction === "diagrams" ? "Extracting..." : "Extract Diagrams"}
+                </button>
+                <button
+                  className="button ghost"
+                  disabled={!documentId || examAction !== ""}
+                  onClick={() => void onExtractDiagrams(true)}
+                  type="button"
+                >
+                  Refresh Assets
+                </button>
+              </div>
+              <div className="timeline-list" style={{ marginTop: 12 }}>
+                {diagramAssets.slice(0, 5).map((asset) => (
+                  <div className="timeline-card" key={asset.id}>
+                    <div className="message-meta">
+                      <strong>Page {asset.page_number}</strong>
+                      <span className="tiny">
+                        {asset.width && asset.height ? `${asset.width}x${asset.height}` : "size unknown"}
+                      </span>
+                    </div>
+                    <a
+                      className="diagram-preview"
+                      href={diagramAssetUrl(asset.id)}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <img alt={asset.caption || `Diagram from page ${asset.page_number}`} src={diagramAssetUrl(asset.id)} />
+                    </a>
+                    <p className="tiny path">{asset.image_path}</p>
+                    {asset.caption ? <p className="chunk-text">{asset.caption}</p> : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         {deepView === "evidence" ? (
           <section className="tool-panel rail-section">
             <div className="panel">
@@ -798,7 +1216,7 @@ export default function Home() {
                       <span className="material-title">Evidence {index + 1}</span>
                       <span className="tiny">
                         {citation.page_start ? `Page ${citation.page_start}` : "Page unknown"}
-                        {typeof citation.score === "number" ? ` · score ${citation.score.toFixed(2)}` : ""}
+                        {typeof citation.score === "number" ? ` / score ${citation.score.toFixed(2)}` : ""}
                       </span>
                       <span className="tiny">{previewText(citation.excerpt, 220)}</span>
                     </button>
@@ -944,8 +1362,8 @@ export default function Home() {
                       <span className="chip">{result.samples ?? 0} samples</span>
                     </div>
                     <p className="chunk-text">
-                      MRR {typeof result.mrr === "number" ? result.mrr.toFixed(3) : "n/a"} · Hit@3{" "}
-                      {typeof result.hit_rate_at_3 === "number" ? result.hit_rate_at_3.toFixed(3) : "n/a"} · Hit@5{" "}
+                      MRR {typeof result.mrr === "number" ? result.mrr.toFixed(3) : "n/a"} / Hit@3{" "}
+                      {typeof result.hit_rate_at_3 === "number" ? result.hit_rate_at_3.toFixed(3) : "n/a"} / Hit@5{" "}
                       {typeof result.hit_rate_at_5 === "number" ? result.hit_rate_at_5.toFixed(3) : "n/a"}
                     </p>
                   </div>
@@ -964,3 +1382,4 @@ export default function Home() {
     </main>
   );
 }
+
