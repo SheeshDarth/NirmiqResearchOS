@@ -1,5 +1,9 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 
+export function diagramAssetUrl(assetId: string): string {
+  return `${API_BASE}/exam/diagrams/assets/${encodeURIComponent(assetId)}`;
+}
+
 export async function healthCheck(): Promise<{ status: string }> {
   const response = await fetch(`${API_BASE}/health`);
   if (!response.ok) {

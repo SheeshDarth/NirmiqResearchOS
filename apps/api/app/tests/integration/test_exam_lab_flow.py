@@ -86,3 +86,6 @@ def test_exam_lab_profile_question_bank_and_diagram_contracts(tmp_path: Path) ->
         )
         assert diagram_response.status_code == 200
         assert diagram_response.json()["extracted_count"] == 0
+
+        missing_asset_response = client.get("/exam/diagrams/assets/missing-asset")
+        assert missing_asset_response.status_code == 404

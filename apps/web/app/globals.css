@@ -517,6 +517,58 @@ button.chunk-card {
   line-height: 1.72;
 }
 
+.study-guide-cards {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.guide-card {
+  border: 1px solid rgba(109, 139, 116, 0.32);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, rgba(109, 139, 116, 0.12), rgba(31, 78, 95, 0.1)),
+    rgba(12, 15, 18, 0.44);
+  overflow: hidden;
+}
+
+.guide-card summary {
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  list-style: none;
+  padding: 12px;
+}
+
+.guide-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.guide-card summary span {
+  color: var(--nirmiq-sage);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.guide-card summary strong {
+  color: var(--nirmiq-text);
+  line-height: 1.35;
+}
+
+.guide-card-body {
+  border-top: 1px solid var(--nirmiq-border);
+  padding: 10px 12px 12px;
+}
+
+.guide-card-body p {
+  margin: 7px 0 0;
+  color: var(--nirmiq-text-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
 .citation-row,
 .chip-row {
   display: flex;
@@ -632,6 +684,22 @@ button.chunk-card {
   color: var(--nirmiq-text-muted);
   font-size: 13px;
   line-height: 1.68;
+}
+
+.diagram-preview {
+  display: block;
+  margin-top: 10px;
+  overflow: hidden;
+  border: 1px solid var(--nirmiq-border);
+  border-radius: var(--radius-md);
+  background: rgba(12, 15, 18, 0.5);
+}
+
+.diagram-preview img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
 }
 
 .diff-card.added {

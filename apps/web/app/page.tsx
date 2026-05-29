@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  diagramAssetUrl,
   getDocument,
   getIngestJobs,
   getIngestStatus,
@@ -75,6 +76,11 @@ type EvalReportPayload = {
 type DiffLine = {
   kind: "same" | "added" | "removed";
   text: string;
+};
+
+type GuideCard = {
+  title: string;
+  body: string[];
 };
 
 const DEFAULT_SOURCE_PATH = "C:\\Downloads\\daily stoic.pdf";
@@ -236,6 +242,34 @@ function buildAnswerDiff(previous?: ChatRun, current?: ChatRun): DiffLine[] {
   ].slice(0, 36);
 }
 
+function parseStudyGuideCards(answer: string): GuideCard[] {
+  const lines = answer
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const cards: GuideCard[] = [];
+  let current: GuideCard | null = null;
+
+  for (const line of lines) {
+    const questionMatch = line.match(/^(?:Q\d+\.|Question\s+\d+[:.)]|#+\s+)(.+)$/i);
+    if (questionMatch) {
+      if (current) cards.push(current);
+      current = { title: questionMatch[1].trim(), body: [] };
+      continue;
+    }
+    if (!current && cards.length === 0 && /study guide|important questions/i.test(line)) {
+      continue;
+    }
+    if (!current) {
+      current = { title: "Study guide overview", body: [] };
+    }
+    current.body.push(line.replace(/^[-*]\s*/, ""));
+  }
+
+  if (current) cards.push(current);
+  return cards.filter((card) => card.title || card.body.length).slice(0, 12);
+}
+
 function getVisibleChunks(
   detail: DocumentDetailResponse | null,
   selectedChunkId: string,
@@ -259,6 +293,33 @@ function getVisibleChunks(
   }
 
   return activeChunks.slice(0, 10);
+}
+
+function StudyGuideAnswer({ answer }: { answer: string }) {
+  const cards = parseStudyGuideCards(answer);
+  if (!cards.length) {
+    return <div className="answer">{answer}</div>;
+  }
+
+  return (
+    <div className="study-guide-cards">
+      {cards.map((card, index) => (
+        <details className="guide-card" key={`${card.title}-${index}`} open={index === 0}>
+          <summary>
+            <span>Question {index + 1}</span>
+            <strong>{card.title}</strong>
+          </summary>
+          <div className="guide-card-body">
+            {card.body.length ? (
+              card.body.map((line, lineIndex) => <p key={`${card.title}-${lineIndex}`}>{line}</p>)
+            ) : (
+              <p>No generated answer body was returned for this question.</p>
+            )}
+          </div>
+        </details>
+      ))}
+    </div>
+  );
 }
 
 function modeLabel(value: StudyMode): string {
@@ -812,7 +873,11 @@ export default function Home() {
                         {run.response.grounded ? "grounded" : "review"} · {run.response.citations.length} citations
                       </span>
                     </div>
-                    <div className="answer">{run.response.answer}</div>
+                    {run.mode === "study_guide" ? (
+                      <StudyGuideAnswer answer={run.response.answer} />
+                    ) : (
+                      <div className="answer">{run.response.answer}</div>
+                    )}
                     {run.response.citations.length ? (
                       <div className="citation-row">
                         {run.response.citations.slice(0, 6).map((citation, citationIndex) => (
@@ -1089,6 +1154,14 @@ export default function Home() {
                         {asset.width && asset.height ? `${asset.width}x${asset.height}` : "size unknown"}
                       </span>
                     </div>
+                    <a
+                      className="diagram-preview"
+                      href={diagramAssetUrl(asset.id)}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <img alt={asset.caption || `Diagram from page ${asset.page_number}`} src={diagramAssetUrl(asset.id)} />
+                    </a>
                     <p className="tiny path">{asset.image_path}</p>
                     {asset.caption ? <p className="chunk-text">{asset.caption}</p> : null}
                   </div>

@@ -1,4 +1,7 @@
+import mimetypes
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 
 from app.api.schemas.exam import (
     DiagramAssetItem,
@@ -80,3 +83,16 @@ async def list_diagrams(
         return await service.list_diagrams(document_id=document_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/diagrams/assets/{asset_id}")
+async def get_diagram_asset(
+    asset_id: str,
+    service: ExamService = Depends(get_exam_service),
+) -> FileResponse:
+    try:
+        image_path = await service.get_diagram_asset_path(asset_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    media_type = mimetypes.guess_type(str(image_path))[0] or "application/octet-stream"
+    return FileResponse(path=image_path, media_type=media_type, filename=image_path.name)

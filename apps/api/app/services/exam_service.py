@@ -129,6 +129,19 @@ class ExamService:
         rows = self._sqlite_repo.list_diagram_assets(document_id=document_id)
         return [self._diagram_item(row) for row in rows]
 
+    async def get_diagram_asset_path(self, asset_id: str) -> Path:
+        row = self._sqlite_repo.get_diagram_asset(asset_id)
+        if not row:
+            raise ValueError(f"Diagram asset not found: {asset_id}")
+
+        image_path = Path(str(row["image_path"])).resolve()
+        diagram_root = self._diagram_root.resolve()
+        if diagram_root not in image_path.parents:
+            raise ValueError("Diagram asset path is outside the processed diagram directory.")
+        if not image_path.exists() or not image_path.is_file():
+            raise ValueError(f"Diagram asset file not found: {asset_id}")
+        return image_path
+
     def _require_document(self, document_id: str) -> dict[str, object]:
         document = self._sqlite_repo.get_document_by_id(document_id)
         if not document:

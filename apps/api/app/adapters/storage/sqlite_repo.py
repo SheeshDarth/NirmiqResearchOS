@@ -705,6 +705,19 @@ class SQLiteRepo:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def get_diagram_asset(self, asset_id: str) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT id, document_id, page_number, image_index, image_path,
+                       width, height, caption, created_at
+                FROM diagram_assets
+                WHERE id = ?
+                """,
+                (asset_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
     def delete_diagram_assets(self, document_id: str) -> None:
         with self._connect() as conn:
             conn.execute("DELETE FROM diagram_assets WHERE document_id = ?", (document_id,))
