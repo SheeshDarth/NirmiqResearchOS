@@ -386,6 +386,45 @@ button.chunk-card {
   max-width: 420px;
 }
 
+.workspace-switcher {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 8px;
+  min-width: min(680px, 48vw);
+}
+
+.section-button {
+  border: 1px solid var(--nirmiq-border);
+  border-radius: var(--radius-lg);
+  background: rgba(12, 15, 18, 0.58);
+  color: var(--nirmiq-text-muted);
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  min-height: 88px;
+  padding: 12px;
+  text-align: left;
+}
+
+.section-button strong {
+  color: var(--nirmiq-text);
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+}
+
+.section-button span {
+  color: var(--nirmiq-text-subtle);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.section-button.active {
+  border-color: rgba(184, 106, 60, 0.68);
+  background:
+    linear-gradient(180deg, rgba(184, 106, 60, 0.16), rgba(31, 78, 95, 0.1)),
+    rgba(12, 15, 18, 0.72);
+}
+
 .mode-button {
   border: 1px solid var(--nirmiq-border);
   border-radius: var(--radius-md);
@@ -683,9 +722,11 @@ button.chunk-card {
   }
 
   .mode-grid,
+  .workspace-switcher,
   .composer-meta,
   .metric-grid {
     grid-template-columns: 1fr;
+    min-width: 0;
   }
 
   .thread-scroll,

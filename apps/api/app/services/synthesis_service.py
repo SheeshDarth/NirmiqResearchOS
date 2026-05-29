@@ -168,10 +168,16 @@ class SynthesisService:
             return "Format as an exam-ready answer with definition, key points, and cited support."
         if mode == "revision_notes":
             return "Format as compact revision notes with headings and high-yield bullets."
+        if mode == "study_guide":
+            return "Format as a study guide with important questions, concise answers, and cited evidence."
         if mode == "important_questions":
             return "Generate likely exam questions only when they are supported by the context."
         if mode == "compare_concepts":
             return "Compare concepts in a small table or structured contrast when evidence supports it."
+        if mode == "general_chat":
+            return "Answer conversationally, but only from relevant uploaded document evidence. If the context is not relevant, abstain."
+        if mode == "deep_research":
+            return "Write a deeper research-style answer with clear sections, caveats, and evidence citations."
         return "Explain clearly for a student using short sections and citations."
 
     @staticmethod
@@ -181,10 +187,16 @@ class SynthesisService:
             return "Exam-ready answer from the retrieved passages:"
         if mode == "revision_notes":
             return "Revision notes from the retrieved passages:"
+        if mode == "study_guide":
+            return "Study guide from the retrieved passages:"
         if mode == "important_questions":
             return "Important question leads from the retrieved passages:"
         if mode == "compare_concepts":
             return "Grounded comparison from the retrieved passages:"
+        if mode == "general_chat":
+            return "I can answer this from the relevant uploaded material:"
+        if mode == "deep_research":
+            return "Deep research synthesis from the retrieved passages:"
         return "Based on the retrieved passages:"
 
     @staticmethod

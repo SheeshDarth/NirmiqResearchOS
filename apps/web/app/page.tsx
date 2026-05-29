@@ -23,7 +23,16 @@ import {
 
 type RetrievalMode = "hybrid" | "bm25" | "vector";
 type RetrievalProfile = "fast" | "balanced" | "precision";
-type StudyMode = "research" | "exam_answer" | "revision_notes" | "important_questions" | "compare_concepts";
+type WorkspaceSection = "research" | "general" | "exam";
+type StudyMode =
+  | "research"
+  | "deep_research"
+  | "general_chat"
+  | "exam_answer"
+  | "revision_notes"
+  | "important_questions"
+  | "compare_concepts"
+  | "study_guide";
 type BusyState = "" | "health" | "ingest" | "query" | "status" | "documents";
 type DeepView = "evidence" | "context" | "compare" | "eval";
 type Chunk = DocumentDetailResponse["chunks"][number];
@@ -62,36 +71,92 @@ type DiffLine = {
 
 const DEFAULT_SOURCE_PATH = "C:\\Downloads\\daily stoic.pdf";
 
-const STUDY_MODES: Array<{ value: StudyMode; label: string; hint: string; prompt: string }> = [
+const WORKSPACE_SECTIONS: Array<{
+  value: WorkspaceSection;
+  label: string;
+  hint: string;
+}> = [
   {
     value: "research",
+    label: "Research",
+    hint: "Analyze any document with regular or deep grounded research.",
+  },
+  {
+    value: "general",
+    label: "General Chat",
+    hint: "Chat normally. Offline answers use relevant local documents only.",
+  },
+  {
+    value: "exam",
+    label: "Exam Lab",
+    hint: "Question banks, answer formats, marks, and study guides.",
+  },
+];
+
+const STUDY_MODES: Array<{
+  value: StudyMode;
+  section: WorkspaceSection;
+  label: string;
+  hint: string;
+  prompt: string;
+}> = [
+  {
+    value: "research",
+    section: "research",
     label: "Explain Topic",
-    hint: "Understand the source",
-    prompt: "Explain the selected material in simple exam-friendly language.",
+    hint: "Understand any source",
+    prompt: "Explain the selected material clearly with evidence.",
+  },
+  {
+    value: "deep_research",
+    section: "research",
+    label: "Deep Research",
+    hint: "Detailed evidence-led synthesis",
+    prompt: "Produce a deep research analysis of the selected document with citations and caveats.",
+  },
+  {
+    value: "general_chat",
+    section: "general",
+    label: "Local Chat",
+    hint: "Conversational, evidence-aware",
+    prompt:
+      "Answer conversationally if the uploaded documents are relevant. If not, say what context is missing.",
   },
   {
     value: "exam_answer",
+    section: "exam",
     label: "Exam Answer",
     hint: "Structured marks-ready response",
     prompt: "Write a 10-mark exam answer from the selected document.",
   },
   {
     value: "revision_notes",
+    section: "exam",
     label: "Revision Notes",
     hint: "Condensed study sheet",
     prompt: "Create concise revision notes with key points and citations.",
   },
   {
     value: "important_questions",
+    section: "exam",
     label: "Important Questions",
     hint: "Likely questions from source",
     prompt: "Generate important questions from this material with brief answer hints.",
   },
   {
     value: "compare_concepts",
+    section: "exam",
     label: "Compare Concepts",
     hint: "Side-by-side understanding",
     prompt: "Compare the key concepts in this material using cited evidence.",
+  },
+  {
+    value: "study_guide",
+    section: "exam",
+    label: "Study Guide",
+    hint: "Comprehensive guide from sources",
+    prompt:
+      "Generate a comprehensive study guide with important questions, answers, and source references.",
   },
 ];
 
@@ -210,6 +275,7 @@ export default function Home() {
   const [ingestStatus, setIngestStatus] = useState<IngestStatusResponse | null>(null);
   const [ingestJobs, setIngestJobs] = useState<IngestJobsResponse | null>(null);
   const [sessionId, setSessionId] = useState("siddharth-study-thread");
+  const [workspaceSection, setWorkspaceSection] = useState<WorkspaceSection>("research");
   const [studyMode, setStudyMode] = useState<StudyMode>("research");
   const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>("hybrid");
   const [retrievalProfile, setRetrievalProfile] = useState<RetrievalProfile>("balanced");
@@ -253,7 +319,9 @@ export default function Home() {
   const previousRun = queryHistory.length >= 2 ? queryHistory[queryHistory.length - 2] : undefined;
   const currentRun = queryHistory.length >= 1 ? queryHistory[queryHistory.length - 1] : undefined;
   const answerDiff = useMemo(() => buildAnswerDiff(previousRun, currentRun), [currentRun, previousRun]);
-  const currentMode = STUDY_MODES.find((mode) => mode.value === studyMode) ?? STUDY_MODES[0];
+  const availableModes = STUDY_MODES.filter((mode) => mode.section === workspaceSection);
+  const currentMode = availableModes.find((mode) => mode.value === studyMode) ?? availableModes[0] ?? STUDY_MODES[0];
+  const currentSection = WORKSPACE_SECTIONS.find((section) => section.value === workspaceSection) ?? WORKSPACE_SECTIONS[0];
   const activeMaterialName = selectedDocumentDetail?.title || selectedDocument?.title || "No study material selected";
 
   useEffect(() => {
@@ -380,8 +448,8 @@ export default function Home() {
       const response = await runQuery({
         session_id: sessionId.trim(),
         query: submittedQuery,
-        document_id: documentId || undefined,
-        mode: studyMode,
+        document_id: workspaceSection === "general" ? undefined : documentId || undefined,
+        mode: currentMode.value,
         retrieval_mode: retrievalMode,
         retrieval_profile: retrievalProfile,
         debug: true,
@@ -393,7 +461,7 @@ export default function Home() {
           {
             session_id: response.session_id,
             query: submittedQuery,
-            mode: studyMode,
+            mode: currentMode.value,
             profile: retrievalProfile,
             response,
             timestamp: new Date().toISOString(),
@@ -416,6 +484,19 @@ export default function Home() {
     setSelectedDocumentDetail(null);
     void Promise.all([loadDocumentState(item.id), loadDocumentDetail(item.id)]);
     setDeepView("evidence");
+  }
+
+  function selectWorkspaceSection(section: WorkspaceSection) {
+    setWorkspaceSection(section);
+    const nextMode = STUDY_MODES.find((mode) => mode.section === section)?.value ?? "research";
+    setStudyMode(nextMode);
+    if (section === "general") {
+      setRetrievalProfile("fast");
+    } else if (section === "exam") {
+      setRetrievalProfile("precision");
+    } else {
+      setRetrievalProfile("balanced");
+    }
   }
 
   function selectCitation(documentIdValue: string, chunkId: string) {
@@ -498,7 +579,7 @@ export default function Home() {
           <p className="eyebrow">Academic Intelligence Workspace</p>
           <h1 className="identity-title">NIRMIQ</h1>
           <p className="copy">
-            Siddharth&apos;s local study command center for document-grounded answers,
+            Siddharth&apos;s local document intelligence OS for research, general chat,
             exam prep, and evidence you can inspect.
           </p>
           <div className="chip-row">
@@ -575,8 +656,9 @@ export default function Home() {
       <section className="study-thread">
         <header className="thread-top">
           <div className="thread-title">
-            <p className="eyebrow">Study Thread</p>
-            <h1>{activeMaterialName}</h1>
+            <p className="eyebrow">{currentSection.label} Workspace</p>
+            <h1>{workspaceSection === "general" ? "General Chat" : activeMaterialName}</h1>
+            <p className="copy" style={{ maxWidth: 680 }}>{currentSection.hint}</p>
             <div className="chip-row">
               <span className="chip copper">{modeLabel(studyMode)}</span>
               <span className="chip teal">{retrievalMode.toUpperCase()}</span>
@@ -584,8 +666,21 @@ export default function Home() {
               <span className="chip">{sessionId}</span>
             </div>
           </div>
+          <div className="workspace-switcher">
+            {WORKSPACE_SECTIONS.map((section) => (
+              <button
+                className={cx("section-button", workspaceSection === section.value && "active")}
+                key={section.value}
+                onClick={() => selectWorkspaceSection(section.value)}
+                type="button"
+              >
+                <strong>{section.label}</strong>
+                <span>{section.hint}</span>
+              </button>
+            ))}
+          </div>
           <div className="mode-grid">
-            {STUDY_MODES.map((mode) => (
+            {availableModes.map((mode) => (
               <button
                 className={cx("mode-button", studyMode === mode.value && "active")}
                 key={mode.value}
@@ -642,9 +737,15 @@ export default function Home() {
           ) : (
             <section className="empty-state">
               <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
-              <h2>Ask your material like you are preparing for tomorrow&apos;s exam.</h2>
+              <h2>
+                {workspaceSection === "general"
+                  ? "Chat freely, with local evidence when your documents are relevant."
+                  : workspaceSection === "exam"
+                    ? "Prepare answers and study guides from your exact notes."
+                    : "Ask any document like a research partner that shows its evidence."}
+              </h2>
               <div className="suggestions">
-                {STUDY_MODES.slice(0, 4).map((mode) => (
+                {availableModes.slice(0, 4).map((mode) => (
                   <button
                     className="button ghost"
                     key={mode.value}
