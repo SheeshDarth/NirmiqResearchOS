@@ -1,0 +1,966 @@
+"use client";
+
+import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+
+import {
+  getDocument,
+  getIngestJobs,
+  getIngestStatus,
+  getMemorySummary,
+  getSessionTimeline,
+  healthCheck,
+  ingestDocument,
+  listDocuments,
+  runQuery,
+  type DocumentDetailResponse,
+  type DocumentItem,
+  type IngestJobsResponse,
+  type IngestStatusResponse,
+  type QueryResponse,
+  type SessionSummaryResponse,
+  type SessionTimelineResponse,
+} from "../lib/api-client";
+
+type RetrievalMode = "hybrid" | "bm25" | "vector";
+type RetrievalProfile = "fast" | "balanced" | "precision";
+type StudyMode = "research" | "exam_answer" | "revision_notes" | "important_questions" | "compare_concepts";
+type BusyState = "" | "health" | "ingest" | "query" | "status" | "documents";
+type DeepView = "evidence" | "context" | "compare" | "eval";
+type Chunk = DocumentDetailResponse["chunks"][number];
+
+type ChatRun = {
+  session_id: string;
+  query: string;
+  mode: StudyMode;
+  profile: RetrievalProfile;
+  response: QueryResponse;
+  timestamp: string;
+};
+
+type EvalReportPayload = {
+  dataset?: string;
+  evaluation_mode?: string;
+  modes?: string[];
+  results?: Record<
+    string,
+    {
+      mode?: string;
+      samples?: number;
+      target_level?: string;
+      mrr?: number;
+      hit_rate_at_3?: number;
+      hit_rate_at_5?: number;
+      [key: string]: unknown;
+    }
+  >;
+};
+
+type DiffLine = {
+  kind: "same" | "added" | "removed";
+  text: string;
+};
+
+const DEFAULT_SOURCE_PATH = "C:\\Downloads\\daily stoic.pdf";
+
+const STUDY_MODES: Array<{ value: StudyMode; label: string; hint: string; prompt: string }> = [
+  {
+    value: "research",
+    label: "Explain Topic",
+    hint: "Understand the source",
+    prompt: "Explain the selected material in simple exam-friendly language.",
+  },
+  {
+    value: "exam_answer",
+    label: "Exam Answer",
+    hint: "Structured marks-ready response",
+    prompt: "Write a 10-mark exam answer from the selected document.",
+  },
+  {
+    value: "revision_notes",
+    label: "Revision Notes",
+    hint: "Condensed study sheet",
+    prompt: "Create concise revision notes with key points and citations.",
+  },
+  {
+    value: "important_questions",
+    label: "Important Questions",
+    hint: "Likely questions from source",
+    prompt: "Generate important questions from this material with brief answer hints.",
+  },
+  {
+    value: "compare_concepts",
+    label: "Compare Concepts",
+    hint: "Side-by-side understanding",
+    prompt: "Compare the key concepts in this material using cited evidence.",
+  },
+];
+
+const RETRIEVAL_PROFILES: Array<{ value: RetrievalProfile; label: string }> = [
+  { value: "fast", label: "Fast" },
+  { value: "balanced", label: "Balanced" },
+  { value: "precision", label: "Precision" },
+];
+
+function cx(...values: Array<string | false | null | undefined>): string {
+  return values.filter(Boolean).join(" ");
+}
+
+function formatDate(value?: string | null): string {
+  if (!value) return "never";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
+function previewText(value?: string | null, maxLength = 420): string {
+  const normalized = (value ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "No readable text available.";
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength).trim()}...` : normalized;
+}
+
+function getGroundingScore(response: QueryResponse | null): number {
+  const raw = response?.retrieval_meta?.grounding_score;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string") {
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return response?.grounded ? 1 : 0;
+}
+
+function getGroundingLabel(response: QueryResponse | null): string {
+  if (!response) return "Idle";
+  const score = getGroundingScore(response);
+  if (!response.grounded) return "Insufficient";
+  if (score >= 0.75) return "Strong";
+  if (score >= 0.45) return "Moderate";
+  return "Weak";
+}
+
+function splitAnswerUnits(value: string): string[] {
+  return value
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 28);
+}
+
+function buildAnswerDiff(previous?: ChatRun, current?: ChatRun): DiffLine[] {
+  if (!previous || !current) return [];
+  const previousUnits = splitAnswerUnits(previous.response.answer);
+  const currentUnits = splitAnswerUnits(current.response.answer);
+  const previousSet = new Set(previousUnits.map((line) => line.toLowerCase()));
+  const currentSet = new Set(currentUnits.map((line) => line.toLowerCase()));
+
+  return [
+    ...previousUnits
+      .filter((line) => !currentSet.has(line.toLowerCase()))
+      .map((text) => ({ kind: "removed" as const, text })),
+    ...currentUnits.map((text) => ({
+      kind: previousSet.has(text.toLowerCase()) ? ("same" as const) : ("added" as const),
+      text,
+    })),
+  ].slice(0, 36);
+}
+
+function getVisibleChunks(
+  detail: DocumentDetailResponse | null,
+  selectedChunkId: string,
+  citedChunkIds: Set<string>,
+): Chunk[] {
+  if (!detail) return [];
+  const activeChunks = detail.chunks.filter((chunk) => chunk.is_active);
+  if (!activeChunks.length) return [];
+
+  if (selectedChunkId) {
+    const selectedIndex = activeChunks.findIndex((chunk) => chunk.id === selectedChunkId);
+    if (selectedIndex >= 0) {
+      return activeChunks.slice(Math.max(0, selectedIndex - 2), Math.min(activeChunks.length, selectedIndex + 5));
+    }
+  }
+
+  const citedChunks = activeChunks.filter((chunk) => citedChunkIds.has(chunk.id));
+  if (citedChunks.length) {
+    const starterChunks = activeChunks.filter((chunk) => !citedChunkIds.has(chunk.id)).slice(0, 5);
+    return [...citedChunks.slice(0, 7), ...starterChunks].slice(0, 10);
+  }
+
+  return activeChunks.slice(0, 10);
+}
+
+function modeLabel(value: StudyMode): string {
+  return STUDY_MODES.find((mode) => mode.value === value)?.label ?? "Study";
+}
+
+export default function Home() {
+  const queryFormRef = useRef<HTMLFormElement | null>(null);
+  const queryInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  const [mounted, setMounted] = useState(false);
+  const [health, setHealth] = useState("unknown");
+  const [busy, setBusy] = useState<BusyState>("");
+  const [error, setError] = useState("");
+  const [sourcePath, setSourcePath] = useState(DEFAULT_SOURCE_PATH);
+  const [title, setTitle] = useState("Daily Stoic");
+  const [documentId, setDocumentId] = useState("");
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [selectedDocumentDetail, setSelectedDocumentDetail] = useState<DocumentDetailResponse | null>(null);
+  const [selectedChunkId, setSelectedChunkId] = useState("");
+  const [ingestStatus, setIngestStatus] = useState<IngestStatusResponse | null>(null);
+  const [ingestJobs, setIngestJobs] = useState<IngestJobsResponse | null>(null);
+  const [sessionId, setSessionId] = useState("siddharth-study-thread");
+  const [studyMode, setStudyMode] = useState<StudyMode>("research");
+  const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>("hybrid");
+  const [retrievalProfile, setRetrievalProfile] = useState<RetrievalProfile>("balanced");
+  const [query, setQuery] = useState("");
+  const [queryResult, setQueryResult] = useState<QueryResponse | null>(null);
+  const [queryHistory, setQueryHistory] = useState<ChatRun[]>([]);
+  const [memory, setMemory] = useState<SessionSummaryResponse | null>(null);
+  const [timeline, setTimeline] = useState<SessionTimelineResponse | null>(null);
+  const [deepView, setDeepView] = useState<DeepView>("evidence");
+  const [evalReportInput, setEvalReportInput] = useState("");
+  const [evalReport, setEvalReport] = useState<EvalReportPayload | null>(null);
+  const [evalReportError, setEvalReportError] = useState("");
+
+  const canIngest = sourcePath.trim().length > 0;
+  const canQuery = query.trim().length > 0 && sessionId.trim().length > 0;
+
+  const selectedDocument = useMemo(
+    () => documents.find((item) => item.id === documentId) ?? null,
+    [documentId, documents],
+  );
+  const latestCitations = queryResult?.citations ?? [];
+  const groundingScore = getGroundingScore(queryResult);
+  const groundingLabel = getGroundingLabel(queryResult);
+  const citedChunkIds = useMemo(
+    () =>
+      new Set(
+        latestCitations
+          .filter((citation) => citation.document_id === documentId)
+          .map((citation) => citation.chunk_id),
+      ),
+    [documentId, latestCitations],
+  );
+  const visibleChunks = useMemo(
+    () => getVisibleChunks(selectedDocumentDetail, selectedChunkId, citedChunkIds),
+    [citedChunkIds, selectedChunkId, selectedDocumentDetail],
+  );
+  const selectedChunk = useMemo(
+    () => selectedDocumentDetail?.chunks.find((chunk) => chunk.id === selectedChunkId) ?? null,
+    [selectedChunkId, selectedDocumentDetail],
+  );
+  const previousRun = queryHistory.length >= 2 ? queryHistory[queryHistory.length - 2] : undefined;
+  const currentRun = queryHistory.length >= 1 ? queryHistory[queryHistory.length - 1] : undefined;
+  const answerDiff = useMemo(() => buildAnswerDiff(previousRun, currentRun), [currentRun, previousRun]);
+  const currentMode = STUDY_MODES.find((mode) => mode.value === studyMode) ?? STUDY_MODES[0];
+  const activeMaterialName = selectedDocumentDetail?.title || selectedDocument?.title || "No study material selected";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    void loadHealth();
+    void loadDocuments();
+  }, [mounted]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [queryHistory, busy]);
+
+  async function loadHealth() {
+    try {
+      const response = await healthCheck();
+      setHealth(response.status);
+    } catch (err) {
+      setHealth("offline");
+      setError(String(err));
+    }
+  }
+
+  async function loadDocuments() {
+    setBusy((current) => current || "documents");
+    try {
+      const response = await listDocuments();
+      setDocuments(response.items);
+      const preferredId =
+        documentId && response.items.some((item) => item.id === documentId)
+          ? documentId
+          : response.items[0]?.id ?? "";
+      if (preferredId && preferredId !== documentId) {
+        setDocumentId(preferredId);
+        await Promise.all([loadDocumentState(preferredId), loadDocumentDetail(preferredId)]);
+      }
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy((current) => (current === "documents" ? "" : current));
+    }
+  }
+
+  async function loadDocumentState(targetId: string) {
+    if (!targetId.trim()) return;
+    const [status, jobs] = await Promise.all([
+      getIngestStatus(targetId.trim()),
+      getIngestJobs(targetId.trim()),
+    ]);
+    setIngestStatus(status);
+    setIngestJobs(jobs);
+  }
+
+  async function loadDocumentDetail(targetId: string) {
+    if (!targetId.trim()) return;
+    const detail = await getDocument(targetId.trim());
+    setSelectedDocumentDetail(detail);
+  }
+
+  async function loadSessionState(targetSessionId: string) {
+    if (!targetSessionId.trim()) return;
+    const [summary, timelineResponse] = await Promise.all([
+      getMemorySummary(targetSessionId.trim()),
+      getSessionTimeline(targetSessionId.trim()),
+    ]);
+    setMemory(summary);
+    setTimeline(timelineResponse);
+  }
+
+  async function onHealthCheck() {
+    setBusy("health");
+    setError("");
+    await loadHealth();
+    setBusy("");
+  }
+
+  async function onIngest(event: FormEvent) {
+    event.preventDefault();
+    if (!canIngest) return;
+    setBusy("ingest");
+    setError("");
+    try {
+      const response = await ingestDocument({
+        source_path: sourcePath.trim(),
+        title: title.trim() || undefined,
+        force_reindex: true,
+      });
+      setDocumentId(response.document_id);
+      setSelectedChunkId("");
+      await Promise.all([loadDocumentState(response.document_id), loadDocumentDetail(response.document_id)]);
+      await loadDocuments();
+      setDeepView("evidence");
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onRefreshStatus() {
+    if (!documentId.trim()) return;
+    setBusy("status");
+    setError("");
+    try {
+      await Promise.all([loadDocumentState(documentId.trim()), loadDocumentDetail(documentId.trim())]);
+      await loadDocuments();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onQuery(event: FormEvent) {
+    event.preventDefault();
+    if (!canQuery) return;
+    const submittedQuery = query.trim();
+    setBusy("query");
+    setError("");
+    try {
+      const response = await runQuery({
+        session_id: sessionId.trim(),
+        query: submittedQuery,
+        document_id: documentId || undefined,
+        mode: studyMode,
+        retrieval_mode: retrievalMode,
+        retrieval_profile: retrievalProfile,
+        debug: true,
+      });
+      setQueryResult(response);
+      setQueryHistory((current) =>
+        [
+          ...current,
+          {
+            session_id: response.session_id,
+            query: submittedQuery,
+            mode: studyMode,
+            profile: retrievalProfile,
+            response,
+            timestamp: new Date().toISOString(),
+          },
+        ].slice(-12),
+      );
+      setQuery("");
+      await loadSessionState(response.session_id);
+      setDeepView("evidence");
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function selectDocument(item: DocumentItem) {
+    setDocumentId(item.id);
+    setSelectedChunkId("");
+    setSelectedDocumentDetail(null);
+    void Promise.all([loadDocumentState(item.id), loadDocumentDetail(item.id)]);
+    setDeepView("evidence");
+  }
+
+  function selectCitation(documentIdValue: string, chunkId: string) {
+    setDocumentId(documentIdValue);
+    setSelectedChunkId(chunkId);
+    setSelectedDocumentDetail(null);
+    void Promise.all([loadDocumentState(documentIdValue), loadDocumentDetail(documentIdValue)]);
+    setDeepView("evidence");
+  }
+
+  function clearThread() {
+    setQueryHistory([]);
+    setQueryResult(null);
+    setTimeline(null);
+    setMemory(null);
+    setSelectedChunkId("");
+    setError("");
+  }
+
+  function applySuggestion(value: string) {
+    setQuery(value);
+    window.requestAnimationFrame(() => queryInputRef.current?.focus());
+  }
+
+  function onQueryKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      queryFormRef.current?.requestSubmit();
+    }
+  }
+
+  function loadEvalReportFromText(rawText: string) {
+    const trimmed = rawText.trim();
+    if (!trimmed) {
+      setEvalReport(null);
+      setEvalReportError("");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(trimmed) as EvalReportPayload;
+      setEvalReport(parsed);
+      setEvalReportError("");
+    } catch (err) {
+      setEvalReport(null);
+      setEvalReportError(String(err));
+    }
+  }
+
+  function onEvalReportFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    void file
+      .text()
+      .then((text) => {
+        setEvalReportInput(text);
+        loadEvalReportFromText(text);
+      })
+      .catch((err) => {
+        setEvalReport(null);
+        setEvalReportError(String(err));
+      });
+  }
+
+  if (!mounted) {
+    return (
+      <main className="nirmiq-v2" suppressHydrationWarning>
+        <section className="client-boot">
+          <p className="eyebrow">Academic Intelligence Workspace</p>
+          <h1>NIRMIQ</h1>
+          <p>Preparing your local study workspace...</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="nirmiq-v2">
+      <aside className="material-rail">
+        <section className="identity-card">
+          <p className="eyebrow">Academic Intelligence Workspace</p>
+          <h1 className="identity-title">NIRMIQ</h1>
+          <p className="copy">
+            Siddharth&apos;s local study command center for document-grounded answers,
+            exam prep, and evidence you can inspect.
+          </p>
+          <div className="chip-row">
+            <button className="chip" type="button" onClick={onHealthCheck} disabled={busy !== ""}>
+              <span className={cx("status-dot", health === "ok" && "ok")} />
+              API {health}
+            </button>
+            <span className="chip sage">Local-first</span>
+            <span className="chip teal">RTX 4050-aware</span>
+          </div>
+        </section>
+
+        <section className="rail-section">
+          <div className="section-head">
+            <h2>Study Material</h2>
+            <span className="chip copper">{documents.length} indexed</span>
+          </div>
+          <form className="material-form panel" onSubmit={onIngest}>
+            <label className="label">
+              Local path
+              <input
+                className="input"
+                value={sourcePath}
+                onChange={(event) => setSourcePath(event.target.value)}
+                placeholder={DEFAULT_SOURCE_PATH}
+              />
+            </label>
+            <label className="label">
+              Material title
+              <input
+                className="input"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Unit 3 OS Notes"
+              />
+            </label>
+            <button className="button primary" disabled={!canIngest || busy !== ""} type="submit">
+              {busy === "ingest" ? "Indexing material..." : "Ingest / reindex"}
+            </button>
+          </form>
+        </section>
+
+        <section className="rail-section">
+          <div className="section-head">
+            <h2>Knowledge Base</h2>
+            <button className="button ghost" type="button" onClick={() => void loadDocuments()} disabled={busy !== ""}>
+              Refresh
+            </button>
+          </div>
+          <div className="material-list">
+            {documents.length ? (
+              documents.map((item) => (
+                <button
+                  className={cx("material-card", item.id === documentId && "active")}
+                  key={item.id}
+                  onClick={() => selectDocument(item)}
+                  type="button"
+                >
+                  <span className="material-title">{item.title || "Untitled material"}</span>
+                  <span className="tiny">{item.status} · {item.active_chunk_count} evidence chunks</span>
+                  <span className="tiny path">{item.source_path}</span>
+                </button>
+              ))
+            ) : (
+              <div className="material-card">
+                <strong>No material indexed yet</strong>
+                <p className="copy">Add a PDF or text file from your laptop to begin.</p>
+              </div>
+            )}
+          </div>
+        </section>
+      </aside>
+
+      <section className="study-thread">
+        <header className="thread-top">
+          <div className="thread-title">
+            <p className="eyebrow">Study Thread</p>
+            <h1>{activeMaterialName}</h1>
+            <div className="chip-row">
+              <span className="chip copper">{modeLabel(studyMode)}</span>
+              <span className="chip teal">{retrievalMode.toUpperCase()}</span>
+              <span className="chip sage">{retrievalProfile}</span>
+              <span className="chip">{sessionId}</span>
+            </div>
+          </div>
+          <div className="mode-grid">
+            {STUDY_MODES.map((mode) => (
+              <button
+                className={cx("mode-button", studyMode === mode.value && "active")}
+                key={mode.value}
+                onClick={() => setStudyMode(mode.value)}
+                type="button"
+              >
+                <strong>{mode.label}</strong>
+                <div className="tiny">{mode.hint}</div>
+              </button>
+            ))}
+          </div>
+        </header>
+
+        <div className="thread-scroll">
+          {queryHistory.length ? (
+            <div className="turn-list">
+              {queryHistory.map((run, index) => (
+                <article className="turn" key={`${run.timestamp}-${index}`}>
+                  <div className="bubble user">
+                    <div className="message-meta">
+                      <span className="tiny">You · {modeLabel(run.mode)}</span>
+                      <span className="chip">{run.profile}</span>
+                    </div>
+                    <div className="answer">{run.query}</div>
+                  </div>
+                  <div className="bubble assistant">
+                    <div className="message-meta">
+                      <span className="tiny">Grounded Response · {formatDate(run.timestamp)}</span>
+                      <span className={cx("chip", run.response.grounded ? "sage" : "copper")}>
+                        {run.response.grounded ? "grounded" : "review"} · {run.response.citations.length} citations
+                      </span>
+                    </div>
+                    <div className="answer">{run.response.answer}</div>
+                    {run.response.citations.length ? (
+                      <div className="citation-row">
+                        {run.response.citations.slice(0, 6).map((citation, citationIndex) => (
+                          <button
+                            className={cx("citation-chip", citation.chunk_id === selectedChunkId && "active")}
+                            key={`${run.timestamp}-${citation.chunk_id}-${citationIndex}`}
+                            onClick={() => selectCitation(citation.document_id, citation.chunk_id)}
+                            type="button"
+                          >
+                            Evidence {citationIndex + 1}
+                            {citation.page_start ? ` · p.${citation.page_start}` : ""}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+          ) : (
+            <section className="empty-state">
+              <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
+              <h2>Ask your material like you are preparing for tomorrow&apos;s exam.</h2>
+              <div className="suggestions">
+                {STUDY_MODES.slice(0, 4).map((mode) => (
+                  <button
+                    className="button ghost"
+                    key={mode.value}
+                    onClick={() => {
+                      setStudyMode(mode.value);
+                      applySuggestion(mode.prompt);
+                    }}
+                    type="button"
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        <form className="composer-wrap" ref={queryFormRef} onSubmit={onQuery}>
+          <div className="composer-card">
+            <div className="composer-meta">
+              <label className="label">
+                Study thread
+                <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
+              </label>
+              <label className="label">
+                Retrieval
+                <select
+                  className="select"
+                  value={retrievalMode}
+                  onChange={(event) => setRetrievalMode(event.target.value as RetrievalMode)}
+                >
+                  <option value="hybrid">Hybrid</option>
+                  <option value="bm25">BM25</option>
+                  <option value="vector">Vector</option>
+                </select>
+              </label>
+              <label className="label">
+                Profile
+                <select
+                  className="select"
+                  value={retrievalProfile}
+                  onChange={(event) => setRetrievalProfile(event.target.value as RetrievalProfile)}
+                >
+                  {RETRIEVAL_PROFILES.map((profile) => (
+                    <option key={profile.value} value={profile.value}>
+                      {profile.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <textarea
+              className="textarea"
+              ref={queryInputRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={onQueryKeyDown}
+              placeholder={`Ask in ${currentMode.label} mode...`}
+            />
+            <div className="composer-actions">
+              <div className="chip-row" style={{ marginTop: 0 }}>
+                <span className="chip">Grounding {groundingLabel}</span>
+                <span className="chip">Score {groundingScore.toFixed(2)}</span>
+                <span className="chip">{latestCitations.length} evidence links</span>
+              </div>
+              <div className="chip-row" style={{ marginTop: 0 }}>
+                <button className="button ghost" type="button" onClick={clearThread}>
+                  Clear Thread
+                </button>
+                <button className="button primary" disabled={!canQuery || busy !== ""} type="submit">
+                  {busy === "query" ? "Reading sources..." : "Ask NIRMIQ"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <aside className="deep-rail">
+        <section className="grounding-meter">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">Grounding Strength</p>
+              <h2>{groundingLabel}</h2>
+            </div>
+            <span className="chip copper">{Math.round(Math.min(1, groundingScore) * 100)}%</span>
+          </div>
+          <div className="meter-track">
+            <div className="meter-fill" style={{ width: `${Math.max(4, Math.min(100, groundingScore * 100))}%` }} />
+          </div>
+          <p className="copy">
+            Evidence first. Memory can help the thread, but uploaded material remains the source of truth.
+          </p>
+        </section>
+
+        <div className="tab-row">
+          {(["evidence", "context", "compare", "eval"] as DeepView[]).map((view) => (
+            <button
+              className={cx("tab", deepView === view && "active")}
+              key={view}
+              onClick={() => setDeepView(view)}
+              type="button"
+            >
+              {view === "evidence" ? "Evidence Trail" : view === "context" ? "Study Context" : view}
+            </button>
+          ))}
+        </div>
+
+        {deepView === "evidence" ? (
+          <section className="tool-panel rail-section">
+            <div className="panel">
+              <div className="section-head">
+                <h2>{selectedDocumentDetail?.title || selectedDocument?.title || "No material selected"}</h2>
+                <button className="button ghost" type="button" onClick={onRefreshStatus} disabled={!documentId || busy !== ""}>
+                  Refresh
+                </button>
+              </div>
+              <p className="tiny path">
+                {selectedDocumentDetail?.source_path || selectedDocument?.source_path || "Select study material."}
+              </p>
+              <div className="metric-grid" style={{ marginTop: 12 }}>
+                <div className="metric-card">
+                  <strong>{selectedDocumentDetail?.active_chunk_count ?? selectedDocument?.active_chunk_count ?? 0}</strong>
+                  <span className="tiny">chunks</span>
+                </div>
+                <div className="metric-card">
+                  <strong>{ingestStatus?.status ?? "idle"}</strong>
+                  <span className="tiny">index</span>
+                </div>
+                <div className="metric-card">
+                  <strong>{ingestJobs?.jobs.length ?? 0}</strong>
+                  <span className="tiny">jobs</span>
+                </div>
+              </div>
+            </div>
+
+            {latestCitations.length ? (
+              <div className="panel">
+                <div className="section-head">
+                  <h2>Answer citations</h2>
+                  <span className="chip copper">{latestCitations.length}</span>
+                </div>
+                <div className="timeline-list" style={{ marginTop: 10 }}>
+                  {latestCitations.slice(0, 6).map((citation, index) => (
+                    <button
+                      className={cx("material-card", citation.chunk_id === selectedChunkId && "active")}
+                      key={`${citation.chunk_id}-${index}`}
+                      onClick={() => selectCitation(citation.document_id, citation.chunk_id)}
+                      type="button"
+                    >
+                      <span className="material-title">Evidence {index + 1}</span>
+                      <span className="tiny">
+                        {citation.page_start ? `Page ${citation.page_start}` : "Page unknown"}
+                        {typeof citation.score === "number" ? ` · score ${citation.score.toFixed(2)}` : ""}
+                      </span>
+                      <span className="tiny">{previewText(citation.excerpt, 220)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {selectedChunk ? (
+              <div className="chunk-card active">
+                <div className="chunk-head">
+                  <strong>Focused chunk {selectedChunk.chunk_index + 1}</strong>
+                  <span className="chip">{selectedChunk.token_count} tokens</span>
+                </div>
+                <p className="chunk-text">{previewText(selectedChunk.text, 900)}</p>
+              </div>
+            ) : null}
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>Retrieved chunks</h2>
+                <span className="tiny">{visibleChunks.length} visible</span>
+              </div>
+              <div className="chunk-list" style={{ marginTop: 10 }}>
+                {visibleChunks.length ? (
+                  visibleChunks.map((chunk) => (
+                    <button
+                      className={cx(
+                        "chunk-card",
+                        chunk.id === selectedChunkId && "active",
+                        citedChunkIds.has(chunk.id) && "cited",
+                      )}
+                      key={chunk.id}
+                      onClick={() => setSelectedChunkId(chunk.id)}
+                      type="button"
+                    >
+                      <div className="chunk-head">
+                        <strong>Chunk {chunk.chunk_index + 1}</strong>
+                        <span className="tiny">p.{chunk.page_start ?? "?"}-{chunk.page_end ?? "?"}</span>
+                      </div>
+                      <p className="chunk-text">{previewText(chunk.text, 330)}</p>
+                    </button>
+                  ))
+                ) : (
+                  <div className="chunk-card">
+                    <strong>No evidence preview yet</strong>
+                    <p className="copy">Ask a question or select material to inspect chunks.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {deepView === "context" ? (
+          <section className="tool-panel rail-section">
+            <div className="panel">
+              <div className="section-head">
+                <h2>Study Context</h2>
+                <button className="button ghost" type="button" onClick={() => void loadSessionState(sessionId)} disabled={!sessionId || busy !== ""}>
+                  Refresh
+                </button>
+              </div>
+              <p className="copy">{memory?.summary || "Study memory appears after your first grounded exchange."}</p>
+              <div className="chip-row">
+                <span className="chip">{memory?.message_count ?? 0} messages</span>
+                <span className="chip">Memory never overrides evidence</span>
+              </div>
+            </div>
+            <div className="timeline-list">
+              {(timeline?.messages ?? []).slice(-8).map((message) => (
+                <div className="timeline-card" key={message.id}>
+                  <div className="message-meta">
+                    <strong>{message.role}</strong>
+                    <span className="tiny">{formatDate(message.created_at)}</span>
+                  </div>
+                  <p className="chunk-text">{previewText(message.content, 280)}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {deepView === "compare" ? (
+          <section className="tool-panel rail-section">
+            <div className="panel">
+              <div className="section-head">
+                <h2>Answer Delta</h2>
+                <span className="chip">{answerDiff.length} lines</span>
+              </div>
+              <p className="copy">Compare the last two grounded responses when tuning mode or retrieval profile.</p>
+            </div>
+            <div className="diff-list">
+              {answerDiff.length ? (
+                answerDiff.map((line, index) => (
+                  <div className={cx("diff-card", line.kind)} key={`${line.kind}-${index}`}>
+                    <strong>{line.kind}</strong>
+                    <p className="chunk-text">{line.text}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="diff-card">
+                  <strong>Run two questions</strong>
+                  <p className="copy">The change log will appear here.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {deepView === "eval" ? (
+          <section className="tool-panel rail-section">
+            <div className="panel">
+              <div className="section-head">
+                <h2>Retrieval Evaluation</h2>
+                <label className="button ghost">
+                  Load JSON
+                  <input accept=".json,application/json" hidden type="file" onChange={onEvalReportFileChange} />
+                </label>
+              </div>
+              <p className="copy">Paste output from the retrieval evaluation script to inspect MRR and hit rates.</p>
+            </div>
+            <textarea
+              className="eval-input"
+              value={evalReportInput}
+              onChange={(event) => {
+                setEvalReportInput(event.target.value);
+                loadEvalReportFromText(event.target.value);
+              }}
+              placeholder="Paste retrieval evaluation JSON..."
+            />
+            {evalReportError ? <div className="toast" style={{ position: "static", transform: "none", width: "100%" }}>{evalReportError}</div> : null}
+            {evalReport ? (
+              <div className="eval-list">
+                <div className="eval-card">
+                  <strong>{evalReport.dataset || "Evaluation report"}</strong>
+                  <p className="tiny">{evalReport.evaluation_mode || "mode unknown"}</p>
+                </div>
+                {Object.entries(evalReport.results ?? {}).map(([mode, result]) => (
+                  <div className="eval-card" key={mode}>
+                    <div className="message-meta">
+                      <strong>{result.mode || mode}</strong>
+                      <span className="chip">{result.samples ?? 0} samples</span>
+                    </div>
+                    <p className="chunk-text">
+                      MRR {typeof result.mrr === "number" ? result.mrr.toFixed(3) : "n/a"} · Hit@3{" "}
+                      {typeof result.hit_rate_at_3 === "number" ? result.hit_rate_at_3.toFixed(3) : "n/a"} · Hit@5{" "}
+                      {typeof result.hit_rate_at_5 === "number" ? result.hit_rate_at_5.toFixed(3) : "n/a"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+      </aside>
+
+      {error ? (
+        <div className="toast" role="alert">
+          {error}
+        </div>
+      ) : null}
+    </main>
+  );
+}

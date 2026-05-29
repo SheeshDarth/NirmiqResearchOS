@@ -1,0 +1,86 @@
+import asyncio
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+
+def test_retrieval_modes_available_after_ingest(tmp_path: Path) -> None:
+    sample = tmp_path / "modes_sample.txt"
+    sample.write_text(
+        "NIRMIQ uses lexical and semantic retrieval with reciprocal rank fusion.",
+        encoding="utf-8",
+    )
+
+    with TestClient(app) as client:
+        ingest_response = client.post(
+            "/ingest",
+            json={"source_path": str(sample), "title": "Modes", "mime_type": "text/plain"},
+        )
+        assert ingest_response.status_code == 200
+
+        container = app.state.container
+        hybrid = asyncio.run(
+            container.retrieval_service.retrieve_with_mode(
+                "What retrieval strategy does NIRMIQ use?", mode="hybrid"
+            )
+        )
+        bm25 = asyncio.run(
+            container.retrieval_service.retrieve_with_mode(
+                "What retrieval strategy does NIRMIQ use?", mode="bm25"
+            )
+        )
+        vector = asyncio.run(
+            container.retrieval_service.retrieve_with_mode(
+                "What retrieval strategy does NIRMIQ use?", mode="vector"
+            )
+        )
+
+        assert hybrid.meta["strategy"] == "phase1_hybrid"
+        assert bm25.meta["strategy"] == "phase1_bm25"
+        assert vector.meta["strategy"] == "phase1_vector"
+
+
+def test_query_can_scope_retrieval_to_selected_document(tmp_path: Path) -> None:
+    first = tmp_path / "first.txt"
+    first.write_text(
+        "NIRMIQ is a local research assistant for retrieval workflows.",
+        encoding="utf-8",
+    )
+    second = tmp_path / "second.txt"
+    second.write_text(
+        "Stoicism is a practical philosophy about attention, discipline, and wise action.",
+        encoding="utf-8",
+    )
+
+    with TestClient(app) as client:
+        first_response = client.post(
+            "/ingest",
+            json={"source_path": str(first), "title": "NIRMIQ", "mime_type": "text/plain"},
+        )
+        second_response = client.post(
+            "/ingest",
+            json={"source_path": str(second), "title": "Stoicism", "mime_type": "text/plain"},
+        )
+        assert first_response.status_code == 200
+        assert second_response.status_code == 200
+        selected_document_id = second_response.json()["document_id"]
+
+        query_response = client.post(
+            "/query",
+            json={
+                "session_id": "scoped-session",
+                "query": "What is Stoicism about?",
+                "document_id": selected_document_id,
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+
+        assert query_response.status_code == 200
+        body = query_response.json()
+        assert body["retrieval_meta"]["scope"] == "document"
+        assert body["retrieval_meta"]["document_scope"] == selected_document_id
+        assert body["citations"]
+        assert {citation["document_id"] for citation in body["citations"]} == {selected_document_id}

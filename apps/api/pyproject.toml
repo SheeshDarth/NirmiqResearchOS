@@ -1,0 +1,26 @@
+[project]
+name = "nirmiq-api"
+version = "0.1.0"
+description = "NIRMIQ ResearchOS FastAPI backend"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.116.0",
+  "uvicorn[standard]>=0.35.0",
+  "pydantic>=2.11.0",
+  "pytest>=8.4.0",
+  "httpx>=0.28.0",
+  "PyMuPDF>=1.26.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+vector = [
+  "chromadb>=0.5.5"
+]
+ocr = [
+  "pytesseract>=0.3.13",
+  "Pillow>=10.4.0",
+]

@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Node
+node_modules/
+.next/
+
+# Environment
+.env
+
+# OS/editor
+.DS_Store
+Thumbs.db
+
+# Runtime data artifacts
+data/sqlite/*.db
+data/cache/*
+!data/cache/.gitkeep
+data/indexes/chroma/*
+!data/indexes/chroma/.gitkeep
+temp/
+*.log

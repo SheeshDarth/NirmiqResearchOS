@@ -1,0 +1,82 @@
+from functools import lru_cache
+import os
+from pathlib import Path
+
+from pydantic import BaseModel
+
+
+class Settings(BaseModel):
+    api_host: str
+    api_port: int
+    web_allowed_origins: list[str]
+    log_level: str
+    workspace_root: Path
+    sqlite_path: Path
+    chroma_path: Path
+    ollama_base_url: str
+    embed_model: str
+    reranker_model: str
+    generator_model_default: str
+    generator_model_code: str
+    use_ollama_generation: bool
+    use_ollama_embeddings: bool
+    use_ollama_reranker: bool
+    ollama_timeout_seconds: float
+    retrieval_k_bm25: int
+    retrieval_k_vector: int
+    retrieval_k_fused: int
+    retrieval_k_rerank: int
+    retrieval_rrf_k: int
+    retrieval_max_chunks_per_document: int
+    retrieval_enable_vector: bool
+    retrieval_max_context_tokens: int
+    retrieval_min_grounding_score: float
+    memory_snapshot_interval_messages: int
+    memory_snapshot_window_messages: int
+
+    @classmethod
+    def from_env(cls) -> "Settings":
+        workspace_root = Path(__file__).resolve().parents[4]
+        sqlite_default = workspace_root / "data" / "sqlite" / "nirmiq.db"
+        chroma_default = workspace_root / "data" / "indexes" / "chroma"
+        return cls(
+            api_host=os.getenv("API_HOST", "127.0.0.1"),
+            api_port=int(os.getenv("API_PORT", "8000")),
+            web_allowed_origins=[
+                part.strip()
+                for part in os.getenv(
+                    "WEB_ALLOWED_ORIGINS",
+                    "http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:3002,http://localhost:3002",
+                ).split(",")
+                if part.strip()
+            ],
+            log_level=os.getenv("LOG_LEVEL", "INFO"),
+            workspace_root=workspace_root,
+            sqlite_path=Path(os.getenv("SQLITE_PATH", str(sqlite_default))),
+            chroma_path=Path(os.getenv("CHROMA_PATH", str(chroma_default))),
+            ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
+            embed_model=os.getenv("EMBED_MODEL", "nomic-embed-text"),
+            reranker_model=os.getenv("RERANKER_MODEL", "bge-reranker-base"),
+            generator_model_default=os.getenv("GENERATOR_MODEL_DEFAULT", "phi3:mini"),
+            generator_model_code=os.getenv("GENERATOR_MODEL_CODE", "deepseek-coder:6.7b"),
+            use_ollama_generation=os.getenv("USE_OLLAMA_GENERATION", "true").lower() == "true",
+            use_ollama_embeddings=os.getenv("USE_OLLAMA_EMBEDDINGS", "true").lower() == "true",
+            use_ollama_reranker=os.getenv("USE_OLLAMA_RERANKER", "false").lower() == "true",
+            ollama_timeout_seconds=float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "4.0")),
+            retrieval_k_bm25=int(os.getenv("RETRIEVAL_K_BM25", "20")),
+            retrieval_k_vector=int(os.getenv("RETRIEVAL_K_VECTOR", "20")),
+            retrieval_k_fused=int(os.getenv("RETRIEVAL_K_FUSED", "24")),
+            retrieval_k_rerank=int(os.getenv("RETRIEVAL_K_RERANK", "8")),
+            retrieval_rrf_k=int(os.getenv("RETRIEVAL_RRF_K", "60")),
+            retrieval_max_chunks_per_document=int(os.getenv("RETRIEVAL_MAX_CHUNKS_PER_DOCUMENT", "2")),
+            retrieval_enable_vector=os.getenv("RETRIEVAL_ENABLE_VECTOR", "true").lower() == "true",
+            retrieval_max_context_tokens=int(os.getenv("RETRIEVAL_MAX_CONTEXT_TOKENS", "2400")),
+            retrieval_min_grounding_score=float(os.getenv("RETRIEVAL_MIN_GROUNDING_SCORE", "0.15")),
+            memory_snapshot_interval_messages=int(os.getenv("MEMORY_SNAPSHOT_INTERVAL_MESSAGES", "6")),
+            memory_snapshot_window_messages=int(os.getenv("MEMORY_SNAPSHOT_WINDOW_MESSAGES", "12")),
+        )
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings.from_env()

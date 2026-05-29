@@ -1,0 +1,29 @@
+{
+  "project": "NIRMIQ ResearchOS",
+  "created_for": "Codex continuation and scale-up",
+  "files": [
+    "AGENTS.md",
+    "README.md",
+    "design/tokens.css",
+    "docs/API_CONTRACT.md",
+    "docs/ARCHITECTURE.md",
+    "docs/CURRENT_PROGRESS.md",
+    "docs/DATA_MODEL.md",
+    "docs/DEPLOYMENT_GUIDELINES.md",
+    "docs/EVALUATION_GUIDELINES.md",
+    "docs/MEMORY_GUIDELINES.md",
+    "docs/MODEL_ROUTING.md",
+    "docs/NEXT_TASKS.md",
+    "docs/PRD.md",
+    "docs/PROMPT_TEMPLATES.md",
+    "docs/RETRIEVAL_GUIDELINES.md",
+    "docs/ROADMAP.md",
+    "docs/SECURITY_PRIVACY.md",
+    "docs/TESTING_GUIDELINES.md",
+    "docs/TRD.md",
+    "docs/UI_GUIDELINES.md",
+    "prompts/CODEX_MASTER_SCALE_UP_PROMPT.md"
+  ],
+  "recommended_first_file": "prompts/CODEX_MASTER_SCALE_UP_PROMPT.md",
+  "recommended_first_codex_task": "Validate existing Phase 1 implementation without redesigning architecture."
+}
