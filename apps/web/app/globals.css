@@ -1,31 +1,31 @@
 :root {
   color-scheme: dark;
-  --nirmiq-bg: #111418;
-  --nirmiq-bg-ink: #0c0f12;
-  --nirmiq-surface: #181d23;
-  --nirmiq-surface-elevated: #20262e;
-  --nirmiq-surface-soft: #151a1f;
-  --nirmiq-text: #f5f1e8;
-  --nirmiq-text-muted: #a7adb5;
-  --nirmiq-text-subtle: #747c86;
-  --nirmiq-accent: #b86a3c;
-  --nirmiq-accent-strong: #d18a5d;
-  --nirmiq-accent-soft: rgba(184, 106, 60, 0.16);
-  --nirmiq-teal: #1f4e5f;
-  --nirmiq-teal-soft: rgba(31, 78, 95, 0.2);
-  --nirmiq-sage: #6d8b74;
-  --nirmiq-sage-soft: rgba(109, 139, 116, 0.18);
-  --nirmiq-warning: #d6a84f;
-  --nirmiq-error: #b85c5c;
-  --nirmiq-border: rgba(245, 241, 232, 0.1);
-  --nirmiq-border-strong: rgba(245, 241, 232, 0.18);
-  --font-heading: "Space Grotesk", "Aptos Display", "Segoe UI", system-ui, sans-serif;
-  --font-body: "Inter", "Aptos", "Segoe UI", system-ui, sans-serif;
+  --nirmiq-bg: #0b0d0b;
+  --nirmiq-bg-ink: #070807;
+  --nirmiq-surface: #121512;
+  --nirmiq-surface-elevated: #191d18;
+  --nirmiq-surface-soft: #101310;
+  --nirmiq-text: #f4ead7;
+  --nirmiq-text-muted: #b9ad99;
+  --nirmiq-text-subtle: #766f63;
+  --nirmiq-accent: #c46d32;
+  --nirmiq-accent-strong: #f09a56;
+  --nirmiq-accent-soft: rgba(196, 109, 50, 0.13);
+  --nirmiq-teal: #295f61;
+  --nirmiq-teal-soft: rgba(41, 95, 97, 0.18);
+  --nirmiq-sage: #778768;
+  --nirmiq-sage-soft: rgba(119, 135, 104, 0.17);
+  --nirmiq-warning: #d8ad55;
+  --nirmiq-error: #bb5951;
+  --nirmiq-border: rgba(244, 234, 215, 0.09);
+  --nirmiq-border-strong: rgba(244, 234, 215, 0.17);
+  --font-heading: "Bahnschrift", "Aptos Display", "Segoe UI Variable Display", system-ui, sans-serif;
+  --font-body: "Aptos", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --shadow-soft: 0 20px 70px rgba(0, 0, 0, 0.28);
+  --radius-sm: 5px;
+  --radius-md: 12px;
+  --radius-lg: 22px;
+  --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.36);
 }
 
 * {
@@ -57,16 +57,29 @@ button {
 }
 
 .nirmiq-v2 {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 312px minmax(0, 1fr) 392px;
+  grid-template-columns: 284px minmax(0, 1fr) 356px;
   background:
-    linear-gradient(90deg, rgba(245, 241, 232, 0.04) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(245, 241, 232, 0.035) 1px, transparent 1px),
-    radial-gradient(circle at 18% 0%, rgba(184, 106, 60, 0.18), transparent 34%),
-    radial-gradient(circle at 92% 18%, rgba(31, 78, 95, 0.25), transparent 32%),
+    radial-gradient(circle at 13% -5%, rgba(196, 109, 50, 0.22), transparent 33%),
+    radial-gradient(circle at 88% 10%, rgba(41, 95, 97, 0.24), transparent 32%),
+    linear-gradient(120deg, rgba(244, 234, 215, 0.025), transparent 28%),
     var(--nirmiq-bg);
-  background-size: 44px 44px, 44px 44px, auto, auto, auto;
+}
+
+.nirmiq-v2::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(244, 234, 215, 0.025) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(244, 234, 215, 0.018) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.75), transparent 78%);
 }
 
 .material-rail,
@@ -77,10 +90,10 @@ button {
 
 .material-rail,
 .deep-rail {
-  background: rgba(17, 20, 24, 0.9);
-  backdrop-filter: blur(18px);
+  background: linear-gradient(180deg, rgba(7, 8, 7, 0.9), rgba(15, 18, 15, 0.94));
+  backdrop-filter: blur(22px);
   overflow: auto;
-  padding: 18px;
+  padding: 16px;
 }
 
 .material-rail {
@@ -95,8 +108,8 @@ button {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   background:
-    linear-gradient(180deg, rgba(32, 38, 46, 0.78), rgba(17, 20, 24, 0.92)),
-    radial-gradient(circle at 50% 0%, rgba(109, 139, 116, 0.13), transparent 36%);
+    linear-gradient(180deg, rgba(21, 24, 20, 0.9), rgba(9, 10, 9, 0.92)),
+    radial-gradient(circle at 50% 0%, rgba(119, 135, 104, 0.1), transparent 38%);
 }
 
 .identity-card,
@@ -110,40 +123,59 @@ button {
 .metric-card,
 .eval-card {
   border: 1px solid var(--nirmiq-border);
-  background: rgba(24, 29, 35, 0.84);
-  box-shadow: var(--shadow-soft);
+  background: rgba(18, 21, 18, 0.72);
+  box-shadow: none;
 }
 
 .identity-card {
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-lg);
-  padding: 18px;
+  border-radius: 28px 12px 28px 12px;
+  padding: 18px 16px 20px;
+  background:
+    linear-gradient(135deg, rgba(196, 109, 50, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(25, 29, 24, 0.9), rgba(12, 14, 12, 0.92));
 }
 
 .identity-card::before {
   content: "";
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: linear-gradient(180deg, var(--nirmiq-accent), var(--nirmiq-teal));
+  inset: auto 16px 16px auto;
+  width: 44px;
+  height: 44px;
+  border-right: 1px solid rgba(240, 154, 86, 0.34);
+  border-bottom: 1px solid rgba(240, 154, 86, 0.34);
+  background: transparent;
+}
+
+.identity-card::after {
+  content: "V3";
+  position: absolute;
+  right: 18px;
+  top: 16px;
+  color: rgba(244, 234, 215, 0.1);
+  font-family: var(--font-heading);
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: -0.08em;
 }
 
 .eyebrow {
   margin: 0;
   color: var(--nirmiq-accent-strong);
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  font-size: 10px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .identity-title {
   margin: 8px 0 0;
   font-family: var(--font-heading);
-  font-size: 34px;
-  letter-spacing: -0.07em;
-  line-height: 0.95;
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -0.09em;
+  line-height: 0.86;
 }
 
 .muted {
@@ -169,7 +201,6 @@ button {
 
 .section-head,
 .row,
-.thread-top,
 .message-meta,
 .chunk-head,
 .composer-actions,
@@ -205,10 +236,10 @@ button {
   width: 100%;
   border: 1px solid var(--nirmiq-border);
   border-radius: var(--radius-md);
-  background: rgba(12, 15, 18, 0.82);
+  background: rgba(7, 8, 7, 0.72);
   color: var(--nirmiq-text);
   outline: none;
-  padding: 10px 11px;
+  padding: 11px 12px;
 }
 
 .textarea {
@@ -238,8 +269,8 @@ button {
 .tab,
 .citation-chip {
   border: 1px solid var(--nirmiq-border-strong);
-  border-radius: var(--radius-md);
-  background: rgba(32, 38, 46, 0.84);
+  border-radius: 999px;
+  background: rgba(20, 24, 20, 0.78);
   color: var(--nirmiq-text);
 }
 
@@ -262,7 +293,10 @@ button {
 
 .button.primary {
   border-color: rgba(184, 106, 60, 0.8);
-  background: linear-gradient(180deg, rgba(184, 106, 60, 0.96), rgba(121, 67, 39, 0.96));
+  background:
+    linear-gradient(135deg, rgba(240, 154, 86, 0.92), rgba(127, 67, 38, 0.96)),
+    var(--nirmiq-accent);
+  color: #150c07;
 }
 
 .button.ghost {
@@ -330,7 +364,7 @@ button {
 .diff-card,
 .eval-card {
   width: 100%;
-  border-radius: var(--radius-md);
+  border-radius: 16px;
   padding: 12px;
   text-align: left;
 }
@@ -345,7 +379,9 @@ button.chunk-card {
 .tab.active,
 .citation-chip.active {
   border-color: rgba(184, 106, 60, 0.72);
-  background: rgba(184, 106, 60, 0.12);
+  background:
+    linear-gradient(90deg, rgba(196, 109, 50, 0.18), rgba(41, 95, 97, 0.08)),
+    rgba(18, 21, 18, 0.78);
 }
 
 .material-title {
@@ -370,10 +406,13 @@ button.chunk-card {
 .thread-top {
   align-items: stretch;
   display: grid;
-  gap: 14px;
+  gap: 16px;
   min-height: 110px;
-  padding: 20px 28px;
+  padding: 18px clamp(18px, 4vw, 44px) 16px;
   border-bottom: 1px solid var(--nirmiq-border);
+  background:
+    linear-gradient(180deg, rgba(7, 8, 7, 0.72), rgba(7, 8, 7, 0.18)),
+    radial-gradient(circle at 20% 0%, rgba(196, 109, 50, 0.1), transparent 38%);
 }
 
 .thread-title {
@@ -383,66 +422,78 @@ button.chunk-card {
 .thread-title h1 {
   margin: 5px 0 0;
   font-family: var(--font-heading);
-  font-size: clamp(28px, 4vw, 48px);
-  letter-spacing: -0.08em;
-  line-height: 0.96;
+  font-size: clamp(30px, 4.8vw, 64px);
+  font-weight: 900;
+  letter-spacing: -0.1em;
+  line-height: 0.88;
 }
 
 .mode-grid {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  max-width: none;
-  width: 100%;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .workspace-switcher {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px;
+  border: 1px solid var(--nirmiq-border);
+  border-radius: 999px;
+  background: rgba(7, 8, 7, 0.5);
 }
 
 .section-button {
-  border: 1px solid var(--nirmiq-border);
-  border-radius: var(--radius-lg);
-  background: rgba(12, 15, 18, 0.58);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   color: var(--nirmiq-text-muted);
   cursor: pointer;
-  display: grid;
-  gap: 6px;
-  min-height: 88px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
   min-width: 0;
-  padding: 12px;
-  text-align: left;
+  padding: 8px 12px;
+  text-align: center;
 }
 
 .section-button strong {
   color: var(--nirmiq-text);
-  font-family: var(--font-heading);
+  font-family: var(--font-mono);
+  font-size: 11px;
   letter-spacing: -0.02em;
 }
 
 .section-button span {
   color: var(--nirmiq-text-subtle);
-  font-size: 12px;
-  line-height: 1.35;
+  display: none;
 }
 
 .section-button.active {
-  border-color: rgba(184, 106, 60, 0.68);
   background:
-    linear-gradient(180deg, rgba(184, 106, 60, 0.16), rgba(31, 78, 95, 0.1)),
-    rgba(12, 15, 18, 0.72);
+    linear-gradient(135deg, rgba(196, 109, 50, 0.22), rgba(41, 95, 97, 0.16)),
+    rgba(244, 234, 215, 0.08);
 }
 
 .mode-button {
   border: 1px solid var(--nirmiq-border);
-  border-radius: var(--radius-md);
-  background: rgba(12, 15, 18, 0.58);
+  border-radius: 999px;
+  background: rgba(7, 8, 7, 0.42);
   color: var(--nirmiq-text-muted);
   cursor: pointer;
-  padding: 10px;
-  text-align: left;
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  text-align: center;
+}
+
+.mode-button .tiny {
+  display: none;
 }
 
 .mode-button.active {
@@ -453,7 +504,7 @@ button.chunk-card {
 
 .thread-scroll {
   overflow: auto;
-  padding: 28px min(5vw, 64px);
+  padding: 32px min(6vw, 84px);
 }
 
 .empty-state {
@@ -468,9 +519,10 @@ button.chunk-card {
   max-width: 760px;
   margin: 0;
   font-family: var(--font-heading);
-  font-size: clamp(36px, 7vw, 86px);
-  letter-spacing: -0.09em;
-  line-height: 0.9;
+  font-size: clamp(42px, 8vw, 104px);
+  font-weight: 900;
+  letter-spacing: -0.11em;
+  line-height: 0.84;
 }
 
 .suggestions {
@@ -491,23 +543,24 @@ button.chunk-card {
 }
 
 .bubble {
-  max-width: min(860px, 92%);
+  max-width: min(880px, 92%);
   border: 1px solid var(--nirmiq-border);
-  border-radius: var(--radius-lg);
-  padding: 15px 16px;
+  border-radius: 24px;
+  padding: 16px 18px;
 }
 
 .bubble.user {
   justify-self: end;
-  border-color: rgba(184, 106, 60, 0.4);
-  background: rgba(184, 106, 60, 0.16);
-  border-bottom-right-radius: var(--radius-sm);
+  max-width: min(720px, 88%);
+  border-color: rgba(196, 109, 50, 0.35);
+  background: linear-gradient(135deg, rgba(196, 109, 50, 0.19), rgba(196, 109, 50, 0.08));
+  border-bottom-right-radius: 6px;
 }
 
 .bubble.assistant {
   justify-self: start;
-  background: rgba(24, 29, 35, 0.92);
-  border-bottom-left-radius: var(--radius-sm);
+  background: rgba(14, 16, 14, 0.68);
+  border-bottom-left-radius: 6px;
 }
 
 .answer {
@@ -585,17 +638,20 @@ button.chunk-card {
 }
 
 .composer-wrap {
-  padding: 16px min(5vw, 64px) 20px;
+  padding: 16px min(6vw, 84px) 22px;
   border-top: 1px solid var(--nirmiq-border);
-  background: rgba(12, 15, 18, 0.78);
+  background: linear-gradient(180deg, rgba(7, 8, 7, 0.12), rgba(7, 8, 7, 0.84));
   backdrop-filter: blur(18px);
 }
 
 .composer-card {
-  max-width: 980px;
+  max-width: 940px;
   margin: 0 auto;
-  border-radius: var(--radius-lg);
+  border-radius: 28px;
   padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(244, 234, 215, 0.05), transparent 42%),
+    rgba(12, 14, 12, 0.9);
 }
 
 .composer-meta {

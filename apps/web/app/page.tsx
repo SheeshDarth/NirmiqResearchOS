@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -93,17 +93,17 @@ const WORKSPACE_SECTIONS: Array<{
   {
     value: "research",
     label: "Research",
-    hint: "Analyze any document with regular or deep grounded research.",
+    hint: "Deep reads with citations.",
   },
   {
     value: "general",
-    label: "General Chat",
-    hint: "Chat normally. Offline answers use relevant local documents only.",
+    label: "Chat",
+    hint: "Talk normally, local-first.",
   },
   {
     value: "exam",
     label: "Exam Lab",
-    hint: "Question banks, answer formats, marks, and study guides.",
+    hint: "Marks, guides, diagrams.",
   },
 ];
 
@@ -723,7 +723,7 @@ export default function Home() {
     return (
       <main className="nirmiq-v2" suppressHydrationWarning>
         <section className="client-boot">
-          <p className="eyebrow">Academic Intelligence Workspace</p>
+          <p className="eyebrow">Local Research OS</p>
           <h1>NIRMIQ</h1>
           <p>Preparing your local study workspace...</p>
         </section>
@@ -735,11 +735,11 @@ export default function Home() {
     <main className="nirmiq-v2">
       <aside className="material-rail">
         <section className="identity-card">
-          <p className="eyebrow">Academic Intelligence Workspace</p>
+          <p className="eyebrow">Local Research OS</p>
           <h1 className="identity-title">NIRMIQ</h1>
           <p className="copy">
-            Siddharth&apos;s local document intelligence OS for research, general chat,
-            exam prep, and evidence you can inspect.
+            Siddharth&apos;s private cockpit for documents, grounded chat, exam prep,
+            and evidence you can actually inspect.
           </p>
           <div className="chip-row">
             <button className="chip" type="button" onClick={onHealthCheck} disabled={busy !== ""}>
@@ -753,7 +753,7 @@ export default function Home() {
 
         <section className="rail-section">
           <div className="section-head">
-            <h2>Study Material</h2>
+            <h2>Source Intake</h2>
             <span className="chip copper">{documents.length} indexed</span>
           </div>
           <form className="material-form panel" onSubmit={onIngest}>
@@ -776,14 +776,14 @@ export default function Home() {
               />
             </label>
             <button className="button primary" disabled={!canIngest || busy !== ""} type="submit">
-              {busy === "ingest" ? "Indexing material..." : "Ingest / reindex"}
+              {busy === "ingest" ? "Indexing source..." : "Index source"}
             </button>
           </form>
         </section>
 
         <section className="rail-section">
           <div className="section-head">
-            <h2>Knowledge Base</h2>
+            <h2>Source Vault</h2>
             <button className="button ghost" type="button" onClick={() => void loadDocuments()} disabled={busy !== ""}>
               Refresh
             </button>
@@ -798,7 +798,7 @@ export default function Home() {
                   type="button"
                 >
                   <span className="material-title">{item.title || "Untitled material"}</span>
-                  <span className="tiny">{item.status} · {item.active_chunk_count} evidence chunks</span>
+                  <span className="tiny">{item.status} / {item.active_chunk_count} evidence chunks</span>
                   <span className="tiny path">{item.source_path}</span>
                 </button>
               ))
@@ -814,17 +814,6 @@ export default function Home() {
 
       <section className="study-thread">
         <header className="thread-top">
-          <div className="thread-title">
-            <p className="eyebrow">{currentSection.label} Workspace</p>
-            <h1>{workspaceSection === "general" ? "General Chat" : activeMaterialName}</h1>
-            <p className="copy" style={{ maxWidth: 680 }}>{currentSection.hint}</p>
-            <div className="chip-row">
-              <span className="chip copper">{modeLabel(studyMode)}</span>
-              <span className="chip teal">{retrievalMode.toUpperCase()}</span>
-              <span className="chip sage">{retrievalProfile}</span>
-              <span className="chip">{sessionId}</span>
-            </div>
-          </div>
           <div className="workspace-switcher">
             {WORKSPACE_SECTIONS.map((section) => (
               <button
@@ -838,6 +827,17 @@ export default function Home() {
                 <span>{section.hint}</span>
               </button>
             ))}
+          </div>
+          <div className="thread-title">
+            <p className="eyebrow">{currentSection.label} Workspace</p>
+            <h1>{workspaceSection === "general" ? "General Chat" : activeMaterialName}</h1>
+            <p className="copy" style={{ maxWidth: 680 }}>{currentSection.hint}</p>
+            <div className="chip-row">
+              <span className="chip copper">{modeLabel(studyMode)}</span>
+              <span className="chip teal">{retrievalMode.toUpperCase()}</span>
+              <span className="chip sage">{retrievalProfile}</span>
+              <span className="chip">{sessionId}</span>
+            </div>
           </div>
           <div className="mode-grid">
             {availableModes.map((mode) => (
@@ -861,16 +861,16 @@ export default function Home() {
                 <article className="turn" key={`${run.timestamp}-${index}`}>
                   <div className="bubble user">
                     <div className="message-meta">
-                      <span className="tiny">You · {modeLabel(run.mode)}</span>
+                      <span className="tiny">You / {modeLabel(run.mode)}</span>
                       <span className="chip">{run.profile}</span>
                     </div>
                     <div className="answer">{run.query}</div>
                   </div>
                   <div className="bubble assistant">
                     <div className="message-meta">
-                      <span className="tiny">Grounded Response · {formatDate(run.timestamp)}</span>
+                      <span className="tiny">NIRMIQ / {formatDate(run.timestamp)}</span>
                       <span className={cx("chip", run.response.grounded ? "sage" : "copper")}>
-                        {run.response.grounded ? "grounded" : "review"} · {run.response.citations.length} citations
+                        {run.response.grounded ? "grounded" : "review"} / {run.response.citations.length} citations
                       </span>
                     </div>
                     {run.mode === "study_guide" ? (
@@ -888,7 +888,7 @@ export default function Home() {
                             type="button"
                           >
                             Evidence {citationIndex + 1}
-                            {citation.page_start ? ` · p.${citation.page_start}` : ""}
+                            {citation.page_start ? ` / p.${citation.page_start}` : ""}
                           </button>
                         ))}
                       </div>
@@ -906,7 +906,7 @@ export default function Home() {
                   ? "Chat freely, with local evidence when your documents are relevant."
                   : workspaceSection === "exam"
                     ? "Prepare answers and study guides from your exact notes."
-                    : "Ask any document like a research partner that shows its evidence."}
+                    : "Drop a document in. Ask directly. Inspect every claim."}
               </h2>
               <div className="suggestions">
                 {availableModes.slice(0, 4).map((mode) => (
@@ -1216,7 +1216,7 @@ export default function Home() {
                       <span className="material-title">Evidence {index + 1}</span>
                       <span className="tiny">
                         {citation.page_start ? `Page ${citation.page_start}` : "Page unknown"}
-                        {typeof citation.score === "number" ? ` · score ${citation.score.toFixed(2)}` : ""}
+                        {typeof citation.score === "number" ? ` / score ${citation.score.toFixed(2)}` : ""}
                       </span>
                       <span className="tiny">{previewText(citation.excerpt, 220)}</span>
                     </button>
@@ -1362,8 +1362,8 @@ export default function Home() {
                       <span className="chip">{result.samples ?? 0} samples</span>
                     </div>
                     <p className="chunk-text">
-                      MRR {typeof result.mrr === "number" ? result.mrr.toFixed(3) : "n/a"} · Hit@3{" "}
-                      {typeof result.hit_rate_at_3 === "number" ? result.hit_rate_at_3.toFixed(3) : "n/a"} · Hit@5{" "}
+                      MRR {typeof result.mrr === "number" ? result.mrr.toFixed(3) : "n/a"} / Hit@3{" "}
+                      {typeof result.hit_rate_at_3 === "number" ? result.hit_rate_at_3.toFixed(3) : "n/a"} / Hit@5{" "}
                       {typeof result.hit_rate_at_5 === "number" ? result.hit_rate_at_5.toFixed(3) : "n/a"}
                     </p>
                   </div>
@@ -1382,3 +1382,4 @@ export default function Home() {
     </main>
   );
 }
+
