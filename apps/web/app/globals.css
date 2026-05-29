@@ -368,9 +368,16 @@ button.chunk-card {
 }
 
 .thread-top {
+  align-items: stretch;
+  display: grid;
+  gap: 14px;
   min-height: 110px;
   padding: 20px 28px;
   border-bottom: 1px solid var(--nirmiq-border);
+}
+
+.thread-title {
+  min-width: 0;
 }
 
 .thread-title h1 {
@@ -382,15 +389,17 @@ button.chunk-card {
 }
 
 .mode-grid {
-  grid-template-columns: repeat(2, minmax(140px, 1fr));
-  max-width: 420px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  max-width: none;
+  width: 100%;
 }
 
 .workspace-switcher {
   display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  min-width: min(680px, 48vw);
+  min-width: 0;
+  width: 100%;
 }
 
 .section-button {
@@ -402,6 +411,7 @@ button.chunk-card {
   display: grid;
   gap: 6px;
   min-height: 88px;
+  min-width: 0;
   padding: 12px;
   text-align: left;
 }
@@ -589,6 +599,12 @@ button.chunk-card {
   gap: 8px;
 }
 
+.exam-grid {
+  display: grid;
+  grid-template-columns: 0.7fr 1fr 1fr;
+  gap: 8px;
+}
+
 .metric-card {
   border-radius: var(--radius-md);
   padding: 11px;
@@ -724,6 +740,7 @@ button.chunk-card {
   .mode-grid,
   .workspace-switcher,
   .composer-meta,
+  .exam-grid,
   .metric-grid {
     grid-template-columns: 1fr;
     min-width: 0;

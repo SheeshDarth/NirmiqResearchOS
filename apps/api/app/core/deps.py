@@ -14,6 +14,7 @@ from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.core.config import Settings, get_settings
 from app.domain.retrieval_policy import RetrievalPolicy
 from app.services.documents_service import DocumentsService
+from app.services.exam_service import ExamService
 from app.services.indexing_service import IndexingService
 from app.services.ingestion_service import IngestionService
 from app.services.memory_service import MemoryService
@@ -37,6 +38,7 @@ class AppContainer:
     indexing_service: IndexingService
     ingestion_service: IngestionService
     documents_service: DocumentsService
+    exam_service: ExamService
     memory_service: MemoryService
     retrieval_service: RetrievalService
     synthesis_service: SynthesisService
@@ -87,6 +89,7 @@ class AppContainer:
         )
         ingestion_service = IngestionService(sqlite_repo=sqlite_repo, indexing_service=indexing_service)
         documents_service = DocumentsService(sqlite_repo=sqlite_repo)
+        exam_service = ExamService(sqlite_repo=sqlite_repo, workspace_root=settings.workspace_root)
         memory_service = MemoryService(
             sqlite_repo=sqlite_repo,
             generator=generator,
@@ -124,6 +127,7 @@ class AppContainer:
             indexing_service=indexing_service,
             ingestion_service=ingestion_service,
             documents_service=documents_service,
+            exam_service=exam_service,
             memory_service=memory_service,
             retrieval_service=retrieval_service,
             synthesis_service=synthesis_service,
@@ -153,3 +157,7 @@ def get_documents_service(
     container: AppContainer = Depends(get_container),
 ) -> DocumentsService:
     return container.documents_service
+
+
+def get_exam_service(container: AppContainer = Depends(get_container)) -> ExamService:
+    return container.exam_service

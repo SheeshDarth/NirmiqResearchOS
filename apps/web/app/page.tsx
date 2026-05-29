@@ -9,13 +9,21 @@ import {
   getMemorySummary,
   getSessionTimeline,
   healthCheck,
+  extractDiagrams,
+  importQuestionBank,
   ingestDocument,
+  listDiagrams,
+  listQuestionBank,
   listDocuments,
   runQuery,
+  upsertExamProfile,
+  type DiagramAssetItem,
   type DocumentDetailResponse,
   type DocumentItem,
+  type ExamProfileItem,
   type IngestJobsResponse,
   type IngestStatusResponse,
+  type QuestionBankItem,
   type QueryResponse,
   type SessionSummaryResponse,
   type SessionTimelineResponse,
@@ -285,6 +293,15 @@ export default function Home() {
   const [memory, setMemory] = useState<SessionSummaryResponse | null>(null);
   const [timeline, setTimeline] = useState<SessionTimelineResponse | null>(null);
   const [deepView, setDeepView] = useState<DeepView>("evidence");
+  const [examAction, setExamAction] = useState("");
+  const [examProfile, setExamProfile] = useState<ExamProfileItem | null>(null);
+  const [examMarks, setExamMarks] = useState(10);
+  const [examAnswerStyle, setExamAnswerStyle] = useState("exam-ready");
+  const [examContentType, setExamContentType] = useState("conceptual");
+  const [examInstructions, setExamInstructions] = useState("Use concise headings, key points, and source-backed explanations.");
+  const [questionBankInput, setQuestionBankInput] = useState("");
+  const [questionBankItems, setQuestionBankItems] = useState<QuestionBankItem[]>([]);
+  const [diagramAssets, setDiagramAssets] = useState<DiagramAssetItem[]>([]);
   const [evalReportInput, setEvalReportInput] = useState("");
   const [evalReport, setEvalReport] = useState<EvalReportPayload | null>(null);
   const [evalReportError, setEvalReportError] = useState("");
@@ -338,6 +355,11 @@ export default function Home() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [queryHistory, busy]);
 
+  useEffect(() => {
+    if (!mounted || !documentId) return;
+    void loadExamLabState(documentId);
+  }, [documentId, mounted]);
+
   async function loadHealth() {
     try {
       const response = await healthCheck();
@@ -382,6 +404,20 @@ export default function Home() {
     if (!targetId.trim()) return;
     const detail = await getDocument(targetId.trim());
     setSelectedDocumentDetail(detail);
+  }
+
+  async function loadExamLabState(targetId: string) {
+    if (!targetId.trim()) return;
+    try {
+      const [questions, diagrams] = await Promise.all([
+        listQuestionBank(targetId.trim()),
+        listDiagrams(targetId.trim()),
+      ]);
+      setQuestionBankItems(questions);
+      setDiagramAssets(diagrams);
+    } catch (err) {
+      setError(String(err));
+    }
   }
 
   async function loadSessionState(targetSessionId: string) {
@@ -496,6 +532,59 @@ export default function Home() {
       setRetrievalProfile("precision");
     } else {
       setRetrievalProfile("balanced");
+    }
+  }
+
+  async function onSaveExamProfile() {
+    if (!documentId || !sessionId.trim()) return;
+    setExamAction("profile");
+    setError("");
+    try {
+      const profile = await upsertExamProfile({
+        session_id: sessionId.trim(),
+        document_id: documentId,
+        title: `${activeMaterialName} Exam Profile`,
+        marks: examMarks,
+        answer_style: examAnswerStyle,
+        content_type: examContentType,
+        instructions: examInstructions.trim() || undefined,
+      });
+      setExamProfile(profile);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setExamAction("");
+    }
+  }
+
+  async function onImportQuestionBank() {
+    if (!documentId || !questionBankInput.trim()) return;
+    setExamAction("questions");
+    setError("");
+    try {
+      const response = await importQuestionBank({
+        document_id: documentId,
+        raw_text: questionBankInput,
+      });
+      setQuestionBankItems(response.items);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setExamAction("");
+    }
+  }
+
+  async function onExtractDiagrams(force = false) {
+    if (!documentId) return;
+    setExamAction("diagrams");
+    setError("");
+    try {
+      const response = await extractDiagrams({ document_id: documentId, force });
+      setDiagramAssets(response.assets);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setExamAction("");
     }
   }
 
@@ -670,6 +759,7 @@ export default function Home() {
             {WORKSPACE_SECTIONS.map((section) => (
               <button
                 className={cx("section-button", workspaceSection === section.value && "active")}
+                data-testid={`workspace-${section.value}`}
                 key={section.value}
                 onClick={() => selectWorkspaceSection(section.value)}
                 type="button"
@@ -853,6 +943,151 @@ export default function Home() {
             </button>
           ))}
         </div>
+
+        {workspaceSection === "exam" ? (
+          <section className="tool-panel rail-section" data-testid="exam-lab-panel">
+            <div className="panel">
+              <div className="section-head">
+                <h2>Exam Lab Setup</h2>
+                <span className="chip copper">{examProfile ? "saved" : "draft"}</span>
+              </div>
+              <div className="exam-grid" style={{ marginTop: 12 }}>
+                <label className="label">
+                  Marks
+                  <input
+                    className="input"
+                    min={1}
+                    max={100}
+                    type="number"
+                    value={examMarks}
+                    onChange={(event) => setExamMarks(Number(event.target.value))}
+                  />
+                </label>
+                <label className="label">
+                  Answer style
+                  <select
+                    className="select"
+                    value={examAnswerStyle}
+                    onChange={(event) => setExamAnswerStyle(event.target.value)}
+                  >
+                    <option value="exam-ready">Exam-ready</option>
+                    <option value="stepwise">Stepwise</option>
+                    <option value="concise">Concise</option>
+                    <option value="long-form">Long-form</option>
+                  </select>
+                </label>
+                <label className="label">
+                  Content type
+                  <select
+                    className="select"
+                    value={examContentType}
+                    onChange={(event) => setExamContentType(event.target.value)}
+                  >
+                    <option value="conceptual">Conceptual</option>
+                    <option value="numerical">Numerical</option>
+                    <option value="diagram-heavy">Diagram-heavy</option>
+                    <option value="mixed">Mixed</option>
+                  </select>
+                </label>
+              </div>
+              <label className="label" style={{ marginTop: 12 }}>
+                Custom answer instructions
+                <textarea
+                  className="textarea"
+                  value={examInstructions}
+                  onChange={(event) => setExamInstructions(event.target.value)}
+                />
+              </label>
+              <button
+                className="button primary"
+                disabled={!documentId || examAction !== ""}
+                onClick={onSaveExamProfile}
+                style={{ marginTop: 12 }}
+                type="button"
+              >
+                {examAction === "profile" ? "Saving..." : "Save Exam Profile"}
+              </button>
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>Question Bank</h2>
+                <span className="chip">{questionBankItems.length} questions</span>
+              </div>
+              <label className="label" style={{ marginTop: 12 }}>
+                Paste questions
+                <textarea
+                  className="textarea"
+                  placeholder="1. Explain retrieval augmented generation. (10 marks)"
+                  value={questionBankInput}
+                  onChange={(event) => setQuestionBankInput(event.target.value)}
+                />
+              </label>
+              <button
+                className="button"
+                disabled={!documentId || !questionBankInput.trim() || examAction !== ""}
+                onClick={onImportQuestionBank}
+                style={{ marginTop: 12 }}
+                type="button"
+              >
+                {examAction === "questions" ? "Importing..." : "Import Questions"}
+              </button>
+              <div className="timeline-list" style={{ marginTop: 12 }}>
+                {questionBankItems.slice(0, 5).map((item, index) => (
+                  <div className="timeline-card" key={item.id}>
+                    <div className="message-meta">
+                      <strong>Q{index + 1}</strong>
+                      <span className="tiny">{item.marks ? `${item.marks} marks` : "marks unset"}</span>
+                    </div>
+                    <p className="chunk-text">{item.question}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>Source Diagrams</h2>
+                <span className="chip">{diagramAssets.length} assets</span>
+              </div>
+              <p className="copy">
+                Extracts embedded PDF images into local processed assets and links them back to pages.
+              </p>
+              <div className="chip-row">
+                <button
+                  className="button"
+                  disabled={!documentId || examAction !== ""}
+                  onClick={() => void onExtractDiagrams(false)}
+                  type="button"
+                >
+                  {examAction === "diagrams" ? "Extracting..." : "Extract Diagrams"}
+                </button>
+                <button
+                  className="button ghost"
+                  disabled={!documentId || examAction !== ""}
+                  onClick={() => void onExtractDiagrams(true)}
+                  type="button"
+                >
+                  Refresh Assets
+                </button>
+              </div>
+              <div className="timeline-list" style={{ marginTop: 12 }}>
+                {diagramAssets.slice(0, 5).map((asset) => (
+                  <div className="timeline-card" key={asset.id}>
+                    <div className="message-meta">
+                      <strong>Page {asset.page_number}</strong>
+                      <span className="tiny">
+                        {asset.width && asset.height ? `${asset.width}x${asset.height}` : "size unknown"}
+                      </span>
+                    </div>
+                    <p className="tiny path">{asset.image_path}</p>
+                    {asset.caption ? <p className="chunk-text">{asset.caption}</p> : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {deepView === "evidence" ? (
           <section className="tool-panel rail-section">

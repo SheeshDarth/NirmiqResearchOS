@@ -112,6 +112,54 @@ export type DocumentDetailResponse = DocumentItem & {
   }>;
 };
 
+export type ExamProfileItem = {
+  id: string;
+  session_id: string;
+  document_id: string;
+  title: string;
+  marks: number;
+  answer_style: string;
+  content_type: string;
+  instructions?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type QuestionBankItem = {
+  id: string;
+  document_id: string;
+  question: string;
+  marks?: number | null;
+  source_label?: string | null;
+  page_start?: number | null;
+  page_end?: number | null;
+  created_at: string;
+};
+
+export type QuestionBankImportResponse = {
+  document_id: string;
+  imported_count: number;
+  items: QuestionBankItem[];
+};
+
+export type DiagramAssetItem = {
+  id: string;
+  document_id: string;
+  page_number: number;
+  image_index: number;
+  image_path: string;
+  width?: number | null;
+  height?: number | null;
+  caption?: string | null;
+  created_at: string;
+};
+
+export type DiagramExtractionResponse = {
+  document_id: string;
+  extracted_count: number;
+  assets: DiagramAssetItem[];
+};
+
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = await response.text();
@@ -179,4 +227,55 @@ export async function listDocuments(): Promise<DocumentListResponse> {
 export async function getDocument(documentId: string): Promise<DocumentDetailResponse> {
   const response = await fetch(`${API_BASE}/documents/${encodeURIComponent(documentId)}`);
   return parseJson<DocumentDetailResponse>(response);
+}
+
+export async function upsertExamProfile(payload: {
+  session_id: string;
+  document_id: string;
+  title: string;
+  marks: number;
+  answer_style: string;
+  content_type: string;
+  instructions?: string;
+}): Promise<ExamProfileItem> {
+  const response = await fetch(`${API_BASE}/exam/profiles`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<ExamProfileItem>(response);
+}
+
+export async function importQuestionBank(payload: {
+  document_id: string;
+  raw_text: string;
+}): Promise<QuestionBankImportResponse> {
+  const response = await fetch(`${API_BASE}/exam/question-bank/import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<QuestionBankImportResponse>(response);
+}
+
+export async function listQuestionBank(documentId: string): Promise<QuestionBankItem[]> {
+  const response = await fetch(`${API_BASE}/exam/question-bank/${encodeURIComponent(documentId)}`);
+  return parseJson<QuestionBankItem[]>(response);
+}
+
+export async function extractDiagrams(payload: {
+  document_id: string;
+  force?: boolean;
+}): Promise<DiagramExtractionResponse> {
+  const response = await fetch(`${API_BASE}/exam/diagrams/extract`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<DiagramExtractionResponse>(response);
+}
+
+export async function listDiagrams(documentId: string): Promise<DiagramAssetItem[]> {
+  const response = await fetch(`${API_BASE}/exam/diagrams/${encodeURIComponent(documentId)}`);
+  return parseJson<DiagramAssetItem[]>(response);
 }
