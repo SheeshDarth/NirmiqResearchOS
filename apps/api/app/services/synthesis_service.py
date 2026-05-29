@@ -45,7 +45,11 @@ class SynthesisService:
         self._max_context_tokens = policy.max_context_tokens
 
     async def synthesize(
-        self, query: str, bundle: RetrievalBundle, response_mode: str = "research"
+        self,
+        query: str,
+        bundle: RetrievalBundle,
+        response_mode: str = "research",
+        exam_profile: dict[str, object] | None = None,
     ) -> tuple[str, bool, dict[str, object]]:
         top_grounding_score = float(bundle.chunks[0].score if bundle.chunks else 0.0)
         citation_count = len(bundle.chunks)
@@ -65,7 +69,12 @@ class SynthesisService:
             )
 
         selected = self._select_context(bundle)
-        prompt = self._build_grounded_prompt(query, selected, response_mode=response_mode)
+        prompt = self._build_grounded_prompt(
+            query,
+            selected,
+            response_mode=response_mode,
+            exam_profile=exam_profile,
+        )
         generated = await self._generator.answer(prompt=prompt, model=self._settings.generator_model_default)
 
         if not generated:
@@ -80,6 +89,7 @@ class SynthesisService:
             "context_chunks_used": len(selected),
             "grounding_state": grounding_state,
             "grounding_summary": self._grounding_summary(grounding_state, top_grounding_score, citation_count),
+            "exam_profile_used": bool(exam_profile),
         }
         return (generated, True, meta)
 
@@ -104,10 +114,14 @@ class SynthesisService:
 
     @staticmethod
     def _build_grounded_prompt(
-        query: str, context_blocks: list[tuple[int, str]], response_mode: str = "research"
+        query: str,
+        context_blocks: list[tuple[int, str]],
+        response_mode: str = "research",
+        exam_profile: dict[str, object] | None = None,
     ) -> str:
         context = "\n\n".join(block for _, block in context_blocks)
         mode_instruction = SynthesisService._mode_instruction(response_mode)
+        exam_instruction = SynthesisService._exam_instruction(exam_profile)
         return (
             "You are NIRMIQ local research assistant.\n"
             "Use ONLY the context below. Do not invent facts.\n"
@@ -116,6 +130,7 @@ class SynthesisService:
             "Prefer higher-scoring context blocks when multiple sources support the same claim.\n"
             "Keep the answer concise and factual.\n"
             f"{mode_instruction}\n\n"
+            f"{exam_instruction}\n"
             f"User Query:\n{query}\n\n"
             f"Context:\n{context}\n\n"
             "Answer:"
@@ -179,6 +194,26 @@ class SynthesisService:
         if mode == "deep_research":
             return "Write a deeper research-style answer with clear sections, caveats, and evidence citations."
         return "Explain clearly for a student using short sections and citations."
+
+    @staticmethod
+    def _exam_instruction(exam_profile: dict[str, object] | None) -> str:
+        if not exam_profile:
+            return ""
+        marks = exam_profile.get("marks") or 10
+        answer_style = str(exam_profile.get("answer_style") or "exam-ready")
+        content_type = str(exam_profile.get("content_type") or "conceptual")
+        instructions = str(exam_profile.get("instructions") or "").strip()
+        parts = [
+            "Exam Lab settings:",
+            f"- Target marks: {marks}",
+            f"- Answer style: {answer_style}",
+            f"- Content type: {content_type}",
+            "- Use only retrieved source context; do not add outside textbook knowledge.",
+            "- If diagrams are requested but no source diagram context is provided, say that no source diagram was available.",
+        ]
+        if instructions:
+            parts.append(f"- Custom instructions: {instructions}")
+        return "\n".join(parts)
 
     @staticmethod
     def _fallback_heading(response_mode: str) -> str:

@@ -53,6 +53,30 @@ def test_exam_lab_profile_question_bank_and_diagram_contracts(tmp_path: Path) ->
         assert list_response.status_code == 200
         assert len(list_response.json()) == 2
 
+        query_response = client.post(
+            "/query",
+            json={
+                "session_id": "exam-session",
+                "document_id": document_id,
+                "query": "Write a 10 mark answer on retrieval augmented generation.",
+                "mode": "exam_answer",
+                "retrieval_mode": "bm25",
+                "retrieval_profile": "precision",
+                "exam_profile": {
+                    "marks": 10,
+                    "answer_style": "stepwise",
+                    "content_type": "conceptual",
+                    "instructions": "Use headings and cite source chunks.",
+                },
+                "debug": True,
+            },
+        )
+        assert query_response.status_code == 200
+        query_body = query_response.json()
+        assert query_body["grounded"] is True
+        assert query_body["retrieval_meta"]["exam_profile_used"] is True
+        assert query_body["retrieval_meta"]["exam_profile"]["marks"] == 10
+
         diagram_response = client.post(
             "/exam/diagrams/extract",
             json={"document_id": document_id, "force": True},

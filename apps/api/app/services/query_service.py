@@ -38,7 +38,10 @@ class QueryService:
             profile=payload.retrieval_profile,
         )
         answer, grounded, synthesis_meta = await self._synthesis_service.synthesize(
-            payload.query, bundle, response_mode=payload.mode
+            payload.query,
+            bundle,
+            response_mode=payload.mode,
+            exam_profile=payload.exam_profile.model_dump() if payload.exam_profile else None,
         )
         citations = to_citations(bundle.chunks)
         combined_meta = {
@@ -47,6 +50,7 @@ class QueryService:
             "requested_retrieval_mode": retrieval_mode,
             "requested_retrieval_profile": payload.retrieval_profile,
             "response_mode": payload.mode,
+            "exam_profile": payload.exam_profile.model_dump() if payload.exam_profile else None,
         }
 
         if persist:

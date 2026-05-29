@@ -199,6 +199,12 @@ export async function runQuery(payload: {
   mode?: string;
   retrieval_profile?: "fast" | "balanced" | "precision";
   retrieval_mode: "hybrid" | "bm25" | "vector";
+  exam_profile?: {
+    marks: number;
+    answer_style: string;
+    content_type: string;
+    instructions?: string;
+  };
   debug?: boolean;
 }): Promise<QueryResponse> {
   const response = await fetch(`${API_BASE}/query`, {

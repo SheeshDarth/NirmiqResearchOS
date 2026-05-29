@@ -488,6 +488,15 @@ export default function Home() {
         mode: currentMode.value,
         retrieval_mode: retrievalMode,
         retrieval_profile: retrievalProfile,
+        exam_profile:
+          workspaceSection === "exam"
+            ? {
+                marks: examMarks,
+                answer_style: examAnswerStyle,
+                content_type: examContentType,
+                instructions: examInstructions.trim() || undefined,
+              }
+            : undefined,
         debug: true,
       });
       setQueryResult(response);
