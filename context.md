@@ -656,3 +656,32 @@ Latest verification for this update:
 - API health endpoint: OK.
 - Web endpoint on port 3002: OK.
 - Browser smoke test: login gate visible, Paper Lab visible, Daily Stoic absent, Attention paper visible after unlock, Sources drawer toggle works.
+
+### 4ba4944
+
+Full hash: `4ba4944` (see Git history for complete SHA)
+Refs at creation: `HEAD -> v3-foundation`, `origin/v3-foundation`
+Subject: `Simplify shell and add paper lab security docs`
+
+Summary:
+
+- Added local-only login/profile gate.
+- Changed default test corpus from Daily Stoic to `Attention Is All You Need`.
+- Added Paper Lab workspace and `research_paper` synthesis mode.
+- Hid advanced source/evidence inspector by default behind a `Sources` toggle.
+- Added API and Next.js security headers.
+- Added Privacy Policy, Terms and Conditions, and Security documents in both `docs/` and `apps/web/public/`.
+- Added `docs/next_version_improvements.md`.
+- Added PDF text cleanup for common malformed glyph extraction.
+- Improved offline fallback response structure for research paper drafting.
+- Updated `.gitignore` so downloaded PDFs and extracted diagrams remain local runtime/test data.
+
+Verification:
+
+- `npm run build`: passed.
+- Backend tests: `6 passed`.
+- `python -m compileall apps/api/app`: passed.
+- Local arXiv PDF indexed successfully.
+- Diagram extraction produced 3 source diagrams.
+- Question bank import produced 3 questions.
+- Paper Lab and Study Guide API smoke tests returned grounded responses.
