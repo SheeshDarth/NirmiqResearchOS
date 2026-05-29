@@ -620,3 +620,39 @@ Reason:
 5. Add source diagram/page alignment and show diagrams in generated study-guide cards.
 6. Add export: study guide to Markdown/PDF.
 7. Build a small retrieval evaluation corpus for Daily Stoic and academic PDFs.
+
+## Update: ChatGPT-like Shell, Paper Lab, Legal/Security, and Test Corpus
+
+Date: 2026-05-29
+
+This update simplified the product shell toward a ChatGPT-like workflow:
+
+- Added a local-only login/profile gate.
+- Defaulted the app to the downloaded arXiv test corpus: `Attention Is All You Need`.
+- Removed Daily Stoic from the live local SQLite document store.
+- Added Paper Lab as a dedicated workspace for engineering research-paper drafting with citations.
+- Hid the advanced evidence/source inspector by default behind a `Sources` toggle.
+- Added Privacy, Terms, and Security documents under `docs/` and `apps/web/public/`.
+- Added API and web security headers.
+- Added parser cleanup for common malformed PDF glyphs.
+- Added better offline fallback formatting for Research Paper mode.
+- Added `docs/next_version_improvements.md`.
+
+Local test corpus status:
+
+- Downloaded from arXiv: `https://arxiv.org/pdf/1706.03762`
+- Local path: `data/raw/attention_is_all_you_need.pdf`
+- Not committed to Git because it is third-party runtime/test data.
+- Indexed document title: `Attention Is All You Need`
+- Indexed chunks: 41
+- Extracted diagrams: 3
+- Imported test question-bank questions: 3
+
+Latest verification for this update:
+
+- `npm run build`: passed.
+- Backend tests: `6 passed`.
+- `python -m compileall apps/api/app`: passed.
+- API health endpoint: OK.
+- Web endpoint on port 3002: OK.
+- Browser smoke test: login gate visible, Paper Lab visible, Daily Stoic absent, Attention paper visible after unlock, Sources drawer toggle works.

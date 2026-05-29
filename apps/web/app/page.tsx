@@ -32,11 +32,12 @@ import {
 
 type RetrievalMode = "hybrid" | "bm25" | "vector";
 type RetrievalProfile = "fast" | "balanced" | "precision";
-type WorkspaceSection = "research" | "general" | "exam";
+type WorkspaceSection = "research" | "general" | "paper" | "exam";
 type StudyMode =
   | "research"
   | "deep_research"
   | "general_chat"
+  | "research_paper"
   | "exam_answer"
   | "revision_notes"
   | "important_questions"
@@ -83,7 +84,7 @@ type GuideCard = {
   body: string[];
 };
 
-const DEFAULT_SOURCE_PATH = "C:\\Downloads\\daily stoic.pdf";
+const DEFAULT_SOURCE_PATH = "C:\\Nirmiq-researchOS\\data\\raw\\attention_is_all_you_need.pdf";
 
 const WORKSPACE_SECTIONS: Array<{
   value: WorkspaceSection;
@@ -99,6 +100,11 @@ const WORKSPACE_SECTIONS: Array<{
     value: "general",
     label: "Chat",
     hint: "Talk normally, local-first.",
+  },
+  {
+    value: "paper",
+    label: "Paper Lab",
+    hint: "Engineering research drafts.",
   },
   {
     value: "exam",
@@ -135,6 +141,14 @@ const STUDY_MODES: Array<{
     hint: "Conversational, evidence-aware",
     prompt:
       "Answer conversationally if the uploaded documents are relevant. If not, say what context is missing.",
+  },
+  {
+    value: "research_paper",
+    section: "paper",
+    label: "Research Paper",
+    hint: "Multi-citation academic drafting",
+    prompt:
+      "Draft a research paper section with thesis, related work, methodology, limitations, and multiple citations from the selected documents.",
   },
   {
     value: "exam_answer",
@@ -322,6 +336,56 @@ function StudyGuideAnswer({ answer }: { answer: string }) {
   );
 }
 
+function LocalLogin({
+  displayName,
+  onDisplayNameChange,
+  onContinue,
+}: {
+  displayName: string;
+  onDisplayNameChange: (value: string) => void;
+  onContinue: () => void;
+}) {
+  return (
+    <main className="login-shell">
+      <section className="login-card">
+        <p className="eyebrow">NIRMIQ ResearchOS</p>
+        <h1>Academic intelligence, running on your machine.</h1>
+        <p className="copy">
+          A private local workspace for document research, engineering paper drafting,
+          citation tracing, and exam prep. No cloud account is required for this MVP.
+        </p>
+        <label className="label">
+          Local profile name
+          <input
+            className="input"
+            onChange={(event) => onDisplayNameChange(event.target.value)}
+            placeholder="Siddharth"
+            value={displayName}
+          />
+        </label>
+        <button className="button primary" disabled={!displayName.trim()} onClick={onContinue} type="button">
+          Continue to NIRMIQ
+        </button>
+        <div className="login-proof">
+          <span>Local-first</span>
+          <span>Citation-aware</span>
+          <span>Engineering Paper Lab</span>
+        </div>
+        <div className="why-nirmiq">
+          <strong>Why choose NIRMIQ?</strong>
+          <p>
+            It combines a ChatGPT-like workspace with local document grounding, inspectable citations,
+            exam tools, and a dedicated engineering paper workflow without forcing your sources into a cloud product.
+          </p>
+        </div>
+        <p className="tiny">
+          This is a local profile gate, not cloud authentication. Add real auth only before hosted/multi-user use.
+        </p>
+      </section>
+    </main>
+  );
+}
+
 function modeLabel(value: StudyMode): string {
   return STUDY_MODES.find((mode) => mode.value === value)?.label ?? "Study";
 }
@@ -332,11 +396,14 @@ export default function Home() {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const [mounted, setMounted] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [displayName, setDisplayName] = useState("Siddharth");
+  const [showInspector, setShowInspector] = useState(false);
   const [health, setHealth] = useState("unknown");
   const [busy, setBusy] = useState<BusyState>("");
   const [error, setError] = useState("");
   const [sourcePath, setSourcePath] = useState(DEFAULT_SOURCE_PATH);
-  const [title, setTitle] = useState("Daily Stoic");
+  const [title, setTitle] = useState("Attention Is All You Need");
   const [documentId, setDocumentId] = useState("");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [selectedDocumentDetail, setSelectedDocumentDetail] = useState<DocumentDetailResponse | null>(null);
@@ -403,6 +470,10 @@ export default function Home() {
   const activeMaterialName = selectedDocumentDetail?.title || selectedDocument?.title || "No study material selected";
 
   useEffect(() => {
+    const storedName = window.localStorage.getItem("nirmiq.localProfileName");
+    const storedUnlocked = window.localStorage.getItem("nirmiq.localUnlocked") === "true";
+    if (storedName) setDisplayName(storedName);
+    if (storedUnlocked) setIsUnlocked(true);
     setMounted(true);
   }, []);
 
@@ -596,8 +667,11 @@ export default function Home() {
     setWorkspaceSection(section);
     const nextMode = STUDY_MODES.find((mode) => mode.section === section)?.value ?? "research";
     setStudyMode(nextMode);
+    setShowInspector(section === "exam");
     if (section === "general") {
       setRetrievalProfile("fast");
+    } else if (section === "paper") {
+      setRetrievalProfile("precision");
     } else if (section === "exam") {
       setRetrievalProfile("precision");
     } else {
@@ -663,6 +737,7 @@ export default function Home() {
     setSelectedChunkId(chunkId);
     setSelectedDocumentDetail(null);
     void Promise.all([loadDocumentState(documentIdValue), loadDocumentDetail(documentIdValue)]);
+    setShowInspector(true);
     setDeepView("evidence");
   }
 
@@ -678,6 +753,14 @@ export default function Home() {
   function applySuggestion(value: string) {
     setQuery(value);
     window.requestAnimationFrame(() => queryInputRef.current?.focus());
+  }
+
+  function unlockLocalWorkspace() {
+    const name = displayName.trim() || "Local Researcher";
+    setDisplayName(name);
+    setIsUnlocked(true);
+    window.localStorage.setItem("nirmiq.localProfileName", name);
+    window.localStorage.setItem("nirmiq.localUnlocked", "true");
   }
 
   function onQueryKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -731,15 +814,25 @@ export default function Home() {
     );
   }
 
+  if (!isUnlocked) {
+    return (
+      <LocalLogin
+        displayName={displayName}
+        onContinue={unlockLocalWorkspace}
+        onDisplayNameChange={setDisplayName}
+      />
+    );
+  }
+
   return (
-    <main className="nirmiq-v2">
+    <main className={cx("nirmiq-v2", showInspector && "inspector-open")}>
       <aside className="material-rail">
         <section className="identity-card">
           <p className="eyebrow">Local Research OS</p>
           <h1 className="identity-title">NIRMIQ</h1>
           <p className="copy">
-            Siddharth&apos;s private cockpit for documents, grounded chat, exam prep,
-            and evidence you can actually inspect.
+            {displayName}&apos;s ChatGPT-style academic workspace for documents, citations,
+            engineering papers, and exam prep.
           </p>
           <div className="chip-row">
             <button className="chip" type="button" onClick={onHealthCheck} disabled={busy !== ""}>
@@ -748,6 +841,11 @@ export default function Home() {
             </button>
             <span className="chip sage">Local-first</span>
             <span className="chip teal">RTX 4050-aware</span>
+          </div>
+          <div className="legal-links">
+            <a href="/privacy_policy.md" target="_blank" rel="noreferrer">Privacy</a>
+            <a href="/terms_conditions.md" target="_blank" rel="noreferrer">Terms</a>
+            <a href="/security.md" target="_blank" rel="noreferrer">Security</a>
           </div>
         </section>
 
@@ -830,7 +928,15 @@ export default function Home() {
           </div>
           <div className="thread-title">
             <p className="eyebrow">{currentSection.label} Workspace</p>
-            <h1>{workspaceSection === "general" ? "General Chat" : activeMaterialName}</h1>
+            <h1>
+              {workspaceSection === "general"
+                ? "Ask anything"
+                : workspaceSection === "paper"
+                  ? "Engineering Paper Lab"
+                  : workspaceSection === "exam"
+                    ? "Exam Lab"
+                    : activeMaterialName}
+            </h1>
             <p className="copy" style={{ maxWidth: 680 }}>{currentSection.hint}</p>
             <div className="chip-row">
               <span className="chip copper">{modeLabel(studyMode)}</span>
@@ -903,7 +1009,9 @@ export default function Home() {
               <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
               <h2>
                 {workspaceSection === "general"
-                  ? "Chat freely, with local evidence when your documents are relevant."
+                  ? "Ask naturally. If local evidence is missing, NIRMIQ will say so."
+                  : workspaceSection === "paper"
+                    ? "Build engineering research papers with traceable multi-source citations."
                   : workspaceSection === "exam"
                     ? "Prepare answers and study guides from your exact notes."
                     : "Drop a document in. Ask directly. Inspect every claim."}
@@ -976,6 +1084,9 @@ export default function Home() {
                 <span className="chip">{latestCitations.length} evidence links</span>
               </div>
               <div className="chip-row" style={{ marginTop: 0 }}>
+                <button className="button ghost" type="button" onClick={() => setShowInspector((current) => !current)}>
+                  {showInspector ? "Hide Sources" : "Sources"}
+                </button>
                 <button className="button ghost" type="button" onClick={clearThread}>
                   Clear Thread
                 </button>

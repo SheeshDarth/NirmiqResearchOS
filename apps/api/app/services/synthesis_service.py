@@ -156,7 +156,10 @@ class SynthesisService:
         response_mode: str = "research",
         exam_context: dict[str, object] | None = None,
     ) -> str:
-        if response_mode.strip().lower() == "study_guide" and exam_context and exam_context.get("questions"):
+        mode = response_mode.strip().lower()
+        if mode == "research_paper":
+            return SynthesisService._fallback_research_paper(query=query, context_chunks=context_chunks)
+        if mode == "study_guide" and exam_context and exam_context.get("questions"):
             return SynthesisService._fallback_study_guide(context_chunks=context_chunks, exam_context=exam_context)
 
         query_terms = SynthesisService._query_terms(query)
@@ -215,6 +218,12 @@ class SynthesisService:
             return "Answer conversationally, but only from relevant uploaded document evidence. If the context is not relevant, abstain."
         if mode == "deep_research":
             return "Write a deeper research-style answer with clear sections, caveats, and evidence citations."
+        if mode == "research_paper":
+            return (
+                "Draft in an academic research-paper style for engineering students. Include a clear thesis, "
+                "related work, methodology or design considerations, limitations, and multiple citations from the context. "
+                "Do not fabricate papers, authors, results, or references not present in the retrieved source text."
+            )
         return "Explain clearly for a student using short sections and citations."
 
     @staticmethod
@@ -322,6 +331,30 @@ class SynthesisService:
         return selected
 
     @staticmethod
+    def _fallback_research_paper(query: str, context_chunks: list[tuple[int, str]]) -> str:
+        evidence = SynthesisService._best_evidence_sentences(
+            context_chunks=context_chunks,
+            query_terms=SynthesisService._query_terms(query),
+            limit=6,
+        )
+        if not evidence:
+            return "Research paper draft from the retrieved passages:\n- Not enough readable evidence was retrieved."
+
+        groups = [
+            ("Thesis", evidence[:2]),
+            ("Related Work", evidence[2:4]),
+            ("Engineering Considerations and Limitations", evidence[4:6]),
+        ]
+        sections = ["Research paper draft from retrieved sources:"]
+        for heading, items in groups:
+            if not items:
+                continue
+            sections.append(f"\n{heading}")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in items)
+        sections.append("\nUse this as a grounded draft scaffold; verify final references before submission.")
+        return "\n".join(sections)
+
+    @staticmethod
     def _fallback_heading(response_mode: str) -> str:
         mode = response_mode.strip().lower()
         if mode == "exam_answer":
@@ -338,6 +371,8 @@ class SynthesisService:
             return "I can answer this from the relevant uploaded material:"
         if mode == "deep_research":
             return "Deep research synthesis from the retrieved passages:"
+        if mode == "research_paper":
+            return "Research paper draft from the retrieved passages:"
         return "Based on the retrieved passages:"
 
     @staticmethod

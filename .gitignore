@@ -19,6 +19,10 @@ Thumbs.db
 data/sqlite/*.db
 data/cache/*
 !data/cache/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
+data/processed/diagrams/*
+!data/processed/.gitkeep
 data/indexes/chroma/*
 !data/indexes/chroma/.gitkeep
 temp/

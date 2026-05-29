@@ -18,7 +18,7 @@ class PyMuPDFParser:
         if suffix in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}:
             # Force OCR fallback path in indexing service.
             return [(1, "")]
-        text = path.read_text(encoding="utf-8", errors="ignore")
+        text = self._clean_text(path.read_text(encoding="utf-8", errors="ignore"))
         return [(1, text)]
 
     async def _parse_pdf(self, source_path: str) -> list[tuple[int, str]]:
@@ -33,7 +33,26 @@ class PyMuPDFParser:
         document = fitz.open(source_path)
         try:
             for page_idx, page in enumerate(document, start=1):
-                pages.append((page_idx, page.get_text("text")))
+                pages.append((page_idx, self._clean_text(page.get_text("text"))))
         finally:
             document.close()
         return pages
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        replacements = {
+            "â¢": "-",
+            "â": "-",
+            "â": "-",
+            "â": "*",
+            "â": "in",
+            "â¤": "<=",
+            "â¥": ">=",
+            "â": "~",
+            "ï¬": "fi",
+            "ï¬": "fl",
+        }
+        cleaned = text
+        for bad, good in replacements.items():
+            cleaned = cleaned.replace(bad, good)
+        return cleaned
