@@ -686,19 +686,28 @@ export default function Home() {
   async function onQuery(event: FormEvent) {
     event.preventDefault();
     if (!canQuery) return;
-    const submittedQuery = query.trim();
+    await executeQuery(query.trim());
+  }
+
+  async function executeQuery(submittedQuery: string, modeOverride: StudyMode = currentMode.value) {
+    if (!submittedQuery || !sessionId.trim()) return;
     setBusy("query");
     setError("");
     try {
+      const scopedDocumentId =
+        workspaceSection === "general" && modeOverride !== "summary" ? undefined : documentId || undefined;
       const response = await runQuery({
         session_id: sessionId.trim(),
         query: submittedQuery,
-        document_id: workspaceSection === "general" ? undefined : documentId || undefined,
-        mode: currentMode.value,
+        document_id: scopedDocumentId,
+        mode: modeOverride,
         retrieval_mode: retrievalMode,
         retrieval_profile: retrievalProfile,
         exam_profile:
-          workspaceSection === "exam"
+          workspaceSection === "exam" &&
+          ["exam_answer", "revision_notes", "important_questions", "compare_concepts", "study_guide"].includes(
+            modeOverride,
+          )
             ? {
                 marks: examMarks,
                 answer_style: examAnswerStyle,
@@ -715,7 +724,7 @@ export default function Home() {
           {
             session_id: response.session_id,
             query: submittedQuery,
-            mode: currentMode.value,
+            mode: modeOverride,
             profile: retrievalProfile,
             response,
             timestamp: new Date().toISOString(),
@@ -730,6 +739,17 @@ export default function Home() {
     } finally {
       setBusy("");
     }
+  }
+
+  async function onSummarizeSelectedSource() {
+    if (!documentId || busy !== "") {
+      setError("Upload or select a source before summarizing.");
+      return;
+    }
+    setWorkspaceSection("research");
+    setStudyMode("summary");
+    setRetrievalProfile("balanced");
+    await executeQuery("Summarize this PDF with the main ideas, methods, findings, and limitations.", "summary");
   }
 
   function selectDocument(item: DocumentItem) {
@@ -1136,7 +1156,7 @@ export default function Home() {
                     ? "Build engineering research papers with traceable multi-source citations."
                   : workspaceSection === "exam"
                     ? "Prepare answers and study guides from your exact notes."
-                    : "Drop a document in. Ask directly. Inspect every claim."}
+                    : "Upload a source. Summarize first. Then question every claim."}
               </h2>
               <div className="suggestions">
                 {availableModes.slice(0, 4).map((mode) => (
@@ -1166,6 +1186,39 @@ export default function Home() {
               ref={uploadInputRef}
               type="file"
             />
+            <div className="source-cockpit">
+              <div className="source-status">
+                <span className={cx("source-dot", selectedDocument && "ok")} />
+                <div>
+                  <span className="source-label">Selected source</span>
+                  <strong>{selectedDocument ? activeMaterialName : "No source selected"}</strong>
+                </div>
+              </div>
+              <div className="source-actions">
+                <span className="mini-stat">
+                  {selectedDocumentDetail?.active_chunk_count ?? selectedDocument?.active_chunk_count ?? 0} chunks
+                </span>
+                <span className={cx("mini-stat", queryResult?.grounded ? "ok" : "")}>
+                  {groundingLabel}
+                </span>
+                <button
+                  className="quick-action"
+                  disabled={!documentId || busy !== ""}
+                  onClick={onSummarizeSelectedSource}
+                  type="button"
+                >
+                  Summarize PDF
+                </button>
+                <button
+                  className="quick-action ghost"
+                  disabled={busy !== ""}
+                  onClick={() => uploadInputRef.current?.click()}
+                  type="button"
+                >
+                  Upload
+                </button>
+              </div>
+            </div>
             <div className="composer-input-shell">
               <button
                 aria-label="Upload file or photo"
@@ -1229,11 +1282,11 @@ export default function Home() {
               </div>
             </details>
             <div className="composer-actions">
-              <div className="chip-row" style={{ marginTop: 0 }}>
-                <span className="chip">Grounding {groundingLabel}</span>
-                <span className="chip">Score {groundingScore.toFixed(2)}</span>
-                <span className="chip">{latestCitations.length} evidence links</span>
-              </div>
+              <p className="composer-hint">
+                {latestCitations.length
+                  ? `${latestCitations.length} evidence links ready. Click Sources to inspect citations.`
+                  : "Answers stay grounded in the selected source when evidence is available."}
+              </p>
               <div className="chip-row" style={{ marginTop: 0 }}>
                 <button className="button ghost" type="button" onClick={clearThread}>
                   Clear Thread

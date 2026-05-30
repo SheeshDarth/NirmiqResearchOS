@@ -847,3 +847,32 @@ Verification:
 - Backend unit/integration suite: `8 passed`.
 - `python -m compileall apps/api/app`: passed.
 - `npm run build`: passed.
+
+### Update: Source Cockpit and One-Click Summary UI
+
+Date: 2026-05-30
+
+This update improved the live app UI for usefulness and demo clarity:
+
+- Added a compact source cockpit above the composer.
+- Shows the selected source name directly where the user asks questions.
+- Shows selected-source chunk count.
+- Shows current grounding state near the composer instead of hiding it in the source drawer.
+- Added one-click `Summarize PDF` action wired to the grounded `summary` mode.
+- Added a secondary `Upload` quick action beside the source cockpit.
+- Replaced noisy grounding chips with a calmer composer hint.
+- Updated the empty state to guide the user toward the intended workflow: upload source, summarize first, then ask deeper questions.
+- Ensured summary action does not accidentally inherit Exam Lab formatting.
+
+Why it matters:
+
+- Makes the app less confusing because source selection is visible at the point of asking.
+- Makes the project demo stronger: upload/select PDF -> click Summarize PDF -> inspect citations.
+- Supports the internship-positioning story by making grounded document intelligence obvious without opening debug panels.
+
+Verification:
+
+- `npm run build`: passed.
+- Backend unit/integration suite: `8 passed`.
+- Live browser smoke test: source cockpit visible, `Summarize PDF` visible/enabled, upload quick action visible, scroll remains enabled, no console errors.
+- Live end-to-end browser test: clicked `Summarize PDF`, received grounded document summary with 8 citations.
