@@ -13,6 +13,7 @@ class Settings(BaseModel):
     workspace_root: Path
     sqlite_path: Path
     chroma_path: Path
+    upload_path: Path
     ollama_base_url: str
     embed_model: str
     reranker_model: str
@@ -39,6 +40,7 @@ class Settings(BaseModel):
         workspace_root = Path(__file__).resolve().parents[4]
         sqlite_default = workspace_root / "data" / "sqlite" / "nirmiq.db"
         chroma_default = workspace_root / "data" / "indexes" / "chroma"
+        upload_default = workspace_root / "data" / "raw" / "uploads"
         return cls(
             api_host=os.getenv("API_HOST", "127.0.0.1"),
             api_port=int(os.getenv("API_PORT", "8000")),
@@ -54,6 +56,7 @@ class Settings(BaseModel):
             workspace_root=workspace_root,
             sqlite_path=Path(os.getenv("SQLITE_PATH", str(sqlite_default))),
             chroma_path=Path(os.getenv("CHROMA_PATH", str(chroma_default))),
+            upload_path=Path(os.getenv("UPLOAD_PATH", str(upload_default))),
             ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
             embed_model=os.getenv("EMBED_MODEL", "nomic-embed-text"),
             reranker_model=os.getenv("RERANKER_MODEL", "bge-reranker-base"),

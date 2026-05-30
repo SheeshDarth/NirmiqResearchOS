@@ -752,3 +752,34 @@ Implementation:
 - Cropped and resized the selected candidate into `apps/web/public/brand/nirmiq-mark.png`.
 - Replaced the temporary `N` placeholder mark in the login, sidebar, and app header.
 - Added the mark to Next.js metadata icons.
+
+### Update: Chat Scroll, Upload Attachments, and Performance Polish
+
+Date: 2026-05-30
+
+This update addressed the reported lag/confusion and missing ChatGPT-like upload workflow:
+
+- Added `POST /ingest/upload` for direct file upload ingestion.
+- Uploaded files are stored under the configured local upload path and then routed through the existing ingestion/indexing pipeline.
+- Supported upload extensions: PDF, text, Markdown, PNG, JPG/JPEG, TIFF, BMP, and WebP.
+- Added `UPLOAD_PATH` setting so tests and local runtime can isolate upload storage.
+- Added frontend `uploadDocument` API helper.
+- Added a hidden file input and visible `+` attachment button in the chat composer.
+- Added an Upload file button in the Library/Source Intake drawer.
+- Kept the local path ingest form as an advanced fallback.
+- Fixed scroll behavior by making the chat thread a proper fixed-height scroll container.
+- Reduced UI lag by removing heavy blur and entry animations.
+- Slimmed the chat header by hiding the bulky title block and keeping workspace/mode controls compact.
+
+Known note:
+
+- Image/photo uploads are accepted. Text extraction from photos depends on local OCR availability. `Pillow` is installed, but `pytesseract` is not currently installed/configured in this environment.
+
+Verification:
+
+- `npm run build`: passed.
+- Backend integration/unit suite: `7 passed`.
+- `python -m compileall apps/api/app`: passed.
+- Live API health: OK.
+- Live upload smoke test: uploaded and indexed a temporary text file through `/ingest/upload`, then deleted it from the local document store.
+- Browser smoke test: plus attachment button visible, upload accept types present, chat scroll container uses `overflow-y: auto`, Daily Stoic absent, no console errors.

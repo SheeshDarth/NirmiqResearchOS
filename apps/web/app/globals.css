@@ -35,6 +35,7 @@
 html,
 body {
   margin: 0;
+  height: 100%;
   min-height: 100%;
   background: var(--nirmiq-bg);
   color: var(--nirmiq-text);
@@ -42,7 +43,7 @@ body {
 
 body {
   font-family: var(--font-body);
-  overflow: hidden;
+  overflow: auto;
 }
 
 button,
@@ -60,6 +61,7 @@ button {
   position: relative;
   isolation: isolate;
   min-height: 100vh;
+  height: 100dvh;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   background:
@@ -102,13 +104,13 @@ button {
 .material-rail,
 .deep-rail,
 .study-thread {
-  min-height: 100vh;
+  min-height: 0;
+  height: 100dvh;
 }
 
 .material-rail,
 .deep-rail {
   background: linear-gradient(180deg, rgba(7, 8, 7, 0.9), rgba(15, 18, 15, 0.94));
-  backdrop-filter: blur(22px);
   overflow: auto;
   padding: 16px;
 }
@@ -199,6 +201,8 @@ button {
 .study-thread {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(10, 14, 19, 0.9), rgba(5, 6, 8, 0.94)),
     radial-gradient(circle at 50% 0%, rgba(124, 247, 194, 0.055), transparent 38%);
@@ -567,9 +571,9 @@ button.chunk-card {
 .thread-top {
   align-items: stretch;
   display: grid;
-  gap: 12px;
-  min-height: 92px;
-  padding: 14px clamp(18px, 4vw, 44px) 12px;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px clamp(16px, 3vw, 34px) 10px;
   border-bottom: 1px solid var(--nirmiq-border);
   background:
     linear-gradient(180deg, rgba(5, 6, 8, 0.88), rgba(5, 6, 8, 0.28)),
@@ -584,7 +588,7 @@ button.chunk-card {
 }
 
 .thread-title {
-  min-width: 0;
+  display: none;
 }
 
 .thread-title h1 {
@@ -663,7 +667,7 @@ button.chunk-card {
   color: var(--nirmiq-text-muted);
   cursor: pointer;
   flex: 0 0 auto;
-  padding: 9px 12px;
+  padding: 8px 11px;
   text-align: center;
 }
 
@@ -679,11 +683,14 @@ button.chunk-card {
 
 .thread-scroll {
   overflow: auto;
-  padding: 28px min(7vw, 96px);
+  min-height: 0;
+  padding: 24px min(7vw, 96px);
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
 }
 
 .empty-state {
-  min-height: 440px;
+  min-height: 360px;
   display: grid;
   place-content: center;
   gap: 18px;
@@ -816,7 +823,6 @@ button.chunk-card {
   padding: 16px min(6vw, 84px) 22px;
   border-top: 1px solid var(--nirmiq-border);
   background: linear-gradient(180deg, rgba(7, 8, 7, 0.12), rgba(7, 8, 7, 0.84));
-  backdrop-filter: blur(18px);
 }
 
 .composer-card {
@@ -827,6 +833,45 @@ button.chunk-card {
   background:
     linear-gradient(135deg, rgba(238, 244, 241, 0.04), transparent 42%),
     rgba(8, 10, 13, 0.92);
+}
+
+.file-input {
+  display: none;
+}
+
+.composer-input-shell {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+}
+
+.attach-button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--nirmiq-border-strong);
+  border-radius: 14px;
+  background: rgba(13, 17, 23, 0.88);
+  color: var(--nirmiq-accent-strong);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease;
+}
+
+.attach-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(124, 247, 194, 0.62);
+  background: var(--nirmiq-accent-soft);
+}
+
+.attach-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .composer-meta {
@@ -1011,25 +1056,6 @@ button.chunk-card {
 .client-boot p:last-child {
   margin: 0;
   color: var(--nirmiq-text-muted);
-}
-
-@keyframes settleIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.identity-card,
-.thread-top,
-.bubble,
-.deep-rail .tool-panel,
-.composer-card {
-  animation: settleIn 0.36s ease both;
 }
 
 @media (max-width: 1220px) {

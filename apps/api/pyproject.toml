@@ -10,6 +10,7 @@ dependencies = [
   "pytest>=8.4.0",
   "httpx>=0.28.0",
   "PyMuPDF>=1.26.0",
+  "python-multipart>=0.0.20",
 ]
 
 [build-system]

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.api.schemas.ingest import (
     IngestJobsResponse,
@@ -21,6 +21,26 @@ async def ingest_document(
         return await service.ingest(payload)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/upload", response_model=IngestResponse)
+async def upload_document(
+    file: UploadFile = File(...),
+    title: str | None = Form(None),
+    force_reindex: bool = Form(False),
+    service: IngestionService = Depends(get_ingestion_service),
+) -> IngestResponse:
+    try:
+        content = await file.read()
+        return await service.ingest_upload(
+            filename=file.filename or "upload",
+            content=content,
+            content_type=file.content_type,
+            title=title,
+            force_reindex=force_reindex,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

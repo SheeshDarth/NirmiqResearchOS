@@ -19,6 +19,7 @@ import {
   listDocuments,
   runQuery,
   upsertExamProfile,
+  uploadDocument,
   type DiagramAssetItem,
   type DocumentDetailResponse,
   type DocumentItem,
@@ -404,6 +405,7 @@ function modeLabel(value: StudyMode): string {
 export default function Home() {
   const queryFormRef = useRef<HTMLFormElement | null>(null);
   const queryInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const [mounted, setMounted] = useState(false);
@@ -615,6 +617,35 @@ export default function Home() {
       setError(String(err));
     } finally {
       setBusy("");
+    }
+  }
+
+  async function onUploadFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy("ingest");
+    setError("");
+    try {
+      const fallbackTitle = file.name.replace(/\.[^.]+$/, "");
+      const response = await uploadDocument({
+        file,
+        title: title.trim() || fallbackTitle,
+        force_reindex: true,
+      });
+      setDocumentId(response.document_id);
+      setTitle(fallbackTitle);
+      setSourcePath(`Uploaded: ${file.name}`);
+      setSelectedChunkId("");
+      await Promise.all([loadDocumentState(response.document_id), loadDocumentDetail(response.document_id)]);
+      await loadDocuments();
+      setShowLibrary(false);
+      setDeepView("evidence");
+      queryInputRef.current?.focus();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+      if (event.target) event.target.value = "";
     }
   }
 
@@ -900,6 +931,17 @@ export default function Home() {
             <span className="chip copper">{documents.length} indexed</span>
           </div>
           <form className="material-form panel" onSubmit={onIngest}>
+            <button
+              className="button primary"
+              disabled={busy !== ""}
+              onClick={() => uploadInputRef.current?.click()}
+              type="button"
+            >
+              {busy === "ingest" ? "Uploading..." : "Upload file"}
+            </button>
+            <p className="tiny">
+              Supports PDF, text, Markdown, and image files. Photo OCR depends on local OCR availability.
+            </p>
             <label className="label">
               Local path
               <input
@@ -918,8 +960,8 @@ export default function Home() {
                 placeholder="Unit 3 OS Notes"
               />
             </label>
-            <button className="button primary" disabled={!canIngest || busy !== ""} type="submit">
-              {busy === "ingest" ? "Indexing source..." : "Index source"}
+            <button className="button ghost" disabled={!canIngest || busy !== ""} type="submit">
+              {busy === "ingest" ? "Indexing source..." : "Index local path"}
             </button>
           </form>
         </section>
@@ -1109,14 +1151,37 @@ export default function Home() {
 
         <form className="composer-wrap" ref={queryFormRef} onSubmit={onQuery}>
           <div className="composer-card">
-            <textarea
-              className="textarea"
-              ref={queryInputRef}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={onQueryKeyDown}
-              placeholder={`Ask in ${currentMode.label} mode...`}
+            <input
+              accept=".pdf,.txt,.md,.markdown,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,image/*,application/pdf,text/*"
+              className="file-input"
+              onChange={onUploadFile}
+              ref={uploadInputRef}
+              type="file"
             />
+            <div className="composer-input-shell">
+              <button
+                aria-label="Upload file or photo"
+                className="attach-button"
+                disabled={busy !== ""}
+                onClick={() => uploadInputRef.current?.click()}
+                type="button"
+                title="Upload PDF, document, or photo"
+              >
+                +
+              </button>
+              <textarea
+                className="textarea"
+                ref={queryInputRef}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={onQueryKeyDown}
+                placeholder={
+                  busy === "ingest"
+                    ? "Uploading and indexing your file..."
+                    : `Ask in ${currentMode.label} mode...`
+                }
+              />
+            </div>
             <details className="composer-settings">
               <summary>
                 Tuning

@@ -1,5 +1,6 @@
 import hashlib
 from pathlib import Path
+import re
 from uuid import uuid4
 
 from app.adapters.storage.sqlite_repo import SQLiteRepo
@@ -14,9 +15,30 @@ from app.services.indexing_service import IndexingService
 
 
 class IngestionService:
-    def __init__(self, sqlite_repo: SQLiteRepo, indexing_service: IndexingService) -> None:
+    _allowed_upload_extensions = {
+        ".pdf",
+        ".txt",
+        ".md",
+        ".markdown",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".tif",
+        ".tiff",
+        ".bmp",
+        ".webp",
+    }
+    _max_upload_bytes = 75 * 1024 * 1024
+
+    def __init__(
+        self,
+        sqlite_repo: SQLiteRepo,
+        indexing_service: IndexingService,
+        upload_root: Path,
+    ) -> None:
         self._sqlite_repo = sqlite_repo
         self._indexing_service = indexing_service
+        self._upload_root = upload_root
 
     async def ingest(self, payload: IngestRequest) -> IngestResponse:
         source = Path(payload.source_path).resolve()
@@ -70,6 +92,30 @@ class IngestionService:
             job_id=job_id, stage="indexing", status="completed", error=None
         )
         return IngestResponse(document_id=document_id, status="indexed", indexed=True)
+
+    async def ingest_upload(
+        self,
+        *,
+        filename: str,
+        content: bytes,
+        content_type: str | None,
+        title: str | None = None,
+        force_reindex: bool = False,
+    ) -> IngestResponse:
+        if not content:
+            raise ValueError("Uploaded file is empty.")
+        if len(content) > self._max_upload_bytes:
+            raise ValueError("Uploaded file is too large. Maximum supported size is 75 MB.")
+
+        source = self._write_upload(filename=filename, content=content)
+        return await self.ingest(
+            IngestRequest(
+                source_path=str(source),
+                title=title or source.stem,
+                mime_type=content_type,
+                force_reindex=force_reindex,
+            )
+        )
 
     async def get_status(self, document_id: str) -> IngestStatusResponse:
         document = self._sqlite_repo.get_document_by_id(document_id)
@@ -125,3 +171,17 @@ class IngestionService:
             for block in iter(lambda: handle.read(1024 * 1024), b""):
                 digest.update(block)
         return digest.hexdigest()
+
+    def _write_upload(self, *, filename: str, content: bytes) -> Path:
+        original = Path(filename or "upload").name
+        suffix = Path(original).suffix.lower()
+        if suffix not in self._allowed_upload_extensions:
+            allowed = ", ".join(sorted(self._allowed_upload_extensions))
+            raise ValueError(f"Unsupported upload type '{suffix or 'unknown'}'. Allowed: {allowed}")
+
+        safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(original).stem).strip(".-")
+        safe_stem = safe_stem[:80] or "upload"
+        self._upload_root.mkdir(parents=True, exist_ok=True)
+        target = self._upload_root / f"{safe_stem}-{uuid4().hex[:10]}{suffix}"
+        target.write_bytes(content)
+        return target.resolve()

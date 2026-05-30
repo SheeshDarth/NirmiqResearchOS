@@ -87,7 +87,11 @@ class AppContainer:
             embedder=embedder,
             chroma_repo=chroma_repo,
         )
-        ingestion_service = IngestionService(sqlite_repo=sqlite_repo, indexing_service=indexing_service)
+        ingestion_service = IngestionService(
+            sqlite_repo=sqlite_repo,
+            indexing_service=indexing_service,
+            upload_root=settings.upload_path,
+        )
         documents_service = DocumentsService(sqlite_repo=sqlite_repo, chroma_repo=chroma_repo)
         exam_service = ExamService(sqlite_repo=sqlite_repo, workspace_root=settings.workspace_root)
         memory_service = MemoryService(

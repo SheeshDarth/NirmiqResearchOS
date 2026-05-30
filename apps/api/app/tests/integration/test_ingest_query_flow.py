@@ -95,3 +95,28 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
 
         missing_detail = client.get(f"/documents/{document_id}")
         assert missing_detail.status_code == 404
+
+
+def test_upload_ingest_roundtrip() -> None:
+    with TestClient(app) as client:
+        upload_response = client.post(
+            "/ingest/upload",
+            data={"title": "Uploaded Notes", "force_reindex": "true"},
+            files={
+                "file": (
+                    "uploaded-notes.txt",
+                    b"Uploaded files should enter the same grounded retrieval pipeline.",
+                    "text/plain",
+                )
+            },
+        )
+
+        assert upload_response.status_code == 200
+        document_id = upload_response.json()["document_id"]
+
+        detail_response = client.get(f"/documents/{document_id}")
+        assert detail_response.status_code == 200
+        detail = detail_response.json()
+        assert detail["title"] == "Uploaded Notes"
+        assert detail["active_chunk_count"] >= 1
+        assert "uploaded-notes" in detail["source_path"]
