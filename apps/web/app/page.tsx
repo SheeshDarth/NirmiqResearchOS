@@ -37,6 +37,7 @@ type RetrievalProfile = "fast" | "balanced" | "precision";
 type WorkspaceSection = "research" | "general" | "paper" | "exam";
 type StudyMode =
   | "research"
+  | "summary"
   | "deep_research"
   | "general_chat"
   | "research_paper"
@@ -131,6 +132,13 @@ const STUDY_MODES: Array<{
     label: "Explain Topic",
     hint: "Understand any source",
     prompt: "Explain the selected material clearly with evidence.",
+  },
+  {
+    value: "summary",
+    section: "research",
+    label: "Summarize",
+    hint: "Whole-document overview",
+    prompt: "Summarize this PDF with the main ideas, methods, findings, and limitations.",
   },
   {
     value: "deep_research",

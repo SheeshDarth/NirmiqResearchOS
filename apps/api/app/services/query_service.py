@@ -110,6 +110,17 @@ class QueryService:
 
     @staticmethod
     def _retrieval_query(query: str, mode: str, exam_context: dict[str, object]) -> str:
+        normalized_mode = mode.strip().lower()
+        normalized_query = query.strip().lower()
+        if normalized_mode == "summary" or (
+            any(term in normalized_query for term in ("summarize", "summary", "overview", "explain"))
+            and any(term in normalized_query for term in ("pdf", "document", "paper", "material", "file", "this"))
+        ):
+            return (
+                f"{query}\n\n"
+                "Document overview retrieval hints: abstract introduction conclusion summary methodology "
+                "architecture approach contribution results limitations key points."
+            )
         if mode.strip().lower() not in {"study_guide", "important_questions"}:
             return query
         questions = exam_context.get("questions", [])

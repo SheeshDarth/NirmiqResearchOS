@@ -80,6 +80,25 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert isinstance(body["retrieval_meta"]["grounding_summary"], str)
         assert body["retrieval_meta"]["citation_count"] >= 1
 
+        summary_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Explain the document",
+                "document_id": document_id,
+                "mode": "summary",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert summary_response.status_code == 200
+        summary_body = summary_response.json()
+        assert summary_body["grounded"] is True
+        assert "Please ingest documents first" not in summary_body["answer"]
+        assert "summary" in summary_body["answer"].lower()
+        assert len(summary_body["citations"]) >= 1
+        assert summary_body["retrieval_meta"]["document_overview_request"] is True
+
         timeline_response = client.get("/memory/integration-session/timeline")
         assert timeline_response.status_code == 200
         timeline_body = timeline_response.json()

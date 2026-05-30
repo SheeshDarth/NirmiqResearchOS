@@ -55,10 +55,14 @@ class SynthesisService:
         top_grounding_score = float(bundle.chunks[0].score if bundle.chunks else 0.0)
         citation_count = len(bundle.chunks)
         grounding_state = self._grounding_state(top_grounding_score, citation_count)
+        overview_query = self._is_document_overview_query(query, response_mode)
+        low_score_overview = grounding_state == "weak" and overview_query and citation_count >= 2
+        if low_score_overview:
+            grounding_state = "moderate"
         grounded = grounding_state != "weak"
         if not grounded:
             return (
-                "I do not have enough grounded context yet. Please ingest documents first.",
+                self._insufficient_context_message(citation_count),
                 False,
                 {
                     "generation_backend": "none",
@@ -66,6 +70,7 @@ class SynthesisService:
                     "citation_count": citation_count,
                     "grounding_state": grounding_state,
                     "grounding_summary": "weak evidence - no answer generated",
+                    "document_overview_request": overview_query,
                 },
             )
 
@@ -96,6 +101,8 @@ class SynthesisService:
             "context_chunks_used": len(selected),
             "grounding_state": grounding_state,
             "grounding_summary": self._grounding_summary(grounding_state, top_grounding_score, citation_count),
+            "document_overview_request": overview_query,
+            "low_score_overview_allowed": low_score_overview,
             "exam_profile_used": bool(exam_profile),
             "exam_context_used": bool(
                 exam_context and (exam_context.get("questions") or exam_context.get("diagrams"))
@@ -157,6 +164,8 @@ class SynthesisService:
         exam_context: dict[str, object] | None = None,
     ) -> str:
         mode = response_mode.strip().lower()
+        if SynthesisService._is_document_overview_query(query, response_mode):
+            return SynthesisService._fallback_document_summary(context_chunks=context_chunks)
         if mode == "research_paper":
             return SynthesisService._fallback_research_paper(query=query, context_chunks=context_chunks)
         if mode == "study_guide" and exam_context and exam_context.get("questions"):
@@ -209,6 +218,11 @@ class SynthesisService:
             return (
                 "Format as a study guide with important questions, concise expandable-style answers, "
                 "diagram references when source diagrams are available, and cited evidence."
+            )
+        if mode == "summary":
+            return (
+                "Summarize the selected document. Include: what it is about, main ideas, how it works, "
+                "why it matters, and limitations or caveats when supported. Use citations."
             )
         if mode == "important_questions":
             return "Generate likely exam questions only when they are supported by the context."
@@ -373,7 +387,56 @@ class SynthesisService:
             return "Deep research synthesis from the retrieved passages:"
         if mode == "research_paper":
             return "Research paper draft from the retrieved passages:"
+        if mode == "summary":
+            return "Document summary from the retrieved passages:"
         return "Based on the retrieved passages:"
+
+    @staticmethod
+    def _fallback_document_summary(context_chunks: list[tuple[int, str]]) -> str:
+        evidence = SynthesisService._best_evidence_sentences(
+            context_chunks=context_chunks,
+            query_terms={
+                "abstract",
+                "architecture",
+                "attention",
+                "model",
+                "method",
+                "result",
+                "training",
+                "task",
+                "system",
+                "approach",
+                "contribution",
+            },
+            limit=8,
+        )
+        if not evidence:
+            evidence = [
+                (idx, preview)
+                for idx, block in context_chunks[:4]
+                if (preview := SynthesisService._context_text(block)[:260].strip())
+            ]
+        if not evidence:
+            return "I found the document, but there was not enough readable text to summarize it."
+
+        sections = ["Document summary from the retrieved passages:"]
+        overview = evidence[:2]
+        main_points = evidence[2:6]
+        caveats = evidence[6:8]
+
+        sections.append("\nWhat it is about")
+        sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in overview)
+
+        if main_points:
+            sections.append("\nMain ideas")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in main_points)
+
+        if caveats:
+            sections.append("\nUseful caveats / details")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in caveats)
+
+        sections.append("\nIf you want, ask for a chapter-wise, page-wise, or exam-style summary next.")
+        return "\n".join(sections)
 
     @staticmethod
     def _context_text(block: str) -> str:
@@ -413,6 +476,56 @@ class SynthesisService:
     @staticmethod
     def _contains_citation_anchor(text: str) -> bool:
         return bool(re.search(r"\[\d+\]", text))
+
+    @staticmethod
+    def _is_document_overview_query(query: str, response_mode: str) -> bool:
+        mode = response_mode.strip().lower()
+        if mode == "summary":
+            return True
+        normalized = query.strip().lower()
+        if not normalized:
+            return False
+        overview_verbs = {
+            "summarize",
+            "summary",
+            "explain",
+            "overview",
+            "describe",
+            "understand",
+            "about",
+        }
+        document_terms = {
+            "pdf",
+            "document",
+            "doc",
+            "file",
+            "material",
+            "paper",
+            "source",
+            "notes",
+            "this",
+            "it",
+        }
+        tokens = set(re.findall(r"[a-zA-Z][a-zA-Z0-9]{1,}", normalized))
+        if tokens & overview_verbs and tokens & document_terms:
+            return True
+        return normalized in {
+            "explain",
+            "summarize",
+            "summary",
+            "what is this",
+            "what is this about",
+            "what is it about",
+        }
+
+    @staticmethod
+    def _insufficient_context_message(citation_count: int) -> str:
+        if citation_count > 0:
+            return (
+                "I found some matching evidence, but it is too weak to answer safely. "
+                "Try asking for a document summary, selecting the correct source, or adding more specific terms."
+            )
+        return "I do not have enough grounded context yet. Please upload or ingest documents first."
 
     def _grounding_state(self, grounding_score: float, citation_count: int) -> str:
         if citation_count <= 0 or grounding_score < self._min_grounding_score:

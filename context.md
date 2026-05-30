@@ -783,3 +783,32 @@ Verification:
 - Live API health: OK.
 - Live upload smoke test: uploaded and indexed a temporary text file through `/ingest/upload`, then deleted it from the local document store.
 - Browser smoke test: plus attachment button visible, upload accept types present, chat scroll container uses `overflow-y: auto`, Daily Stoic absent, no console errors.
+
+### Update: PDF Summary Capability
+
+Date: 2026-05-30
+
+This update fixed the issue where broad prompts such as `Explain the pdf` could retrieve citations but still return `Please ingest documents first`.
+
+Root cause:
+
+- Broad document-summary prompts contain very few useful lexical terms, so retrieval scores can be low even when scoped document chunks are available.
+- The synthesis safety gate previously treated low score as no usable context.
+
+Implementation:
+
+- Added a `summary` response mode for whole-document overviews.
+- Added a Research workspace `Summarize` button in the UI.
+- Expanded retrieval queries for broad summary/overview prompts with document-overview hints.
+- Added document-scope fallback retrieval so selected-document summary requests can use available chunks even when lexical search has no strong hit.
+- Updated synthesis grounding logic to allow low-score answers only when the user clearly asks for a document overview and at least two chunks are retrieved.
+- Added fallback document-summary formatting with sections: what it is about, main ideas, useful caveats/details.
+- Improved insufficient-context wording so weak partial matches do not falsely say no documents were ingested.
+
+Verification:
+
+- `npm run build`: passed.
+- Backend integration/unit suite: `7 passed`.
+- `python -m compileall apps/api/app`: passed.
+- Live smoke test: `Explain the pdf` against `Attention Is All You Need` returned a grounded summary with 8 citations.
+- Browser smoke test: `Summarize` mode visible, attachment button visible, Daily Stoic absent, no console errors.

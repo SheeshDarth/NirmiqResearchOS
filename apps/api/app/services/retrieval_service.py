@@ -79,6 +79,10 @@ class RetrievalService:
             )
 
         candidate_ids = [chunk_id for chunk_id, _ in fused[: profile_config["fused_k"]]]
+        document_scope_fallback = False
+        if target_document_id and not candidate_ids and active_chunks:
+            candidate_ids = [str(chunk["id"]) for chunk in active_chunks[: profile_config["fused_k"]]]
+            document_scope_fallback = True
         chunks_by_id = self._sqlite_repo.get_chunks_by_ids(candidate_ids)
 
         # Include vector-only chunks that may not be in active SQLite set.
@@ -170,6 +174,7 @@ class RetrievalService:
                 "max_chunks_per_document": max_chunks_for_document,
                 "diverse_documents": len(per_document_counts),
                 "document_scope": target_document_id,
+                "document_scope_fallback": document_scope_fallback,
                 "scope": "document" if target_document_id else "corpus",
                 "retrieval_profile": normalized_profile,
                 "strategy": f"phase1_{normalized_mode}",
