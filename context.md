@@ -709,3 +709,24 @@ Verification:
 - API health endpoint: OK.
 - Web endpoint on port 3002: OK.
 - Browser smoke test: default chat shell visible, Library drawer opens, Remove selected source appears, Daily Stoic absent, no console errors.
+
+### Update: Minimal NIRMIQ Academic Intelligence UI Pass
+
+Date: 2026-05-30
+
+This update refined the user-facing product direction from a dashboard-like research OS toward a minimal, technical, ChatGPT-like workspace:
+
+- Chose `NIRMIQ Academic Intelligence` as the user-facing name while keeping ResearchOS as the project/system codename.
+- Added a reusable NIRMIQ brand lockup and simple placeholder `N` mark for the future logo.
+- Simplified the login page headline and value proposition.
+- Reworked the chat header into a compact app bar with brand, workspace switcher, and Library/Sources toggles.
+- Hid session/retrieval/profile controls inside a `Tuning` disclosure in the composer.
+- Shifted the visual language to a darker technical palette with phosphor green/cyan accents.
+- Fixed responsive behavior so the Library is not reserved when closed and the workspace switcher remains horizontal on narrow screens.
+- Updated browser metadata plus public/legal docs to use `NIRMIQ Academic Intelligence`.
+
+Verification:
+
+- `npm run build`: passed.
+- Local web dev server on port 3002 restarted successfully.
+- Browser smoke test: `NIRMIQ Academic Intelligence` title visible, Tuning disclosure exists, workspace switcher is horizontal, Daily Stoic absent, no console errors.

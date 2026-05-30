@@ -86,6 +86,9 @@ type GuideCard = {
 };
 
 const DEFAULT_SOURCE_PATH = "C:\\Nirmiq-researchOS\\data\\raw\\attention_is_all_you_need.pdf";
+const PRODUCT_NAME = "NIRMIQ";
+const PRODUCT_TAGLINE = "Academic Intelligence";
+const PRODUCT_DESCRIPTION = "Private research chat for documents, citations, papers, and exams.";
 
 const WORKSPACE_SECTIONS: Array<{
   value: WorkspaceSection;
@@ -349,11 +352,16 @@ function LocalLogin({
   return (
     <main className="login-shell">
       <section className="login-card">
-        <p className="eyebrow">NIRMIQ ResearchOS</p>
-        <h1>Academic intelligence, running on your machine.</h1>
+        <div className="brand-lockup hero">
+          <div className="brand-mark" aria-hidden="true">N</div>
+          <div>
+            <strong>{PRODUCT_NAME}</strong>
+            <span>{PRODUCT_TAGLINE}</span>
+          </div>
+        </div>
+        <h1>Chat with your documents. Build with evidence.</h1>
         <p className="copy">
-          A private local workspace for document research, engineering paper drafting,
-          citation tracing, and exam prep. No cloud account is required for this MVP.
+          {PRODUCT_DESCRIPTION} The MVP runs local-first, so your source material stays on your machine.
         </p>
         <label className="label">
           Local profile name
@@ -365,18 +373,18 @@ function LocalLogin({
           />
         </label>
         <button className="button primary" disabled={!displayName.trim()} onClick={onContinue} type="button">
-          Continue to NIRMIQ
+          Enter workspace
         </button>
         <div className="login-proof">
           <span>Local-first</span>
           <span>Citation-aware</span>
-          <span>Engineering Paper Lab</span>
+          <span>Paper Lab</span>
         </div>
         <div className="why-nirmiq">
-          <strong>Why choose NIRMIQ?</strong>
+          <strong>Why NIRMIQ?</strong>
           <p>
-            It combines a ChatGPT-like workspace with local document grounding, inspectable citations,
-            exam tools, and a dedicated engineering paper workflow without forcing your sources into a cloud product.
+            It keeps the interaction simple like chat, but every serious answer can stay tied to your own
+            PDFs, notes, diagrams, and citations.
           </p>
         </div>
         <p className="tiny">
@@ -834,8 +842,8 @@ export default function Home() {
     return (
       <main className="nirmiq-v2" suppressHydrationWarning>
         <section className="client-boot">
-          <p className="eyebrow">Local Research OS</p>
-          <h1>NIRMIQ</h1>
+          <p className="eyebrow">{PRODUCT_TAGLINE}</p>
+          <h1>{PRODUCT_NAME}</h1>
           <p>Preparing your local study workspace...</p>
         </section>
       </main>
@@ -856,11 +864,16 @@ export default function Home() {
     <main className={cx("nirmiq-v2", showLibrary && "library-open", showInspector && "inspector-open")}>
       <aside className="material-rail">
         <section className="identity-card">
-          <p className="eyebrow">Local Research OS</p>
-          <h1 className="identity-title">NIRMIQ</h1>
+          <div className="brand-lockup">
+            <div className="brand-mark" aria-hidden="true">N</div>
+            <div>
+              <strong>{PRODUCT_NAME}</strong>
+              <span>{PRODUCT_TAGLINE}</span>
+            </div>
+          </div>
           <p className="copy">
-            {displayName}&apos;s ChatGPT-style academic workspace for documents, citations,
-            engineering papers, and exam prep.
+            {displayName}&apos;s local workspace for research-grade answers, citations, engineering papers,
+            and exam prep.
           </p>
           <div className="chip-row">
             <button className="chip" type="button" onClick={onHealthCheck} disabled={busy !== ""}>
@@ -950,19 +963,36 @@ export default function Home() {
 
       <section className="study-thread">
         <header className="thread-top">
-          <div className="workspace-switcher">
-            {WORKSPACE_SECTIONS.map((section) => (
-              <button
-                className={cx("section-button", workspaceSection === section.value && "active")}
-                data-testid={`workspace-${section.value}`}
-                key={section.value}
-                onClick={() => selectWorkspaceSection(section.value)}
-                type="button"
-              >
-                <strong>{section.label}</strong>
-                <span>{section.hint}</span>
+          <div className="thread-bar">
+            <div className="brand-lockup app">
+              <div className="brand-mark" aria-hidden="true">N</div>
+              <div>
+                <strong>{PRODUCT_NAME}</strong>
+                <span>{PRODUCT_TAGLINE}</span>
+              </div>
+            </div>
+            <div className="workspace-switcher">
+              {WORKSPACE_SECTIONS.map((section) => (
+                <button
+                  className={cx("section-button", workspaceSection === section.value && "active")}
+                  data-testid={`workspace-${section.value}`}
+                  key={section.value}
+                  onClick={() => selectWorkspaceSection(section.value)}
+                  type="button"
+                >
+                  <strong>{section.label}</strong>
+                  <span>{section.hint}</span>
+                </button>
+              ))}
+            </div>
+            <div className="top-actions">
+              <button className="button ghost" type="button" onClick={() => setShowLibrary((current) => !current)}>
+                {showLibrary ? "Hide Library" : "Library"}
               </button>
-            ))}
+              <button className="button ghost" type="button" onClick={() => setShowInspector((current) => !current)}>
+                {showInspector ? "Hide Sources" : "Sources"}
+              </button>
+            </div>
           </div>
           <div className="thread-title">
             <p className="eyebrow">{currentSection.label} Workspace</p>
@@ -978,18 +1008,8 @@ export default function Home() {
             <p className="copy" style={{ maxWidth: 680 }}>{currentSection.hint}</p>
             <div className="chip-row">
               <span className="chip copper">{modeLabel(studyMode)}</span>
-              <span className="chip teal">{retrievalMode.toUpperCase()}</span>
-              <span className="chip sage">{retrievalProfile}</span>
-              <span className="chip">{sessionId}</span>
+              <span className="chip sage">{activeMaterialName}</span>
             </div>
-          </div>
-          <div className="top-actions">
-            <button className="button ghost" type="button" onClick={() => setShowLibrary((current) => !current)}>
-              {showLibrary ? "Hide Library" : "Library"}
-            </button>
-            <button className="button ghost" type="button" onClick={() => setShowInspector((current) => !current)}>
-              {showInspector ? "Hide Sources" : "Sources"}
-            </button>
           </div>
           <div className="mode-grid">
             {availableModes.map((mode) => (
@@ -1083,38 +1103,6 @@ export default function Home() {
 
         <form className="composer-wrap" ref={queryFormRef} onSubmit={onQuery}>
           <div className="composer-card">
-            <div className="composer-meta">
-              <label className="label">
-                Study thread
-                <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
-              </label>
-              <label className="label">
-                Retrieval
-                <select
-                  className="select"
-                  value={retrievalMode}
-                  onChange={(event) => setRetrievalMode(event.target.value as RetrievalMode)}
-                >
-                  <option value="hybrid">Hybrid</option>
-                  <option value="bm25">BM25</option>
-                  <option value="vector">Vector</option>
-                </select>
-              </label>
-              <label className="label">
-                Profile
-                <select
-                  className="select"
-                  value={retrievalProfile}
-                  onChange={(event) => setRetrievalProfile(event.target.value as RetrievalProfile)}
-                >
-                  {RETRIEVAL_PROFILES.map((profile) => (
-                    <option key={profile.value} value={profile.value}>
-                      {profile.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
             <textarea
               className="textarea"
               ref={queryInputRef}
@@ -1123,6 +1111,44 @@ export default function Home() {
               onKeyDown={onQueryKeyDown}
               placeholder={`Ask in ${currentMode.label} mode...`}
             />
+            <details className="composer-settings">
+              <summary>
+                Tuning
+                <span>{retrievalMode.toUpperCase()} / {retrievalProfile} / {sessionId}</span>
+              </summary>
+              <div className="composer-meta">
+                <label className="label">
+                  Thread
+                  <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
+                </label>
+                <label className="label">
+                  Retrieval
+                  <select
+                    className="select"
+                    value={retrievalMode}
+                    onChange={(event) => setRetrievalMode(event.target.value as RetrievalMode)}
+                  >
+                    <option value="hybrid">Hybrid</option>
+                    <option value="bm25">BM25</option>
+                    <option value="vector">Vector</option>
+                  </select>
+                </label>
+                <label className="label">
+                  Profile
+                  <select
+                    className="select"
+                    value={retrievalProfile}
+                    onChange={(event) => setRetrievalProfile(event.target.value as RetrievalProfile)}
+                  >
+                    {RETRIEVAL_PROFILES.map((profile) => (
+                      <option key={profile.value} value={profile.value}>
+                        {profile.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </details>
             <div className="composer-actions">
               <div className="chip-row" style={{ marginTop: 0 }}>
                 <span className="chip">Grounding {groundingLabel}</span>

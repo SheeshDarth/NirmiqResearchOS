@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "NIRMIQ ResearchOS",
-  description: "Student-first document intelligence workspace",
+  title: "NIRMIQ Academic Intelligence",
+  description: "Local-first document research, citation, paper, and exam workspace",
 };
 
 export default function RootLayout({
