@@ -874,6 +874,8 @@ Verification:
 
 - `npm run build`: passed.
 - Backend unit/integration suite: `8 passed`.
+- Live browser smoke test: page loads on `http://127.0.0.1:3002`, console has no errors, `Minimize` collapses the composer, `Open Search` restores it, Exam Lab shows `Custom PDF`, visible logo lockup measures correctly, and source cockpit remains compact.
+- Login/landing implementation was build-verified. The active browser was already locally unlocked, so the live landing screen was not forced during smoke testing to avoid disturbing the user's profile state.
 - Live browser smoke test: source cockpit visible, `Summarize PDF` visible/enabled, upload quick action visible, scroll remains enabled, no console errors.
 - Live end-to-end browser test: clicked `Summarize PDF`, received grounded document summary with 8 citations.
 
@@ -906,3 +908,48 @@ Verification:
 - `npm run build`: passed.
 - Backend unit/integration suite: `8 passed`.
 - Live browser smoke test: compact composer visible, `Ask` button in input row, scroll remains enabled, logo aligned, no console errors.
+
+### Update: V3 Landing, Login, Minimized Composer, Exam PDF Action, and Handoff Docs
+
+Date: 2026-05-30
+
+This update continued the V3 direction: make NIRMIQ feel closer to ChatGPT in daily use while preserving its academic intelligence identity.
+
+Product/UX changes:
+
+- Reworked the local entry screen into a stronger NIRMIQ Academic Intelligence landing page.
+- Added a compact animated hero/orbit visual to make the first screen feel intentional without adding heavy dependencies.
+- Added local profile fields for name, email, and phone.
+- Kept login local-only for now; this is a profile/personalization gate, not real hosted authentication yet.
+- Clarified the four workspaces: Research, Chat, Paper Lab, and Exam Lab.
+- Made composer placeholder text and primary action labels change by workspace.
+- Added a `Minimize` / `Open Search` control so long answers can be read more comfortably.
+- Added an Exam Lab `Custom PDF` action that opens the current grounded answer in a printable document view.
+- Kept citations available through grounded badges, evidence chips, and the Sources drawer instead of forcing every panel onscreen.
+
+Architecture/documentation changes:
+
+- Added `prd.md` for product requirements and V3/V4 direction.
+- Added `trd.md` for technical requirements and acceptance criteria.
+- Added `UI_UX.md` for the UI/UX specification. The requested `UI/UX.md` filename was normalized because Windows treats `/` as a path separator.
+- Added `backend_architecture.md` for service boundaries, data lifecycles, and next backend upgrades.
+- Added `debugging.md` for run commands, test commands, and common issue fixes.
+- Added `codex_implementaton.md` as requested to preserve Codex implementation history and future workflow notes.
+
+Research references used for V3 planning:
+
+- OWASP Authentication Cheat Sheet for future real auth/security posture.
+- W3C WCAG 2.2 for visible focus and usable target-size guidance.
+- NIST AI Risk Management Framework for trust, grounding, and risk framing.
+
+Why it matters:
+
+- The app now starts with a clearer product story instead of opening directly into a complex workspace.
+- The composer no longer has to occupy reading space permanently.
+- Each section can now feel purpose-built while sharing one maintainable query flow.
+- Future Codex sessions can use the new docs as the source of truth instead of replaying the entire chat.
+
+Verification:
+
+- `npm run build`: passed.
+- Backend unit/integration suite: `8 passed`.

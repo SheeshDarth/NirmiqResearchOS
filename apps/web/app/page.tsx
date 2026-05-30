@@ -224,6 +224,15 @@ function previewText(value?: string | null, maxLength = 420): string {
   return normalized.length > maxLength ? `${normalized.slice(0, maxLength).trim()}...` : normalized;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function getGroundingScore(response: QueryResponse | null): number {
   const raw = response?.retrieval_meta?.grounding_score;
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
@@ -351,56 +360,101 @@ function StudyGuideAnswer({ answer }: { answer: string }) {
 
 function LocalLogin({
   displayName,
+  email,
+  phone,
   onDisplayNameChange,
+  onEmailChange,
+  onPhoneChange,
   onContinue,
 }: {
   displayName: string;
+  email: string;
+  phone: string;
   onDisplayNameChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
+  onPhoneChange: (value: string) => void;
   onContinue: () => void;
 }) {
+  const canContinue = displayName.trim().length > 0 && (email.trim().length > 0 || phone.trim().length > 0);
+
   return (
     <main className="login-shell">
-      <section className="login-card">
-        <div className="brand-lockup hero">
-          <div className="brand-mark" aria-hidden="true">
-            <img alt="" src="/brand/nirmiq-mark.png" />
+      <section className="login-card landing-card">
+        <div className="landing-grid">
+          <div className="landing-copy">
+            <div className="brand-lockup hero">
+              <div className="brand-mark" aria-hidden="true">
+                <img alt="" src="/brand/nirmiq-mark.png" />
+              </div>
+              <div>
+                <strong>{PRODUCT_NAME}</strong>
+                <span>{PRODUCT_TAGLINE}</span>
+              </div>
+            </div>
+            <h1>Turn academic chaos into cited intelligence.</h1>
+            <p className="copy">
+              Upload papers, notes, textbooks, or question banks. NIRMIQ helps you summarize,
+              question, cite, draft, and revise from your own sources while staying local-first.
+            </p>
+            <div className="login-proof">
+              <span>Grounded answers</span>
+              <span>Paper Lab</span>
+              <span>Exam Lab</span>
+              <span>Offline-first</span>
+            </div>
+            <div className="why-nirmiq">
+              <strong>Built for students who want proof, not vibes.</strong>
+              <p>
+                Every serious response is designed to stay tied to source chunks, citations,
+                diagrams, and local memory instead of becoming a generic chatbot answer.
+              </p>
+            </div>
           </div>
-          <div>
-            <strong>{PRODUCT_NAME}</strong>
-            <span>{PRODUCT_TAGLINE}</span>
+          <div className="login-panel">
+            <div className="hero-orbit" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <strong />
+            </div>
+            <h2>Enter your local workspace</h2>
+            <p className="tiny">
+              Local profile only for V3. Email/phone are stored in this browser for continuity, not sent to a cloud auth service.
+            </p>
+            <label className="label">
+              Name
+              <input
+                className="input"
+                onChange={(event) => onDisplayNameChange(event.target.value)}
+                placeholder="Siddharth"
+                value={displayName}
+              />
+            </label>
+            <label className="label">
+              Email
+              <input
+                className="input"
+                onChange={(event) => onEmailChange(event.target.value)}
+                placeholder="you@example.com"
+                type="email"
+                value={email}
+              />
+            </label>
+            <label className="label">
+              Phone
+              <input
+                className="input"
+                onChange={(event) => onPhoneChange(event.target.value)}
+                placeholder="+91..."
+                type="tel"
+                value={phone}
+              />
+            </label>
+            <button className="button primary" disabled={!canContinue} onClick={onContinue} type="button">
+              Continue
+            </button>
           </div>
         </div>
-        <h1>Chat with your documents. Build with evidence.</h1>
-        <p className="copy">
-          {PRODUCT_DESCRIPTION} The MVP runs local-first, so your source material stays on your machine.
-        </p>
-        <label className="label">
-          Local profile name
-          <input
-            className="input"
-            onChange={(event) => onDisplayNameChange(event.target.value)}
-            placeholder="Siddharth"
-            value={displayName}
-          />
-        </label>
-        <button className="button primary" disabled={!displayName.trim()} onClick={onContinue} type="button">
-          Enter workspace
-        </button>
-        <div className="login-proof">
-          <span>Local-first</span>
-          <span>Citation-aware</span>
-          <span>Paper Lab</span>
-        </div>
-        <div className="why-nirmiq">
-          <strong>Why NIRMIQ?</strong>
-          <p>
-            It keeps the interaction simple like chat, but every serious answer can stay tied to your own
-            PDFs, notes, diagrams, and citations.
-          </p>
-        </div>
-        <p className="tiny">
-          This is a local profile gate, not cloud authentication. Add real auth only before hosted/multi-user use.
-        </p>
       </section>
     </main>
   );
@@ -408,6 +462,32 @@ function LocalLogin({
 
 function modeLabel(value: StudyMode): string {
   return STUDY_MODES.find((mode) => mode.value === value)?.label ?? "Study";
+}
+
+function composerPlaceholder(section: WorkspaceSection, mode: StudyMode, materialName: string): string {
+  if (section === "general") {
+    return "Chat normally. If local sources are relevant, NIRMIQ will cite them.";
+  }
+  if (section === "paper") {
+    return "Ask for thesis, abstract, related work, methodology, limitations, or citation-backed sections...";
+  }
+  if (section === "exam") {
+    return "Paste an exam question, marks requirement, or ask for a custom study guide PDF...";
+  }
+  if (mode === "summary") {
+    return `Summarize ${materialName} or ask for chapter-wise / method-wise breakdown...`;
+  }
+  if (mode === "deep_research") {
+    return "Ask for a deeper cited analysis, assumptions, limitations, or research implications...";
+  }
+  return `Ask about ${materialName}...`;
+}
+
+function workspaceVerb(section: WorkspaceSection): string {
+  if (section === "paper") return "Draft";
+  if (section === "exam") return "Solve";
+  if (section === "general") return "Send";
+  return "Ask";
 }
 
 export default function Home() {
@@ -419,6 +499,9 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [displayName, setDisplayName] = useState("Siddharth");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [composerCollapsed, setComposerCollapsed] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showInspector, setShowInspector] = useState(false);
   const [health, setHealth] = useState("unknown");
@@ -490,11 +573,17 @@ export default function Home() {
   const currentMode = availableModes.find((mode) => mode.value === studyMode) ?? availableModes[0] ?? STUDY_MODES[0];
   const currentSection = WORKSPACE_SECTIONS.find((section) => section.value === workspaceSection) ?? WORKSPACE_SECTIONS[0];
   const activeMaterialName = selectedDocumentDetail?.title || selectedDocument?.title || "No study material selected";
+  const activePlaceholder = composerPlaceholder(workspaceSection, currentMode.value, activeMaterialName);
+  const activeActionLabel = workspaceVerb(workspaceSection);
 
   useEffect(() => {
     const storedName = window.localStorage.getItem("nirmiq.localProfileName");
+    const storedEmail = window.localStorage.getItem("nirmiq.localEmail");
+    const storedPhone = window.localStorage.getItem("nirmiq.localPhone");
     const storedUnlocked = window.localStorage.getItem("nirmiq.localUnlocked") === "true";
     if (storedName) setDisplayName(storedName);
+    if (storedEmail) setEmail(storedEmail);
+    if (storedPhone) setPhone(storedPhone);
     if (storedUnlocked) setIsUnlocked(true);
     setMounted(true);
   }, []);
@@ -752,6 +841,60 @@ export default function Home() {
     await executeQuery("Summarize this PDF with the main ideas, methods, findings, and limitations.", "summary");
   }
 
+  async function onGenerateExamPdf() {
+    if (busy !== "") return;
+    if (currentRun?.response.answer && workspaceSection === "exam") {
+      openPdfPrintView(currentRun);
+      return;
+    }
+    if (!documentId) {
+      setError("Upload or select exam material before generating a custom PDF.");
+      return;
+    }
+    setWorkspaceSection("exam");
+    setStudyMode("study_guide");
+    setRetrievalProfile("precision");
+    await executeQuery(
+      "Generate a custom exam PDF study guide from the selected source. Include important questions, concise answers, marks-ready structure, and citations.",
+      "study_guide",
+    );
+    setError("Custom PDF content generated. Click Custom PDF again and choose 'Save as PDF' in the print dialog.");
+  }
+
+  function openPdfPrintView(run: ChatRun) {
+    const printable = window.open("", "_blank", "noopener,noreferrer,width=900,height=1000");
+    if (!printable) {
+      setError("Popup blocked. Allow popups to export the custom PDF.");
+      return;
+    }
+    const citationList = run.response.citations
+      .map((citation, index) => `<li>Evidence ${index + 1}${citation.page_start ? `, page ${citation.page_start}` : ""}</li>`)
+      .join("");
+    printable.document.write(`
+      <html>
+        <head>
+          <title>NIRMIQ Custom Exam PDF</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; color: #111; line-height: 1.6; }
+            h1 { margin-bottom: 4px; }
+            .meta { color: #555; font-size: 12px; margin-bottom: 24px; }
+            pre { white-space: pre-wrap; font-family: inherit; }
+            li { margin: 4px 0; }
+          </style>
+        </head>
+        <body>
+          <h1>NIRMIQ Custom Exam PDF</h1>
+          <div class="meta">${activeMaterialName} / ${modeLabel(run.mode)} / ${formatDate(run.timestamp)}</div>
+          <pre>${escapeHtml(run.response.answer)}</pre>
+          <h2>Citations</h2>
+          <ol>${citationList || "<li>No citations returned.</li>"}</ol>
+          <script>window.onload = () => window.print();</script>
+        </body>
+      </html>
+    `);
+    printable.document.close();
+  }
+
   function selectDocument(item: DocumentItem) {
     setDocumentId(item.id);
     setSelectedChunkId("");
@@ -857,6 +1000,8 @@ export default function Home() {
     setDisplayName(name);
     setIsUnlocked(true);
     window.localStorage.setItem("nirmiq.localProfileName", name);
+    window.localStorage.setItem("nirmiq.localEmail", email.trim());
+    window.localStorage.setItem("nirmiq.localPhone", phone.trim());
     window.localStorage.setItem("nirmiq.localUnlocked", "true");
   }
 
@@ -915,8 +1060,12 @@ export default function Home() {
     return (
       <LocalLogin
         displayName={displayName}
+        email={email}
+        phone={phone}
         onContinue={unlockLocalWorkspace}
         onDisplayNameChange={setDisplayName}
+        onEmailChange={setEmail}
+        onPhoneChange={setPhone}
       />
     );
   }
@@ -1201,6 +1350,16 @@ export default function Home() {
                 <span className={cx("mini-stat", queryResult?.grounded ? "ok" : "")}>
                   {groundingLabel}
                 </span>
+                {workspaceSection === "exam" ? (
+                  <button
+                    className="quick-action"
+                    disabled={busy !== ""}
+                    onClick={onGenerateExamPdf}
+                    type="button"
+                  >
+                    Custom PDF
+                  </button>
+                ) : null}
                 <button
                   className="quick-action"
                   disabled={!documentId || busy !== ""}
@@ -1217,85 +1376,96 @@ export default function Home() {
                 >
                   Upload
                 </button>
-              </div>
-            </div>
-            <div className="composer-input-shell">
-              <button
-                aria-label="Upload file or photo"
-                className="attach-button"
-                disabled={busy !== ""}
-                onClick={() => uploadInputRef.current?.click()}
-                type="button"
-                title="Upload PDF, document, or photo"
-              >
-                +
-              </button>
-              <textarea
-                className="textarea"
-                ref={queryInputRef}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={onQueryKeyDown}
-                placeholder={
-                  busy === "ingest"
-                    ? "Uploading and indexing your file..."
-                    : `Ask in ${currentMode.label} mode...`
-                }
-              />
-              <button className="send-button" disabled={!canQuery || busy !== ""} type="submit">
-                {busy === "query" ? "Reading" : "Ask"}
-              </button>
-            </div>
-            <details className="composer-settings">
-              <summary>
-                Tuning
-                <span>{retrievalMode.toUpperCase()} / {retrievalProfile} / {sessionId}</span>
-              </summary>
-              <div className="composer-meta">
-                <label className="label">
-                  Thread
-                  <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
-                </label>
-                <label className="label">
-                  Retrieval
-                  <select
-                    className="select"
-                    value={retrievalMode}
-                    onChange={(event) => setRetrievalMode(event.target.value as RetrievalMode)}
-                  >
-                    <option value="hybrid">Hybrid</option>
-                    <option value="bm25">BM25</option>
-                    <option value="vector">Vector</option>
-                  </select>
-                </label>
-                <label className="label">
-                  Profile
-                  <select
-                    className="select"
-                    value={retrievalProfile}
-                    onChange={(event) => setRetrievalProfile(event.target.value as RetrievalProfile)}
-                  >
-                    {RETRIEVAL_PROFILES.map((profile) => (
-                      <option key={profile.value} value={profile.value}>
-                        {profile.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </details>
-            <div className="composer-actions">
-              <p className="composer-hint">
-                {latestCitations.length
-                  ? `${latestCitations.length} evidence links ready. Click Sources to inspect citations.`
-                  : "Answers stay grounded in the selected source when evidence is available."}
-              </p>
-              <div className="chip-row" style={{ marginTop: 0 }}>
-                <button className="clear-link" type="button" onClick={clearThread}>
-                  Clear Thread
+                <button
+                  className="quick-action ghost"
+                  onClick={() => setComposerCollapsed((current) => !current)}
+                  type="button"
+                >
+                  {composerCollapsed ? "Open Search" : "Minimize"}
                 </button>
               </div>
             </div>
+            {composerCollapsed ? (
+              <div className="composer-minimized">
+                Search box minimized. Responses have more room. Use Open Search when you need to ask the next question.
+              </div>
+            ) : (
+              <>
+                <div className="composer-input-shell">
+                  <button
+                    aria-label="Upload file or photo"
+                    className="attach-button"
+                    disabled={busy !== ""}
+                    onClick={() => uploadInputRef.current?.click()}
+                    type="button"
+                    title="Upload PDF, document, or photo"
+                  >
+                    +
+                  </button>
+                  <textarea
+                    className="textarea"
+                    ref={queryInputRef}
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={onQueryKeyDown}
+                    placeholder={busy === "ingest" ? "Uploading and indexing your file..." : activePlaceholder}
+                  />
+                  <button className="send-button" disabled={!canQuery || busy !== ""} type="submit">
+                    {busy === "query" ? "Reading" : activeActionLabel}
+                  </button>
+                </div>
+                <details className="composer-settings">
+                  <summary>
+                    Tuning
+                    <span>{retrievalMode.toUpperCase()} / {retrievalProfile} / {sessionId}</span>
+                  </summary>
+                  <div className="composer-meta">
+                    <label className="label">
+                      Thread
+                      <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
+                    </label>
+                    <label className="label">
+                      Retrieval
+                      <select
+                        className="select"
+                        value={retrievalMode}
+                        onChange={(event) => setRetrievalMode(event.target.value as RetrievalMode)}
+                      >
+                        <option value="hybrid">Hybrid</option>
+                        <option value="bm25">BM25</option>
+                        <option value="vector">Vector</option>
+                      </select>
+                    </label>
+                    <label className="label">
+                      Profile
+                      <select
+                        className="select"
+                        value={retrievalProfile}
+                        onChange={(event) => setRetrievalProfile(event.target.value as RetrievalProfile)}
+                      >
+                        {RETRIEVAL_PROFILES.map((profile) => (
+                          <option key={profile.value} value={profile.value}>
+                            {profile.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </details>
+                <div className="composer-actions">
+                  <p className="composer-hint">
+                    {latestCitations.length
+                      ? `${latestCitations.length} evidence links ready. Click Sources to inspect citations.`
+                      : "Answers stay grounded in the selected source when evidence is available."}
+                  </p>
+                  <div className="chip-row" style={{ marginTop: 0 }}>
+                    <button className="clear-link" type="button" onClick={clearThread}>
+                      Clear Thread
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </form>
       </section>
