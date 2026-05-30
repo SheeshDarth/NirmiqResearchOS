@@ -5,6 +5,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "NIRMIQ Academic Intelligence",
   description: "Local-first document research, citation, paper, and exam workspace",
+  icons: {
+    icon: "/brand/nirmiq-mark.png",
+    apple: "/brand/nirmiq-mark.png",
+  },
 };
 
 export default function RootLayout({

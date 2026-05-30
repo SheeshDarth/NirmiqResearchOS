@@ -730,3 +730,25 @@ Verification:
 - `npm run build`: passed.
 - Local web dev server on port 3002 restarted successfully.
 - Browser smoke test: `NIRMIQ Academic Intelligence` title visible, Tuning disclosure exists, workspace switcher is horizontal, Daily Stoic absent, no console errors.
+
+### Update: NIRMIQ Logo Selection and App Branding
+
+Date: 2026-05-30
+
+Logo candidates reviewed:
+
+- `logo multiple.png`: useful reference sheet, but contains multiple variants and the older `Local-first AI Operating Ecosystem` positioning.
+- `WhatsApp Image 2026-05-30 at 3.43.35 PM.jpeg`: light banner variant, readable but less aligned with the dark minimal app shell.
+- `WhatsApp Image 2026-05-30 at 3.43.35 PM (1).jpeg`: dark full banner, strong but includes old positioning text and is too wide for app chrome.
+- `WhatsApp Image 2026-05-30 at 3.43.35 PM (2).jpeg`: standalone dark network mark, selected as the best fit.
+- `WhatsApp Image 2026-05-30 at 3.43.36 PM.jpeg`: monochrome light banner, clean but weaker for the current dark technical UI.
+
+Decision:
+
+- Selected the standalone dark network mark because it fits the minimal technical UI, works as an app/favicon mark, avoids conflicting old tagline text, and visually represents retrieval, memory, coordination, and research.
+
+Implementation:
+
+- Cropped and resized the selected candidate into `apps/web/public/brand/nirmiq-mark.png`.
+- Replaced the temporary `N` placeholder mark in the login, sidebar, and app header.
+- Added the mark to Next.js metadata icons.

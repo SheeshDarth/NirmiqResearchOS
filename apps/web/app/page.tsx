@@ -353,7 +353,9 @@ function LocalLogin({
     <main className="login-shell">
       <section className="login-card">
         <div className="brand-lockup hero">
-          <div className="brand-mark" aria-hidden="true">N</div>
+          <div className="brand-mark" aria-hidden="true">
+            <img alt="" src="/brand/nirmiq-mark.png" />
+          </div>
           <div>
             <strong>{PRODUCT_NAME}</strong>
             <span>{PRODUCT_TAGLINE}</span>
@@ -865,7 +867,9 @@ export default function Home() {
       <aside className="material-rail">
         <section className="identity-card">
           <div className="brand-lockup">
-            <div className="brand-mark" aria-hidden="true">N</div>
+            <div className="brand-mark" aria-hidden="true">
+              <img alt="" src="/brand/nirmiq-mark.png" />
+            </div>
             <div>
               <strong>{PRODUCT_NAME}</strong>
               <span>{PRODUCT_TAGLINE}</span>
@@ -965,7 +969,9 @@ export default function Home() {
         <header className="thread-top">
           <div className="thread-bar">
             <div className="brand-lockup app">
-              <div className="brand-mark" aria-hidden="true">N</div>
+              <div className="brand-mark" aria-hidden="true">
+                <img alt="" src="/brand/nirmiq-mark.png" />
+              </div>
               <div>
                 <strong>{PRODUCT_NAME}</strong>
                 <span>{PRODUCT_TAGLINE}</span>
