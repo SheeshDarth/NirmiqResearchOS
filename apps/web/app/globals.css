@@ -61,7 +61,7 @@ button {
   isolation: isolate;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 284px minmax(0, 1fr) 356px;
+  grid-template-columns: minmax(0, 1fr);
   background:
     radial-gradient(circle at 13% -5%, rgba(196, 109, 50, 0.22), transparent 33%),
     radial-gradient(circle at 88% 10%, rgba(41, 95, 97, 0.24), transparent 32%),
@@ -69,10 +69,19 @@ button {
     var(--nirmiq-bg);
 }
 
-.nirmiq-v2:not(.inspector-open) {
+.nirmiq-v2.library-open {
   grid-template-columns: 284px minmax(0, 1fr);
 }
 
+.nirmiq-v2.inspector-open {
+  grid-template-columns: minmax(0, 1fr) 356px;
+}
+
+.nirmiq-v2.library-open.inspector-open {
+  grid-template-columns: 284px minmax(0, 1fr) 356px;
+}
+
+.nirmiq-v2:not(.library-open) .material-rail,
 .nirmiq-v2:not(.inspector-open) .deep-rail {
   display: none;
 }
@@ -382,6 +391,13 @@ button {
   color: #150c07;
 }
 
+.button.danger {
+  width: 100%;
+  border-color: rgba(187, 89, 81, 0.55);
+  background: rgba(187, 89, 81, 0.1);
+  color: #efb0aa;
+}
+
 .button.ghost {
   background: transparent;
 }
@@ -509,6 +525,12 @@ button.chunk-card {
   font-weight: 900;
   letter-spacing: -0.1em;
   line-height: 0.88;
+}
+
+.top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .mode-grid {

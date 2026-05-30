@@ -88,7 +88,7 @@ class AppContainer:
             chroma_repo=chroma_repo,
         )
         ingestion_service = IngestionService(sqlite_repo=sqlite_repo, indexing_service=indexing_service)
-        documents_service = DocumentsService(sqlite_repo=sqlite_repo)
+        documents_service = DocumentsService(sqlite_repo=sqlite_repo, chroma_repo=chroma_repo)
         exam_service = ExamService(sqlite_repo=sqlite_repo, workspace_root=settings.workspace_root)
         memory_service = MemoryService(
             sqlite_repo=sqlite_repo,

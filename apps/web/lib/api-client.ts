@@ -100,6 +100,11 @@ export type DocumentListResponse = {
   items: DocumentItem[];
 };
 
+export type DocumentDeleteResponse = {
+  document_id: string;
+  deleted: boolean;
+};
+
 export type DocumentDetailResponse = DocumentItem & {
   chunks: Array<{
     id: string;
@@ -237,6 +242,13 @@ export async function listDocuments(): Promise<DocumentListResponse> {
 export async function getDocument(documentId: string): Promise<DocumentDetailResponse> {
   const response = await fetch(`${API_BASE}/documents/${encodeURIComponent(documentId)}`);
   return parseJson<DocumentDetailResponse>(response);
+}
+
+export async function deleteDocument(documentId: string): Promise<DocumentDeleteResponse> {
+  const response = await fetch(`${API_BASE}/documents/${encodeURIComponent(documentId)}`, {
+    method: "DELETE",
+  });
+  return parseJson<DocumentDeleteResponse>(response);
 }
 
 export async function upsertExamProfile(payload: {

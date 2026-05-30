@@ -685,3 +685,27 @@ Verification:
 - Diagram extraction produced 3 source diagrams.
 - Question bank import produced 3 questions.
 - Paper Lab and Study Guide API smoke tests returned grounded responses.
+
+### Update: Chat-first Drawers and Document Purge
+
+Date: 2026-05-30
+
+This update moved the shell closer to ChatGPT by making chat the default single-column surface:
+
+- Source Library is now hidden by default and opened with a `Library` button.
+- Evidence/source inspector remains hidden by default and opens with `Sources`.
+- The app shell now supports independent `library-open` and `inspector-open` drawer states.
+- Added `DELETE /documents/{document_id}` to purge a document from SQLite document metadata, chunks, ingestion jobs, exam profiles, question-bank items, and diagram metadata.
+- Added best-effort Chroma cleanup through `ChromaRepo.delete_document`.
+- Added frontend `deleteDocument` client helper.
+- Added `Remove selected source` control inside the Library drawer.
+- Added integration test coverage for document deletion and 404 after purge.
+
+Verification:
+
+- `npm run build`: passed.
+- Backend tests: `6 passed` with one third-party dateutil deprecation warning.
+- `python -m compileall apps/api/app`: passed.
+- API health endpoint: OK.
+- Web endpoint on port 3002: OK.
+- Browser smoke test: default chat shell visible, Library drawer opens, Remove selected source appears, Daily Stoic absent, no console errors.

@@ -177,6 +177,19 @@ class SQLiteRepo:
             ).fetchone()
         return dict(row) if row else None
 
+    def delete_document(self, document_id: str) -> bool:
+        with self._connect() as conn:
+            row = conn.execute("SELECT id FROM documents WHERE id = ?", (document_id,)).fetchone()
+            if not row:
+                return False
+            conn.execute("DELETE FROM diagram_assets WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM question_bank_items WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM exam_profiles WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM ingestion_jobs WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM document_chunks WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM documents WHERE id = ?", (document_id,))
+        return True
+
     def list_documents(self) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(

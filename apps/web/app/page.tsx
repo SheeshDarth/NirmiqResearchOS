@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  deleteDocument,
   diagramAssetUrl,
   getDocument,
   getIngestJobs,
@@ -43,7 +44,7 @@ type StudyMode =
   | "important_questions"
   | "compare_concepts"
   | "study_guide";
-type BusyState = "" | "health" | "ingest" | "query" | "status" | "documents";
+type BusyState = "" | "health" | "ingest" | "query" | "status" | "documents" | "delete";
 type DeepView = "evidence" | "context" | "compare" | "eval";
 type Chunk = DocumentDetailResponse["chunks"][number];
 
@@ -398,6 +399,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [displayName, setDisplayName] = useState("Siddharth");
+  const [showLibrary, setShowLibrary] = useState(false);
   const [showInspector, setShowInspector] = useState(false);
   const [health, setHealth] = useState("unknown");
   const [busy, setBusy] = useState<BusyState>("");
@@ -598,6 +600,32 @@ export default function Home() {
     setError("");
     try {
       await Promise.all([loadDocumentState(documentId.trim()), loadDocumentDetail(documentId.trim())]);
+      await loadDocuments();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onDeleteSelectedDocument() {
+    if (!documentId || busy !== "") return;
+    const label = selectedDocumentDetail?.title || selectedDocument?.title || "selected document";
+    const confirmed = window.confirm(`Remove "${label}" from NIRMIQ? This clears local indexes, chunks, exam data, and diagram metadata for this document.`);
+    if (!confirmed) return;
+    setBusy("delete");
+    setError("");
+    try {
+      await deleteDocument(documentId);
+      setDocumentId("");
+      setSelectedDocumentDetail(null);
+      setSelectedChunkId("");
+      setIngestStatus(null);
+      setIngestJobs(null);
+      setQuestionBankItems([]);
+      setDiagramAssets([]);
+      setExamProfile(null);
+      setQueryResult(null);
       await loadDocuments();
     } catch (err) {
       setError(String(err));
@@ -825,7 +853,7 @@ export default function Home() {
   }
 
   return (
-    <main className={cx("nirmiq-v2", showInspector && "inspector-open")}>
+    <main className={cx("nirmiq-v2", showLibrary && "library-open", showInspector && "inspector-open")}>
       <aside className="material-rail">
         <section className="identity-card">
           <p className="eyebrow">Local Research OS</p>
@@ -886,6 +914,16 @@ export default function Home() {
               Refresh
             </button>
           </div>
+          {selectedDocument ? (
+            <button
+              className="button danger"
+              disabled={busy !== "" || !documentId}
+              onClick={onDeleteSelectedDocument}
+              type="button"
+            >
+              {busy === "delete" ? "Removing..." : "Remove selected source"}
+            </button>
+          ) : null}
           <div className="material-list">
             {documents.length ? (
               documents.map((item) => (
@@ -944,6 +982,14 @@ export default function Home() {
               <span className="chip sage">{retrievalProfile}</span>
               <span className="chip">{sessionId}</span>
             </div>
+          </div>
+          <div className="top-actions">
+            <button className="button ghost" type="button" onClick={() => setShowLibrary((current) => !current)}>
+              {showLibrary ? "Hide Library" : "Library"}
+            </button>
+            <button className="button ghost" type="button" onClick={() => setShowInspector((current) => !current)}>
+              {showInspector ? "Hide Sources" : "Sources"}
+            </button>
           </div>
           <div className="mode-grid">
             {availableModes.map((mode) => (
@@ -1084,9 +1130,6 @@ export default function Home() {
                 <span className="chip">{latestCitations.length} evidence links</span>
               </div>
               <div className="chip-row" style={{ marginTop: 0 }}>
-                <button className="button ghost" type="button" onClick={() => setShowInspector((current) => !current)}>
-                  {showInspector ? "Hide Sources" : "Sources"}
-                </button>
                 <button className="button ghost" type="button" onClick={clearThread}>
                   Clear Thread
                 </button>

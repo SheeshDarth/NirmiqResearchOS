@@ -88,3 +88,10 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert len(timeline_body["messages"]) >= 2
         assert timeline_body["messages"][-1]["role"] == "assistant"
         assert timeline_body["messages"][-1]["retrieval_meta"]["requested_retrieval_mode"] == "bm25"
+
+        delete_response = client.delete(f"/documents/{document_id}")
+        assert delete_response.status_code == 200
+        assert delete_response.json() == {"document_id": document_id, "deleted": True}
+
+        missing_detail = client.get(f"/documents/{document_id}")
+        assert missing_detail.status_code == 404

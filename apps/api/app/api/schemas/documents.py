@@ -14,6 +14,11 @@ class DocumentListResponse(BaseModel):
     items: list[DocumentItem]
 
 
+class DocumentDeleteResponse(BaseModel):
+    document_id: str
+    deleted: bool
+
+
 class DocumentChunkItem(BaseModel):
     id: str
     document_id: str
