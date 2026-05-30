@@ -874,10 +874,6 @@ Verification:
 
 - `npm run build`: passed.
 - Backend unit/integration suite: `8 passed`.
-- Live browser smoke test: page loads on `http://127.0.0.1:3002`, console has no errors, `Minimize` collapses the composer, `Open Search` restores it, Exam Lab shows `Custom PDF`, visible logo lockup measures correctly, and source cockpit remains compact.
-- Login/landing implementation was build-verified. The active browser was already locally unlocked, so the live landing screen was not forced during smoke testing to avoid disturbing the user's profile state.
-- Live browser smoke test: source cockpit visible, `Summarize PDF` visible/enabled, upload quick action visible, scroll remains enabled, no console errors.
-- Live end-to-end browser test: clicked `Summarize PDF`, received grounded document summary with 8 citations.
 
 ### Update: Compact Research Composer and Logo Alignment
 
@@ -953,3 +949,22 @@ Verification:
 
 - `npm run build`: passed.
 - Backend unit/integration suite: `8 passed`.
+
+### Latest Update: V3.1 Performance-Safe Motion Polish
+
+Date: 2026-05-30
+
+This is the latest completed work unit. A lightweight CSS-first motion system was added to make NIRMIQ feel smoother and more futuristic without adding new dependencies or heavy processor/GPU effects.
+
+Latest changes:
+
+- Added motion tokens, soft page boot, landing reveal, workspace underline scan, drawer slide-in, composer dock/minimized pill animation, assistant answer reveal, citation chip stagger, and one-time source-ready pulse.
+- Added visible focus states and `prefers-reduced-motion` safeguards.
+- Updated `UI_UX.md` with the motion direction and performance constraints.
+- Restarted the Next dev server after a stale hot-reload cache error; no `.next` deletion was required.
+
+Latest verification:
+
+- `npm run build`: passed.
+- Backend unit/integration suite: `8 passed`.
+- Live browser smoke test: page loads on `http://127.0.0.1:3002`, motion tokens are active, app boot/composer animations are active, source cockpit remains compact, `Minimize` is visible, and console has no errors.

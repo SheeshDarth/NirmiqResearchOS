@@ -8,6 +8,36 @@ Note: the requested filename `UI/UX.md` is represented as `UI_UX.md` because Win
 
 NIRMIQ should feel like a minimal, technical academic cockpit rather than a generic AI template. The current visual language is dark, calm, precise, and locally intelligent: black glass, cyan/teal evidence accents, compact controls, and strong typography.
 
+## Motion Direction
+
+The V3.1 motion layer should communicate intelligence and state, not decoration. Motion is CSS-first and dependency-free to avoid making the local app heavy on CPU/GPU.
+
+Allowed motion:
+
+- Soft page and landing reveal.
+- Workspace active-state underline scan.
+- Composer minimize/open settle.
+- Source drawer slide-in.
+- Citation chip stagger.
+- Assistant answer reveal.
+- One-time grounded/source-ready pulse.
+
+Avoided motion:
+
+- WebGL or canvas effects.
+- Particle systems.
+- Constantly moving gradients.
+- Heavy blur/backdrop filters.
+- Loud neon or multi-color animation.
+- JavaScript animation loops.
+
+Implementation rules:
+
+- Prefer `transform` and `opacity`.
+- Keep timings below roughly 700ms.
+- Use `prefers-reduced-motion` to disable motion for users who request it.
+- Keep the current graphite, teal, mint, and minimal amber palette.
+
 ## UX Principles
 
 - ChatGPT-like first: ask, upload, read, inspect sources.
@@ -51,6 +81,7 @@ NIRMIQ should feel like a minimal, technical academic cockpit rather than a gene
 - Must keep the send action visible.
 - Must not block response scrolling.
 - Must adapt placeholder and action label to the selected workspace.
+- Minimized composer should become a quiet command pill, not a blank collapsed area.
 
 ## Citations UX
 
@@ -83,4 +114,3 @@ NIRMIQ should feel like a minimal, technical academic cockpit rather than a gene
 - Split source reader for long papers.
 - Paper Lab templates: literature review, methodology, limitations, abstract.
 - Exam Lab templates: 2-mark, 5-mark, 10-mark, study guide, important questions.
-

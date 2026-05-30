@@ -26,6 +26,12 @@
   --radius-md: 12px;
   --radius-lg: 22px;
   --shadow-soft: 0 24px 70px rgba(0, 0, 0, 0.42);
+  --motion-fast: 140ms;
+  --motion-base: 210ms;
+  --motion-slow: 520ms;
+  --motion-curve: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-curve-exit: cubic-bezier(0.4, 0, 0.2, 1);
+  --glow-line: rgba(124, 247, 194, 0.42);
 }
 
 * {
@@ -57,6 +63,25 @@ button {
   color: inherit;
 }
 
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid rgba(124, 247, 194, 0.68);
+  outline-offset: 3px;
+}
+
 .nirmiq-v2 {
   position: relative;
   isolation: isolate;
@@ -69,6 +94,7 @@ button {
     radial-gradient(circle at 88% 8%, rgba(85, 199, 229, 0.1), transparent 30%),
     linear-gradient(120deg, rgba(238, 244, 241, 0.018), transparent 28%),
     var(--nirmiq-bg);
+  animation: appBoot var(--motion-slow) var(--motion-curve) both;
 }
 
 .nirmiq-v2.library-open {
@@ -113,14 +139,17 @@ button {
   background: linear-gradient(180deg, rgba(7, 8, 7, 0.9), rgba(15, 18, 15, 0.94));
   overflow: auto;
   padding: 16px;
+  will-change: transform, opacity;
 }
 
 .material-rail {
   border-right: 1px solid var(--nirmiq-border);
+  animation: railSlideLeft var(--motion-base) var(--motion-curve) both;
 }
 
 .deep-rail {
   border-left: 1px solid var(--nirmiq-border);
+  animation: railSlideRight var(--motion-base) var(--motion-curve) both;
 }
 
 .login-shell {
@@ -143,6 +172,7 @@ button {
     linear-gradient(135deg, rgba(238, 244, 241, 0.05), transparent 44%),
     rgba(8, 10, 13, 0.88);
   box-shadow: var(--shadow-soft);
+  animation: cardReveal 620ms var(--motion-curve) both;
 }
 
 .login-card.landing-card {
@@ -163,6 +193,7 @@ button {
   font-weight: 900;
   letter-spacing: -0.09em;
   line-height: 0.88;
+  animation: riseSoft 700ms var(--motion-curve) 80ms both;
 }
 
 .login-panel {
@@ -170,6 +201,7 @@ button {
   border-radius: 26px;
   padding: 18px;
   background: rgba(5, 6, 8, 0.62);
+  animation: riseSoft 720ms var(--motion-curve) 140ms both;
 }
 
 .login-panel h2 {
@@ -194,6 +226,7 @@ button {
     radial-gradient(circle, rgba(124, 247, 194, 0.42), rgba(85, 199, 229, 0.06) 34%, transparent 64%),
     rgba(13, 17, 23, 0.76);
   animation: orbitGlow 5s ease-in-out infinite;
+  will-change: transform;
 }
 
 .hero-orbit span,
@@ -391,6 +424,16 @@ button {
     linear-gradient(135deg, rgba(124, 247, 194, 0.14), rgba(85, 199, 229, 0.08)),
     rgba(5, 6, 8, 0.82);
   box-shadow: inset 0 0 18px rgba(124, 247, 194, 0.06);
+  transition:
+    border-color var(--motion-base) ease,
+    transform var(--motion-base) var(--motion-curve),
+    box-shadow var(--motion-base) ease;
+}
+
+.brand-lockup:hover .brand-mark {
+  border-color: rgba(124, 247, 194, 0.58);
+  box-shadow: inset 0 0 18px rgba(124, 247, 194, 0.08), 0 0 24px rgba(124, 247, 194, 0.06);
+  transform: translateY(-1px);
 }
 
 .brand-lockup.hero .brand-mark {
@@ -497,6 +540,10 @@ button {
   color: var(--nirmiq-text);
   outline: none;
   padding: 11px 12px;
+  transition:
+    border-color var(--motion-base) ease,
+    background var(--motion-base) ease,
+    box-shadow var(--motion-base) ease;
 }
 
 .textarea {
@@ -535,7 +582,11 @@ button {
   cursor: pointer;
   font-weight: 800;
   padding: 10px 12px;
-  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+  transition:
+    transform var(--motion-fast) var(--motion-curve),
+    border-color var(--motion-fast) ease,
+    background var(--motion-fast) ease,
+    opacity var(--motion-fast) ease;
 }
 
 .button:hover:not(:disabled) {
@@ -631,11 +682,21 @@ button {
   border-radius: 16px;
   padding: 12px;
   text-align: left;
+  transition:
+    border-color var(--motion-base) ease,
+    background var(--motion-base) ease,
+    transform var(--motion-fast) var(--motion-curve);
 }
 
 button.material-card,
 button.chunk-card {
   cursor: pointer;
+}
+
+button.material-card:hover,
+button.chunk-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(124, 247, 194, 0.26);
 }
 
 .material-card.active,
@@ -677,6 +738,7 @@ button.chunk-card {
   background:
     linear-gradient(180deg, rgba(5, 6, 8, 0.88), rgba(5, 6, 8, 0.28)),
     radial-gradient(circle at 20% 0%, rgba(124, 247, 194, 0.065), transparent 38%);
+  animation: headerDrop 460ms var(--motion-curve) both;
 }
 
 .thread-bar {
@@ -714,6 +776,7 @@ button.chunk-card {
 }
 
 .workspace-switcher {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -727,6 +790,8 @@ button.chunk-card {
 }
 
 .section-button {
+  position: relative;
+  z-index: 1;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -739,6 +804,14 @@ button.chunk-card {
   min-width: 0;
   padding: 7px 11px;
   text-align: center;
+  transition:
+    background var(--motion-base) ease,
+    color var(--motion-base) ease,
+    transform var(--motion-fast) var(--motion-curve);
+}
+
+.section-button:hover {
+  transform: translateY(-1px);
 }
 
 .section-button strong {
@@ -759,6 +832,18 @@ button.chunk-card {
     rgba(238, 244, 241, 0.06);
 }
 
+.section-button.active::after {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 4px;
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--glow-line), transparent);
+  animation: lineScan 620ms var(--motion-curve) both;
+}
+
 .mode-button {
   border: 1px solid var(--nirmiq-border);
   border-radius: 999px;
@@ -768,6 +853,16 @@ button.chunk-card {
   flex: 0 0 auto;
   padding: 7px 10px;
   text-align: center;
+  transition:
+    border-color var(--motion-base) ease,
+    background var(--motion-base) ease,
+    color var(--motion-base) ease,
+    transform var(--motion-fast) var(--motion-curve);
+}
+
+.mode-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(124, 247, 194, 0.28);
 }
 
 .mode-button .tiny {
@@ -794,6 +889,7 @@ button.chunk-card {
   place-content: center;
   gap: 18px;
   text-align: center;
+  animation: riseSoft 520ms var(--motion-curve) both;
 }
 
 .empty-state h2 {
@@ -821,6 +917,7 @@ button.chunk-card {
 .turn {
   display: grid;
   gap: 10px;
+  animation: turnReveal 360ms var(--motion-curve) both;
 }
 
 .bubble {
@@ -828,6 +925,14 @@ button.chunk-card {
   border: 1px solid var(--nirmiq-border);
   border-radius: 22px;
   padding: 16px 18px;
+  transition:
+    border-color var(--motion-base) ease,
+    background var(--motion-base) ease,
+    transform var(--motion-base) var(--motion-curve);
+}
+
+.bubble:hover {
+  border-color: rgba(238, 244, 241, 0.13);
 }
 
 .bubble.user {
@@ -842,6 +947,7 @@ button.chunk-card {
   justify-self: start;
   background: rgba(14, 16, 14, 0.68);
   border-bottom-left-radius: 6px;
+  animation: answerSettle 420ms var(--motion-curve) both;
 }
 
 .answer {
@@ -864,6 +970,9 @@ button.chunk-card {
     linear-gradient(135deg, rgba(109, 139, 116, 0.12), rgba(31, 78, 95, 0.1)),
     rgba(12, 15, 18, 0.44);
   overflow: hidden;
+  transition:
+    border-color var(--motion-base) ease,
+    background var(--motion-base) ease;
 }
 
 .guide-card summary {
@@ -916,12 +1025,45 @@ button.chunk-card {
   color: var(--nirmiq-accent-strong);
   background: rgba(184, 106, 60, 0.12);
   border-color: rgba(184, 106, 60, 0.32);
+  animation: chipReveal 260ms var(--motion-curve) both;
+  transition:
+    border-color var(--motion-fast) ease,
+    background var(--motion-fast) ease,
+    transform var(--motion-fast) var(--motion-curve);
+}
+
+.citation-chip:nth-child(2) {
+  animation-delay: 35ms;
+}
+
+.citation-chip:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.citation-chip:nth-child(4) {
+  animation-delay: 105ms;
+}
+
+.citation-chip:nth-child(5) {
+  animation-delay: 140ms;
+}
+
+.citation-chip:nth-child(6) {
+  animation-delay: 175ms;
+}
+
+.citation-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(124, 247, 194, 0.42);
 }
 
 .composer-wrap {
   padding: 8px min(5vw, 64px) 10px;
   border-top: 1px solid var(--nirmiq-border);
   background: linear-gradient(180deg, rgba(7, 8, 7, 0.12), rgba(7, 8, 7, 0.84));
+  transition:
+    padding var(--motion-base) var(--motion-curve),
+    background var(--motion-base) ease;
 }
 
 .composer-card {
@@ -929,9 +1071,15 @@ button.chunk-card {
   margin: 0 auto;
   border-radius: 20px;
   padding: 8px;
+  overflow: hidden;
   background:
     linear-gradient(135deg, rgba(238, 244, 241, 0.04), transparent 42%),
     rgba(8, 10, 13, 0.92);
+  animation: composerDock 420ms var(--motion-curve) both;
+  transition:
+    border-color var(--motion-base) ease,
+    background var(--motion-base) ease,
+    transform var(--motion-base) var(--motion-curve);
 }
 
 .file-input {
@@ -943,6 +1091,7 @@ button.chunk-card {
   grid-template-columns: 34px minmax(0, 1fr) 86px;
   align-items: end;
   gap: 7px;
+  animation: fadeIn var(--motion-base) var(--motion-curve) both;
 }
 
 .composer-card .textarea {
@@ -964,6 +1113,13 @@ button.chunk-card {
   background:
     linear-gradient(90deg, rgba(124, 247, 194, 0.055), transparent 54%),
     rgba(5, 6, 8, 0.56);
+  transition:
+    border-color var(--motion-base) ease,
+    background var(--motion-base) ease;
+}
+
+.source-cockpit:hover {
+  border-color: rgba(124, 247, 194, 0.14);
 }
 
 .source-status {
@@ -985,6 +1141,7 @@ button.chunk-card {
 .source-dot.ok {
   background: var(--nirmiq-accent);
   box-shadow: 0 0 0 4px rgba(124, 247, 194, 0.08);
+  animation: sourceReadyPulse 900ms var(--motion-curve) 1;
 }
 
 .source-label {
@@ -1041,6 +1198,16 @@ button.chunk-card {
   color: #05100d;
   background: linear-gradient(135deg, rgba(181, 255, 217, 0.96), rgba(85, 199, 229, 0.86));
   border-color: rgba(124, 247, 194, 0.54);
+  transition:
+    transform var(--motion-fast) var(--motion-curve),
+    border-color var(--motion-fast) ease,
+    filter var(--motion-fast) ease,
+    opacity var(--motion-fast) ease;
+}
+
+.quick-action:hover:not(:disabled) {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
 }
 
 .quick-action.ghost {
@@ -1067,7 +1234,10 @@ button.chunk-card {
   font-size: 20px;
   font-weight: 900;
   line-height: 1;
-  transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease;
+  transition:
+    border-color var(--motion-fast) ease,
+    background var(--motion-fast) ease,
+    transform var(--motion-fast) var(--motion-curve);
 }
 
 .send-button {
@@ -1079,6 +1249,15 @@ button.chunk-card {
   cursor: pointer;
   font-weight: 900;
   padding: 0 14px;
+  transition:
+    transform var(--motion-fast) var(--motion-curve),
+    filter var(--motion-fast) ease,
+    opacity var(--motion-fast) ease;
+}
+
+.send-button:hover:not(:disabled) {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
 }
 
 .send-button:disabled {
@@ -1135,12 +1314,29 @@ button.chunk-card {
 }
 
 .composer-minimized {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 4px;
+  border: 1px solid rgba(124, 247, 194, 0.13);
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: rgba(124, 247, 194, 0.045);
   color: var(--nirmiq-text-subtle);
   font-family: var(--font-mono);
   font-size: 10px;
   line-height: 1.45;
   text-transform: uppercase;
+  animation: compactDock 240ms var(--motion-curve) both;
+}
+
+.composer-minimized::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--nirmiq-accent);
+  box-shadow: 0 0 0 4px rgba(124, 247, 194, 0.07);
 }
 
 .composer-actions {
@@ -1200,6 +1396,15 @@ button.chunk-card {
 
 .tab {
   cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--motion-curve),
+    border-color var(--motion-fast) ease,
+    background var(--motion-fast) ease;
+}
+
+.tab:hover {
+  transform: translateY(-1px);
+  border-color: rgba(124, 247, 194, 0.32);
 }
 
 .panel {
@@ -1289,6 +1494,7 @@ button.chunk-card {
   padding: 12px 14px;
   transform: translateX(-50%);
   box-shadow: var(--shadow-soft);
+  animation: toastIn 240ms var(--motion-curve) both;
 }
 
 .client-boot {
@@ -1312,6 +1518,176 @@ button.chunk-card {
 .client-boot p:last-child {
   margin: 0;
   color: var(--nirmiq-text-muted);
+}
+
+@keyframes appBoot {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cardReveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes riseSoft {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes headerDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes railSlideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes railSlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes composerDock {
+  from {
+    opacity: 0.96;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes compactDock {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes turnReveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes answerSettle {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chipReveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lineScan {
+  from {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes sourceReadyPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(124, 247, 194, 0.24);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(124, 247, 194, 0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
 }
 
 @media (max-width: 1220px) {
