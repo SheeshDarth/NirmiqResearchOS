@@ -1,12 +1,14 @@
-# NIRMIQ ResearchOS
+# NIRMIQ Academic Intelligence System
 
-Offline-first adaptive AI research OS focused on grounded retrieval and low-VRAM local inference.
+![NIRMIQ Academic Intelligence System mark](apps/web/public/brand/nirmiq-ais-mark.svg)
 
-User-facing name: **NIRMIQ Academic Intelligence**.
+Offline-first adaptive academic intelligence system focused on grounded retrieval and low-VRAM local inference.
+
+Product name: **NIRMIQ Academic Intelligence System**.
 
 ## Current Status
 
-Phase 1 is complete, the student chat MVP is active, and the Version 2.0 Academic Intelligence Workspace is live:
+Phase 1 is complete, the student chat MVP is active, and the Version 2.0 Academic Intelligence System Workspace is live:
 - repository skeleton established
 - FastAPI backend layered by routers/services/adapters/domain
 - SQLite schema bootstrap wired
@@ -86,6 +88,16 @@ Current local review URL:
 ## Architecture
 
 See [docs/phase1_foundational_architecture.md](docs/phase1_foundational_architecture.md).
+
+## NIRMIQ Ecosystem
+
+See [docs/nirmiq_ecosystem.md](docs/nirmiq_ecosystem.md) for how this standalone Academic Intelligence System fits under the broader NIRMIQ umbrella.
+
+## Repository Rename Note
+
+Target GitHub repository name: `NirmiqAcademicIntelligenceSystem`.
+
+Current remote may still point to the previous repository URL until GitHub repository settings are renamed manually or GitHub CLI is available.
 
 ## Portfolio Impact Plan
 

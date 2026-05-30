@@ -18,8 +18,8 @@ After each meaningful project work unit:
 
 ## Product Identity
 
-- Repository/project: NIRMIQ ResearchOS.
-- User-facing name: NIRMIQ Academic Intelligence.
+- Repository/project: NIRMIQ Academic Intelligence System.
+- User-facing name: NIRMIQ Academic Intelligence System.
 - Positioning: local-first academic intelligence workspace for grounded research, chat, paper drafting, and exam preparation.
 
 ## Completed Phases

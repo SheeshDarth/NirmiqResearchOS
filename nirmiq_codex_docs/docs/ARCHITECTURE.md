@@ -1,4 +1,4 @@
-# Architecture — NIRMIQ ResearchOS
+# Architecture — NIRMIQ Academic Intelligence System
 
 ## Architecture Style
 
@@ -16,7 +16,7 @@ Why:
 ## Repository Structure
 
 ```text
-Nirmiq-researchOS/
+Nirmiq-Academic-Intelligence-System/
 ├─ apps/
 │  ├─ api/
 │  └─ web/

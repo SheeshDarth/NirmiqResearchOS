@@ -1,4 +1,4 @@
-# NIRMIQ Academic Intelligence: Internship Impact Plan
+# NIRMIQ Academic Intelligence System: Internship Impact Plan
 
 Last updated: 2026-05-30
 

@@ -1,4 +1,4 @@
-# Roadmap — NIRMIQ ResearchOS
+# Roadmap — NIRMIQ Academic Intelligence System
 
 ## Phase 1 — Foundation
 

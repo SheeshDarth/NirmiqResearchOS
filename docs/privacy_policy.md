@@ -1,10 +1,10 @@
-# NIRMIQ Academic Intelligence Privacy Policy
+# NIRMIQ Academic Intelligence System Privacy Policy
 
 Last updated: 2026-05-29
 
 ## Local-first privacy position
 
-NIRMIQ Academic Intelligence is designed as an offline-first academic intelligence workspace. In the current MVP, documents, chunks, sessions, memories, question banks, and diagram metadata are stored locally on the user's machine.
+NIRMIQ Academic Intelligence System is designed as an offline-first academic intelligence workspace. In the current MVP, documents, chunks, sessions, memories, question banks, and diagram metadata are stored locally on the user's machine.
 
 ## Data stored locally
 

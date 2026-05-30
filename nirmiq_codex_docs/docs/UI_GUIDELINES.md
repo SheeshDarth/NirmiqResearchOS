@@ -1,8 +1,8 @@
-# UI Guidelines — NIRMIQ ResearchOS
+# UI Guidelines — NIRMIQ Academic Intelligence System
 
 ## Theme Name
 
-Academic Intelligence Workspace
+Academic Intelligence System Workspace
 
 ## Product Feeling
 

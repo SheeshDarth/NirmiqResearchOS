@@ -1,4 +1,4 @@
-# Data Model — NIRMIQ ResearchOS
+# Data Model — NIRMIQ Academic Intelligence System
 
 ## SQLite Tables
 

@@ -1,4 +1,4 @@
-# Model Routing — NIRMIQ ResearchOS
+# Model Routing — NIRMIQ Academic Intelligence System
 
 ## Goal
 

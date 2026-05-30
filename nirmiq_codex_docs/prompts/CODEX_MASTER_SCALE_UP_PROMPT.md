@@ -1,4 +1,4 @@
-# Codex Master Scale-Up Prompt — NIRMIQ ResearchOS
+# Codex Master Scale-Up Prompt — NIRMIQ Academic Intelligence System
 
 ## System Role
 
@@ -22,7 +22,7 @@ You must preserve the current Phase 1 architecture unless a change clearly impro
 
 ## Project
 
-NIRMIQ ResearchOS
+NIRMIQ Academic Intelligence System
 
 A student-first document intelligence chatbot.
 
@@ -132,7 +132,7 @@ Primary use cases:
 ## UI Theme
 
 Use:
-Academic Intelligence Workspace
+Academic Intelligence System Workspace
 
 Visual direction:
 - study command center

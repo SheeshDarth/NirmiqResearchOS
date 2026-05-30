@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -87,10 +87,10 @@ type GuideCard = {
   body: string[];
 };
 
-const DEFAULT_SOURCE_PATH = "C:\\Nirmiq-researchOS\\data\\raw\\attention_is_all_you_need.pdf";
+const DEFAULT_SOURCE_PATH = "C:\\Nirmiq-Academic Intelligence System\\data\\raw\\attention_is_all_you_need.pdf";
 const PRODUCT_NAME = "NIRMIQ";
-const PRODUCT_TAGLINE = "Academic Intelligence";
-const PRODUCT_DESCRIPTION = "Private research chat for documents, citations, papers, and exams.";
+const PRODUCT_TAGLINE = "Academic Intelligence System";
+const PRODUCT_DESCRIPTION = "Private academic intelligence for documents, citations, papers, and exams.";
 
 const WORKSPACE_SECTIONS: Array<{
   value: WorkspaceSection;
@@ -384,7 +384,7 @@ function LocalLogin({
           <div className="landing-copy">
             <div className="brand-lockup hero">
               <div className="brand-mark" aria-hidden="true">
-                <img alt="" src="/brand/nirmiq-mark.png" />
+                <img alt="" src="/brand/nirmiq-ais-mark.svg" />
               </div>
               <div>
                 <strong>{PRODUCT_NAME}</strong>
@@ -1076,7 +1076,7 @@ export default function Home() {
         <section className="identity-card">
           <div className="brand-lockup">
             <div className="brand-mark" aria-hidden="true">
-              <img alt="" src="/brand/nirmiq-mark.png" />
+              <img alt="" src="/brand/nirmiq-ais-mark.svg" />
             </div>
             <div>
               <strong>{PRODUCT_NAME}</strong>
@@ -1189,7 +1189,7 @@ export default function Home() {
           <div className="thread-bar">
             <div className="brand-lockup app">
               <div className="brand-mark" aria-hidden="true">
-                <img alt="" src="/brand/nirmiq-mark.png" />
+                <img alt="" src="/brand/nirmiq-ais-mark.svg" />
               </div>
               <div>
                 <strong>{PRODUCT_NAME}</strong>

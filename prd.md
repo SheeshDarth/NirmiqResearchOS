@@ -4,7 +4,11 @@ Last updated: 2026-05-30
 
 ## Product Name
 
-NIRMIQ Academic Intelligence
+NIRMIQ Academic Intelligence System
+
+## Ecosystem Context
+
+NIRMIQ Academic Intelligence System is one standalone product under the broader NIRMIQ umbrella. The wider ecosystem may include NIRMIQ OS, NIRMIQ Mirror, NIRMIQ Intelligence Engine, NIRMIQ Agent System, NIRMIQ Research Assistant, and NIRMIQ Echo. This product must still work independently for users who only want academic document intelligence.
 
 ## One-Line Promise
 
@@ -54,7 +58,7 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 
 ### First Run
 
-1. User sees NIRMIQ Academic Intelligence landing screen.
+1. User sees NIRMIQ Academic Intelligence System landing screen.
 2. User enters name plus email or phone.
 3. User chooses a workspace: Research, Chat, Paper Lab, or Exam Lab.
 4. User uploads or selects a document.
@@ -109,4 +113,3 @@ NIRMIQ is not a generic upload-and-chat clone. It is a local academic intelligen
 - Exam Lab answer templates by marks and diagram-aware study guides.
 - Local data purge/export controls.
 - Streaming answers after synthesis reliability is stable.
-

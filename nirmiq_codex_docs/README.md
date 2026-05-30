@@ -1,4 +1,4 @@
-# NIRMIQ ResearchOS
+# NIRMIQ Academic Intelligence System
 
 Student-first document intelligence chatbot.
 
@@ -29,7 +29,7 @@ See:
 
 ## Design Language
 
-Academic Intelligence Workspace.
+Academic Intelligence System Workspace.
 
 See:
 - docs/UI_GUIDELINES.md

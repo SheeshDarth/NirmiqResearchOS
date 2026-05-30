@@ -1,4 +1,4 @@
-# Security and Privacy — NIRMIQ ResearchOS
+# Security and Privacy — NIRMIQ Academic Intelligence System
 
 ## Privacy Principle
 

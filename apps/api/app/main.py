@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
-        title="NIRMIQ ResearchOS API",
+        title="NIRMIQ Academic Intelligence System API",
         version="0.1.0",
         lifespan=lifespan,
     )

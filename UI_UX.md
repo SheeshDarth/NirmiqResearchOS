@@ -8,6 +8,8 @@ Note: the requested filename `UI/UX.md` is represented as `UI_UX.md` because Win
 
 NIRMIQ should feel like a minimal, technical academic cockpit rather than a generic AI template. The current visual language is dark, calm, precise, and locally intelligent: black glass, cyan/teal evidence accents, compact controls, and strong typography.
 
+The logo direction is a restrained academic-intelligence mark: geometric, local-first, memory/network inspired, and compatible with the future NIRMIQ ecosystem without making this product look dependent on the rest of the suite.
+
 ## Motion Direction
 
 The V3.1 motion layer should communicate intelligence and state, not decoration. Motion is CSS-first and dependency-free to avoid making the local app heavy on CPU/GPU.
@@ -51,7 +53,7 @@ Implementation rules:
 
 ### Landing/Login
 
-- Hero headline: NIRMIQ Academic Intelligence.
+- Hero headline: NIRMIQ Academic Intelligence System.
 - Brief value proposition: local grounded academic assistant for papers, notes, textbooks, and question banks.
 - Captivating start animation: orbit-style mark animation around the NIRMIQ identity.
 - Login fields: name, email, phone.

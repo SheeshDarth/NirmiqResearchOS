@@ -1,16 +1,17 @@
-﻿# NIRMIQ ResearchOS Context
+# NIRMIQ Academic Intelligence System Context
 
-Last updated: 2026-05-29
+Last updated: 2026-05-30
 Current branch: `v3-foundation`
-Repository: `https://github.com/SheeshDarth/NirmiqResearchOS`
+Repository target: `https://github.com/SheeshDarth/NirmiqAcademicIntelligenceSystem`
+Current git remote may still point to the previous URL until the GitHub repository itself is renamed.
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
 ## Project Metadata
 
-Project name: NIRMIQ ResearchOS
-Project type: Offline-first adaptive AI research operating system
+Project name: NIRMIQ Academic Intelligence System
+Project type: Offline-first adaptive academic intelligence system
 Owner/developer: Siddharth / SheeshDarth
 Target user: Solo local-first researcher/student/developer
 Target machine: RTX 4050 laptop class hardware
@@ -19,7 +20,7 @@ Stable baseline branch: `main`
 
 ## Product Direction
 
-NIRMIQ ResearchOS is a local-first document intelligence workspace for:
+NIRMIQ Academic Intelligence System is a local-first document intelligence workspace for:
 
 - Research over uploaded documents.
 - General local-first chatbot behavior with abstention when no evidence exists.
@@ -236,7 +237,7 @@ Latest verified commands before this context file:
 - API health endpoint: OK in previous verification.
 - Web app at `http://127.0.0.1:3002/`: returned 200 in previous verification.
 - Browser smoke test after UI refinement:
-  - `Local Research OS` visible.
+  - `Local Academic Intelligence System` visible.
   - `Source Vault` visible.
   - No bad encoding artifacts detected.
   - No Next runtime error detected.
@@ -710,26 +711,26 @@ Verification:
 - Web endpoint on port 3002: OK.
 - Browser smoke test: default chat shell visible, Library drawer opens, Remove selected source appears, Daily Stoic absent, no console errors.
 
-### Update: Minimal NIRMIQ Academic Intelligence UI Pass
+### Update: Minimal NIRMIQ Academic Intelligence System UI Pass
 
 Date: 2026-05-30
 
-This update refined the user-facing product direction from a dashboard-like research OS toward a minimal, technical, ChatGPT-like workspace:
+This update refined the user-facing product direction from a dashboard-like Academic Intelligence System toward a minimal, technical, ChatGPT-like workspace:
 
-- Chose `NIRMIQ Academic Intelligence` as the user-facing name while keeping ResearchOS as the project/system codename.
+- Chose `NIRMIQ Academic Intelligence System` as the product name and retired the previous project codename for this repository.
 - Added a reusable NIRMIQ brand lockup and simple placeholder `N` mark for the future logo.
 - Simplified the login page headline and value proposition.
 - Reworked the chat header into a compact app bar with brand, workspace switcher, and Library/Sources toggles.
 - Hid session/retrieval/profile controls inside a `Tuning` disclosure in the composer.
 - Shifted the visual language to a darker technical palette with phosphor green/cyan accents.
 - Fixed responsive behavior so the Library is not reserved when closed and the workspace switcher remains horizontal on narrow screens.
-- Updated browser metadata plus public/legal docs to use `NIRMIQ Academic Intelligence`.
+- Updated browser metadata plus public/legal docs to use `NIRMIQ Academic Intelligence System`.
 
 Verification:
 
 - `npm run build`: passed.
 - Local web dev server on port 3002 restarted successfully.
-- Browser smoke test: `NIRMIQ Academic Intelligence` title visible, Tuning disclosure exists, workspace switcher is horizontal, Daily Stoic absent, no console errors.
+- Browser smoke test: `NIRMIQ Academic Intelligence System` title visible, Tuning disclosure exists, workspace switcher is horizontal, Daily Stoic absent, no console errors.
 
 ### Update: NIRMIQ Logo Selection and App Branding
 
@@ -913,7 +914,7 @@ This update continued the V3 direction: make NIRMIQ feel closer to ChatGPT in da
 
 Product/UX changes:
 
-- Reworked the local entry screen into a stronger NIRMIQ Academic Intelligence landing page.
+- Reworked the local entry screen into a stronger NIRMIQ Academic Intelligence System landing page.
 - Added a compact animated hero/orbit visual to make the first screen feel intentional without adding heavy dependencies.
 - Added local profile fields for name, email, and phone.
 - Kept login local-only for now; this is a profile/personalization gate, not real hosted authentication yet.
@@ -968,3 +969,30 @@ Latest verification:
 - `npm run build`: passed.
 - Backend unit/integration suite: `8 passed`.
 - Live browser smoke test: page loads on `http://127.0.0.1:3002`, motion tokens are active, app boot/composer animations are active, source cockpit remains compact, `Minimize` is visible, and console has no errors.
+
+### Latest Update: NIRMIQ Academic Intelligence System Brand Migration
+
+Date: 2026-05-30
+
+This update migrated the repository identity away from the previous project name and toward **NIRMIQ Academic Intelligence System** as the standalone academic product under the broader NIRMIQ ecosystem.
+
+Changes:
+
+- Created a custom vector logo at `apps/web/public/brand/nirmiq-ais-mark.svg`.
+- Updated the Next.js app metadata, favicon path, visible UI tagline, API title, backend package description, and web package name.
+- Updated README, PRD, TRD, UI/UX, legal docs, architecture docs, Codex docs, and context docs to use the new product name.
+- Added `docs/nirmiq_ecosystem.md` to explain NIRMIQ OS, Mirror, Intelligence Engine, Agent System, Academic Intelligence System, and Echo.
+- Preserved actual local paths such as `C:\Nirmiq-researchOS` so the current workspace keeps running.
+- Recorded the target GitHub repository slug: `NirmiqAcademicIntelligenceSystem`.
+
+Notes:
+
+- GitHub CLI is not installed in the current environment, so the remote repository could not be renamed from the terminal during this update.
+- The current git remote should remain usable until the GitHub repository is renamed manually or via GitHub CLI.
+
+Verification:
+
+- `npm run build`: passed.
+- Backend unit/integration suite: `8 passed`.
+- Local web server restarted successfully on `http://127.0.0.1:3002`.
+- Browser smoke test: page title is `NIRMIQ Academic Intelligence System`, visible tagline is `ACADEMIC INTELLIGENCE SYSTEM`, visible logo uses `/brand/nirmiq-ais-mark.svg`, no visible ResearchOS branding in the app shell, and console has no errors.
