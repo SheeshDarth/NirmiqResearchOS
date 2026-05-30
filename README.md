@@ -2,6 +2,8 @@
 
 Offline-first adaptive AI research OS focused on grounded retrieval and low-VRAM local inference.
 
+User-facing name: **NIRMIQ Academic Intelligence**.
+
 ## Current Status
 
 Phase 1 is complete, the student chat MVP is active, and the Version 2.0 Academic Intelligence Workspace is live:
@@ -18,7 +20,10 @@ Phase 1 is complete, the student chat MVP is active, and the Version 2.0 Academi
 - Phase 3 quality pass is active with citation excerpts, source scores, answer diff visibility, and retrieval diversity tuning
 - Phase 4 grounding pass is active with score-aware synthesis metadata and a compact grounding summary badge in the query panel
 - retrieval profiles are available: `fast`, `balanced`, `precision`
-- study modes are available: `research`, `exam_answer`, `revision_notes`, `important_questions`, `compare_concepts`
+- study modes are available: `research`, `summary`, `deep_research`, `general_chat`, `research_paper`, `exam_answer`, `revision_notes`, `important_questions`, `compare_concepts`, `study_guide`
+- ChatGPT-like upload is available from the composer for PDFs, text, Markdown, and image files
+- broad PDF summary prompts such as "Explain the PDF" are routed through grounded summary mode
+- parsed PDF pages are cached by content hash for faster repeated local reindexing
 - tests use isolated temporary SQLite/Chroma paths so local user documents are not polluted by fixtures
 
 ## Quick Start (Scaffold)
@@ -81,3 +86,7 @@ Current local review URL:
 ## Architecture
 
 See [docs/phase1_foundational_architecture.md](docs/phase1_foundational_architecture.md).
+
+## Portfolio Impact Plan
+
+See [docs/internship_impact_plan.md](docs/internship_impact_plan.md) for the project positioning, technical differentiators, demo script, metrics, and roadmap.

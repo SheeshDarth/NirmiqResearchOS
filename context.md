@@ -812,3 +812,38 @@ Verification:
 - `python -m compileall apps/api/app`: passed.
 - Live smoke test: `Explain the pdf` against `Attention Is All You Need` returned a grounded summary with 8 citations.
 - Browser smoke test: `Summarize` mode visible, attachment button visible, Daily Stoic absent, no console errors.
+
+### Update: Internship Impact Plan and Parsed PDF Cache
+
+Date: 2026-05-30
+
+This update moved the project further toward a portfolio/internship-ready academic intelligence system instead of a generic RAG chatbot.
+
+Planning and positioning:
+
+- Added `docs/internship_impact_plan.md`.
+- Defined NIRMIQ as a local-first academic intelligence workspace for document understanding, citation-backed synthesis, engineering paper drafting, exam preparation, and retrieval evaluation.
+- Added a project differentiator narrative: not just upload-and-chat, but explainable evidence, abstention, paper workflows, exam workflows, local hardware constraints, and measurable retrieval quality.
+- Added a demo script, sprint roadmap, performance strategy, retrieval-quality strategy, and metrics to show in interviews.
+- Updated `README.md` to point to the impact plan and reflect current V3 capabilities.
+
+Performance optimization:
+
+- Added parsed-PDF page caching by content hash.
+- Added `PARSE_CACHE_PATH` setting with default `data/cache/parsed_pages`.
+- Wired `PyMuPDFParser(cache_root=...)` through the app container.
+- The cache stores cleaned page text as local JSON and safely falls back to normal parsing if cache read/write fails.
+- Added isolated test cache path for test runs.
+- Added unit test coverage proving the parser reuses the cache for repeated parses of the same PDF content.
+
+Why it matters:
+
+- Faster repeated reindexing during demos, evaluation, and local experimentation.
+- Better RTX 4050/local-laptop experience because less time is wasted reparsing unchanged PDFs.
+- Stronger engineering story: measurable local performance improvement without adding infrastructure.
+
+Verification:
+
+- Backend unit/integration suite: `8 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.

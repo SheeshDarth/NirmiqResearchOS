@@ -78,7 +78,7 @@ class AppContainer:
             max_context_tokens=settings.retrieval_max_context_tokens,
             min_grounding_score=settings.retrieval_min_grounding_score,
         )
-        parser = PyMuPDFParser()
+        parser = PyMuPDFParser(cache_root=settings.parse_cache_path)
         ocr = TesseractOCR()
         indexing_service = IndexingService(
             sqlite_repo=sqlite_repo,
