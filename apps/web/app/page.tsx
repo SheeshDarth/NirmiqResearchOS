@@ -1242,6 +1242,9 @@ export default function Home() {
                     : `Ask in ${currentMode.label} mode...`
                 }
               />
+              <button className="send-button" disabled={!canQuery || busy !== ""} type="submit">
+                {busy === "query" ? "Reading" : "Ask"}
+              </button>
             </div>
             <details className="composer-settings">
               <summary>
@@ -1288,11 +1291,8 @@ export default function Home() {
                   : "Answers stay grounded in the selected source when evidence is available."}
               </p>
               <div className="chip-row" style={{ marginTop: 0 }}>
-                <button className="button ghost" type="button" onClick={clearThread}>
+                <button className="clear-link" type="button" onClick={clearThread}>
                   Clear Thread
-                </button>
-                <button className="button primary" disabled={!canQuery || busy !== ""} type="submit">
-                  {busy === "query" ? "Reading sources..." : "Ask NIRMIQ"}
                 </button>
               </div>
             </div>

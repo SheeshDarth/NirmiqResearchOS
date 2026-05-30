@@ -876,3 +876,33 @@ Verification:
 - Backend unit/integration suite: `8 passed`.
 - Live browser smoke test: source cockpit visible, `Summarize PDF` visible/enabled, upload quick action visible, scroll remains enabled, no console errors.
 - Live end-to-end browser test: clicked `Summarize PDF`, received grounded document summary with 8 citations.
+
+### Update: Compact Research Composer and Logo Alignment
+
+Date: 2026-05-30
+
+This update fixed the issue where the query/composer box consumed too much vertical space and made research responses hard to read.
+
+Changes:
+
+- Reduced composer padding and card height.
+- Made the source cockpit a compact single-line command strip.
+- Reduced textarea height for research-style querying.
+- Moved the primary `Ask` button into the input row.
+- Converted `Clear Thread` into a compact text action.
+- Hid the composer hint by default to prioritize response visibility.
+- Tightened top header spacing.
+- Adjusted NIRMIQ logo sizing and lockup alignment in the app header.
+
+Measured result in browser:
+
+- Composer height reduced from approximately `279px` to approximately `173px`.
+- Response scroll area increased from approximately `292px` to approximately `397px` on the tested viewport.
+- Source cockpit reduced to approximately `38px` height.
+- Logo lockup is centered with a `42px` mark height.
+
+Verification:
+
+- `npm run build`: passed.
+- Backend unit/integration suite: `8 passed`.
+- Live browser smoke test: compact composer visible, `Ask` button in input row, scroll remains enabled, logo aligned, no console errors.
