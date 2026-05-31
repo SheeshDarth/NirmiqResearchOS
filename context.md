@@ -996,3 +996,38 @@ Verification:
 - Backend unit/integration suite: `8 passed`.
 - Local web server restarted successfully on `http://127.0.0.1:3002`.
 - Browser smoke test: page title is `NIRMIQ Academic Intelligence System`, visible tagline is `ACADEMIC INTELLIGENCE SYSTEM`, visible logo uses `/brand/nirmiq-ais-mark.svg`, no visible ResearchOS branding in the app shell, and console has no errors.
+
+### Latest Update: Accuracy and Remote Codex Audit
+
+Date: 2026-05-31
+
+This update started a reliability sprint focused on retrieval precision, hallucination resistance, and remote Codex readiness.
+
+Research basis:
+
+- RAGAS for context relevance, faithfulness, and answer-quality evaluation dimensions.
+- ARES for automated RAG evaluation around context relevance, answer faithfulness, and answer relevance.
+- Self-RAG and chain-of-verification patterns for retrieve/generate/critique and claim verification.
+- Official OpenAI Codex docs for local CLI, Codex web/GitHub, mobile/remote continuity, and workspace controls.
+
+Implemented:
+
+- Added deterministic cited-claim verification in `SynthesisService`.
+- Unsupported cited claims now trigger a safe extractive fallback rewrite instead of allowing unsupported fluent output through.
+- Added retrieval metadata for `citation_verification_state`, checked claim count, unsupported claims, original unsupported claims, and rewrite status.
+- Added UI answer-card badges for citation verification and faithfulness rewrites.
+- Added unit tests for supported and unsupported cited generations.
+- Added `docs/accuracy_precision_audit.md`.
+- Added `docs/remote_codex_access.md`.
+
+Known limitation:
+
+- The current verifier is lexical and local-first. It is intentionally cheap and deterministic, but not a full semantic entailment model.
+
+Verification:
+
+- Backend unit/integration suite: `10 passed`.
+- `npm run build`: passed.
+- `python -m compileall apps/api/app`: passed.
+- Local web server restarted successfully on `http://127.0.0.1:3002`.
+- Browser smoke test: NIRMIQ Academic Intelligence System UI loads, workspace tabs are visible, no old ResearchOS branding appears in the app shell, and console has no errors.

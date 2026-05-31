@@ -252,6 +252,16 @@ function getGroundingLabel(response: QueryResponse | null): string {
   return "Weak";
 }
 
+function getVerificationBadge(response: QueryResponse | null): { label: string; className: string } | null {
+  const state = response?.retrieval_meta?.citation_verification_state;
+  const rewritten = response?.retrieval_meta?.answer_rewritten_for_faithfulness === true;
+  if (rewritten) return { label: "rewritten for faithfulness", className: "copper" };
+  if (state === "supported") return { label: "citations verified", className: "sage" };
+  if (state === "unsupported") return { label: "citation review", className: "copper" };
+  if (state === "unchecked") return { label: "extractive check", className: "" };
+  return null;
+}
+
 function splitAnswerUnits(value: string): string[] {
   return value
     .split(/(?<=[.!?])\s+|\n+/)
@@ -1266,9 +1276,16 @@ export default function Home() {
                   <div className="bubble assistant">
                     <div className="message-meta">
                       <span className="tiny">NIRMIQ / {formatDate(run.timestamp)}</span>
-                      <span className={cx("chip", run.response.grounded ? "sage" : "copper")}>
-                        {run.response.grounded ? "grounded" : "review"} / {run.response.citations.length} citations
-                      </span>
+                      <div className="meta-chip-row">
+                        <span className={cx("chip", run.response.grounded ? "sage" : "copper")}>
+                          {run.response.grounded ? "grounded" : "review"} / {run.response.citations.length} citations
+                        </span>
+                        {getVerificationBadge(run.response) ? (
+                          <span className={cx("chip", getVerificationBadge(run.response)?.className)}>
+                            {getVerificationBadge(run.response)?.label}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     {run.mode === "study_guide" ? (
                       <StudyGuideAnswer answer={run.response.answer} />

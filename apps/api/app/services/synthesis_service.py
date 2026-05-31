@@ -35,6 +35,47 @@ _QUERY_STOPWORDS = {
     "with",
 }
 
+_CLAIM_STOPWORDS = _QUERY_STOPWORDS | {
+    "also",
+    "as",
+    "at",
+    "be",
+    "been",
+    "being",
+    "by",
+    "can",
+    "could",
+    "does",
+    "did",
+    "do",
+    "has",
+    "have",
+    "had",
+    "if",
+    "into",
+    "its",
+    "may",
+    "more",
+    "not",
+    "only",
+    "or",
+    "other",
+    "should",
+    "such",
+    "than",
+    "that",
+    "their",
+    "these",
+    "they",
+    "through",
+    "use",
+    "using",
+    "was",
+    "were",
+    "will",
+    "would",
+}
+
 
 class SynthesisService:
     def __init__(self, settings: Settings, policy: RetrievalPolicy, generator: Generator) -> None:
@@ -94,6 +135,23 @@ class SynthesisService:
         elif not self._contains_citation_anchor(generated):
             generated = generated.rstrip() + "\n\nSources: [1]"
 
+        verification = self._verify_cited_claims(generated, selected)
+        answer_rewritten = False
+        if self._should_rewrite_for_faithfulness(verification):
+            generated = self._fallback_answer(
+                query=query,
+                context_chunks=selected,
+                response_mode=response_mode,
+                exam_context=exam_context,
+            )
+            fallback_verification = self._verify_cited_claims(generated, selected)
+            verification = {
+                **fallback_verification,
+                "original_unsupported_claims": verification["unsupported_claims"],
+                "original_cited_claims_checked": verification["cited_claims_checked"],
+            }
+            answer_rewritten = True
+
         meta = {
             "generation_backend": self._generator.last_backend,
             "grounding_score": top_grounding_score,
@@ -107,6 +165,12 @@ class SynthesisService:
             "exam_context_used": bool(
                 exam_context and (exam_context.get("questions") or exam_context.get("diagrams"))
             ),
+            "citation_verification_state": verification["state"],
+            "cited_claims_checked": verification["cited_claims_checked"],
+            "unsupported_claims": verification["unsupported_claims"],
+            "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
+            "original_unsupported_claims": verification.get("original_unsupported_claims", []),
+            "answer_rewritten_for_faithfulness": answer_rewritten,
         }
         return (generated, True, meta)
 
@@ -476,6 +540,87 @@ class SynthesisService:
     @staticmethod
     def _contains_citation_anchor(text: str) -> bool:
         return bool(re.search(r"\[\d+\]", text))
+
+    @staticmethod
+    def _verify_cited_claims(answer: str, context_chunks: list[tuple[int, str]]) -> dict[str, object]:
+        context_by_anchor = {
+            idx: SynthesisService._context_text(block).lower()
+            for idx, block in context_chunks
+        }
+        normalized_answer = re.sub(r"([.!?])\s+((?:\[\d+\]\s*)+)", r" \2\1", answer)
+        checked = 0
+        unsupported: list[dict[str, object]] = []
+        for sentence in SynthesisService._split_sentences(normalized_answer):
+            anchors = {
+                int(match)
+                for match in re.findall(r"\[(\d+)\]", sentence)
+                if int(match) in context_by_anchor
+            }
+            if not anchors:
+                continue
+            claim_terms = SynthesisService._claim_terms(sentence)
+            if len(claim_terms) < 3:
+                continue
+            checked += 1
+            support_scores = [
+                SynthesisService._claim_support_score(claim_terms, context_by_anchor[anchor])
+                for anchor in anchors
+            ]
+            best_score = max(support_scores) if support_scores else 0.0
+            matched_terms = int(round(best_score * len(claim_terms)))
+            if best_score < 0.35 and matched_terms < 3:
+                unsupported.append(
+                    {
+                        "claim": re.sub(r"\s+", " ", sentence).strip()[:220],
+                        "anchors": sorted(anchors),
+                        "support_score": round(best_score, 3),
+                    }
+                )
+        if checked == 0:
+            state = "unchecked"
+        elif unsupported:
+            state = "unsupported"
+        else:
+            state = "supported"
+        return {
+            "state": state,
+            "cited_claims_checked": checked,
+            "unsupported_claims": unsupported,
+        }
+
+    @staticmethod
+    def _should_rewrite_for_faithfulness(verification: dict[str, object]) -> bool:
+        unsupported = verification.get("unsupported_claims")
+        checked = int(verification.get("cited_claims_checked") or 0)
+        if not isinstance(unsupported, list) or checked <= 0:
+            return False
+        if len(unsupported) >= 2:
+            return True
+        return len(unsupported) == 1 and checked <= 2
+
+    @staticmethod
+    def _claim_terms(sentence: str) -> set[str]:
+        cleaned = re.sub(r"\[\d+\]", " ", sentence.lower())
+        return {
+            token
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9]{3,}", cleaned)
+            if token not in _CLAIM_STOPWORDS
+        }
+
+    @staticmethod
+    def _claim_support_score(claim_terms: set[str], context_text: str) -> float:
+        if not claim_terms:
+            return 1.0
+        context_terms = set(re.findall(r"[a-zA-Z][a-zA-Z0-9]{3,}", context_text.lower()))
+        matches = 0
+        for term in claim_terms:
+            if term in context_terms:
+                matches += 1
+                continue
+            stem = term[:6]
+            if len(stem) >= 5 and any(candidate.startswith(stem) for candidate in context_terms):
+                matches += 1
+        return matches / max(len(claim_terms), 1)
 
     @staticmethod
     def _is_document_overview_query(query: str, response_mode: str) -> bool:

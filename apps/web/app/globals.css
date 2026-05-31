@@ -1013,11 +1013,17 @@ button.chunk-card:hover {
 }
 
 .citation-row,
-.chip-row {
+.chip-row,
+.meta-chip-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.meta-chip-row {
+  justify-content: flex-end;
+  margin-top: 0;
 }
 
 .citation-chip {
