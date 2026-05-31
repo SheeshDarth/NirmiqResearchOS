@@ -26,6 +26,7 @@ data/processed/diagrams/*
 data/indexes/chroma/*
 !data/indexes/chroma/.gitkeep
 temp/
+tools/gh/
 *.log
 
 # Local brand reference exports; keep only curated public assets in Git.

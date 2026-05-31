@@ -86,3 +86,25 @@ git remote -v
 
 4. Use Codex Web/GitHub only for code and docs, not private uploaded corpora.
 
+## Local GitHub CLI Status
+
+System MSI install was blocked by a stuck Windows Installer process. A portable GitHub CLI was installed instead:
+
+```powershell
+C:\Nirmiq-researchOS\tools\gh\bin\gh.exe --version
+```
+
+The portable tool is intentionally ignored by Git via `tools/gh/`.
+
+Authentication still needs to be completed by the user:
+
+```powershell
+C:\Nirmiq-researchOS\tools\gh\bin\gh.exe auth login
+```
+
+After login, repository rename can be attempted with:
+
+```powershell
+C:\Nirmiq-researchOS\tools\gh\bin\gh.exe repo edit SheeshDarth/NirmiqResearchOS --rename NirmiqAcademicIntelligenceSystem
+git remote set-url origin https://github.com/SheeshDarth/NirmiqAcademicIntelligenceSystem.git
+```

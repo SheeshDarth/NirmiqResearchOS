@@ -1,4 +1,5 @@
 import hashlib
+import re
 from dataclasses import dataclass
 
 from app.adapters.llm.embedder import Embedder
@@ -48,6 +49,7 @@ class IndexingService:
         chunk_rows: list[dict[str, object]] = []
         for chunk in chunks:
             chunk_id = self._stable_chunk_id(document_id, index_version, chunk.chunk_index, chunk.text)
+            quality_score = self._chunk_quality_score(chunk.text)
             self._sqlite_repo.insert_document_chunk(
                 chunk_id=chunk_id,
                 document_id=document_id,
@@ -58,6 +60,7 @@ class IndexingService:
                 text=chunk.text,
                 token_count=len(chunk.text.split()),
                 chunk_hash=self._hash_text(chunk.text),
+                quality_score=quality_score,
             )
             chunk_rows.append(
                 {
@@ -66,6 +69,7 @@ class IndexingService:
                     "page_start": chunk.page_start,
                     "page_end": chunk.page_end,
                     "text": chunk.text,
+                    "quality_score": quality_score,
                 }
             )
         await self._chroma_repo.delete_document(document_id)
@@ -133,6 +137,30 @@ class IndexingService:
     def _normalize_text(text: str) -> str:
         lines = [line.strip() for line in text.splitlines()]
         return " ".join(line for line in lines if line)
+
+    @staticmethod
+    def _chunk_quality_score(text: str) -> float:
+        normalized = re.sub(r"\s+", " ", text).strip()
+        if not normalized:
+            return 0.0
+        chars = len(normalized)
+        alpha = sum(1 for char in normalized if char.isalpha())
+        digits = sum(1 for char in normalized if char.isdigit())
+        replacement = normalized.count("\ufffd") + normalized.count("□") + normalized.count("�")
+        symbols = sum(1 for char in normalized if not char.isalnum() and not char.isspace())
+        words = normalized.split()
+        unique_ratio = len({word.lower() for word in words}) / max(len(words), 1)
+        alpha_ratio = alpha / max(chars, 1)
+        symbol_ratio = symbols / max(chars, 1)
+        digit_ratio = digits / max(chars, 1)
+        short_penalty = 0.18 if len(words) < 35 else 0.0
+        repeated_penalty = 0.18 if unique_ratio < 0.38 else 0.0
+        reference_penalty = 0.18 if re.search(r"\b(references|bibliography)\b", normalized, re.I) else 0.0
+        noise_penalty = min(0.38, replacement * 0.04 + max(0.0, symbol_ratio - 0.08) * 1.8)
+        digit_penalty = min(0.18, max(0.0, digit_ratio - 0.16) * 0.8)
+        alpha_bonus = min(0.16, max(0.0, alpha_ratio - 0.48) * 0.35)
+        score = 0.78 + alpha_bonus - short_penalty - repeated_penalty - reference_penalty - noise_penalty - digit_penalty
+        return round(min(1.0, max(0.12, score)), 3)
 
     @staticmethod
     def _stable_chunk_id(

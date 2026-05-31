@@ -39,15 +39,17 @@ Remaining gap:
 
 - Current verifier is lexical and deterministic. It catches obvious drift but does not perform full semantic entailment.
 
-### 2. Chunk Quality Is Not Scored Yet
+### 2. Chunk Quality Needs Ongoing Tuning
 
 PDF parsing can produce headers, footers, broken glyphs, repeated boilerplate, references, or malformed chunks.
 
-Recommended next fix:
+Mitigation added:
 
-- Add chunk quality scoring at index time.
-- Penalize chunks with high symbol noise, repeated headers, low alphabetic ratio, or mostly references.
-- Store `quality_score` in SQLite and use it during retrieval ranking.
+- Added chunk quality scoring at index time.
+- Penalizes chunks with high symbol noise, replacement glyphs, repeated text, short text, reference-heavy text, and low readable alphabetic ratio.
+- Stores `quality_score` in SQLite.
+- Applies quality weighting during retrieval scoring.
+- Preserves a simple UI by not exposing another confusing control.
 
 ### 3. Retrieval Evaluation Dataset Is Still Thin
 
@@ -112,12 +114,12 @@ Recommended next fix:
   - `answer_rewritten_for_faithfulness`
   - `original_unsupported_claims`
 - Added answer-card badge for citation verification state.
+- Added chunk quality scoring and retrieval quality weighting.
 
 ## Next Implementation Order
 
-1. Add chunk quality scoring and retrieval ranking penalty.
-2. Add labeled evaluation dataset for NIRMIQ use cases.
-3. Add document summary cache.
-4. Add deterministic query intent router.
-5. Add citation coverage score.
-6. Add optional semantic entailment verifier only when local model latency is acceptable.
+1. Add labeled evaluation dataset for NIRMIQ use cases.
+2. Add document summary cache.
+3. Add deterministic query intent router.
+4. Add citation coverage score.
+5. Add optional semantic entailment verifier only when local model latency is acceptable.

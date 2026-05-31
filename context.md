@@ -1031,3 +1031,35 @@ Verification:
 - `python -m compileall apps/api/app`: passed.
 - Local web server restarted successfully on `http://127.0.0.1:3002`.
 - Browser smoke test: NIRMIQ Academic Intelligence System UI loads, workspace tabs are visible, no old ResearchOS branding appears in the app shell, and console has no errors.
+
+### Latest Update: Chunk Quality Scoring and Portable GitHub CLI
+
+Date: 2026-05-31
+
+This update improved retrieval precision without adding new UI complexity.
+
+Changes:
+
+- Added chunk quality scoring during indexing.
+- Stored `quality_score` on `document_chunks`.
+- Added SQLite migration logic for existing local databases.
+- Passed quality score into Chroma metadata when vector storage is available.
+- Applied quality weighting during retrieval scoring so noisy PDF/OCR chunks are less likely to dominate context.
+- Added retrieval metadata for average chunk quality and quality weighting.
+- Added unit tests for clean academic text and noisy PDF text.
+- Added `tools/gh/` to `.gitignore`.
+- Installed portable GitHub CLI at `C:\Nirmiq-researchOS\tools\gh\bin\gh.exe` because Winget/MSI system install was blocked by a stuck Windows Installer process.
+
+User impact:
+
+- The app stays simple. No new control is shown.
+- Retrieval should quietly prefer readable, useful chunks over malformed PDF extraction garbage.
+- GitHub CLI is available locally, but GitHub auth still needs user login.
+
+Verification:
+
+- Backend unit/integration suite: `12 passed`.
+- `npm run build`: passed.
+- `python -m compileall apps/api/app`: passed.
+- Portable GitHub CLI version check passed: `gh version 2.92.0`.
+- `gh auth status` confirms authentication is still pending.

@@ -46,6 +46,7 @@ class SQLiteRepo:
                     text TEXT NOT NULL,
                     token_count INTEGER NOT NULL,
                     chunk_hash TEXT NOT NULL,
+                    quality_score REAL NOT NULL DEFAULT 1.0,
                     is_active INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT NOT NULL,
                     FOREIGN KEY(document_id) REFERENCES documents(id)
@@ -135,6 +136,7 @@ class SQLiteRepo:
                 CREATE INDEX IF NOT EXISTS idx_diagram_assets_document ON diagram_assets(document_id);
                 """
             )
+            self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
 
     def insert_document(
         self,
@@ -210,7 +212,7 @@ class SQLiteRepo:
             rows = conn.execute(
                 f"""
                 SELECT id, document_id, index_version, chunk_index, page_start, page_end,
-                       text, token_count, chunk_hash, is_active, created_at
+                       text, token_count, chunk_hash, quality_score, is_active, created_at
                 FROM document_chunks
                 WHERE document_id = ? {active_filter}
                 ORDER BY chunk_index ASC, created_at ASC
@@ -323,16 +325,18 @@ class SQLiteRepo:
         text: str,
         token_count: int,
         chunk_hash: str,
+        quality_score: float = 1.0,
     ) -> None:
         now = self._utc_now()
         with self._connect() as conn:
+            self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
             conn.execute(
                 """
                 INSERT INTO document_chunks (
                     id, document_id, index_version, chunk_index, page_start, page_end,
-                    text, token_count, chunk_hash, is_active, created_at
+                    text, token_count, chunk_hash, quality_score, is_active, created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
                 """,
                 (
                     chunk_id,
@@ -344,6 +348,7 @@ class SQLiteRepo:
                     text,
                     token_count,
                     chunk_hash,
+                    quality_score,
                     now,
                 ),
             )
@@ -355,7 +360,7 @@ class SQLiteRepo:
         with self._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT id, document_id, page_start, page_end, text, token_count
+                SELECT id, document_id, page_start, page_end, text, token_count, quality_score
                 FROM document_chunks
                 WHERE is_active = 1
                 """
@@ -382,7 +387,7 @@ class SQLiteRepo:
         with self._connect() as conn:
             rows = conn.execute(
                 f"""
-                SELECT id, document_id, page_start, page_end, text, token_count
+                SELECT id, document_id, page_start, page_end, text, token_count, quality_score
                 FROM document_chunks
                 WHERE is_active = 1 {document_filter}
                 ORDER BY created_at DESC
@@ -398,7 +403,7 @@ class SQLiteRepo:
         with self._connect() as conn:
             rows = conn.execute(
                 f"""
-                SELECT id, document_id, page_start, page_end, text, token_count
+                SELECT id, document_id, page_start, page_end, text, token_count, quality_score
                 FROM document_chunks
                 WHERE id IN ({placeholders}) AND is_active = 1
                 """,
@@ -738,6 +743,15 @@ class SQLiteRepo:
     @staticmethod
     def _utc_now() -> str:
         return datetime.now(timezone.utc).isoformat()
+
+    @staticmethod
+    def _ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+        existing = {
+            str(row["name"])
+            for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        if column not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
     @staticmethod
     def _tokenize(text: str) -> list[str]:
