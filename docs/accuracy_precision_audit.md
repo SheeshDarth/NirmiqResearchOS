@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-05-31
+Last updated: 2026-06-02
 
 ## Research Basis
 
@@ -115,6 +115,20 @@ Recommended next fix:
   - `original_unsupported_claims`
 - Added answer-card badge for citation verification state.
 - Added chunk quality scoring and retrieval quality weighting.
+- Added adaptive generation temperature:
+  - Conservative factual mode uses `GENERATOR_TEMPERATURE_GROUNDED`.
+  - Long-context deep research, paper drafting, and study-guide synthesis can use `GENERATOR_TEMPERATURE_LONG_CONTEXT`.
+  - Citation verification still runs after generation, so higher-temperature long-form output is not trusted blindly.
+
+## Current Temperature Policy
+
+The user requested `0.8-0.9` for lengthy context. NIRMIQ applies that selectively instead of globally:
+
+- Summary, exam, factual lookup, and normal research stay low-temperature to reduce drift.
+- Long-context deep research, Paper Lab, and study-guide work can use `0.85` when enough evidence is retrieved.
+- Unsupported cited claims are rewritten to an extractive fallback.
+
+This keeps long answers less flat while preserving grounded behavior.
 
 ## Next Implementation Order
 

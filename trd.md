@@ -1,6 +1,6 @@
 # NIRMIQ Technical Requirements Document
 
-Last updated: 2026-05-30
+Last updated: 2026-06-02
 
 ## Project
 
@@ -31,6 +31,9 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Let users minimize the composer/search box to read long responses.
 - Let Exam Lab generate printable custom PDF study material from grounded answers.
 - Keep session continuity through SQLite-backed message history and memory snapshots.
+- Restrict direct local-path ingestion to configured corpus roots by default.
+- Validate uploaded file signatures/readability before indexing.
+- Use adaptive generation temperature with conservative grounded defaults and higher long-context drafting settings.
 
 ## Non-Functional Requirements
 
@@ -39,6 +42,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Maintainable: prefer fewer services and explicit orchestration.
 - Stable: backend tests must isolate temp SQLite/Chroma/cache paths.
 - Grounded: response generation must cite retrieved chunks or abstain when context is weak.
+- Faithful: cited generated claims must pass deterministic verification or be rewritten to extractive fallback.
 - Fast enough for demos: repeated PDF parsing should use content-hash page cache.
 
 ## API Requirements
@@ -69,6 +73,8 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Local profile login is not real authentication yet; it is a UX gate and personalization layer.
 - Future hosted auth must follow OWASP guidance: generic errors, safe session handling, rate limits, and secure reset/verification flows.
 - Uploaded documents must stay local unless the user explicitly enables an external provider.
+- Direct local-path ingestion must stay restricted by `LOCAL_INGEST_ALLOWED_ROOTS` unless `SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS=true`.
+- File uploads must be content-checked for common spoofing cases before indexing.
 - Any future API-key mode must make cloud usage obvious before sending content.
 - Provide local data purge/export controls before broader beta use.
 

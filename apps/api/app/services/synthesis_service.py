@@ -123,7 +123,15 @@ class SynthesisService:
             exam_profile=exam_profile,
             exam_context=exam_context,
         )
-        generated = await self._generator.answer(prompt=prompt, model=self._settings.generator_model_default)
+        generation_temperature = self._generation_temperature(
+            response_mode=response_mode,
+            context_chunks=selected,
+        )
+        generated = await self._generator.answer(
+            prompt=prompt,
+            model=self._settings.generator_model_default,
+            temperature=generation_temperature,
+        )
 
         if not generated:
             generated = self._fallback_answer(
@@ -166,6 +174,7 @@ class SynthesisService:
                 exam_context and (exam_context.get("questions") or exam_context.get("diagrams"))
             ),
             "citation_verification_state": verification["state"],
+            "generation_temperature": generation_temperature,
             "cited_claims_checked": verification["cited_claims_checked"],
             "unsupported_claims": verification["unsupported_claims"],
             "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
@@ -173,6 +182,19 @@ class SynthesisService:
             "answer_rewritten_for_faithfulness": answer_rewritten,
         }
         return (generated, True, meta)
+
+    def _generation_temperature(
+        self,
+        *,
+        response_mode: str,
+        context_chunks: list[tuple[int, str]],
+    ) -> float:
+        mode = response_mode.strip().lower()
+        total_words = sum(len(self._context_text(block).split()) for _, block in context_chunks)
+        long_form_modes = {"deep_research", "research_paper", "study_guide"}
+        if mode in long_form_modes and total_words >= 900:
+            return max(0.0, min(1.0, self._settings.generator_temperature_long_context))
+        return max(0.0, min(1.0, self._settings.generator_temperature_grounded))
 
     def _select_context(self, bundle: RetrievalBundle) -> list[tuple[int, str]]:
         selected: list[tuple[int, str]] = []

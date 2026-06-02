@@ -1,6 +1,6 @@
 # Codex Implementation Log
 
-Last updated: 2026-05-30
+Last updated: 2026-06-02
 
 Note: filename spelling follows the user request: `codex_implementaton.md`.
 
@@ -55,6 +55,10 @@ After each meaningful project work unit:
 - Added grounding metadata and score-aware synthesis behavior.
 - Added retrieval evaluation and impact planning.
 - Added parse cache for repeated PDF indexing performance.
+- Added citation-faithfulness verification and fallback rewrites.
+- Added chunk quality scoring and retrieval quality weighting.
+- Added local ingestion privacy allowlists and upload content sniffing.
+- Added adaptive generation temperature for long-context deep research.
 
 ## Important Commits So Far
 
@@ -74,6 +78,8 @@ After each meaningful project work unit:
 - Use Research, Chat, Paper Lab, and Exam Lab sections.
 - Generate printable custom exam PDF from the current grounded answer.
 - Minimize the composer while reading responses.
+- Keep direct local-path ingestion restricted to trusted corpus roots by default.
+- Use higher-temperature local generation only for long-context deep research/drafting while preserving citation verification.
 
 ## Current Verification Routine
 
@@ -92,6 +98,9 @@ For future sessions, read these files first:
 - `backend_architecture.md`
 - `debugging.md`
 - `docs/internship_impact_plan.md`
+- `docs/security.md`
+- `docs/accuracy_precision_audit.md`
+- `docs/local_agent_plan.md`
 
 Avoid re-reading the full chat unless the user asks for historical details not captured in these files.
 
@@ -99,7 +108,20 @@ Avoid re-reading the full chat unless the user asks for historical details not c
 
 - Build stronger Paper Lab flows: outline, related-work matrix, citation clustering.
 - Build stronger Exam Lab flows: marks-based templates, question-bank ranking, diagram-aware study guides.
-- Add summary caching and chunk quality scoring.
-- Add privacy/data controls.
+- Add summary caching.
+- Add secure purge/export controls.
+- Add deterministic intent routing and the local agent tool registry.
 - Add user-owned API key support only after clear consent UI and provider boundary.
 
+## Latest V3 Hardening Work
+
+Date: 2026-06-02
+
+- Restricted direct local-path ingestion to `LOCAL_INGEST_ALLOWED_ROOTS`.
+- Added `SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS=false` as the safe default.
+- Added lightweight upload signature/readability checks for PDF, images, and text/Markdown files.
+- Exposed generator temperature settings:
+  - `GENERATOR_TEMPERATURE_GROUNDED=0.15`
+  - `GENERATOR_TEMPERATURE_LONG_CONTEXT=0.85`
+- Routed long-context deep research, Paper Lab, and study-guide synthesis through the long-context temperature only when enough evidence is retrieved.
+- Added `docs/local_agent_plan.md` for a safe local free-of-cloud-token-cost agent design.

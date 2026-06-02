@@ -13,3 +13,4 @@ os.environ.setdefault("PARSE_CACHE_PATH", str(TEST_RUNTIME_ROOT / "cache" / "par
 os.environ.setdefault("USE_OLLAMA_GENERATION", "false")
 os.environ.setdefault("USE_OLLAMA_EMBEDDINGS", "false")
 os.environ.setdefault("USE_OLLAMA_RERANKER", "false")
+os.environ.setdefault("SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS", "true")

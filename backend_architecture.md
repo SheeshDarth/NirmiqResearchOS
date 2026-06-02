@@ -1,6 +1,6 @@
 # NIRMIQ Backend Architecture
 
-Last updated: 2026-05-30
+Last updated: 2026-06-02
 
 ## Overview
 
@@ -17,7 +17,7 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 
 ## Service Boundaries
 
-- `IngestionService`: accepts source paths/uploads, creates document records, runs parsing/indexing.
+- `IngestionService`: accepts source paths/uploads, enforces local corpus roots, validates upload signatures, creates document records, runs parsing/indexing.
 - `IndexingService`: chunks parsed pages, persists chunks, updates lexical/vector indexes.
 - `RetrievalService`: BM25/vector retrieval, RRF fusion, optional reranking, citation assembly.
 - `SynthesisService`: grounded response generation, summary formatting, fallback behavior, abstention.
@@ -31,13 +31,14 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 ### Ingestion
 
 1. Receive file upload or local path.
-2. Copy/store source in `data/raw` when uploaded.
-3. Parse PDF/text/image content.
-4. Cache parsed PDF pages by content hash.
-5. Create deterministic chunks.
-6. Store chunks in SQLite.
-7. Update BM25 index and optional Chroma vectors.
-8. Mark document indexed.
+2. Validate file type and local-path privacy boundaries.
+3. Copy/store source in `data/raw` when uploaded.
+4. Parse PDF/text/image content.
+5. Cache parsed PDF pages by content hash.
+6. Create deterministic chunks.
+7. Store chunks in SQLite.
+8. Update BM25 index and optional Chroma vectors.
+9. Mark document indexed.
 
 ### Query
 
@@ -71,6 +72,8 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - Keep generation, embedding, and reranking independently toggleable.
 - Fall back to deterministic embeddings and extractive synthesis when local models are unavailable.
 - Avoid loading multiple heavy models at once on RTX 4050 hardware.
+- Use adaptive generation temperature: low for factual grounded answers, higher only for long-context deep research and drafting.
+- Run citation-faithfulness verification after generated answers before returning them to the user.
 
 ## Current Optimizations
 
@@ -79,13 +82,15 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - Document-scoped fallback retrieval.
 - Retrieval profiles for fast/balanced/precision behavior.
 - Compact frontend source cockpit to reduce unnecessary backend calls.
+- Chunk quality scoring and retrieval quality weighting.
+- Citation verification with fallback rewrite for unsupported claims.
+- Local ingestion allowlists and upload content sniffing.
+- Adaptive long-context temperature for deep research and drafting.
 
 ## Next Backend Upgrades
 
 - Document-level summary cache.
-- Chunk quality score column and ranking boost/penalty.
-- Citation verification after synthesis.
 - SQLite concept graph tables for GraphRAG-lite.
 - Source diversity controls for Paper Lab.
 - Local data purge/export endpoints.
-
+- Optional local agent orchestrator with explicit tool allowlists and approval gates.

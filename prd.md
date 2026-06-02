@@ -1,6 +1,6 @@
 # NIRMIQ Product Requirements Document
 
-Last updated: 2026-05-30
+Last updated: 2026-06-02
 
 ## Product Name
 
@@ -98,6 +98,8 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 - Composer minimization increases visible reading area.
 - Local build and backend tests stay green.
 - Demo flow can be completed without internet.
+- Direct filesystem ingestion cannot accidentally index private files outside trusted corpus roots.
+- Longer research drafts feel useful without sacrificing citation verification.
 
 ## Why Users Choose NIRMIQ
 
@@ -106,9 +108,9 @@ NIRMIQ is not a generic upload-and-chat clone. It is a local academic intelligen
 ## V4 Candidate Upgrades
 
 - Document summary cache with invalidation.
-- Chunk quality scoring to suppress boilerplate and broken glyphs.
-- Citation verification pass after generation.
+- Deterministic intent router for summary, factual lookup, compare, paper, exam, and unanswerable prompts.
 - SQLite concept graph for GraphRAG-lite expansion.
+- Safe local agent orchestrator with typed retrieval/synthesis tools.
 - Paper Lab related-work matrix and citation clustering.
 - Exam Lab answer templates by marks and diagram-aware study guides.
 - Local data purge/export controls.

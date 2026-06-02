@@ -1063,3 +1063,34 @@ Verification:
 - `python -m compileall apps/api/app`: passed.
 - Portable GitHub CLI version check passed: `gh version 2.92.0`.
 - `gh auth status` confirms authentication is still pending.
+
+### Latest Update: V3 Security, Privacy, and Adaptive Generation Hardening
+
+Date: 2026-06-02
+
+This update tightened the project without adding interface complexity.
+
+Implemented:
+
+- Restricted direct local-path ingestion to configured trusted corpus roots.
+- Added `LOCAL_INGEST_ALLOWED_ROOTS` and `SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS=false`.
+- Preserved normal app uploads by storing uploaded files inside the project raw-data area.
+- Added lightweight content validation for PDF, image, text, and Markdown uploads to reduce extension-spoofing risk.
+- Added adaptive generation temperature:
+  - Grounded factual/summary/exam paths stay conservative by default.
+  - Long-context deep research, paper drafting, and study-guide synthesis can use `0.85` when enough evidence is retrieved.
+  - Citation-faithfulness verification still runs after generation.
+- Added backend unit tests for ingestion privacy and upload validation.
+- Added a local agent plan that keeps future agent behavior local, tool-limited, and approval-aware rather than unbounded.
+
+Tradeoffs:
+
+- Direct local-path ingestion is safer but now requires files to be under allowed roots unless explicitly overridden.
+- Higher-temperature generation is not global, because summary/exam/factual answers need reliability more than stylistic variety.
+- The local agent was documented rather than fully implemented to avoid complicating V3 before Version 4 requirements arrive.
+
+Verification:
+
+- Backend unit/integration suite: `17 passed`.
+- `npm run build`: passed.
+- `python -m compileall apps/api/app`: passed.

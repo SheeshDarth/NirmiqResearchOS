@@ -1,6 +1,6 @@
 # NIRMIQ Academic Intelligence System Security Notes
 
-Last updated: 2026-05-29
+Last updated: 2026-06-02
 
 ## Current security model
 
@@ -16,7 +16,21 @@ NIRMIQ currently runs as a local single-user application. The login screen is a 
   - `Referrer-Policy: no-referrer`
   - `Permissions-Policy` denying camera, microphone, and geolocation.
 - Diagram asset serving by asset ID with path validation to prevent arbitrary file serving.
+- Local path ingestion is restricted by default to configured corpus roots.
+- Uploads are content-sniffed for common spoofing cases before indexing.
 - Runtime/generated database and vector files ignored by Git.
+
+## V3 Local Data Protection Protocol
+
+NIRMIQ is designed to protect the user from accidental data leakage while preserving simple offline workflows.
+
+- Default API host remains `127.0.0.1`.
+- Direct local-path ingestion is allowed only under `LOCAL_INGEST_ALLOWED_ROOTS`.
+- `SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS=false` by default.
+- Uploaded files are copied into the project raw-data area before indexing.
+- PDF/image/text uploads are checked against lightweight file signatures or UTF-8 readability.
+- The app does not send document content to cloud APIs in the default local mode.
+- If external provider support is added later, it must be opt-in per provider and must clearly label when content leaves the machine.
 
 ## Security limitations
 
@@ -24,13 +38,14 @@ NIRMIQ currently runs as a local single-user application. The login screen is a 
 - No role-based access control.
 - Local SQLite database is not encrypted by default.
 - Local documents and extracted diagrams remain on disk.
-- If optional cloud/API providers are added later, explicit consent and redaction controls are required.
+- If optional cloud/API providers are added later, explicit consent, redaction controls, and visible mode labels are required.
+- SQLite and raw document files are not encrypted at rest yet.
 
 ## Recommended next security work
 
 1. Add real authentication only if hosted or multi-user deployment is introduced.
 2. Add encrypted local vault support for SQLite and extracted assets.
-3. Add allowed-ingestion-root controls to limit which local folders can be indexed.
-4. Add document deletion and secure purge flows.
-5. Add provider consent screens before sending content to external APIs.
-6. Add audit log export for document operations.
+3. Add document deletion and secure purge flows.
+4. Add provider consent screens before sending content to external APIs.
+5. Add audit log export for document operations.
+6. Add optional local encryption for SQLite, raw uploads, extracted diagrams, and parse cache.

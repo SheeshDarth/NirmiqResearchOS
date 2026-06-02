@@ -1,6 +1,6 @@
 # NIRMIQ Debugging Guide
 
-Last updated: 2026-05-30
+Last updated: 2026-06-02
 
 ## Local URLs
 
@@ -70,6 +70,28 @@ Checklist:
 - Check API logs for parsing errors.
 - If scanned PDF, install OCR dependencies and Tesseract.
 
+### Local Path Ingestion Is Rejected
+
+Cause: V3 privacy hardening restricts direct filesystem ingestion to trusted corpus roots.
+
+Fix:
+
+- Upload through the app composer, or
+- Move the file under `C:\Nirmiq-researchOS\data\raw`, or
+- Add the folder to `LOCAL_INGEST_ALLOWED_ROOTS` in `.env`.
+
+Only set `SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS=true` for trusted local development.
+
+### Upload Rejected As Invalid File Type
+
+Cause: the upload extension and file content do not match, or the text file is not valid UTF-8.
+
+Fix:
+
+- Confirm the file is a real PDF/image/text file.
+- Re-save text/Markdown files as UTF-8.
+- Avoid renaming unsupported binaries to `.pdf` or `.txt`.
+
 ### Scroll Not Working
 
 Likely cause: sticky composer too tall or nested overflow conflict.
@@ -102,4 +124,3 @@ This is a user-level Git ignore permission issue and does not block project comm
 4. Confirm no console errors in browser.
 5. Update `context.md` after every meaningful change.
 6. Push to GitHub after every completed work unit.
-

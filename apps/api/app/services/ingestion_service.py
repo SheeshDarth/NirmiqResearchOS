@@ -35,15 +35,20 @@ class IngestionService:
         sqlite_repo: SQLiteRepo,
         indexing_service: IndexingService,
         upload_root: Path,
+        allowed_roots: list[Path] | None = None,
+        allow_arbitrary_local_paths: bool = False,
     ) -> None:
         self._sqlite_repo = sqlite_repo
         self._indexing_service = indexing_service
-        self._upload_root = upload_root
+        self._upload_root = upload_root.resolve()
+        self._allowed_roots = [root.resolve() for root in (allowed_roots or [self._upload_root])]
+        self._allow_arbitrary_local_paths = allow_arbitrary_local_paths
 
     async def ingest(self, payload: IngestRequest) -> IngestResponse:
         source = Path(payload.source_path).resolve()
         if not source.exists() or not source.is_file():
             raise FileNotFoundError(f"Source file not found: {source}")
+        self._assert_source_allowed(source)
 
         existing = self._sqlite_repo.get_document_by_source_path(str(source))
         current_hash = self._hash_file(source)
@@ -178,6 +183,7 @@ class IngestionService:
         if suffix not in self._allowed_upload_extensions:
             allowed = ", ".join(sorted(self._allowed_upload_extensions))
             raise ValueError(f"Unsupported upload type '{suffix or 'unknown'}'. Allowed: {allowed}")
+        self._validate_upload_content(suffix=suffix, content=content)
 
         safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(original).stem).strip(".-")
         safe_stem = safe_stem[:80] or "upload"
@@ -185,3 +191,50 @@ class IngestionService:
         target = self._upload_root / f"{safe_stem}-{uuid4().hex[:10]}{suffix}"
         target.write_bytes(content)
         return target.resolve()
+
+    def _assert_source_allowed(self, source: Path) -> None:
+        if self._allow_arbitrary_local_paths:
+            return
+        resolved = source.resolve()
+        for root in self._allowed_roots:
+            if resolved == root or resolved.is_relative_to(root):
+                return
+        allowed = ", ".join(str(root) for root in self._allowed_roots)
+        raise ValueError(
+            "Local path ingestion is restricted for privacy. "
+            f"Upload the file through the app or place it under one of: {allowed}"
+        )
+
+    @staticmethod
+    def _validate_upload_content(*, suffix: str, content: bytes) -> None:
+        head = content[:32]
+        if suffix == ".pdf" and not head.startswith(b"%PDF-"):
+            raise ValueError("Uploaded PDF does not look like a valid PDF file.")
+        if suffix == ".png" and not head.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise ValueError("Uploaded PNG does not look like a valid PNG file.")
+        if suffix in {".jpg", ".jpeg"} and not head.startswith(b"\xff\xd8\xff"):
+            raise ValueError("Uploaded JPEG does not look like a valid JPEG file.")
+        if suffix == ".webp" and not (head.startswith(b"RIFF") and b"WEBP" in head[:16]):
+            raise ValueError("Uploaded WEBP does not look like a valid WEBP file.")
+        if suffix in {".tif", ".tiff"} and not (
+            head.startswith(b"II*\x00") or head.startswith(b"MM\x00*")
+        ):
+            raise ValueError("Uploaded TIFF does not look like a valid TIFF file.")
+        if suffix == ".bmp" and not head.startswith(b"BM"):
+            raise ValueError("Uploaded BMP does not look like a valid BMP file.")
+        if suffix in {".txt", ".md", ".markdown"} and not IngestionService._looks_like_text(content):
+            raise ValueError("Uploaded text file is not readable UTF-8 text.")
+
+    @staticmethod
+    def _looks_like_text(content: bytes) -> bool:
+        sample = content[:8192]
+        try:
+            decoded = sample.decode("utf-8")
+        except UnicodeDecodeError:
+            return False
+        if "\x00" in decoded:
+            return False
+        if not decoded:
+            return True
+        printable = sum(1 for char in decoded if char.isprintable() or char in "\r\n\t")
+        return printable / max(len(decoded), 1) >= 0.9

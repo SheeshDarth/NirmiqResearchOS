@@ -10,9 +10,16 @@ class FakeGenerator:
     def __init__(self, answer: str) -> None:
         self._answer = answer
         self.last_backend = "fake"
+        self.temperature = 0.0
 
-    async def answer(self, prompt: str, model: str | None = None) -> str:
+    async def answer(
+        self,
+        prompt: str,
+        model: str | None = None,
+        temperature: float = 0.1,
+    ) -> str:
         self.last_backend = "fake"
+        self.temperature = temperature
         return self._answer
 
 
@@ -82,3 +89,47 @@ def test_supported_cited_generation_is_preserved() -> None:
     assert meta["answer_rewritten_for_faithfulness"] is False
     assert meta["citation_verification_state"] == "supported"
     assert meta["unsupported_claims"] == []
+
+
+def test_long_context_deep_research_uses_configured_creative_temperature() -> None:
+    generator = FakeGenerator("NIRMIQ uses grounded retrieval and citation-aware synthesis. [1]")
+    service = SynthesisService(
+        settings=_settings().model_copy(
+            update={
+                "generator_temperature_grounded": 0.15,
+                "generator_temperature_long_context": 0.85,
+            }
+        ),
+        policy=RetrievalPolicy(min_grounding_score=0.1, max_context_tokens=2000),
+        generator=generator,  # type: ignore[arg-type]
+    )
+    repeated_text = (
+        "NIRMIQ uses grounded retrieval and local citation-aware synthesis for academic documents. "
+        * 120
+    )
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="chunk-1",
+                document_id="doc-1",
+                text=repeated_text,
+                score=1.0,
+                page_start=1,
+                page_end=2,
+                source="bm25",
+            )
+        ],
+        meta={},
+    )
+
+    _, grounded, meta = asyncio.run(
+        service.synthesize(
+            query="Write deep research notes.",
+            bundle=bundle,
+            response_mode="deep_research",
+        )
+    )
+
+    assert grounded is True
+    assert generator.temperature == 0.85
+    assert meta["generation_temperature"] == 0.85
