@@ -124,6 +124,20 @@ class SQLiteRepo:
                     UNIQUE(document_id, page_number, image_index),
                     FOREIGN KEY(document_id) REFERENCES documents(id)
                 );
+
+                CREATE TABLE IF NOT EXISTS document_summaries (
+                    id TEXT PRIMARY KEY,
+                    document_id TEXT NOT NULL,
+                    content_hash TEXT NOT NULL,
+                    summary_profile TEXT NOT NULL,
+                    answer TEXT NOT NULL,
+                    citations_json TEXT NOT NULL,
+                    retrieval_meta_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(document_id, content_hash, summary_profile),
+                    FOREIGN KEY(document_id) REFERENCES documents(id)
+                );
                 """
             )
             conn.executescript(
@@ -134,6 +148,8 @@ class SQLiteRepo:
                 CREATE INDEX IF NOT EXISTS idx_exam_profiles_session ON exam_profiles(session_id);
                 CREATE INDEX IF NOT EXISTS idx_question_bank_document ON question_bank_items(document_id);
                 CREATE INDEX IF NOT EXISTS idx_diagram_assets_document ON diagram_assets(document_id);
+                CREATE INDEX IF NOT EXISTS idx_document_summaries_lookup
+                    ON document_summaries(document_id, content_hash, summary_profile);
                 """
             )
             self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
@@ -185,6 +201,7 @@ class SQLiteRepo:
             if not row:
                 return False
             conn.execute("DELETE FROM diagram_assets WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM document_summaries WHERE document_id = ?", (document_id,))
             conn.execute("DELETE FROM question_bank_items WHERE document_id = ?", (document_id,))
             conn.execute("DELETE FROM exam_profiles WHERE document_id = ?", (document_id,))
             conn.execute("DELETE FROM ingestion_jobs WHERE document_id = ?", (document_id,))
@@ -419,6 +436,72 @@ class SQLiteRepo:
                 FROM document_chunks
                 WHERE document_id = ? AND is_active = 1
                 """,
+                (document_id,),
+            ).fetchone()
+        return int(row["count"]) if row else 0
+
+    def get_document_summary(
+        self,
+        *,
+        document_id: str,
+        content_hash: str,
+        summary_profile: str,
+    ) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT id, document_id, content_hash, summary_profile, answer,
+                       citations_json, retrieval_meta_json, created_at, updated_at
+                FROM document_summaries
+                WHERE document_id = ? AND content_hash = ? AND summary_profile = ?
+                """,
+                (document_id, content_hash, summary_profile),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def upsert_document_summary(
+        self,
+        *,
+        summary_id: str,
+        document_id: str,
+        content_hash: str,
+        summary_profile: str,
+        answer: str,
+        citations_json: str,
+        retrieval_meta_json: str,
+    ) -> None:
+        now = self._utc_now()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO document_summaries (
+                    id, document_id, content_hash, summary_profile, answer,
+                    citations_json, retrieval_meta_json, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(document_id, content_hash, summary_profile) DO UPDATE SET
+                    answer = excluded.answer,
+                    citations_json = excluded.citations_json,
+                    retrieval_meta_json = excluded.retrieval_meta_json,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    summary_id,
+                    document_id,
+                    content_hash,
+                    summary_profile,
+                    answer,
+                    citations_json,
+                    retrieval_meta_json,
+                    now,
+                    now,
+                ),
+            )
+
+    def get_document_summary_count(self, document_id: str) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS count FROM document_summaries WHERE document_id = ?",
                 (document_id,),
             ).fetchone()
         return int(row["count"]) if row else 0

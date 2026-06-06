@@ -255,10 +255,15 @@ function getGroundingLabel(response: QueryResponse | null): string {
 function getVerificationBadge(response: QueryResponse | null): { label: string; className: string } | null {
   const state = response?.retrieval_meta?.citation_verification_state;
   const rewritten = response?.retrieval_meta?.answer_rewritten_for_faithfulness === true;
-  if (rewritten) return { label: "rewritten for faithfulness", className: "copper" };
-  if (state === "supported") return { label: "citations verified", className: "sage" };
-  if (state === "unsupported") return { label: "citation review", className: "copper" };
-  if (state === "unchecked") return { label: "extractive check", className: "" };
+  const coverage = response?.retrieval_meta?.citation_coverage;
+  const numericCoverage =
+    typeof coverage === "number" ? coverage : typeof coverage === "string" ? Number(coverage) : null;
+  if (rewritten) return { label: "Rewritten", className: "copper" };
+  if (numericCoverage !== null && Number.isFinite(numericCoverage) && numericCoverage < 0.45) {
+    return { label: "Low citation coverage", className: "copper" };
+  }
+  if (state === "supported") return { label: "Verified", className: "sage" };
+  if (state === "unsupported" || state === "unchecked") return { label: "Needs review", className: "copper" };
   return null;
 }
 

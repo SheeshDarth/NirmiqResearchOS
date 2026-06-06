@@ -98,6 +98,62 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert "summary" in summary_body["answer"].lower()
         assert len(summary_body["citations"]) >= 1
         assert summary_body["retrieval_meta"]["document_overview_request"] is True
+        assert summary_body["retrieval_meta"]["cache_hit"] is False
+        assert summary_body["retrieval_meta"]["detected_intent"] == "summary"
+        assert summary_body["retrieval_meta"]["citation_coverage"] >= 0
+        assert summary_body["retrieval_meta"]["citation_sentence_count"] >= 1
+        assert summary_body["retrieval_meta"]["citation_anchor_count"] >= 1
+
+        cached_summary_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Explain the document",
+                "document_id": document_id,
+                "mode": "summary",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert cached_summary_response.status_code == 200
+        cached_summary_body = cached_summary_response.json()
+        assert cached_summary_body["answer"] == summary_body["answer"]
+        assert cached_summary_body["retrieval_meta"]["cache_hit"] is True
+        assert cached_summary_body["retrieval_meta"]["intent_route"] == "summary_cache_hit"
+
+        sample.write_text(
+            (
+                "NIRMIQ now focuses on cached document summaries. "
+                "It still uses local retrieval and grounded synthesis with citations."
+            ),
+            encoding="utf-8",
+        )
+        reingest_response = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Sample",
+                "mime_type": "text/plain",
+                "force_reindex": True,
+            },
+        )
+        assert reingest_response.status_code == 200
+        assert reingest_response.json()["document_id"] == document_id
+
+        refreshed_summary_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Explain the document",
+                "document_id": document_id,
+                "mode": "summary",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert refreshed_summary_response.status_code == 200
+        refreshed_summary_body = refreshed_summary_response.json()
+        assert refreshed_summary_body["retrieval_meta"]["cache_hit"] is False
 
         timeline_response = client.get("/memory/integration-session/timeline")
         assert timeline_response.status_code == 200
@@ -111,6 +167,7 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         delete_response = client.delete(f"/documents/{document_id}")
         assert delete_response.status_code == 200
         assert delete_response.json() == {"document_id": document_id, "deleted": True}
+        assert app.state.container.sqlite_repo.get_document_summary_count(document_id) == 0
 
         missing_detail = client.get(f"/documents/{document_id}")
         assert missing_detail.status_code == 404

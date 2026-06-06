@@ -1,6 +1,6 @@
 # NIRMIQ Debugging Guide
 
-Last updated: 2026-06-02
+Last updated: 2026-06-06
 
 ## Local URLs
 
@@ -101,6 +101,23 @@ Current mitigation: composer is compact and minimizable. If regressions occur, i
 ### Upload Works But Query Uses Wrong Document
 
 Fix: select the intended document in Library or ensure the newest upload becomes `selectedDocumentId`.
+
+### Summary Still Feels Slow
+
+Checklist:
+
+- Confirm a document is selected before using `Summarize PDF`; cache is only used for selected-document summaries.
+- Confirm the second identical summary request has `retrieval_meta.cache_hit=true` when debug metadata is enabled.
+- Reindexing or changing the source file intentionally misses cache because the document `content_hash` changed.
+
+### Trust Badge Says Low Citation Coverage
+
+Cause: the answer has several claim-like sentences without citation anchors.
+
+Fix:
+
+- Ask a narrower question, switch to Precision, or inspect Sources to verify whether retrieval found enough evidence.
+- If the badge appears on an obviously extractive answer, check `citation_coverage`, `citation_sentence_count`, and `citation_anchor_count` in debug metadata.
 
 ### Ollama Offline
 

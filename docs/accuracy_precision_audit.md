@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-06-02
+Last updated: 2026-06-06
 
 ## Research Basis
 
@@ -66,32 +66,29 @@ Recommended next fix:
 - Add `data/processed/eval/nirmiq_v3_labels.jsonl`.
 - Track hit rate, MRR, citation coverage, abstention correctness, and answer faithfulness.
 
-### 4. No Query Intent Router Beyond Simple Mode Rules
+### 4. Query Intent Router Needs Continued Tuning
 
-The UI mode helps, but arbitrary prompts still need stronger routing.
+The deterministic V3.1 router now classifies summary, factual lookup, compare, deep research, paper draft, exam, general chat, and unclear prompts.
 
-Recommended next fix:
+Remaining gap:
 
-- Deterministic intent classifier: summary, factual lookup, compare, paper draft, exam answer, unanswerable/general.
-- Route each intent to a retrieval profile, citation policy, and response template.
+- The router is intentionally lexical. It should be evaluated against a labeled NIRMIQ dataset before adding more branches.
 
-### 5. No Document Summary Cache Yet
+### 5. Summary Cache Needs UX Observation
 
-Repeated summaries currently re-run retrieval and synthesis.
+Repeated selected-document summaries now reuse SQLite cache by document id, content hash, and summary profile.
 
-Recommended next fix:
+Remaining gap:
 
-- Cache document-level summaries by document id, index version, and summary profile.
-- Invalidate on reindex.
+- Track whether users understand that cache misses after reindex/source edits are intentional.
 
-### 6. No Citation Coverage Score In UI
+### 6. Citation Coverage Is Lexical
 
-Backend now tracks faithfulness metadata, but the user still needs simple visibility.
+The backend now computes citation sentence coverage and the UI shows a compact trust badge.
 
-Recommended next fix:
+Remaining gap:
 
-- Show `Verified`, `Rewritten`, or `Needs review` badge near the answer.
-- Keep raw debug metadata hidden unless requested.
+- Citation coverage measures anchors, not full semantic support. Faithfulness verification still carries the support check.
 
 ### 7. General Chat Needs Clearer Boundaries
 
@@ -119,6 +116,16 @@ Recommended next fix:
   - Conservative factual mode uses `GENERATOR_TEMPERATURE_GROUNDED`.
   - Long-context deep research, paper drafting, and study-guide synthesis can use `GENERATOR_TEMPERATURE_LONG_CONTEXT`.
   - Citation verification still runs after generation, so higher-temperature long-form output is not trusted blindly.
+- Added selected-document summary cache with natural invalidation via content hash.
+- Added deterministic intent metadata:
+  - `detected_intent`
+  - `intent_confidence`
+  - `intent_route`
+- Added citation coverage metadata:
+  - `citation_coverage`
+  - `citation_sentence_count`
+  - `citation_anchor_count`
+- Updated the UI trust badge to show `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
 
 ## Current Temperature Policy
 
@@ -133,7 +140,6 @@ This keeps long answers less flat while preserving grounded behavior.
 ## Next Implementation Order
 
 1. Add labeled evaluation dataset for NIRMIQ use cases.
-2. Add document summary cache.
-3. Add deterministic query intent router.
-4. Add citation coverage score.
-5. Add optional semantic entailment verifier only when local model latency is acceptable.
+2. Use the dataset to tune intent routing and summary retrieval hints.
+3. Add document-level summary variants only if users need chapter-wise or exam-style cached summaries.
+4. Add optional semantic entailment verifier only when local model latency is acceptable.

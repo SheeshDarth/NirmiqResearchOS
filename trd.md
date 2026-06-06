@@ -1,6 +1,6 @@
 # NIRMIQ Technical Requirements Document
 
-Last updated: 2026-06-02
+Last updated: 2026-06-06
 
 ## Project
 
@@ -34,6 +34,9 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Restrict direct local-path ingestion to configured corpus roots by default.
 - Validate uploaded file signatures/readability before indexing.
 - Use adaptive generation temperature with conservative grounded defaults and higher long-context drafting settings.
+- Cache selected-document summaries by document id, content hash, and summary profile.
+- Add deterministic query intent metadata without changing the public query request shape.
+- Compute citation coverage metadata for generated and fallback answers.
 
 ## Non-Functional Requirements
 
@@ -44,6 +47,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Grounded: response generation must cite retrieved chunks or abstain when context is weak.
 - Faithful: cited generated claims must pass deterministic verification or be rewritten to extractive fallback.
 - Fast enough for demos: repeated PDF parsing should use content-hash page cache.
+- Efficient: repeated selected-document summaries should reuse SQLite cache until source content changes.
 
 ## API Requirements
 
@@ -55,6 +59,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - `GET /documents`: indexed document library.
 - `GET /documents/{document_id}/chunks`: source drilldown.
 - `POST /query`: grounded query flow with retrieval mode/profile/mode/session.
+- `POST /query` debug metadata may include cache hit, detected intent, intent route, and citation coverage fields.
 - `GET /memory/{session_id}`: session memory snapshot.
 - Exam routes for profiles, question banks, and study/exam artifacts.
 
@@ -66,6 +71,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Route broad overview prompts to summary behavior.
 - Use document-scoped fallback when a selected document exists and broad prompts retrieve low lexical scores.
 - Include debug metadata for evaluation and development.
+- Use deterministic intent routing to expand retrieval hints for summaries, comparisons, deep research, paper drafting, and exam workflows.
 - Avoid graph databases in V3 unless the measured baseline proves SQLite concept graph expansion is insufficient.
 
 ## Security And Privacy Requirements
@@ -90,3 +96,4 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Web build passes.
 - Backend unit/integration tests pass.
 - `context.md` and handoff docs are updated after the work.
+- V3.1 summary cache, intent routing, and trust metadata tests pass.

@@ -2,6 +2,7 @@ import re
 
 from app.adapters.llm.generator import Generator
 from app.core.config import Settings
+from app.domain.citation_coverage import citation_coverage
 from app.domain.models import RetrievalBundle
 from app.domain.retrieval_policy import RetrievalPolicy
 
@@ -175,6 +176,7 @@ class SynthesisService:
             ),
             "citation_verification_state": verification["state"],
             "generation_temperature": generation_temperature,
+            **citation_coverage(generated),
             "cited_claims_checked": verification["cited_claims_checked"],
             "unsupported_claims": verification["unsupported_claims"],
             "original_cited_claims_checked": verification.get("original_cited_claims_checked"),

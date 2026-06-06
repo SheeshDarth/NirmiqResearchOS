@@ -1,6 +1,6 @@
 # Codex Implementation Log
 
-Last updated: 2026-06-02
+Last updated: 2026-06-06
 
 Note: filename spelling follows the user request: `codex_implementaton.md`.
 
@@ -59,6 +59,7 @@ After each meaningful project work unit:
 - Added chunk quality scoring and retrieval quality weighting.
 - Added local ingestion privacy allowlists and upload content sniffing.
 - Added adaptive generation temperature for long-context deep research.
+- Added V3.1 summary caching, deterministic intent routing, and compact trust metadata.
 
 ## Important Commits So Far
 
@@ -80,6 +81,8 @@ After each meaningful project work unit:
 - Minimize the composer while reading responses.
 - Keep direct local-path ingestion restricted to trusted corpus roots by default.
 - Use higher-temperature local generation only for long-context deep research/drafting while preserving citation verification.
+- Cache repeated selected-document summaries until the source content hash changes.
+- Show one compact answer trust badge rather than exposing raw debug metadata by default.
 
 ## Current Verification Routine
 
@@ -125,3 +128,19 @@ Date: 2026-06-02
   - `GENERATOR_TEMPERATURE_LONG_CONTEXT=0.85`
 - Routed long-context deep research, Paper Lab, and study-guide synthesis through the long-context temperature only when enough evidence is retrieved.
 - Added `docs/local_agent_plan.md` for a safe local free-of-cloud-token-cost agent design.
+
+## Latest V3.1 Reliability Work
+
+Date: 2026-06-06
+
+- Added `document_summaries` SQLite cache.
+- Added deterministic query intent routing.
+- Added citation coverage metadata.
+- Updated the UI answer trust badge to `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
+- Added tests for summary cache, intent routing, citation coverage, and cache invalidation behavior.
+
+Verification:
+
+- Backend unit/integration suite: `25 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.

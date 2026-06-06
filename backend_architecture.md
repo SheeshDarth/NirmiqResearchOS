@@ -1,6 +1,6 @@
 # NIRMIQ Backend Architecture
 
-Last updated: 2026-06-02
+Last updated: 2026-06-06
 
 ## Overview
 
@@ -20,8 +20,8 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - `IngestionService`: accepts source paths/uploads, enforces local corpus roots, validates upload signatures, creates document records, runs parsing/indexing.
 - `IndexingService`: chunks parsed pages, persists chunks, updates lexical/vector indexes.
 - `RetrievalService`: BM25/vector retrieval, RRF fusion, optional reranking, citation assembly.
-- `SynthesisService`: grounded response generation, summary formatting, fallback behavior, abstention.
-- `QueryService`: end-to-end query orchestration, mode/profile handling, memory writes.
+- `SynthesisService`: grounded response generation, summary formatting, citation coverage, fallback behavior, abstention.
+- `QueryService`: end-to-end query orchestration, intent routing, summary cache orchestration, mode/profile handling, memory writes.
 - `MemoryService`: session snapshots and continuity.
 - `DocumentsService`: library and chunk drilldown.
 - `ExamService`: exam profiles, question banks, and exam-specific artifacts.
@@ -45,11 +45,13 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 1. Receive prompt, mode, retrieval mode, profile, and session id.
 2. Load session memory.
 3. Normalize and route prompt intent.
-4. Retrieve candidates from BM25 and optional vector search.
-5. Fuse with RRF and rerank/pack context.
-6. Generate grounded answer or abstain.
-7. Persist user/assistant turns.
-8. Return answer, citations, debug metadata, and grounding state.
+4. Return cached selected-document summary when the document hash/profile matches.
+5. Retrieve candidates from BM25 and optional vector search.
+6. Fuse with RRF and rerank/pack context.
+7. Generate grounded answer or abstain.
+8. Compute citation coverage and trust metadata.
+9. Persist user/assistant turns.
+10. Return answer, citations, debug metadata, and grounding state.
 
 ## SQLite Responsibilities
 
@@ -59,6 +61,7 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - Memory snapshots.
 - Exam profiles and question banks.
 - Diagram/image metadata as the project expands.
+- Document summary cache keyed by document id, content hash, and summary profile.
 
 ## Chroma Responsibilities
 
@@ -86,10 +89,12 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - Citation verification with fallback rewrite for unsupported claims.
 - Local ingestion allowlists and upload content sniffing.
 - Adaptive long-context temperature for deep research and drafting.
+- SQLite-backed selected-document summary cache.
+- Deterministic query intent router and retrieval hint expansion.
+- Citation coverage metadata and compact UI trust badge.
 
 ## Next Backend Upgrades
 
-- Document-level summary cache.
 - SQLite concept graph tables for GraphRAG-lite.
 - Source diversity controls for Paper Lab.
 - Local data purge/export endpoints.

@@ -1094,3 +1094,38 @@ Verification:
 - Backend unit/integration suite: `17 passed`.
 - `npm run build`: passed.
 - `python -m compileall apps/api/app`: passed.
+
+### Latest Update: V3.1 Faster Summaries, Intent Routing, and Trust Signals
+
+Date: 2026-06-06
+
+This update implemented the planned V3.1 reliability/performance increment without adding new user-facing complexity.
+
+Implemented:
+
+- Added SQLite-backed `document_summaries` cache for selected-document summary mode.
+- Cache key uses document id, content hash, and summary profile, so source edits/reindexing naturally miss stale summaries.
+- Document deletion now purges cached summaries.
+- Added deterministic query intent routing for summary, factual lookup, compare, deep research, paper draft, exam, general chat, and unclear prompts.
+- Added retrieval metadata for `cache_hit`, `detected_intent`, `intent_confidence`, and `intent_route`.
+- Added citation coverage metadata: `citation_coverage`, `citation_sentence_count`, and `citation_anchor_count`.
+- Updated the UI trust chip to show one compact label: `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
+- Added unit tests for intent routing, citation coverage, and summary cache storage.
+- Expanded integration coverage for summary cache miss, cache hit, stale-content miss after reindex, and cache purge on document delete.
+
+Tradeoffs:
+
+- Intent routing is deterministic and lexical to stay fast/offline; it should be tuned with a labeled evaluation dataset next.
+- Summary cache is limited to selected-document summary requests, avoiding ambiguous corpus-wide cache behavior.
+- Citation coverage checks anchor presence, while citation-faithfulness verification remains responsible for claim support.
+
+Verification:
+
+- Backend unit/integration suite: `25 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+- Browser plugin was unavailable in this session, so browser smoke was not run.
+
+Commit:
+
+- Pending until the implementation commit is created.

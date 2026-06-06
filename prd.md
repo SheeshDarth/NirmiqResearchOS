@@ -1,6 +1,6 @@
 # NIRMIQ Product Requirements Document
 
-Last updated: 2026-06-02
+Last updated: 2026-06-06
 
 ## Product Name
 
@@ -44,6 +44,9 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 - Exam Lab workspace for marks-oriented answers, study guides, and printable custom PDFs.
 - Minimized composer mode for better response reading.
 - Citation drawer/source cockpit shown only when useful.
+- V3.1 summary cache for repeated selected-document summaries.
+- Deterministic intent routing for summary, factual lookup, compare, paper, exam, and chat prompts.
+- Compact trust badge for citation verification and citation coverage.
 
 ## V3 Non-Goals
 
@@ -100,6 +103,8 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 - Demo flow can be completed without internet.
 - Direct filesystem ingestion cannot accidentally index private files outside trusted corpus roots.
 - Longer research drafts feel useful without sacrificing citation verification.
+- Repeated selected-document summaries return faster from cache.
+- Users can see a simple answer trust signal without opening debug metadata.
 
 ## Why Users Choose NIRMIQ
 
@@ -107,11 +112,10 @@ NIRMIQ is not a generic upload-and-chat clone. It is a local academic intelligen
 
 ## V4 Candidate Upgrades
 
-- Document summary cache with invalidation.
-- Deterministic intent router for summary, factual lookup, compare, paper, exam, and unanswerable prompts.
 - SQLite concept graph for GraphRAG-lite expansion.
 - Safe local agent orchestrator with typed retrieval/synthesis tools.
 - Paper Lab related-work matrix and citation clustering.
 - Exam Lab answer templates by marks and diagram-aware study guides.
 - Local data purge/export controls.
+- Retrieval evaluation dataset for NIRMIQ academic use cases.
 - Streaming answers after synthesis reliability is stable.
