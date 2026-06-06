@@ -1160,4 +1160,4 @@ Verification:
 
 Commit:
 
-- Pending until the implementation commit is created.
+- `52bcbe5` - Add V4 Paper Lab citation workspace.
