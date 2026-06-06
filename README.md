@@ -2,103 +2,117 @@
 
 ![NIRMIQ Academic Intelligence System mark](apps/web/public/brand/nirmiq-ais-mark.svg)
 
-Offline-first adaptive academic intelligence system focused on grounded retrieval and low-VRAM local inference.
+NIRMIQ Academic Intelligence System is a local-first academic intelligence workspace for grounded document research, citation-backed paper drafting, and exam preparation.
 
-Product name: **NIRMIQ Academic Intelligence System**.
+It is built to run on a student laptop, stay useful offline, and keep uploaded material as the source of truth.
 
-## Current Status
+## What It Does
 
-Phase 1 is complete, the student chat MVP is active, and the Version 2.0 Academic Intelligence System Workspace is live:
-- repository skeleton established
-- FastAPI backend layered by routers/services/adapters/domain
-- SQLite schema bootstrap wired
-- ingestion/query/memory API contracts scaffolded, including session timeline history and document drilldown
-- functional local ingestion -> chunk indexing -> lexical retrieval loop added
-- hybrid retrieval baseline added (BM25 + optional Chroma vector + RRF + rerank)
-- retrieval and synthesis tuning centralized in `RetrievalPolicy`
-- custom Next.js study workspace added with Study Thread, Study Material, Evidence Trail, Study Context, Compare, and Eval panels
-- document drilldown, citation jump links, and query/session comparison are now in the workspace
-- Phase 1 foundation is complete and Phase 2 workflow polish is complete
-- Phase 3 quality pass is active with citation excerpts, source scores, answer diff visibility, and retrieval diversity tuning
-- Phase 4 grounding pass is active with score-aware synthesis metadata and a compact grounding summary badge in the query panel
-- retrieval profiles are available: `fast`, `balanced`, `precision`
-- study modes are available: `research`, `summary`, `deep_research`, `general_chat`, `research_paper`, `exam_answer`, `revision_notes`, `important_questions`, `compare_concepts`, `study_guide`
-- ChatGPT-like upload is available from the composer for PDFs, text, Markdown, and image files
-- broad PDF summary prompts such as "Explain the PDF" are routed through grounded summary mode
-- parsed PDF pages are cached by content hash for faster repeated local reindexing
-- tests use isolated temporary SQLite/Chroma paths so local user documents are not polluted by fixtures
+- Upload PDFs, text, Markdown, and images.
+- Summarize documents with citations.
+- Ask grounded questions against selected sources.
+- Inspect evidence chunks and source pages.
+- Use Research, Chat, Paper Lab, and Exam Lab workspaces.
+- Draft Paper Lab sections with related-work matrix, citation clusters, and Markdown export.
+- Generate Exam Lab answers, study guides, and printable custom PDFs.
+- Run locally with FastAPI, Next.js, SQLite, optional Chroma, and optional Ollama.
 
-## Quick Start (Scaffold)
+## Why It Is Different
 
-1. Backend:
-   - `cd apps/api`
-   - `python -m pip install -e .`
-   - optional vector retrieval: `python -m pip install -e .[vector]`
-   - optional OCR fallback: `python -m pip install -e .[ocr]`
-   - `python -m uvicorn app.main:app --reload`
-2. Frontend:
-   - `cd apps/web`
-   - `npm install`
-   - `npm run dev`
-   - Open `http://127.0.0.1:3002`
+Most PDF chat apps stop at upload-and-answer. NIRMIQ focuses on:
 
-Current local review URL:
-- `http://127.0.0.1:3002`
+- Local-first privacy.
+- Citation-aware answers.
+- Abstention when evidence is weak.
+- Retrieval metadata for debugging and evaluation.
+- Paper and exam workflows tailored for engineering students.
+- Low-VRAM local inference strategy for RTX 4050-class hardware.
 
-## Local Tests
+## Current V4 Foundation
 
-- `cd apps/api`
-- `python -m pytest app/tests/unit/test_health_contract.py app/tests/integration -q`
+Implemented:
 
-## Retrieval Evaluation
+- Hybrid retrieval: BM25, optional vector retrieval, RRF, reranking hook.
+- Grounded synthesis with citation verification and fallback rewrites.
+- Chunk quality scoring to reduce noisy PDF/OCR chunks.
+- Selected-document summary cache by content hash.
+- Deterministic query intent routing.
+- Compact trust badge: `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
+- V4 Paper Lab citation workspace:
+  - suggested paper outline
+  - related-work matrix
+  - citation clusters
+  - Markdown draft copy export
 
-- Label file format: `data/processed/eval/qa_labels.jsonl`
-- Example template: `data/processed/eval/qa_labels.example.jsonl`
-- Run:
-  - `python scripts/eval_retrieval.py --dataset data/processed/eval/qa_labels.jsonl --k 3 5 8 --modes hybrid bm25 vector`
-  - or `scripts/eval_retrieval.ps1`
-  - use `scripts/eval_grounded.ps1` for full-query grounding metrics
-- Paste the JSON output into the local console's Eval report viewer to inspect metrics without leaving the app.
+## Quick Start
 
-## Query Retrieval Modes
+Backend:
 
-- `POST /query` supports `retrieval_mode`:
-  - `hybrid` (default)
-  - `bm25`
-  - `vector`
-- Use this for quick A/B checks on grounded response behavior.
+```powershell
+cd C:\Nirmiq-researchOS\apps\api
+python -m pip install -e .
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
 
-## Retrieval Tuning
+Frontend:
 
-- `RETRIEVAL_MAX_CONTEXT_TOKENS` controls the synthesis context budget.
-- `RETRIEVAL_MIN_GROUNDING_SCORE` controls when synthesis will abstain.
+```powershell
+cd C:\Nirmiq-researchOS\apps\web
+npm install
+npm run dev
+```
 
-## Ingestion Observability
+Open:
 
-- `GET /ingest/{document_id}` for current status and latest job.
-- `GET /ingest/{document_id}/jobs` for full ingestion job history.
+- Web: `http://127.0.0.1:3002`
+- API: `http://127.0.0.1:8000`
+- Readiness: `http://127.0.0.1:8000/health/readiness`
 
-## Ollama Toggle Notes
+## Publish Smoke Check
 
-- Generation path defaults to `USE_OLLAMA_GENERATION=true` with fallback when Ollama is offline.
-- Embedding path defaults to `USE_OLLAMA_EMBEDDINGS=true` with automatic fallback to deterministic hash embeddings.
-- Reranker defaults to `USE_OLLAMA_RERANKER=false` to keep latency low; enable when you want model-based reranking.
-- OCR fallback auto-triggers on low-text pages when Tesseract + OCR deps are available.
+After backend and frontend are running:
 
-## Architecture
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\publish_smoke.ps1
+```
 
-See [docs/phase1_foundational_architecture.md](docs/phase1_foundational_architecture.md).
+## Tests
 
-## NIRMIQ Ecosystem
+```powershell
+cd C:\Nirmiq-researchOS
+$env:PYTHONPATH='apps/api'
+python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q
+python -m compileall apps/api/app
+cd apps/web
+npm run build
+```
 
-See [docs/nirmiq_ecosystem.md](docs/nirmiq_ecosystem.md) for how this standalone Academic Intelligence System fits under the broader NIRMIQ umbrella.
+## Demo Flow
 
-## Repository Rename Note
+1. Open the app and enter local profile details.
+2. Upload or select a PDF.
+3. Click `Summarize PDF`.
+4. Inspect citations in `Sources`.
+5. Switch to `Paper Lab`.
+6. Ask for a related-work or methodology section.
+7. Show the Paper Lab outline and related-work matrix.
+8. Click `Copy Markdown Draft`.
+9. Switch to `Exam Lab` and generate a study guide or custom PDF.
 
-Target GitHub repository name: `NirmiqAcademicIntelligenceSystem`.
+## Important Docs
 
-Current remote may still point to the previous repository URL until GitHub repository settings are renamed manually or GitHub CLI is available.
+- [Publish checklist](docs/publish_checklist.md)
+- [Backend architecture](backend_architecture.md)
+- [Product requirements](prd.md)
+- [Technical requirements](trd.md)
+- [Accuracy and hallucination audit](docs/accuracy_precision_audit.md)
+- [Internship impact plan](docs/internship_impact_plan.md)
+- [NIRMIQ ecosystem](docs/nirmiq_ecosystem.md)
 
-## Portfolio Impact Plan
+## Notes
 
-See [docs/internship_impact_plan.md](docs/internship_impact_plan.md) for the project positioning, technical differentiators, demo script, metrics, and roadmap.
+- The local profile screen is a UX gate, not production authentication.
+- Core document Q&A works without cloud APIs.
+- Ollama is optional; deterministic fallback paths keep the app usable when local models are offline.
+- Target GitHub repository name: `NirmiqAcademicIntelligenceSystem`.

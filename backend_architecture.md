@@ -17,6 +17,7 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 
 ## Service Boundaries
 
+- `HealthRouter`: liveness and local demo readiness checks.
 - `IngestionService`: accepts source paths/uploads, enforces local corpus roots, validates upload signatures, creates document records, runs parsing/indexing.
 - `IndexingService`: chunks parsed pages, persists chunks, updates lexical/vector indexes.
 - `RetrievalService`: BM25/vector retrieval, RRF fusion, optional reranking, citation assembly.

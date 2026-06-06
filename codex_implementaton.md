@@ -61,6 +61,7 @@ After each meaningful project work unit:
 - Added adaptive generation temperature for long-context deep research.
 - Added V3.1 summary caching, deterministic intent routing, and compact trust metadata.
 - Added V4 Paper Lab foundation with related-work matrix, citation clusters, outline metadata, and Markdown copy export.
+- Added V4 publish readiness endpoint, smoke script, README refresh, and publish checklist.
 
 ## Important Commits So Far
 
@@ -85,6 +86,7 @@ After each meaningful project work unit:
 - Cache repeated selected-document summaries until the source content hash changes.
 - Show one compact answer trust badge rather than exposing raw debug metadata by default.
 - Use Paper Lab for grounded research-paper scaffolds that can be copied as Markdown.
+- Use `/health/readiness` and `scripts/publish_smoke.ps1` before public demo/publish.
 
 ## Current Verification Routine
 
@@ -160,5 +162,20 @@ Date: 2026-06-06
 Verification:
 
 - Backend unit/integration suite: `26 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+
+## Latest V4 Publish Readiness Work
+
+Date: 2026-06-06
+
+- Added API readiness endpoint for publish/demo state.
+- Added publish smoke script.
+- Rewrote README for current V4 capabilities.
+- Added publish checklist and updated API contract.
+
+Verification:
+
+- Backend unit/integration suite: `27 passed`.
 - `python -m compileall apps/api/app`: passed.
 - `npm run build`: passed.

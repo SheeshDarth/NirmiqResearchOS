@@ -54,6 +54,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 ## API Requirements
 
 - `GET /health`: service health and dependency status.
+- `GET /health/readiness`: local demo readiness, indexed document count, active chunk count, vector/Ollama availability, and local-first status.
 - `POST /ingest`: ingest document by source path.
 - `POST /ingest/upload`: upload file and ingest it.
 - `GET /ingest/{document_id}`: document status and latest job.

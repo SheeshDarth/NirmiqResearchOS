@@ -1161,3 +1161,33 @@ Verification:
 Commit:
 
 - `52bcbe5` - Add V4 Paper Lab citation workspace.
+
+### Latest Update: V4 Publish Readiness Sprint
+
+Date: 2026-06-06
+
+This update targeted a working publish/demo pass for June 7, 2026.
+
+Implemented:
+
+- Added `GET /health/readiness` to report API/database readiness, indexed document count, active chunk count, Chroma availability, Ollama availability, and local-first status.
+- Added backend contract coverage for readiness.
+- Added `scripts/publish_smoke.ps1` to verify API health, readiness, and web shell branding after local servers are running.
+- Rewrote `README.md` around the current V4 product state and demo flow.
+- Added `docs/publish_checklist.md` with pre-publish commands, local startup, smoke check, demo script, and eval label workflow.
+- Updated `docs/api_contract.md` for readiness and V4 query metadata.
+
+Tradeoffs:
+
+- Readiness is intentionally simple and local; it does not require Ollama or Chroma to be online because deterministic fallback paths are valid.
+- Eval labels are not hardcoded because document IDs are local database state. The checklist explains how to create real labels after ingest.
+
+Verification:
+
+- Backend unit/integration suite: `27 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+
+Commit:
+
+- Pending until the publish-readiness commit is created.

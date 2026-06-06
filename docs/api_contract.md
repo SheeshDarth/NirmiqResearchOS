@@ -6,6 +6,20 @@
 - Response:
   - `{"status":"ok"}`
 
+### `GET /health/readiness`
+- Response:
+  - `status: "ready"|"needs_documents"`
+  - `database: "ok"`
+  - `documents: number`
+  - `indexed_documents: number`
+  - `active_chunks: number`
+  - `vector_store_available: boolean`
+  - `ollama_available: boolean`
+  - `local_first: true`
+  - `notes: string`
+- Behavior:
+  - Indicates whether the API is alive and whether there is enough indexed local corpus state for a grounded demo.
+
 ### `POST /ingest`
 - Request:
   - `source_path: string`
@@ -56,6 +70,14 @@
   - `diverse_documents`
   - `strategy` (`phase1_hybrid|phase1_bm25|phase1_vector`)
   - `requested_retrieval_mode`
+  - `cache_hit`
+  - `detected_intent`
+  - `intent_confidence`
+  - `intent_route`
+  - `citation_coverage`
+  - `citation_sentence_count`
+  - `citation_anchor_count`
+  - `paper_lab` for paper-draft intent, including outline, citation clusters, and related-work matrix.
 
 ### Retrieval Tuning
 - `RETRIEVAL_MAX_CONTEXT_TOKENS` bounds synthesis context size.
