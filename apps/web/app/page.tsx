@@ -87,6 +87,24 @@ type GuideCard = {
   body: string[];
 };
 
+type PaperLabMatrixRow = {
+  claim_area?: string;
+  evidence?: number;
+  page?: number | null;
+  source_type?: string;
+  quality?: number;
+  use_in_paper?: string;
+  excerpt?: string;
+};
+
+type PaperLabArtifact = {
+  source_count?: number;
+  evidence_count?: number;
+  outline?: string[];
+  related_work_matrix?: PaperLabMatrixRow[];
+  citation_clusters?: Record<string, PaperLabMatrixRow[]>;
+};
+
 const DEFAULT_SOURCE_PATH = "C:\\Nirmiq-Academic Intelligence System\\data\\raw\\attention_is_all_you_need.pdf";
 const PRODUCT_NAME = "NIRMIQ";
 const PRODUCT_TAGLINE = "Academic Intelligence System";
@@ -265,6 +283,51 @@ function getVerificationBadge(response: QueryResponse | null): { label: string; 
   if (state === "supported") return { label: "Verified", className: "sage" };
   if (state === "unsupported" || state === "unchecked") return { label: "Needs review", className: "copper" };
   return null;
+}
+
+function getPaperLabArtifact(response: QueryResponse | null): PaperLabArtifact | null {
+  const raw = response?.retrieval_meta?.paper_lab;
+  if (!raw || typeof raw !== "object") return null;
+  return raw as PaperLabArtifact;
+}
+
+function buildPaperLabMarkdown(run: ChatRun, artifact: PaperLabArtifact | null, materialName: string): string {
+  const citations = run.response.citations
+    .map((citation, index) => `- [${index + 1}] ${citation.page_start ? `Page ${citation.page_start}` : "Page unknown"}: ${previewText(citation.excerpt, 220)}`)
+    .join("\n");
+  const outline = artifact?.outline?.length
+    ? artifact.outline.map((item, index) => `${index + 1}. ${item}`).join("\n")
+    : "1. Title and problem framing\n2. Related work\n3. Methodology\n4. Discussion\n5. Limitations";
+  const matrix = artifact?.related_work_matrix?.length
+    ? artifact.related_work_matrix
+        .map(
+          (row) =>
+            `| ${row.claim_area ?? "Evidence"} | ${row.evidence ?? "-"} | ${row.page ?? "-"} | ${row.use_in_paper ?? "Use as supporting evidence."} | ${previewText(row.excerpt, 160)} |`,
+        )
+        .join("\n")
+    : "| Evidence | - | - | No matrix returned. | - |";
+
+  return [
+    `# NIRMIQ Paper Lab Draft`,
+    "",
+    `Source: ${materialName}`,
+    `Mode: ${modeLabel(run.mode)}`,
+    `Generated: ${formatDate(run.timestamp)}`,
+    "",
+    "## Draft",
+    run.response.answer,
+    "",
+    "## Suggested Paper Outline",
+    outline,
+    "",
+    "## Related-Work Matrix",
+    "| Claim Area | Evidence | Page | Use In Paper | Excerpt |",
+    "| --- | ---: | ---: | --- | --- |",
+    matrix,
+    "",
+    "## Citations",
+    citations || "- No citations returned.",
+  ].join("\n");
 }
 
 function splitAnswerUnits(value: string): string[] {
@@ -584,6 +647,7 @@ export default function Home() {
   const previousRun = queryHistory.length >= 2 ? queryHistory[queryHistory.length - 2] : undefined;
   const currentRun = queryHistory.length >= 1 ? queryHistory[queryHistory.length - 1] : undefined;
   const answerDiff = useMemo(() => buildAnswerDiff(previousRun, currentRun), [currentRun, previousRun]);
+  const paperLabArtifact = useMemo(() => getPaperLabArtifact(queryResult), [queryResult]);
   const availableModes = STUDY_MODES.filter((mode) => mode.section === workspaceSection);
   const currentMode = availableModes.find((mode) => mode.value === studyMode) ?? availableModes[0] ?? STUDY_MODES[0];
   const currentSection = WORKSPACE_SECTIONS.find((section) => section.value === workspaceSection) ?? WORKSPACE_SECTIONS[0];
@@ -908,6 +972,17 @@ export default function Home() {
       </html>
     `);
     printable.document.close();
+  }
+
+  async function onCopyPaperMarkdown() {
+    if (!currentRun || workspaceSection !== "paper") return;
+    const markdown = buildPaperLabMarkdown(currentRun, paperLabArtifact, activeMaterialName);
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setError("Paper Lab Markdown copied with outline, matrix, answer, and citations.");
+    } catch {
+      setError("Clipboard copy failed. Select the answer text manually and copy it.");
+    }
   }
 
   function selectDocument(item: DocumentItem) {
@@ -1521,6 +1596,83 @@ export default function Home() {
             </button>
           ))}
         </div>
+
+        {workspaceSection === "paper" ? (
+          <section className="tool-panel rail-section" data-testid="paper-lab-panel">
+            <div className="panel">
+              <div className="section-head">
+                <div>
+                  <p className="eyebrow">V4 Paper Lab</p>
+                  <h2>Citation Workspace</h2>
+                </div>
+                <span className="chip sage">
+                  {paperLabArtifact?.evidence_count ?? latestCitations.length} evidence
+                </span>
+              </div>
+              <p className="copy">
+                Draft with source-backed structure. NIRMIQ organizes retrieved chunks into an outline,
+                citation clusters, and a related-work matrix.
+              </p>
+              <button
+                className="button primary"
+                disabled={!currentRun?.response.answer}
+                onClick={onCopyPaperMarkdown}
+                style={{ marginTop: 12 }}
+                type="button"
+              >
+                Copy Markdown Draft
+              </button>
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>Paper Outline</h2>
+                <span className="chip">{paperLabArtifact?.source_count ?? 0} sources</span>
+              </div>
+              <div className="timeline-list" style={{ marginTop: 12 }}>
+                {(paperLabArtifact?.outline ?? [
+                  "Title and problem framing",
+                  "Background and related work",
+                  "Methodology or system design",
+                  "Evidence-backed discussion",
+                  "Limitations and future work",
+                ]).map((item, index) => (
+                  <div className="timeline-card" key={`${item}-${index}`}>
+                    <div className="message-meta">
+                      <strong>{index + 1}. {item}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>Related-Work Matrix</h2>
+                <span className="chip">{paperLabArtifact?.related_work_matrix?.length ?? 0} rows</span>
+              </div>
+              <div className="timeline-list" style={{ marginTop: 12 }}>
+                {paperLabArtifact?.related_work_matrix?.slice(0, 5).map((row, index) => (
+                  <div className="timeline-card" key={`${row.evidence}-${index}`}>
+                    <div className="message-meta">
+                      <strong>{row.claim_area ?? "Evidence"}</strong>
+                      <span className="tiny">
+                        Evidence {row.evidence ?? index + 1}
+                        {row.page ? ` / p.${row.page}` : ""}
+                      </span>
+                    </div>
+                    <p className="chunk-text">{row.use_in_paper ?? "Use as supporting evidence."}</p>
+                    <span className="tiny">{previewText(row.excerpt, 180)}</span>
+                  </div>
+                )) ?? (
+                  <p className="copy">
+                    Ask Paper Lab for a research paper section to generate the matrix.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {workspaceSection === "exam" ? (
           <section className="tool-panel rail-section" data-testid="exam-lab-panel">

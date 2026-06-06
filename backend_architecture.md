@@ -50,8 +50,9 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 6. Fuse with RRF and rerank/pack context.
 7. Generate grounded answer or abstain.
 8. Compute citation coverage and trust metadata.
-9. Persist user/assistant turns.
-10. Return answer, citations, debug metadata, and grounding state.
+9. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
+10. Persist user/assistant turns.
+11. Return answer, citations, debug metadata, and grounding state.
 
 ## SQLite Responsibilities
 
@@ -92,10 +93,11 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - SQLite-backed selected-document summary cache.
 - Deterministic query intent router and retrieval hint expansion.
 - Citation coverage metadata and compact UI trust badge.
+- Paper Lab deterministic related-work matrix, citation clusters, outline metadata, and Markdown export.
 
 ## Next Backend Upgrades
 
 - SQLite concept graph tables for GraphRAG-lite.
-- Source diversity controls for Paper Lab.
+- Multi-document source diversity controls for Paper Lab.
 - Local data purge/export endpoints.
 - Optional local agent orchestrator with explicit tool allowlists and approval gates.

@@ -1,6 +1,6 @@
 ﻿# NIRMIQ Next Version Improvements
 
-Last updated: 2026-05-29
+Last updated: 2026-06-06
 
 ## Product improvements
 
@@ -8,13 +8,11 @@ Last updated: 2026-05-29
 2. Add a proper local document picker instead of requiring users to paste filesystem paths.
 3. Add document deletion and secure purge from SQLite, BM25, Chroma, extracted diagrams, and memory.
 4. Add a first-run onboarding flow that explains local-first privacy, citations, and offline limitations.
-5. Add a dedicated Engineering Paper Lab workflow:
+5. Expand the Engineering Paper Lab workflow:
    - title/abstract builder
-   - related-work matrix
-   - citation clustering
-   - methodology scaffold
+   - richer methodology scaffold
    - limitations and future-work generator
-   - export to Markdown, DOCX, and LaTeX/BibTeX
+   - export to DOCX and LaTeX/BibTeX after Markdown is validated
 6. Add source quality indicators for papers, notes, textbooks, and question banks.
 7. Add collection-level querying across multiple uploaded PDFs.
 
@@ -34,7 +32,7 @@ Last updated: 2026-05-29
 2. Add command palette for modes: Research, Paper Lab, Exam Lab, Explain, Compare, Study Guide.
 3. Show citations inline as compact source chips that open the source drawer.
 4. Show source diagrams inside study-guide cards when diagram context is used.
-5. Add paper-outline cards and citation table views.
+5. Improve Paper Lab outline cards and citation table views beyond the initial V4 foundation.
 6. Improve mobile layout so chat remains the primary surface.
 
 ## Security and privacy improvements
@@ -54,3 +52,12 @@ Last updated: 2026-05-29
 3. Add embedding batch-size controls for RTX 4050 memory limits.
 4. Add model-routing presets: fast, balanced, deep, exam, paper.
 5. Add streaming responses once local generation is stable.
+
+## Completed Since This Roadmap
+
+- Parsed PDF page cache.
+- Chunk quality scoring.
+- Citation verification and citation coverage metadata.
+- Selected-document summary cache.
+- Deterministic query intent routing.
+- Initial Paper Lab related-work matrix, citation clusters, outline metadata, and Markdown copy export.

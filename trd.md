@@ -37,6 +37,8 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Cache selected-document summaries by document id, content hash, and summary profile.
 - Add deterministic query intent metadata without changing the public query request shape.
 - Compute citation coverage metadata for generated and fallback answers.
+- Add Paper Lab metadata for paper-draft responses: outline, citation clusters, and related-work matrix.
+- Provide client-side Markdown export for grounded Paper Lab drafts.
 
 ## Non-Functional Requirements
 
@@ -60,6 +62,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - `GET /documents/{document_id}/chunks`: source drilldown.
 - `POST /query`: grounded query flow with retrieval mode/profile/mode/session.
 - `POST /query` debug metadata may include cache hit, detected intent, intent route, and citation coverage fields.
+- `POST /query` debug metadata may include `paper_lab` only for paper-draft intent.
 - `GET /memory/{session_id}`: session memory snapshot.
 - Exam routes for profiles, question banks, and study/exam artifacts.
 
@@ -72,6 +75,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Use document-scoped fallback when a selected document exists and broad prompts retrieve low lexical scores.
 - Include debug metadata for evaluation and development.
 - Use deterministic intent routing to expand retrieval hints for summaries, comparisons, deep research, paper drafting, and exam workflows.
+- Paper drafting responses should expose deterministic paper-structure metadata without adding another generation pass.
 - Avoid graph databases in V3 unless the measured baseline proves SQLite concept graph expansion is insufficient.
 
 ## Security And Privacy Requirements

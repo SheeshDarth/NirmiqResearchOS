@@ -155,6 +155,24 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         refreshed_summary_body = refreshed_summary_response.json()
         assert refreshed_summary_body["retrieval_meta"]["cache_hit"] is False
 
+        paper_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Draft a related work section from this document.",
+                "document_id": document_id,
+                "mode": "research_paper",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert paper_response.status_code == 200
+        paper_body = paper_response.json()
+        assert paper_body["retrieval_meta"]["detected_intent"] == "paper_draft"
+        assert paper_body["retrieval_meta"]["effective_retrieval_profile"] == "precision"
+        assert paper_body["retrieval_meta"]["paper_lab"]["evidence_count"] >= 1
+        assert paper_body["retrieval_meta"]["paper_lab"]["related_work_matrix"]
+
         timeline_response = client.get("/memory/integration-session/timeline")
         assert timeline_response.status_code == 200
         timeline_body = timeline_response.json()

@@ -5,6 +5,7 @@ from app.api.schemas.common import Citation
 from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.api.schemas.query import QueryRequest, QueryResponse
 from app.domain.citations import to_citations
+from app.domain.paper_lab import build_paper_lab_artifact
 from app.domain.query_intent import QueryIntent, detect_query_intent
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
@@ -89,6 +90,8 @@ class QueryService:
                 "diagram_count": len(exam_context.get("diagrams", [])),
             },
         }
+        if intent.intent == "paper_draft":
+            combined_meta["paper_lab"] = build_paper_lab_artifact(bundle.chunks)
         self._store_summary_if_applicable(
             payload=payload,
             retrieval_mode=retrieval_mode,

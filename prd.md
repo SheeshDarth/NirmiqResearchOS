@@ -83,8 +83,9 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 
 1. Upload papers or notes.
 2. Ask for outlines, related-work matrix, methodology draft, limitations, or citation-backed paragraphs.
-3. Inspect citations and copy grounded drafts.
-4. Future V4/V5 exports can target Markdown, DOCX, or LaTeX.
+3. Inspect citations, related-work matrix rows, and citation clusters.
+4. Copy a grounded Markdown paper draft with outline, matrix, answer, and citations.
+5. Future V5 exports can target DOCX or LaTeX.
 
 ### Exam Lab
 
@@ -105,6 +106,7 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 - Longer research drafts feel useful without sacrificing citation verification.
 - Repeated selected-document summaries return faster from cache.
 - Users can see a simple answer trust signal without opening debug metadata.
+- Paper Lab can produce a grounded Markdown draft package instead of only a chat answer.
 
 ## Why Users Choose NIRMIQ
 
@@ -114,7 +116,7 @@ NIRMIQ is not a generic upload-and-chat clone. It is a local academic intelligen
 
 - SQLite concept graph for GraphRAG-lite expansion.
 - Safe local agent orchestrator with typed retrieval/synthesis tools.
-- Paper Lab related-work matrix and citation clustering.
+- Paper Lab DOCX/LaTeX export after Markdown behavior is validated.
 - Exam Lab answer templates by marks and diagram-aware study guides.
 - Local data purge/export controls.
 - Retrieval evaluation dataset for NIRMIQ academic use cases.

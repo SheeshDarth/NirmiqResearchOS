@@ -1,6 +1,6 @@
 # NIRMIQ Academic Intelligence System: Internship Impact Plan
 
-Last updated: 2026-05-30
+Last updated: 2026-06-06
 
 ## Positioning
 
@@ -48,6 +48,9 @@ Most portfolio RAG apps stop at "upload PDF and ask questions." NIRMIQ should go
 - Support Research, Chat, Paper Lab, and Exam Lab workspaces.
 - Run local fallback synthesis when Ollama is unavailable.
 - Cache parsed PDF pages by content hash for faster repeated reindexing.
+- Cache selected-document summaries by content hash.
+- Route query intent deterministically.
+- Generate Paper Lab metadata for outline, related-work matrix, citation clusters, and Markdown draft export.
 
 ## Performance Strategy
 
@@ -56,9 +59,9 @@ Priority is not raw model size. Priority is useful grounded answers on a laptop.
 Near-term optimizations:
 
 - Cache parsed PDF pages by content hash. Completed.
-- Cache document-level summaries after first generation.
-- Add chunk quality scoring to down-rank boilerplate, headers, page numbers, broken glyphs, and references-only chunks.
-- Add query intent detection before retrieval: summary, compare, exam, paper, factual lookup, general chat.
+- Cache document-level summaries after first generation. Completed for selected-document summaries.
+- Add chunk quality scoring to down-rank boilerplate, headers, page numbers, broken glyphs, and references-only chunks. Completed.
+- Add query intent detection before retrieval: summary, compare, exam, paper, factual lookup, general chat. Completed.
 - Use lower retrieval budgets for fast chat and higher budgets only for deep research/paper mode.
 - Add source diversity rules for Paper Lab to avoid over-citing one page or section.
 - Add response streaming only after generation reliability is stable.
@@ -99,11 +102,11 @@ This gives most of the useful graph behavior while preserving offline simplicity
 
 ### Sprint 3: Paper Lab
 
-- Add paper outline builder.
-- Add related-work matrix.
-- Add citation clustering.
+- Add paper outline builder. Initial deterministic version completed.
+- Add related-work matrix. Initial V4 foundation completed.
+- Add citation clustering. Initial V4 foundation completed.
 - Add thesis/methodology/limitations draft modes.
-- Add export to Markdown first, then DOCX/LaTeX later.
+- Add export to Markdown first, then DOCX/LaTeX later. Markdown copy export completed.
 
 ### Sprint 4: Exam Lab
 
@@ -135,9 +138,10 @@ This gives most of the useful graph behavior while preserving offline simplicity
 2. Ask "Explain the PDF" and show grounded summary with citations.
 3. Click a citation and inspect the source chunk.
 4. Switch to Paper Lab and draft a related-work section.
-5. Switch to Exam Lab, import questions, and generate a marks-ready answer.
-6. Show retrieval metadata/evaluation output.
-7. Disconnect generation or vector dependencies and show graceful local fallback.
+5. Copy the Paper Lab Markdown draft and show outline/matrix/citations.
+6. Switch to Exam Lab, import questions, and generate a marks-ready answer.
+7. Show retrieval metadata/evaluation output.
+8. Disconnect generation or vector dependencies and show graceful local fallback.
 
 ## Engineering Principles
 

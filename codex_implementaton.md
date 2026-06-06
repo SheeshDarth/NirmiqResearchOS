@@ -60,6 +60,7 @@ After each meaningful project work unit:
 - Added local ingestion privacy allowlists and upload content sniffing.
 - Added adaptive generation temperature for long-context deep research.
 - Added V3.1 summary caching, deterministic intent routing, and compact trust metadata.
+- Added V4 Paper Lab foundation with related-work matrix, citation clusters, outline metadata, and Markdown copy export.
 
 ## Important Commits So Far
 
@@ -83,6 +84,7 @@ After each meaningful project work unit:
 - Use higher-temperature local generation only for long-context deep research/drafting while preserving citation verification.
 - Cache repeated selected-document summaries until the source content hash changes.
 - Show one compact answer trust badge rather than exposing raw debug metadata by default.
+- Use Paper Lab for grounded research-paper scaffolds that can be copied as Markdown.
 
 ## Current Verification Routine
 
@@ -109,7 +111,7 @@ Avoid re-reading the full chat unless the user asks for historical details not c
 
 ## V4 Preparation Notes
 
-- Build stronger Paper Lab flows: outline, related-work matrix, citation clustering.
+- Build stronger Paper Lab flows: outline, related-work matrix, citation clustering. Initial V4 foundation completed.
 - Build stronger Exam Lab flows: marks-based templates, question-bank ranking, diagram-aware study guides.
 - Add summary caching.
 - Add secure purge/export controls.
@@ -142,5 +144,21 @@ Date: 2026-06-06
 Verification:
 
 - Backend unit/integration suite: `25 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+
+## Latest V4 Foundation Work
+
+Date: 2026-06-06
+
+- Added deterministic Paper Lab artifact generation from retrieved chunks.
+- Paper draft responses now expose `retrieval_meta.paper_lab` with source count, evidence count, citation clusters, related-work matrix, and suggested outline.
+- Added Paper Lab right-rail panel for outline and related-work matrix.
+- Added `Copy Markdown Draft` for grounded paper exports using the answer, matrix, outline, and citations.
+- Added unit and integration tests for Paper Lab artifacts.
+
+Verification:
+
+- Backend unit/integration suite: `26 passed`.
 - `python -m compileall apps/api/app`: passed.
 - `npm run build`: passed.

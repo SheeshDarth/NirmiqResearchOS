@@ -1129,3 +1129,35 @@ Verification:
 Commit:
 
 - `b036ad8` - Add V3.1 summary cache and trust routing.
+
+### Latest Update: V4 Paper Lab Foundation
+
+Date: 2026-06-06
+
+This update began Version 4 with a focused Paper Lab foundation instead of a broad, risky feature wave.
+
+Implemented:
+
+- Added deterministic Paper Lab artifact generation from retrieved chunks.
+- Paper draft responses now expose `retrieval_meta.paper_lab`.
+- Paper Lab metadata includes source count, evidence count, citation clusters, related-work matrix rows, and a suggested paper outline.
+- Added a Paper Lab right-rail workspace panel with outline and related-work matrix previews.
+- Added `Copy Markdown Draft` to export the grounded answer, outline, matrix, and citations without adding server-side file writes or new dependencies.
+- Added unit tests for Paper Lab artifact generation.
+- Expanded integration tests to verify paper-draft metadata.
+
+Tradeoffs:
+
+- The V4 foundation uses deterministic chunk organization rather than another LLM pass, keeping latency and VRAM usage low.
+- Markdown copy export is the first export target; DOCX/LaTeX should wait until the Paper Lab draft shape is validated.
+- Multi-document citation diversity is still a future V4 item.
+
+Verification:
+
+- Backend unit/integration suite: `26 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+
+Commit:
+
+- Pending until the implementation commit is created.
