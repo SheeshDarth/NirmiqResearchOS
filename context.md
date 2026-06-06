@@ -1128,4 +1128,4 @@ Verification:
 
 Commit:
 
-- Pending until the implementation commit is created.
+- `b036ad8` - Add V3.1 summary cache and trust routing.
