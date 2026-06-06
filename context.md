@@ -1226,3 +1226,29 @@ Verification:
 Commit:
 
 - `fa85a78` - Fix Chroma dimension mismatch preview failures.
+
+### Latest Update: Offline-First Runtime Clarification
+
+Date: 2026-06-06
+
+Clarification:
+
+- The word API caused confusion because NIRMIQ has a local FastAPI backend, but the product must not depend on a cloud API.
+- Core NIRMIQ operation is local/offline first.
+- ChatGPT/OpenAI-linked account usage is only a future optional enhancement path, not the primary goal or required runtime.
+
+Implemented:
+
+- Readiness now reports `local_backend=true`, `cloud_api_required=false`, `external_provider_enabled=false`, and `primary_inference=local_offline`.
+- Publish smoke check now validates that cloud API is not required.
+- README, publish checklist, API contract, security docs, and TRD now use clearer local-backend/offline-first language.
+
+Verification:
+
+- Backend unit/integration suite: `29 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+
+Commit:
+
+- Pending until the clarification commit is created.

@@ -23,3 +23,7 @@ def test_readiness_endpoint_returns_demo_state() -> None:
     assert isinstance(body["vector_store_available"], bool)
     assert isinstance(body["ollama_available"], bool)
     assert body["local_first"] is True
+    assert body["local_backend"] is True
+    assert body["cloud_api_required"] is False
+    assert body["external_provider_enabled"] is False
+    assert body["primary_inference"] == "local_offline"

@@ -37,8 +37,8 @@ cd C:\Nirmiq-researchOS
 Open:
 
 - `http://127.0.0.1:3002`
-- API health: `http://127.0.0.1:8000/health`
-- API readiness: `http://127.0.0.1:8000/health/readiness`
+- Local backend health: `http://127.0.0.1:8000/health`
+- Local backend readiness: `http://127.0.0.1:8000/health/readiness`
 
 ## Smoke Check
 
@@ -51,8 +51,9 @@ cd C:\Nirmiq-researchOS
 
 Expected:
 
-- API health returns `ok`.
+- Local backend health returns `ok`.
 - Readiness returns `ready` when at least one indexed document exists.
+- Readiness reports `cloud_api_required=false`.
 - Web shell includes NIRMIQ branding.
 
 ## Demo Flow
@@ -87,5 +88,5 @@ python scripts/eval_retrieval.py --dataset data/processed/eval/qa_labels.jsonl -
 
 - Keep the repo local-first and offline-capable.
 - Do not promise production authentication yet.
-- Do not claim cloud sync or internet search.
+- Do not claim cloud sync, internet search, or ChatGPT/OpenAI account dependency.
 - Present this as a working local academic intelligence workspace with grounded RAG, citations, Paper Lab, and Exam Lab.

@@ -27,6 +27,10 @@ async def readiness_check(container: AppContainer = Depends(get_container)) -> d
         "vector_store_available": vector_available,
         "ollama_available": ollama_available,
         "local_first": True,
+        "local_backend": True,
+        "cloud_api_required": False,
+        "external_provider_enabled": False,
+        "primary_inference": "local_offline",
         "notes": (
             "Ready for grounded document Q&A."
             if ready

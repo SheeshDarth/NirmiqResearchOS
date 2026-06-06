@@ -87,6 +87,8 @@ After each meaningful project work unit:
 - Show one compact answer trust badge rather than exposing raw debug metadata by default.
 - Use Paper Lab for grounded research-paper scaffolds that can be copied as Markdown.
 - Use `/health/readiness` and `scripts/publish_smoke.ps1` before public demo/publish.
+- Treat FastAPI as the local backend runtime, not a cloud API dependency.
+- Keep ChatGPT/OpenAI account usage as a future optional add-on only.
 
 ## Current Verification Routine
 
@@ -177,5 +179,20 @@ Date: 2026-06-06
 Verification:
 
 - Backend unit/integration suite: `27 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+
+## Latest Offline-First Clarification
+
+Date: 2026-06-06
+
+- Clarified local backend versus cloud API language.
+- Readiness now reports that cloud API access is not required.
+- Smoke script now verifies `cloud_api_required=false`.
+- Updated docs to make ChatGPT/OpenAI-linked usage optional and non-primary.
+
+Verification:
+
+- Backend unit/integration suite: `29 passed`.
 - `python -m compileall apps/api/app`: passed.
 - `npm run build`: passed.

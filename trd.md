@@ -17,6 +17,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Retrieval: BM25, optional vector retrieval, Reciprocal Rank Fusion, reranking hooks, citation packing.
 - Parsing: PyMuPDF for PDFs, Tesseract OCR as optional fallback for low-text/scanned pages and images.
 - Local inference: Ollama generation and embeddings when available, deterministic/fallback paths when unavailable.
+- Connected ChatGPT/OpenAI account usage is optional future enhancement only, not required for core operation.
 - Hardware priority: low VRAM, graceful fallback, fast local demos.
 
 ## Functional Requirements
@@ -43,6 +44,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 ## Non-Functional Requirements
 
 - Offline-first: core document Q&A should work without internet.
+- Local-first: the local FastAPI backend is part of the app runtime, not a cloud API dependency.
 - Privacy-first: documents remain local by default.
 - Maintainable: prefer fewer services and explicit orchestration.
 - Stable: backend tests must isolate temp SQLite/Chroma/cache paths.

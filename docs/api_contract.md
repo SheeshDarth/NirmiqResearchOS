@@ -16,9 +16,14 @@
   - `vector_store_available: boolean`
   - `ollama_available: boolean`
   - `local_first: true`
+  - `local_backend: true`
+  - `cloud_api_required: false`
+  - `external_provider_enabled: false`
+  - `primary_inference: "local_offline"`
   - `notes: string`
 - Behavior:
-  - Indicates whether the API is alive and whether there is enough indexed local corpus state for a grounded demo.
+  - Indicates whether the local backend is alive and whether there is enough indexed local corpus state for a grounded demo.
+  - Confirms that cloud/ChatGPT/OpenAI API access is not required for core operation.
 
 ### `POST /ingest`
 - Request:

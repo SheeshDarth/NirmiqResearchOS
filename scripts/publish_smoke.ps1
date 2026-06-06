@@ -11,12 +11,12 @@ if (-not $webBase) {
 }
 
 Write-Output "NIRMIQ publish smoke check"
-Write-Output "API: $apiBase"
+Write-Output "Local backend: $apiBase"
 Write-Output "Web: $webBase"
 
 $health = Invoke-RestMethod -Uri "$apiBase/health" -Method Get -TimeoutSec 8
 if ($health.status -ne "ok") {
-    throw "API health failed: $($health | ConvertTo-Json -Compress)"
+    throw "Local backend health failed: $($health | ConvertTo-Json -Compress)"
 }
 
 $readiness = Invoke-RestMethod -Uri "$apiBase/health/readiness" -Method Get -TimeoutSec 8
@@ -29,6 +29,11 @@ if ($web.Content -notmatch "NIRMIQ") {
     throw "Web app loaded, but NIRMIQ branding was not detected."
 }
 
-Write-Output "PASS: API health ok"
+if ($readiness.cloud_api_required -ne $false) {
+    throw "Readiness must not require a cloud API for core operation."
+}
+
+Write-Output "PASS: local backend health ok"
 Write-Output "PASS: readiness status = $($readiness.status), indexed_documents = $($readiness.indexed_documents), active_chunks = $($readiness.active_chunks)"
+Write-Output "PASS: offline-first core confirmed, cloud_api_required = $($readiness.cloud_api_required)"
 Write-Output "PASS: web app returned NIRMIQ shell"

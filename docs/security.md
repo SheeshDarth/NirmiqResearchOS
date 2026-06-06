@@ -31,6 +31,8 @@ NIRMIQ is designed to protect the user from accidental data leakage while preser
 - PDF/image/text uploads are checked against lightweight file signatures or UTF-8 readability.
 - The app does not send document content to cloud APIs in the default local mode.
 - If external provider support is added later, it must be opt-in per provider and must clearly label when content leaves the machine.
+- A ChatGPT/OpenAI-linked account is not required for core NIRMIQ operation.
+- Connected model access, if added later, is an optional enhancement path only and must never replace the local/offline default.
 
 ## Security limitations
 

@@ -4,7 +4,7 @@
 
 NIRMIQ Academic Intelligence System is a local-first academic intelligence workspace for grounded document research, citation-backed paper drafting, and exam preparation.
 
-It is built to run on a student laptop, stay useful offline, and keep uploaded material as the source of truth.
+It is built to run on a student laptop, stay useful offline, and keep uploaded material as the source of truth. A ChatGPT/OpenAI-linked account is not required for the core product.
 
 ## What It Does
 
@@ -15,7 +15,7 @@ It is built to run on a student laptop, stay useful offline, and keep uploaded m
 - Use Research, Chat, Paper Lab, and Exam Lab workspaces.
 - Draft Paper Lab sections with related-work matrix, citation clusters, and Markdown export.
 - Generate Exam Lab answers, study guides, and printable custom PDFs.
-- Run locally with FastAPI, Next.js, SQLite, optional Chroma, and optional Ollama.
+- Run locally with a FastAPI backend, Next.js, SQLite, optional Chroma, and optional Ollama.
 
 ## Why It Is Different
 
@@ -27,6 +27,7 @@ Most PDF chat apps stop at upload-and-answer. NIRMIQ focuses on:
 - Retrieval metadata for debugging and evaluation.
 - Paper and exam workflows tailored for engineering students.
 - Low-VRAM local inference strategy for RTX 4050-class hardware.
+- Cloud/API-provider usage is future optional enhancement only, not the default or required path.
 
 ## Current V4 Foundation
 
@@ -65,7 +66,7 @@ npm run dev
 Open:
 
 - Web: `http://127.0.0.1:3002`
-- API: `http://127.0.0.1:8000`
+- Local backend: `http://127.0.0.1:8000`
 - Readiness: `http://127.0.0.1:8000/health/readiness`
 
 ## Publish Smoke Check
@@ -115,4 +116,5 @@ npm run build
 - The local profile screen is a UX gate, not production authentication.
 - Core document Q&A works without cloud APIs.
 - Ollama is optional; deterministic fallback paths keep the app usable when local models are offline.
+- Any connected ChatGPT/OpenAI account mode should be opt-in only and used as an add-on for response improvement, not as the main operating path.
 - Target GitHub repository name: `NirmiqAcademicIntelligenceSystem`.
