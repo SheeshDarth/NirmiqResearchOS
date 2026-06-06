@@ -1190,4 +1190,4 @@ Verification:
 
 Commit:
 
-- Pending until the publish-readiness commit is created.
+- `15a2787` - Prepare V4 publish readiness.
