@@ -1283,4 +1283,4 @@ Verification:
 
 Commit:
 
-- Pending.
+- `3110de0` - Update ResearchOS GitHub positioning.

@@ -207,3 +207,4 @@ Date: 2026-06-06
 - Clarified offline-first behavior, local backend status, no cloud API requirement, and future opt-in connected model boundaries.
 - Updated PRD/TRD/UI handoff references so future Codex work treats ResearchOS as the GitHub-facing product name.
 - Left runtime/UI renaming for a separate pass to avoid destabilizing the working preview.
+- Commit: `3110de0` - Update ResearchOS GitHub positioning.
