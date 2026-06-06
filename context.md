@@ -1191,3 +1191,38 @@ Verification:
 Commit:
 
 - `15a2787` - Prepare V4 publish readiness.
+
+### Latest Update: Preview Hotfix For Failed Fetch / Chroma Dimension Mismatch
+
+Date: 2026-06-06
+
+Problem observed:
+
+- The browser showed `Failed to fetch` / `TypeError`.
+- FastAPI was alive, but `POST /query` and some uploads returned `500`.
+- The root cause was a Chroma collection created with `768`-dimension embeddings while offline fallback hash embeddings used `256` dimensions.
+
+Implemented:
+
+- `ChromaRepo` now detects embedding dimension mismatch errors.
+- On upsert mismatch, it resets only the affected Chroma collection and retries once.
+- On query mismatch, it returns no vector hits so retrieval can continue through BM25/lexical fallback instead of crashing.
+- Added unit tests for the Chroma resilience path.
+
+Preview recovery performed:
+
+- Restarted FastAPI.
+- Cleared generated Next.js `.next` cache and restarted the web preview.
+- Smoke check passed.
+- Direct summary query returned `grounded=True` with 8 citations.
+
+Verification:
+
+- Backend unit/integration suite: `29 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+- `scripts/publish_smoke.ps1`: passed with one indexed demo document and 35 active chunks.
+
+Commit:
+
+- Pending until the hotfix commit is created.

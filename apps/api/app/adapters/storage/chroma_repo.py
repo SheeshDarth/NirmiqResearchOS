@@ -8,6 +8,7 @@ class ChromaRepo:
     def __init__(self, persist_path: Path, collection_name: str = "chunks_v1") -> None:
         self._persist_path = persist_path
         self._collection_name = collection_name
+        self._client: Any = None
         self._collection: Any = None
         self._ready = False
         self._init_error: str | None = None
@@ -24,7 +25,13 @@ class ChromaRepo:
         if not self.is_available():
             return
         assert self._collection is not None
-        self._collection.delete(where={"document_id": document_id})
+        try:
+            self._collection.delete(where={"document_id": document_id})
+        except Exception as exc:
+            if self._is_dimension_error(exc):
+                self._reset_collection()
+                return
+            raise
 
     async def upsert_chunks(self, chunks: list[dict[str, object]], embeddings: list[list[float]]) -> None:
         if not chunks or not embeddings or len(chunks) != len(embeddings):
@@ -43,7 +50,16 @@ class ChromaRepo:
             }
             for chunk in chunks
         ]
-        self._collection.upsert(ids=ids, documents=documents, embeddings=embeddings, metadatas=metadatas)
+        try:
+            self._collection.upsert(ids=ids, documents=documents, embeddings=embeddings, metadatas=metadatas)
+        except Exception as exc:
+            if not self._is_dimension_error(exc):
+                raise
+            self._reset_collection()
+            if not self.is_available():
+                return
+            assert self._collection is not None
+            self._collection.upsert(ids=ids, documents=documents, embeddings=embeddings, metadatas=metadatas)
 
     async def query(
         self, query_embedding: list[float], limit: int, document_id: str | None = None
@@ -60,7 +76,12 @@ class ChromaRepo:
         }
         if document_id:
             query_kwargs["where"] = {"document_id": document_id}
-        result = self._collection.query(**query_kwargs)
+        try:
+            result = self._collection.query(**query_kwargs)
+        except Exception as exc:
+            if self._is_dimension_error(exc):
+                return []
+            raise
         ids = result.get("ids", [[]])[0]
         distances = result.get("distances", [[]])[0]
         documents = result.get("documents", [[]])[0]
@@ -98,8 +119,28 @@ class ChromaRepo:
             return
 
         try:
-            client = chromadb.PersistentClient(path=str(self._persist_path))
-            self._collection = client.get_or_create_collection(name=self._collection_name)
+            self._client = chromadb.PersistentClient(path=str(self._persist_path))
+            self._collection = self._client.get_or_create_collection(name=self._collection_name)
             self._ready = True
         except Exception as exc:
             self._init_error = str(exc)
+
+    def _reset_collection(self) -> None:
+        if self._client is None:
+            self._ready = False
+            self._collection = None
+            self._init_error = None
+            self._ensure_collection()
+            return
+        try:
+            self._client.delete_collection(name=self._collection_name)
+        except Exception:
+            pass
+        self._collection = self._client.get_or_create_collection(name=self._collection_name)
+        self._ready = True
+        self._init_error = None
+
+    @staticmethod
+    def _is_dimension_error(exc: Exception) -> bool:
+        message = str(exc).lower()
+        return "dimension" in message and ("embedding" in message or "collection" in message)

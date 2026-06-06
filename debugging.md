@@ -102,6 +102,28 @@ Current mitigation: composer is compact and minimizable. If regressions occur, i
 
 Fix: select the intended document in Library or ensure the newest upload becomes `selectedDocumentId`.
 
+### Browser Shows Failed To Fetch / TypeError
+
+Most likely causes:
+
+- FastAPI returned a backend `500`.
+- The local backend is down.
+- Next.js dev cache is stale and needs a clean restart.
+
+Known V4 fix:
+
+- Chroma vector collections can retain a previous embedding dimension. If Ollama is offline and fallback hash embeddings are used, Chroma may report a dimension mismatch.
+- `ChromaRepo` now resets the affected collection and retries once during upsert, and vector query dimension mismatch degrades to lexical retrieval instead of crashing.
+
+Preview recovery:
+
+```powershell
+cd C:\Nirmiq-researchOS
+powershell -ExecutionPolicy Bypass -File .\scripts\publish_smoke.ps1
+```
+
+If the web TypeError persists, stop the web listener, delete generated `apps\web\.next`, and restart `.\scripts\run_web.ps1`.
+
 ### Summary Still Feels Slow
 
 Checklist:
