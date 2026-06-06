@@ -145,6 +145,27 @@ Fix:
 
 Expected behavior: generation and embeddings should gracefully fall back. The answer may become more extractive, but the app should not crash.
 
+### Local Model Feels Laggy Or Uses Too Much Memory
+
+Current default backend settings are RTX 4050-friendly:
+
+```powershell
+$env:LOW_MEMORY_MODE='true'
+$env:OLLAMA_KEEP_ALIVE='45s'
+$env:OLLAMA_NUM_CTX='3072'
+$env:OLLAMA_NUM_PREDICT='768'
+$env:OLLAMA_EMBED_BATCH_SIZE='8'
+```
+
+If VRAM is still unstable, cap GPU layers or CPU threads before starting the API:
+
+```powershell
+$env:OLLAMA_NUM_GPU='20'
+$env:OLLAMA_NUM_THREAD='6'
+```
+
+If response quality drops, prefer improving retrieval labels/eval before increasing model size.
+
 ### Git Permission Warning
 
 Observed warning:

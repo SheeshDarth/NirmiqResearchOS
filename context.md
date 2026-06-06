@@ -1284,3 +1284,43 @@ Verification:
 Commit:
 
 - `3110de0` - Update ResearchOS GitHub positioning.
+
+### Latest Update: Low-Memory Local Runtime Hardening
+
+Date: 2026-06-06
+
+Purpose:
+
+- The project needed an end-to-end stability pass focused on lower memory usage without weakening grounded answer quality.
+- The user asked to quantize/tune the model path, check loopholes, and make the system more efficient for local/offline use.
+
+Implemented:
+
+- Added bounded Ollama runtime controls:
+  - `LOW_MEMORY_MODE=true`
+  - `OLLAMA_KEEP_ALIVE=45s`
+  - `OLLAMA_NUM_CTX=3072`
+  - `OLLAMA_NUM_PREDICT=768`
+  - optional `OLLAMA_NUM_GPU`
+  - optional `OLLAMA_NUM_THREAD`
+- Added batched Ollama embedding calls through `OLLAMA_EMBED_BATCH_SIZE=8` so indexing does not send every chunk in one large model request.
+- Readiness now exposes `low_memory_mode` and `ollama_runtime` metadata so the active local profile is visible.
+- Added `apps/api/.env.example` with the RTX 4050-friendly local backend profile.
+- Added `docs/local_model_optimization.md` explaining quantized/small Ollama model usage, Q4 GGUF guidance, memory tradeoffs, and benchmark targets.
+- Updated README, API contract, backend architecture, PRD, TRD, debugging guide, and accuracy audit with the low-memory/quantized model strategy.
+- Added tests for bounded Ollama generation payloads, embedding batching, and readiness runtime metadata.
+
+Architecture decision:
+
+- NIRMIQ does not fake runtime quantization inside FastAPI. Actual quantization belongs to Ollama/GGUF model artifacts. The backend now makes those models safer to use by bounding context, output length, keep-alive, and embedding batch size.
+
+Verification:
+
+- Backend unit/integration suite: `31 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+- `git diff --check`: passed after normalizing the accuracy audit doc.
+
+Commit:
+
+- Pending.

@@ -97,7 +97,22 @@ Current Chat should remain local-first and abstain when there is no evidence.
 Recommended next fix:
 
 - Add explicit `local_chat` versus `connected_chat` state before any API-key/cloud mode.
-- Show “document-grounded” or “needs connected model/context” status.
+- Show "document-grounded" or "needs connected model/context" status.
+
+### 8. Local Model Memory Pressure
+
+Large context windows, long predictions, unbounded embedding batches, and long Ollama keep-alive settings can make RTX 4050-class machines feel laggy or unstable.
+
+Mitigation added:
+
+- Bounded Ollama runtime options for generation: context window, prediction cap, optional GPU layer cap, optional CPU thread cap, and short keep-alive.
+- Batched embedding calls to avoid sending all chunks to Ollama in one large request.
+- Readiness metadata reports the active low-memory runtime profile.
+- `docs/local_model_optimization.md` records recommended quantized/small model usage.
+
+Remaining gap:
+
+- True quantization is handled by Ollama/GGUF model artifacts, not by the FastAPI app. The next measurable improvement is benchmarking `phi3:mini`, `qwen2.5:3b`, and any imported Q4 GGUF model on the same PDF/query set.
 
 ## Implemented In This Audit
 
@@ -126,6 +141,8 @@ Recommended next fix:
   - `citation_sentence_count`
   - `citation_anchor_count`
 - Updated the UI trust badge to show `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
+- Added low-memory Ollama runtime controls and batched embeddings.
+- Added readiness metadata for local runtime settings.
 
 ## Current Temperature Policy
 

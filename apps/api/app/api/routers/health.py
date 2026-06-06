@@ -18,6 +18,7 @@ async def readiness_check(container: AppContainer = Depends(get_container)) -> d
     ollama_available = await container.ollama_client.is_available()
     vector_available = container.chroma_repo.is_available()
     ready = bool(indexed_documents and active_chunks > 0)
+    settings = container.retrieval_service.settings
     return {
         "status": "ready" if ready else "needs_documents",
         "database": "ok",
@@ -31,6 +32,15 @@ async def readiness_check(container: AppContainer = Depends(get_container)) -> d
         "cloud_api_required": False,
         "external_provider_enabled": False,
         "primary_inference": "local_offline",
+        "low_memory_mode": settings.low_memory_mode,
+        "ollama_runtime": {
+            "keep_alive": settings.ollama_keep_alive,
+            "num_ctx": settings.ollama_num_ctx,
+            "num_predict": settings.ollama_num_predict,
+            "num_gpu": settings.ollama_num_gpu,
+            "num_thread": settings.ollama_num_thread,
+            "embedding_batch_size": settings.ollama_embed_batch_size,
+        },
         "notes": (
             "Ready for grounded document Q&A."
             if ready

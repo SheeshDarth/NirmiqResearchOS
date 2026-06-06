@@ -16,17 +16,24 @@ class Embedder:
         ollama_client: OllamaClient | None = None,
         model_name: str = "nomic-embed-text",
         use_ollama: bool = True,
+        batch_size: int = 8,
     ) -> None:
         self._dim = dim
         self._ollama_client = ollama_client
         self._model_name = model_name
         self._use_ollama = use_ollama
+        self._batch_size = max(1, batch_size)
         self.last_backend = "hash"
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
+        if not texts:
+            return []
         if self._use_ollama and self._ollama_client and await self._ollama_client.is_available():
             try:
-                vectors = await self._ollama_client.embed(texts=texts, model=self._model_name)
+                vectors: list[list[float]] = []
+                for start in range(0, len(texts), self._batch_size):
+                    batch = texts[start : start + self._batch_size]
+                    vectors.extend(await self._ollama_client.embed(texts=batch, model=self._model_name))
                 if len(vectors) == len(texts) and all(vectors):
                     self.last_backend = "ollama"
                     return [self._normalize(vector) for vector in vectors]

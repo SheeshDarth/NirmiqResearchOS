@@ -20,10 +20,13 @@
   - `cloud_api_required: false`
   - `external_provider_enabled: false`
   - `primary_inference: "local_offline"`
+  - `low_memory_mode: boolean`
+  - `ollama_runtime: object`
   - `notes: string`
 - Behavior:
   - Indicates whether the local backend is alive and whether there is enough indexed local corpus state for a grounded demo.
   - Confirms that cloud/ChatGPT/OpenAI API access is not required for core operation.
+  - Reports bounded local model settings such as keep-alive, context window, prediction cap, optional GPU/thread controls, and embedding batch size.
 
 ### `POST /ingest`
 - Request:
@@ -88,6 +91,8 @@
 - `RETRIEVAL_MAX_CONTEXT_TOKENS` bounds synthesis context size.
 - `RETRIEVAL_MIN_GROUNDING_SCORE` determines abstention threshold.
 - `RETRIEVAL_MAX_CHUNKS_PER_DOCUMENT` limits repeated chunks from the same source during final rerank.
+- `LOW_MEMORY_MODE=true` keeps the local runtime optimized for consumer GPUs.
+- `OLLAMA_KEEP_ALIVE`, `OLLAMA_NUM_CTX`, `OLLAMA_NUM_PREDICT`, `OLLAMA_NUM_GPU`, `OLLAMA_NUM_THREAD`, and `OLLAMA_EMBED_BATCH_SIZE` tune Ollama memory pressure without changing public APIs.
 
 ### `GET /ingest/{document_id}`
 - Response:

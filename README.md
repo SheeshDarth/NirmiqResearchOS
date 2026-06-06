@@ -110,6 +110,7 @@ Implemented in the current repository:
 - Use Paper Lab for citation clusters, related-work matrix, suggested outline, and Markdown draft export.
 - Use Exam Lab for marks-oriented answers, study guides, question-bank support, and printable custom PDFs.
 - Check local publish readiness through `/health/readiness` and `scripts/publish_smoke.ps1`.
+- Run with a low-memory local model profile: bounded Ollama context, bounded prediction length, short keep-alive, and batched embeddings.
 
 ## Workspaces
 
@@ -344,6 +345,7 @@ Offline access over cloud dependency
 - [UI/UX specification](UI_UX.md)
 - [Debugging guide](debugging.md)
 - [Accuracy and hallucination audit](docs/accuracy_precision_audit.md)
+- [Local model optimization](docs/local_model_optimization.md)
 - [Internship impact plan](docs/internship_impact_plan.md)
 - [NIRMIQ ecosystem](docs/nirmiq_ecosystem.md)
 

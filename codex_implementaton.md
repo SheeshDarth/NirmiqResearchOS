@@ -208,3 +208,21 @@ Date: 2026-06-06
 - Updated PRD/TRD/UI handoff references so future Codex work treats ResearchOS as the GitHub-facing product name.
 - Left runtime/UI renaming for a separate pass to avoid destabilizing the working preview.
 - Commit: `3110de0` - Update ResearchOS GitHub positioning.
+
+## Latest Low-Memory Runtime Hardening
+
+Date: 2026-06-06
+
+- Added bounded Ollama runtime settings for local generation: keep-alive, context window, prediction cap, optional GPU layer cap, and optional CPU thread cap.
+- Added batched Ollama embeddings to reduce indexing memory spikes.
+- Added readiness metadata for the active low-memory runtime profile.
+- Added `apps/api/.env.example` and `docs/local_model_optimization.md` for RTX 4050-friendly local model setup and quantized/GGUF guidance.
+- Updated README, API contract, architecture, debugging, PRD/TRD, and accuracy audit docs.
+- Added unit tests for runtime payload options and embedding batching.
+
+Verification:
+
+- Backend unit/integration suite: `31 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+- `git diff --check`: passed.

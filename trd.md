@@ -35,6 +35,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Restrict direct local-path ingestion to configured corpus roots by default.
 - Validate uploaded file signatures/readability before indexing.
 - Use adaptive generation temperature with conservative grounded defaults and higher long-context drafting settings.
+- Use bounded local model runtime settings for Ollama context, generation length, keep-alive, optional GPU/thread controls, and embedding batches.
 - Cache selected-document summaries by document id, content hash, and summary profile.
 - Add deterministic query intent metadata without changing the public query request shape.
 - Compute citation coverage metadata for generated and fallback answers.
@@ -52,6 +53,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Faithful: cited generated claims must pass deterministic verification or be rewritten to extractive fallback.
 - Fast enough for demos: repeated PDF parsing should use content-hash page cache.
 - Efficient: repeated selected-document summaries should reuse SQLite cache until source content changes.
+- Memory efficient: default runtime profile should remain stable on RTX 4050-class hardware without requiring cloud APIs.
 
 ## API Requirements
 

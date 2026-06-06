@@ -51,6 +51,11 @@ class AppContainer:
         ollama_client = OllamaClient(
             base_url=settings.ollama_base_url,
             timeout_seconds=settings.ollama_timeout_seconds,
+            keep_alive=settings.ollama_keep_alive,
+            num_ctx=settings.ollama_num_ctx,
+            num_predict=settings.ollama_num_predict,
+            num_gpu=settings.ollama_num_gpu,
+            num_thread=settings.ollama_num_thread,
         )
         generator = Generator(
             ollama_client=ollama_client,
@@ -61,6 +66,7 @@ class AppContainer:
             ollama_client=ollama_client,
             model_name=settings.embed_model,
             use_ollama=settings.use_ollama_embeddings,
+            batch_size=settings.ollama_embed_batch_size,
         )
         reranker = Reranker(
             ollama_client=ollama_client,

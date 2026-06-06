@@ -107,6 +107,7 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 - Repeated selected-document summaries return faster from cache.
 - Users can see a simple answer trust signal without opening debug metadata.
 - Paper Lab can produce a grounded Markdown draft package instead of only a chat answer.
+- Local model runtime remains bounded through low-memory Ollama settings and embedding batches.
 
 ## Why Users Choose NIRMIQ
 

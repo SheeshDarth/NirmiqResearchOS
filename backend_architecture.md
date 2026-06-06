@@ -79,6 +79,7 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - Avoid loading multiple heavy models at once on RTX 4050 hardware.
 - Use adaptive generation temperature: low for factual grounded answers, higher only for long-context deep research and drafting.
 - Run citation-faithfulness verification after generated answers before returning them to the user.
+- Bound Ollama runtime options by default: short keep-alive, 3072 context, 768 prediction cap, optional GPU/thread controls, and batched embeddings.
 
 ## Current Optimizations
 
@@ -95,6 +96,7 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - Deterministic query intent router and retrieval hint expansion.
 - Citation coverage metadata and compact UI trust badge.
 - Paper Lab deterministic related-work matrix, citation clusters, outline metadata, and Markdown export.
+- Low-memory local model profile exposed through readiness metadata.
 
 ## Next Backend Upgrades
 

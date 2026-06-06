@@ -26,6 +26,13 @@ class Settings(BaseModel):
     use_ollama_embeddings: bool
     use_ollama_reranker: bool
     ollama_timeout_seconds: float
+    low_memory_mode: bool
+    ollama_keep_alive: str
+    ollama_num_ctx: int
+    ollama_num_predict: int
+    ollama_num_gpu: int | None
+    ollama_num_thread: int | None
+    ollama_embed_batch_size: int
     generator_temperature_grounded: float
     generator_temperature_long_context: float
     retrieval_k_bm25: int
@@ -83,6 +90,13 @@ class Settings(BaseModel):
             use_ollama_embeddings=os.getenv("USE_OLLAMA_EMBEDDINGS", "true").lower() == "true",
             use_ollama_reranker=os.getenv("USE_OLLAMA_RERANKER", "false").lower() == "true",
             ollama_timeout_seconds=float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "4.0")),
+            low_memory_mode=os.getenv("LOW_MEMORY_MODE", "true").lower() == "true",
+            ollama_keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "45s"),
+            ollama_num_ctx=int(os.getenv("OLLAMA_NUM_CTX", "3072")),
+            ollama_num_predict=int(os.getenv("OLLAMA_NUM_PREDICT", "768")),
+            ollama_num_gpu=cls._optional_int(os.getenv("OLLAMA_NUM_GPU")),
+            ollama_num_thread=cls._optional_int(os.getenv("OLLAMA_NUM_THREAD")),
+            ollama_embed_batch_size=max(1, int(os.getenv("OLLAMA_EMBED_BATCH_SIZE", "8"))),
             generator_temperature_grounded=float(os.getenv("GENERATOR_TEMPERATURE_GROUNDED", "0.15")),
             generator_temperature_long_context=float(os.getenv("GENERATOR_TEMPERATURE_LONG_CONTEXT", "0.85")),
             retrieval_k_bm25=int(os.getenv("RETRIEVAL_K_BM25", "20")),
@@ -97,6 +111,12 @@ class Settings(BaseModel):
             memory_snapshot_interval_messages=int(os.getenv("MEMORY_SNAPSHOT_INTERVAL_MESSAGES", "6")),
             memory_snapshot_window_messages=int(os.getenv("MEMORY_SNAPSHOT_WINDOW_MESSAGES", "12")),
         )
+
+    @staticmethod
+    def _optional_int(raw_value: str | None) -> int | None:
+        if raw_value is None or not raw_value.strip():
+            return None
+        return int(raw_value)
 
 
 @lru_cache

@@ -28,6 +28,10 @@ class RetrievalService:
         self._embedder = embedder
         self._chroma_repo = chroma_repo
 
+    @property
+    def settings(self) -> Settings:
+        return self._settings
+
     async def retrieve(self, query: str) -> RetrievalBundle:
         return await self.retrieve_with_mode(query=query, mode="hybrid")
 
