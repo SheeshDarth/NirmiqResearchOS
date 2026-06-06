@@ -78,7 +78,7 @@ class AppContainer:
             max_context_tokens=settings.retrieval_max_context_tokens,
             min_grounding_score=settings.retrieval_min_grounding_score,
         )
-        parser = PyMuPDFParser()
+        parser = PyMuPDFParser(cache_root=settings.parse_cache_path)
         ocr = TesseractOCR()
         indexing_service = IndexingService(
             sqlite_repo=sqlite_repo,
@@ -87,8 +87,14 @@ class AppContainer:
             embedder=embedder,
             chroma_repo=chroma_repo,
         )
-        ingestion_service = IngestionService(sqlite_repo=sqlite_repo, indexing_service=indexing_service)
-        documents_service = DocumentsService(sqlite_repo=sqlite_repo)
+        ingestion_service = IngestionService(
+            sqlite_repo=sqlite_repo,
+            indexing_service=indexing_service,
+            upload_root=settings.upload_path,
+            allowed_roots=[*settings.local_ingest_allowed_roots, settings.upload_path],
+            allow_arbitrary_local_paths=settings.security_allow_arbitrary_local_paths,
+        )
+        documents_service = DocumentsService(sqlite_repo=sqlite_repo, chroma_repo=chroma_repo)
         exam_service = ExamService(sqlite_repo=sqlite_repo, workspace_root=settings.workspace_root)
         memory_service = MemoryService(
             sqlite_repo=sqlite_repo,

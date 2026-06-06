@@ -1,4 +1,4 @@
-# Current Progress — NIRMIQ ResearchOS
+# Current Progress — NIRMIQ Academic Intelligence System
 
 ## Implemented
 

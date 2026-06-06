@@ -100,6 +100,11 @@ export type DocumentListResponse = {
   items: DocumentItem[];
 };
 
+export type DocumentDeleteResponse = {
+  document_id: string;
+  deleted: boolean;
+};
+
 export type DocumentDetailResponse = DocumentItem & {
   chunks: Array<{
     id: string;
@@ -186,6 +191,25 @@ export async function ingestDocument(payload: {
   return parseJson<IngestResponse>(response);
 }
 
+export async function uploadDocument(payload: {
+  file: File;
+  title?: string;
+  force_reindex?: boolean;
+}): Promise<IngestResponse> {
+  const formData = new FormData();
+  formData.append("file", payload.file);
+  if (payload.title?.trim()) {
+    formData.append("title", payload.title.trim());
+  }
+  formData.append("force_reindex", String(payload.force_reindex ?? true));
+
+  const response = await fetch(`${API_BASE}/ingest/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  return parseJson<IngestResponse>(response);
+}
+
 export async function getIngestStatus(documentId: string): Promise<IngestStatusResponse> {
   const response = await fetch(`${API_BASE}/ingest/${encodeURIComponent(documentId)}`);
   return parseJson<IngestStatusResponse>(response);
@@ -237,6 +261,13 @@ export async function listDocuments(): Promise<DocumentListResponse> {
 export async function getDocument(documentId: string): Promise<DocumentDetailResponse> {
   const response = await fetch(`${API_BASE}/documents/${encodeURIComponent(documentId)}`);
   return parseJson<DocumentDetailResponse>(response);
+}
+
+export async function deleteDocument(documentId: string): Promise<DocumentDeleteResponse> {
+  const response = await fetch(`${API_BASE}/documents/${encodeURIComponent(documentId)}`, {
+    method: "DELETE",
+  });
+  return parseJson<DocumentDeleteResponse>(response);
 }
 
 export async function upsertExamProfile(payload: {

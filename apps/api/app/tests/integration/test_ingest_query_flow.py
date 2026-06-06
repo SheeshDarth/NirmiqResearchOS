@@ -80,6 +80,99 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert isinstance(body["retrieval_meta"]["grounding_summary"], str)
         assert body["retrieval_meta"]["citation_count"] >= 1
 
+        summary_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Explain the document",
+                "document_id": document_id,
+                "mode": "summary",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert summary_response.status_code == 200
+        summary_body = summary_response.json()
+        assert summary_body["grounded"] is True
+        assert "Please ingest documents first" not in summary_body["answer"]
+        assert "summary" in summary_body["answer"].lower()
+        assert len(summary_body["citations"]) >= 1
+        assert summary_body["retrieval_meta"]["document_overview_request"] is True
+        assert summary_body["retrieval_meta"]["cache_hit"] is False
+        assert summary_body["retrieval_meta"]["detected_intent"] == "summary"
+        assert summary_body["retrieval_meta"]["citation_coverage"] >= 0
+        assert summary_body["retrieval_meta"]["citation_sentence_count"] >= 1
+        assert summary_body["retrieval_meta"]["citation_anchor_count"] >= 1
+
+        cached_summary_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Explain the document",
+                "document_id": document_id,
+                "mode": "summary",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert cached_summary_response.status_code == 200
+        cached_summary_body = cached_summary_response.json()
+        assert cached_summary_body["answer"] == summary_body["answer"]
+        assert cached_summary_body["retrieval_meta"]["cache_hit"] is True
+        assert cached_summary_body["retrieval_meta"]["intent_route"] == "summary_cache_hit"
+
+        sample.write_text(
+            (
+                "NIRMIQ now focuses on cached document summaries. "
+                "It still uses local retrieval and grounded synthesis with citations."
+            ),
+            encoding="utf-8",
+        )
+        reingest_response = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Sample",
+                "mime_type": "text/plain",
+                "force_reindex": True,
+            },
+        )
+        assert reingest_response.status_code == 200
+        assert reingest_response.json()["document_id"] == document_id
+
+        refreshed_summary_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Explain the document",
+                "document_id": document_id,
+                "mode": "summary",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert refreshed_summary_response.status_code == 200
+        refreshed_summary_body = refreshed_summary_response.json()
+        assert refreshed_summary_body["retrieval_meta"]["cache_hit"] is False
+
+        paper_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Draft a related work section from this document.",
+                "document_id": document_id,
+                "mode": "research_paper",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert paper_response.status_code == 200
+        paper_body = paper_response.json()
+        assert paper_body["retrieval_meta"]["detected_intent"] == "paper_draft"
+        assert paper_body["retrieval_meta"]["effective_retrieval_profile"] == "precision"
+        assert paper_body["retrieval_meta"]["paper_lab"]["evidence_count"] >= 1
+        assert paper_body["retrieval_meta"]["paper_lab"]["related_work_matrix"]
+
         timeline_response = client.get("/memory/integration-session/timeline")
         assert timeline_response.status_code == 200
         timeline_body = timeline_response.json()
@@ -88,3 +181,36 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert len(timeline_body["messages"]) >= 2
         assert timeline_body["messages"][-1]["role"] == "assistant"
         assert timeline_body["messages"][-1]["retrieval_meta"]["requested_retrieval_mode"] == "bm25"
+
+        delete_response = client.delete(f"/documents/{document_id}")
+        assert delete_response.status_code == 200
+        assert delete_response.json() == {"document_id": document_id, "deleted": True}
+        assert app.state.container.sqlite_repo.get_document_summary_count(document_id) == 0
+
+        missing_detail = client.get(f"/documents/{document_id}")
+        assert missing_detail.status_code == 404
+
+
+def test_upload_ingest_roundtrip() -> None:
+    with TestClient(app) as client:
+        upload_response = client.post(
+            "/ingest/upload",
+            data={"title": "Uploaded Notes", "force_reindex": "true"},
+            files={
+                "file": (
+                    "uploaded-notes.txt",
+                    b"Uploaded files should enter the same grounded retrieval pipeline.",
+                    "text/plain",
+                )
+            },
+        )
+
+        assert upload_response.status_code == 200
+        document_id = upload_response.json()["document_id"]
+
+        detail_response = client.get(f"/documents/{document_id}")
+        assert detail_response.status_code == 200
+        detail = detail_response.json()
+        assert detail["title"] == "Uploaded Notes"
+        assert detail["active_chunk_count"] >= 1
+        assert "uploaded-notes" in detail["source_path"]

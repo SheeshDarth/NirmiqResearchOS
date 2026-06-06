@@ -15,14 +15,19 @@ class Generator:
         self._use_ollama = use_ollama
         self.last_backend = "fallback"
 
-    async def answer(self, prompt: str, model: str | None = None) -> str:
+    async def answer(
+        self,
+        prompt: str,
+        model: str | None = None,
+        temperature: float = 0.1,
+    ) -> str:
         target_model = model or self._default_model
         if self._use_ollama and self._ollama_client and await self._ollama_client.is_available():
             try:
                 response = await self._ollama_client.generate(
                     prompt=prompt,
                     model=target_model,
-                    temperature=0.1,
+                    temperature=temperature,
                 )
                 if response.strip():
                     self.last_backend = "ollama"

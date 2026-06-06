@@ -1,4 +1,4 @@
-# Evaluation Guidelines — NIRMIQ ResearchOS
+# Evaluation Guidelines — NIRMIQ Academic Intelligence System
 
 ## Goal
 

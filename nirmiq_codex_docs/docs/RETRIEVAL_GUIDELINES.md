@@ -1,4 +1,4 @@
-# Retrieval Guidelines — NIRMIQ ResearchOS
+# Retrieval Guidelines — NIRMIQ Academic Intelligence System
 
 ## Goal
 

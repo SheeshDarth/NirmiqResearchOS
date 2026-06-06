@@ -1,8 +1,8 @@
-# NIRMIQ ResearchOS — Agent Rules
+# NIRMIQ Academic Intelligence System — Agent Rules
 
 ## Identity
 
-NIRMIQ ResearchOS is a student-first document intelligence system.
+NIRMIQ Academic Intelligence System is a student-first document intelligence system.
 
 It is not a generic chatbot.
 

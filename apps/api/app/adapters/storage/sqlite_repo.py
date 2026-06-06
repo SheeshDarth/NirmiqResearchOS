@@ -46,6 +46,7 @@ class SQLiteRepo:
                     text TEXT NOT NULL,
                     token_count INTEGER NOT NULL,
                     chunk_hash TEXT NOT NULL,
+                    quality_score REAL NOT NULL DEFAULT 1.0,
                     is_active INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT NOT NULL,
                     FOREIGN KEY(document_id) REFERENCES documents(id)
@@ -123,6 +124,20 @@ class SQLiteRepo:
                     UNIQUE(document_id, page_number, image_index),
                     FOREIGN KEY(document_id) REFERENCES documents(id)
                 );
+
+                CREATE TABLE IF NOT EXISTS document_summaries (
+                    id TEXT PRIMARY KEY,
+                    document_id TEXT NOT NULL,
+                    content_hash TEXT NOT NULL,
+                    summary_profile TEXT NOT NULL,
+                    answer TEXT NOT NULL,
+                    citations_json TEXT NOT NULL,
+                    retrieval_meta_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(document_id, content_hash, summary_profile),
+                    FOREIGN KEY(document_id) REFERENCES documents(id)
+                );
                 """
             )
             conn.executescript(
@@ -133,8 +148,11 @@ class SQLiteRepo:
                 CREATE INDEX IF NOT EXISTS idx_exam_profiles_session ON exam_profiles(session_id);
                 CREATE INDEX IF NOT EXISTS idx_question_bank_document ON question_bank_items(document_id);
                 CREATE INDEX IF NOT EXISTS idx_diagram_assets_document ON diagram_assets(document_id);
+                CREATE INDEX IF NOT EXISTS idx_document_summaries_lookup
+                    ON document_summaries(document_id, content_hash, summary_profile);
                 """
             )
+            self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
 
     def insert_document(
         self,
@@ -177,6 +195,20 @@ class SQLiteRepo:
             ).fetchone()
         return dict(row) if row else None
 
+    def delete_document(self, document_id: str) -> bool:
+        with self._connect() as conn:
+            row = conn.execute("SELECT id FROM documents WHERE id = ?", (document_id,)).fetchone()
+            if not row:
+                return False
+            conn.execute("DELETE FROM diagram_assets WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM document_summaries WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM question_bank_items WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM exam_profiles WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM ingestion_jobs WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM document_chunks WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM documents WHERE id = ?", (document_id,))
+        return True
+
     def list_documents(self) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
@@ -197,7 +229,7 @@ class SQLiteRepo:
             rows = conn.execute(
                 f"""
                 SELECT id, document_id, index_version, chunk_index, page_start, page_end,
-                       text, token_count, chunk_hash, is_active, created_at
+                       text, token_count, chunk_hash, quality_score, is_active, created_at
                 FROM document_chunks
                 WHERE document_id = ? {active_filter}
                 ORDER BY chunk_index ASC, created_at ASC
@@ -310,16 +342,18 @@ class SQLiteRepo:
         text: str,
         token_count: int,
         chunk_hash: str,
+        quality_score: float = 1.0,
     ) -> None:
         now = self._utc_now()
         with self._connect() as conn:
+            self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
             conn.execute(
                 """
                 INSERT INTO document_chunks (
                     id, document_id, index_version, chunk_index, page_start, page_end,
-                    text, token_count, chunk_hash, is_active, created_at
+                    text, token_count, chunk_hash, quality_score, is_active, created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
                 """,
                 (
                     chunk_id,
@@ -331,6 +365,7 @@ class SQLiteRepo:
                     text,
                     token_count,
                     chunk_hash,
+                    quality_score,
                     now,
                 ),
             )
@@ -342,7 +377,7 @@ class SQLiteRepo:
         with self._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT id, document_id, page_start, page_end, text, token_count
+                SELECT id, document_id, page_start, page_end, text, token_count, quality_score
                 FROM document_chunks
                 WHERE is_active = 1
                 """
@@ -369,7 +404,7 @@ class SQLiteRepo:
         with self._connect() as conn:
             rows = conn.execute(
                 f"""
-                SELECT id, document_id, page_start, page_end, text, token_count
+                SELECT id, document_id, page_start, page_end, text, token_count, quality_score
                 FROM document_chunks
                 WHERE is_active = 1 {document_filter}
                 ORDER BY created_at DESC
@@ -385,7 +420,7 @@ class SQLiteRepo:
         with self._connect() as conn:
             rows = conn.execute(
                 f"""
-                SELECT id, document_id, page_start, page_end, text, token_count
+                SELECT id, document_id, page_start, page_end, text, token_count, quality_score
                 FROM document_chunks
                 WHERE id IN ({placeholders}) AND is_active = 1
                 """,
@@ -401,6 +436,72 @@ class SQLiteRepo:
                 FROM document_chunks
                 WHERE document_id = ? AND is_active = 1
                 """,
+                (document_id,),
+            ).fetchone()
+        return int(row["count"]) if row else 0
+
+    def get_document_summary(
+        self,
+        *,
+        document_id: str,
+        content_hash: str,
+        summary_profile: str,
+    ) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT id, document_id, content_hash, summary_profile, answer,
+                       citations_json, retrieval_meta_json, created_at, updated_at
+                FROM document_summaries
+                WHERE document_id = ? AND content_hash = ? AND summary_profile = ?
+                """,
+                (document_id, content_hash, summary_profile),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def upsert_document_summary(
+        self,
+        *,
+        summary_id: str,
+        document_id: str,
+        content_hash: str,
+        summary_profile: str,
+        answer: str,
+        citations_json: str,
+        retrieval_meta_json: str,
+    ) -> None:
+        now = self._utc_now()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO document_summaries (
+                    id, document_id, content_hash, summary_profile, answer,
+                    citations_json, retrieval_meta_json, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(document_id, content_hash, summary_profile) DO UPDATE SET
+                    answer = excluded.answer,
+                    citations_json = excluded.citations_json,
+                    retrieval_meta_json = excluded.retrieval_meta_json,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    summary_id,
+                    document_id,
+                    content_hash,
+                    summary_profile,
+                    answer,
+                    citations_json,
+                    retrieval_meta_json,
+                    now,
+                    now,
+                ),
+            )
+
+    def get_document_summary_count(self, document_id: str) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS count FROM document_summaries WHERE document_id = ?",
                 (document_id,),
             ).fetchone()
         return int(row["count"]) if row else 0
@@ -725,6 +826,15 @@ class SQLiteRepo:
     @staticmethod
     def _utc_now() -> str:
         return datetime.now(timezone.utc).isoformat()
+
+    @staticmethod
+    def _ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+        existing = {
+            str(row["name"])
+            for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        if column not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
     @staticmethod
     def _tokenize(text: str) -> list[str]:

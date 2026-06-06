@@ -79,6 +79,10 @@ class RetrievalService:
             )
 
         candidate_ids = [chunk_id for chunk_id, _ in fused[: profile_config["fused_k"]]]
+        document_scope_fallback = False
+        if target_document_id and not candidate_ids and active_chunks:
+            candidate_ids = [str(chunk["id"]) for chunk in active_chunks[: profile_config["fused_k"]]]
+            document_scope_fallback = True
         chunks_by_id = self._sqlite_repo.get_chunks_by_ids(candidate_ids)
 
         # Include vector-only chunks that may not be in active SQLite set.
@@ -93,6 +97,7 @@ class RetrievalService:
                 "page_end": hit.get("page_end"),
                 "text": hit.get("text") or "",
                 "token_count": len(str(hit.get("text") or "").split()),
+                "quality_score": hit.get("quality_score", 1.0),
             }
 
         if not candidate_ids and vector_ranked_ids and normalized_mode in {"hybrid", "vector"}:
@@ -132,7 +137,10 @@ class RetrievalService:
             fused_score = fused_score_map.get(chunk_id, 0.0)
             lexical_score = bm25_score_map.get(chunk_id, 0.0)
             semantic_score = vector_score_map.get(chunk_id, 0.0)
-            combined = (0.5 * fused_score) + (0.3 * lexical_score) + (0.2 * semantic_score)
+            quality_score = self._normalize_quality(row.get("quality_score"))
+            base_score = (0.5 * fused_score) + (0.3 * lexical_score) + (0.2 * semantic_score)
+            quality_multiplier = 0.55 + (0.45 * quality_score)
+            combined = base_score * quality_multiplier
             source = "hybrid"
             if chunk_id in bm25_score_map and chunk_id not in vector_score_map:
                 source = "bm25"
@@ -147,8 +155,14 @@ class RetrievalService:
                     page_start=int(row["page_start"]) if row["page_start"] is not None else None,
                     page_end=int(row["page_end"]) if row["page_end"] is not None else None,
                     source=source,
+                    quality_score=quality_score,
                 )
             )
+        avg_quality = (
+            round(sum(chunk.quality_score for chunk in chunks) / len(chunks), 3)
+            if chunks
+            else 0.0
+        )
 
         return RetrievalBundle(
             chunks=chunks,
@@ -170,11 +184,22 @@ class RetrievalService:
                 "max_chunks_per_document": max_chunks_for_document,
                 "diverse_documents": len(per_document_counts),
                 "document_scope": target_document_id,
+                "document_scope_fallback": document_scope_fallback,
+                "average_chunk_quality": avg_quality,
+                "quality_weighting": "enabled",
                 "scope": "document" if target_document_id else "corpus",
                 "retrieval_profile": normalized_profile,
                 "strategy": f"phase1_{normalized_mode}",
             },
         )
+
+    @staticmethod
+    def _normalize_quality(value: object) -> float:
+        try:
+            quality = float(value)
+        except (TypeError, ValueError):
+            return 1.0
+        return min(1.0, max(0.0, quality))
 
     def _profile_config(self, profile: str) -> dict[str, int]:
         if profile == "fast":

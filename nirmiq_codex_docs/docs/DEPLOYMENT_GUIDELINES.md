@@ -1,4 +1,4 @@
-# Deployment Guidelines — NIRMIQ ResearchOS
+# Deployment Guidelines — NIRMIQ Academic Intelligence System
 
 ## MVP Deployment
 

@@ -1,4 +1,4 @@
-# NIRMIQ ResearchOS — Phase 1 Foundational Architecture
+# NIRMIQ Academic Intelligence System — Phase 1 Foundational Architecture
 
 Date: 2026-05-16
 Scope: MVP foundation only (no advanced features)
@@ -22,7 +22,7 @@ Scope: MVP foundation only (no advanced features)
 ## 2. Repository Structure
 
 ```text
-Nirmiq-researchOS/
+Nirmiq-Academic-Intelligence-System/
 ├─ apps/
 │  ├─ api/                              # FastAPI backend
 │  │  ├─ pyproject.toml

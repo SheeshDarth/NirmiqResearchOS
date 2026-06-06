@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.schemas.documents import DocumentDetailResponse, DocumentListResponse
+from app.api.schemas.documents import DocumentDeleteResponse, DocumentDetailResponse, DocumentListResponse
 from app.core.deps import get_documents_service
 from app.services.documents_service import DocumentsService
 
@@ -21,5 +21,16 @@ async def get_document(
 ) -> DocumentDetailResponse:
     try:
         return await service.get_document(document_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/{document_id}", response_model=DocumentDeleteResponse)
+async def delete_document(
+    document_id: str,
+    service: DocumentsService = Depends(get_documents_service),
+) -> DocumentDeleteResponse:
+    try:
+        return await service.delete_document(document_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

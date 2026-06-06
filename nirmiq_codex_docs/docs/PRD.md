@@ -1,8 +1,8 @@
-# Product Requirements Document — NIRMIQ ResearchOS
+# Product Requirements Document — NIRMIQ Academic Intelligence System
 
 ## Product Name
 
-NIRMIQ ResearchOS
+NIRMIQ Academic Intelligence System
 
 ## Product Type
 

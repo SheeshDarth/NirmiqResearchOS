@@ -1,4 +1,4 @@
-# API Contract — NIRMIQ ResearchOS
+# API Contract — NIRMIQ Academic Intelligence System
 
 ## Health
 

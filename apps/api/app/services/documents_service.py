@@ -1,6 +1,8 @@
 from app.adapters.storage.sqlite_repo import SQLiteRepo
+from app.adapters.storage.chroma_repo import ChromaRepo
 from app.api.schemas.documents import (
     DocumentChunkItem,
+    DocumentDeleteResponse,
     DocumentDetailResponse,
     DocumentItem,
     DocumentListResponse,
@@ -8,8 +10,9 @@ from app.api.schemas.documents import (
 
 
 class DocumentsService:
-    def __init__(self, sqlite_repo: SQLiteRepo) -> None:
+    def __init__(self, sqlite_repo: SQLiteRepo, chroma_repo: ChromaRepo) -> None:
         self._sqlite_repo = sqlite_repo
+        self._chroma_repo = chroma_repo
 
     async def list_documents(self) -> DocumentListResponse:
         rows = self._sqlite_repo.list_documents()
@@ -55,3 +58,10 @@ class DocumentsService:
             updated_at=row["updated_at"],
             chunks=chunks,
         )
+
+    async def delete_document(self, document_id: str) -> DocumentDeleteResponse:
+        deleted = self._sqlite_repo.delete_document(document_id)
+        if not deleted:
+            raise ValueError(f"Document not found: {document_id}")
+        await self._chroma_repo.delete_document(document_id)
+        return DocumentDeleteResponse(document_id=document_id, deleted=True)

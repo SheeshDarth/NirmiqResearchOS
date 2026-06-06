@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  deleteDocument,
   diagramAssetUrl,
   getDocument,
   getIngestJobs,
@@ -18,6 +19,7 @@ import {
   listDocuments,
   runQuery,
   upsertExamProfile,
+  uploadDocument,
   type DiagramAssetItem,
   type DocumentDetailResponse,
   type DocumentItem,
@@ -32,17 +34,19 @@ import {
 
 type RetrievalMode = "hybrid" | "bm25" | "vector";
 type RetrievalProfile = "fast" | "balanced" | "precision";
-type WorkspaceSection = "research" | "general" | "exam";
+type WorkspaceSection = "research" | "general" | "paper" | "exam";
 type StudyMode =
   | "research"
+  | "summary"
   | "deep_research"
   | "general_chat"
+  | "research_paper"
   | "exam_answer"
   | "revision_notes"
   | "important_questions"
   | "compare_concepts"
   | "study_guide";
-type BusyState = "" | "health" | "ingest" | "query" | "status" | "documents";
+type BusyState = "" | "health" | "ingest" | "query" | "status" | "documents" | "delete";
 type DeepView = "evidence" | "context" | "compare" | "eval";
 type Chunk = DocumentDetailResponse["chunks"][number];
 
@@ -83,7 +87,28 @@ type GuideCard = {
   body: string[];
 };
 
-const DEFAULT_SOURCE_PATH = "C:\\Downloads\\daily stoic.pdf";
+type PaperLabMatrixRow = {
+  claim_area?: string;
+  evidence?: number;
+  page?: number | null;
+  source_type?: string;
+  quality?: number;
+  use_in_paper?: string;
+  excerpt?: string;
+};
+
+type PaperLabArtifact = {
+  source_count?: number;
+  evidence_count?: number;
+  outline?: string[];
+  related_work_matrix?: PaperLabMatrixRow[];
+  citation_clusters?: Record<string, PaperLabMatrixRow[]>;
+};
+
+const DEFAULT_SOURCE_PATH = "C:\\Nirmiq-Academic Intelligence System\\data\\raw\\attention_is_all_you_need.pdf";
+const PRODUCT_NAME = "NIRMIQ";
+const PRODUCT_TAGLINE = "Academic Intelligence System";
+const PRODUCT_DESCRIPTION = "Private academic intelligence for documents, citations, papers, and exams.";
 
 const WORKSPACE_SECTIONS: Array<{
   value: WorkspaceSection;
@@ -99,6 +124,11 @@ const WORKSPACE_SECTIONS: Array<{
     value: "general",
     label: "Chat",
     hint: "Talk normally, local-first.",
+  },
+  {
+    value: "paper",
+    label: "Paper Lab",
+    hint: "Engineering research drafts.",
   },
   {
     value: "exam",
@@ -122,6 +152,13 @@ const STUDY_MODES: Array<{
     prompt: "Explain the selected material clearly with evidence.",
   },
   {
+    value: "summary",
+    section: "research",
+    label: "Summarize",
+    hint: "Whole-document overview",
+    prompt: "Summarize this PDF with the main ideas, methods, findings, and limitations.",
+  },
+  {
     value: "deep_research",
     section: "research",
     label: "Deep Research",
@@ -135,6 +172,14 @@ const STUDY_MODES: Array<{
     hint: "Conversational, evidence-aware",
     prompt:
       "Answer conversationally if the uploaded documents are relevant. If not, say what context is missing.",
+  },
+  {
+    value: "research_paper",
+    section: "paper",
+    label: "Research Paper",
+    hint: "Multi-citation academic drafting",
+    prompt:
+      "Draft a research paper section with thesis, related work, methodology, limitations, and multiple citations from the selected documents.",
   },
   {
     value: "exam_answer",
@@ -197,6 +242,15 @@ function previewText(value?: string | null, maxLength = 420): string {
   return normalized.length > maxLength ? `${normalized.slice(0, maxLength).trim()}...` : normalized;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function getGroundingScore(response: QueryResponse | null): number {
   const raw = response?.retrieval_meta?.grounding_score;
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
@@ -214,6 +268,66 @@ function getGroundingLabel(response: QueryResponse | null): string {
   if (score >= 0.75) return "Strong";
   if (score >= 0.45) return "Moderate";
   return "Weak";
+}
+
+function getVerificationBadge(response: QueryResponse | null): { label: string; className: string } | null {
+  const state = response?.retrieval_meta?.citation_verification_state;
+  const rewritten = response?.retrieval_meta?.answer_rewritten_for_faithfulness === true;
+  const coverage = response?.retrieval_meta?.citation_coverage;
+  const numericCoverage =
+    typeof coverage === "number" ? coverage : typeof coverage === "string" ? Number(coverage) : null;
+  if (rewritten) return { label: "Rewritten", className: "copper" };
+  if (numericCoverage !== null && Number.isFinite(numericCoverage) && numericCoverage < 0.45) {
+    return { label: "Low citation coverage", className: "copper" };
+  }
+  if (state === "supported") return { label: "Verified", className: "sage" };
+  if (state === "unsupported" || state === "unchecked") return { label: "Needs review", className: "copper" };
+  return null;
+}
+
+function getPaperLabArtifact(response: QueryResponse | null): PaperLabArtifact | null {
+  const raw = response?.retrieval_meta?.paper_lab;
+  if (!raw || typeof raw !== "object") return null;
+  return raw as PaperLabArtifact;
+}
+
+function buildPaperLabMarkdown(run: ChatRun, artifact: PaperLabArtifact | null, materialName: string): string {
+  const citations = run.response.citations
+    .map((citation, index) => `- [${index + 1}] ${citation.page_start ? `Page ${citation.page_start}` : "Page unknown"}: ${previewText(citation.excerpt, 220)}`)
+    .join("\n");
+  const outline = artifact?.outline?.length
+    ? artifact.outline.map((item, index) => `${index + 1}. ${item}`).join("\n")
+    : "1. Title and problem framing\n2. Related work\n3. Methodology\n4. Discussion\n5. Limitations";
+  const matrix = artifact?.related_work_matrix?.length
+    ? artifact.related_work_matrix
+        .map(
+          (row) =>
+            `| ${row.claim_area ?? "Evidence"} | ${row.evidence ?? "-"} | ${row.page ?? "-"} | ${row.use_in_paper ?? "Use as supporting evidence."} | ${previewText(row.excerpt, 160)} |`,
+        )
+        .join("\n")
+    : "| Evidence | - | - | No matrix returned. | - |";
+
+  return [
+    `# NIRMIQ Paper Lab Draft`,
+    "",
+    `Source: ${materialName}`,
+    `Mode: ${modeLabel(run.mode)}`,
+    `Generated: ${formatDate(run.timestamp)}`,
+    "",
+    "## Draft",
+    run.response.answer,
+    "",
+    "## Suggested Paper Outline",
+    outline,
+    "",
+    "## Related-Work Matrix",
+    "| Claim Area | Evidence | Page | Use In Paper | Excerpt |",
+    "| --- | ---: | ---: | --- | --- |",
+    matrix,
+    "",
+    "## Citations",
+    citations || "- No citations returned.",
+  ].join("\n");
 }
 
 function splitAnswerUnits(value: string): string[] {
@@ -322,21 +436,157 @@ function StudyGuideAnswer({ answer }: { answer: string }) {
   );
 }
 
+function LocalLogin({
+  displayName,
+  email,
+  phone,
+  onDisplayNameChange,
+  onEmailChange,
+  onPhoneChange,
+  onContinue,
+}: {
+  displayName: string;
+  email: string;
+  phone: string;
+  onDisplayNameChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
+  onPhoneChange: (value: string) => void;
+  onContinue: () => void;
+}) {
+  const canContinue = displayName.trim().length > 0 && (email.trim().length > 0 || phone.trim().length > 0);
+
+  return (
+    <main className="login-shell">
+      <section className="login-card landing-card">
+        <div className="landing-grid">
+          <div className="landing-copy">
+            <div className="brand-lockup hero">
+              <div className="brand-mark" aria-hidden="true">
+                <img alt="" src="/brand/nirmiq-ais-mark.svg" />
+              </div>
+              <div>
+                <strong>{PRODUCT_NAME}</strong>
+                <span>{PRODUCT_TAGLINE}</span>
+              </div>
+            </div>
+            <h1>Turn academic chaos into cited intelligence.</h1>
+            <p className="copy">
+              Upload papers, notes, textbooks, or question banks. NIRMIQ helps you summarize,
+              question, cite, draft, and revise from your own sources while staying local-first.
+            </p>
+            <div className="login-proof">
+              <span>Grounded answers</span>
+              <span>Paper Lab</span>
+              <span>Exam Lab</span>
+              <span>Offline-first</span>
+            </div>
+            <div className="why-nirmiq">
+              <strong>Built for students who want proof, not vibes.</strong>
+              <p>
+                Every serious response is designed to stay tied to source chunks, citations,
+                diagrams, and local memory instead of becoming a generic chatbot answer.
+              </p>
+            </div>
+          </div>
+          <div className="login-panel">
+            <div className="hero-orbit" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <strong />
+            </div>
+            <h2>Enter your local workspace</h2>
+            <p className="tiny">
+              Local profile only for V3. Email/phone are stored in this browser for continuity, not sent to a cloud auth service.
+            </p>
+            <label className="label">
+              Name
+              <input
+                className="input"
+                onChange={(event) => onDisplayNameChange(event.target.value)}
+                placeholder="Siddharth"
+                value={displayName}
+              />
+            </label>
+            <label className="label">
+              Email
+              <input
+                className="input"
+                onChange={(event) => onEmailChange(event.target.value)}
+                placeholder="you@example.com"
+                type="email"
+                value={email}
+              />
+            </label>
+            <label className="label">
+              Phone
+              <input
+                className="input"
+                onChange={(event) => onPhoneChange(event.target.value)}
+                placeholder="+91..."
+                type="tel"
+                value={phone}
+              />
+            </label>
+            <button className="button primary" disabled={!canContinue} onClick={onContinue} type="button">
+              Continue
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function modeLabel(value: StudyMode): string {
   return STUDY_MODES.find((mode) => mode.value === value)?.label ?? "Study";
+}
+
+function composerPlaceholder(section: WorkspaceSection, mode: StudyMode, materialName: string): string {
+  if (section === "general") {
+    return "Chat normally. If local sources are relevant, NIRMIQ will cite them.";
+  }
+  if (section === "paper") {
+    return "Ask for thesis, abstract, related work, methodology, limitations, or citation-backed sections...";
+  }
+  if (section === "exam") {
+    return "Paste an exam question, marks requirement, or ask for a custom study guide PDF...";
+  }
+  if (mode === "summary") {
+    return `Summarize ${materialName} or ask for chapter-wise / method-wise breakdown...`;
+  }
+  if (mode === "deep_research") {
+    return "Ask for a deeper cited analysis, assumptions, limitations, or research implications...";
+  }
+  return `Ask about ${materialName}...`;
+}
+
+function workspaceVerb(section: WorkspaceSection): string {
+  if (section === "paper") return "Draft";
+  if (section === "exam") return "Solve";
+  if (section === "general") return "Send";
+  return "Ask";
 }
 
 export default function Home() {
   const queryFormRef = useRef<HTMLFormElement | null>(null);
   const queryInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const [mounted, setMounted] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [displayName, setDisplayName] = useState("Siddharth");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [composerCollapsed, setComposerCollapsed] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [showInspector, setShowInspector] = useState(false);
   const [health, setHealth] = useState("unknown");
   const [busy, setBusy] = useState<BusyState>("");
   const [error, setError] = useState("");
   const [sourcePath, setSourcePath] = useState(DEFAULT_SOURCE_PATH);
-  const [title, setTitle] = useState("Daily Stoic");
+  const [title, setTitle] = useState("Attention Is All You Need");
   const [documentId, setDocumentId] = useState("");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [selectedDocumentDetail, setSelectedDocumentDetail] = useState<DocumentDetailResponse | null>(null);
@@ -397,12 +647,23 @@ export default function Home() {
   const previousRun = queryHistory.length >= 2 ? queryHistory[queryHistory.length - 2] : undefined;
   const currentRun = queryHistory.length >= 1 ? queryHistory[queryHistory.length - 1] : undefined;
   const answerDiff = useMemo(() => buildAnswerDiff(previousRun, currentRun), [currentRun, previousRun]);
+  const paperLabArtifact = useMemo(() => getPaperLabArtifact(queryResult), [queryResult]);
   const availableModes = STUDY_MODES.filter((mode) => mode.section === workspaceSection);
   const currentMode = availableModes.find((mode) => mode.value === studyMode) ?? availableModes[0] ?? STUDY_MODES[0];
   const currentSection = WORKSPACE_SECTIONS.find((section) => section.value === workspaceSection) ?? WORKSPACE_SECTIONS[0];
   const activeMaterialName = selectedDocumentDetail?.title || selectedDocument?.title || "No study material selected";
+  const activePlaceholder = composerPlaceholder(workspaceSection, currentMode.value, activeMaterialName);
+  const activeActionLabel = workspaceVerb(workspaceSection);
 
   useEffect(() => {
+    const storedName = window.localStorage.getItem("nirmiq.localProfileName");
+    const storedEmail = window.localStorage.getItem("nirmiq.localEmail");
+    const storedPhone = window.localStorage.getItem("nirmiq.localPhone");
+    const storedUnlocked = window.localStorage.getItem("nirmiq.localUnlocked") === "true";
+    if (storedName) setDisplayName(storedName);
+    if (storedEmail) setEmail(storedEmail);
+    if (storedPhone) setPhone(storedPhone);
+    if (storedUnlocked) setIsUnlocked(true);
     setMounted(true);
   }, []);
 
@@ -535,22 +796,86 @@ export default function Home() {
     }
   }
 
+  async function onUploadFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy("ingest");
+    setError("");
+    try {
+      const fallbackTitle = file.name.replace(/\.[^.]+$/, "");
+      const response = await uploadDocument({
+        file,
+        title: title.trim() || fallbackTitle,
+        force_reindex: true,
+      });
+      setDocumentId(response.document_id);
+      setTitle(fallbackTitle);
+      setSourcePath(`Uploaded: ${file.name}`);
+      setSelectedChunkId("");
+      await Promise.all([loadDocumentState(response.document_id), loadDocumentDetail(response.document_id)]);
+      await loadDocuments();
+      setShowLibrary(false);
+      setDeepView("evidence");
+      queryInputRef.current?.focus();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+      if (event.target) event.target.value = "";
+    }
+  }
+
+  async function onDeleteSelectedDocument() {
+    if (!documentId || busy !== "") return;
+    const label = selectedDocumentDetail?.title || selectedDocument?.title || "selected document";
+    const confirmed = window.confirm(`Remove "${label}" from NIRMIQ? This clears local indexes, chunks, exam data, and diagram metadata for this document.`);
+    if (!confirmed) return;
+    setBusy("delete");
+    setError("");
+    try {
+      await deleteDocument(documentId);
+      setDocumentId("");
+      setSelectedDocumentDetail(null);
+      setSelectedChunkId("");
+      setIngestStatus(null);
+      setIngestJobs(null);
+      setQuestionBankItems([]);
+      setDiagramAssets([]);
+      setExamProfile(null);
+      setQueryResult(null);
+      await loadDocuments();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function onQuery(event: FormEvent) {
     event.preventDefault();
     if (!canQuery) return;
-    const submittedQuery = query.trim();
+    await executeQuery(query.trim());
+  }
+
+  async function executeQuery(submittedQuery: string, modeOverride: StudyMode = currentMode.value) {
+    if (!submittedQuery || !sessionId.trim()) return;
     setBusy("query");
     setError("");
     try {
+      const scopedDocumentId =
+        workspaceSection === "general" && modeOverride !== "summary" ? undefined : documentId || undefined;
       const response = await runQuery({
         session_id: sessionId.trim(),
         query: submittedQuery,
-        document_id: workspaceSection === "general" ? undefined : documentId || undefined,
-        mode: currentMode.value,
+        document_id: scopedDocumentId,
+        mode: modeOverride,
         retrieval_mode: retrievalMode,
         retrieval_profile: retrievalProfile,
         exam_profile:
-          workspaceSection === "exam"
+          workspaceSection === "exam" &&
+          ["exam_answer", "revision_notes", "important_questions", "compare_concepts", "study_guide"].includes(
+            modeOverride,
+          )
             ? {
                 marks: examMarks,
                 answer_style: examAnswerStyle,
@@ -567,7 +892,7 @@ export default function Home() {
           {
             session_id: response.session_id,
             query: submittedQuery,
-            mode: currentMode.value,
+            mode: modeOverride,
             profile: retrievalProfile,
             response,
             timestamp: new Date().toISOString(),
@@ -584,6 +909,82 @@ export default function Home() {
     }
   }
 
+  async function onSummarizeSelectedSource() {
+    if (!documentId || busy !== "") {
+      setError("Upload or select a source before summarizing.");
+      return;
+    }
+    setWorkspaceSection("research");
+    setStudyMode("summary");
+    setRetrievalProfile("balanced");
+    await executeQuery("Summarize this PDF with the main ideas, methods, findings, and limitations.", "summary");
+  }
+
+  async function onGenerateExamPdf() {
+    if (busy !== "") return;
+    if (currentRun?.response.answer && workspaceSection === "exam") {
+      openPdfPrintView(currentRun);
+      return;
+    }
+    if (!documentId) {
+      setError("Upload or select exam material before generating a custom PDF.");
+      return;
+    }
+    setWorkspaceSection("exam");
+    setStudyMode("study_guide");
+    setRetrievalProfile("precision");
+    await executeQuery(
+      "Generate a custom exam PDF study guide from the selected source. Include important questions, concise answers, marks-ready structure, and citations.",
+      "study_guide",
+    );
+    setError("Custom PDF content generated. Click Custom PDF again and choose 'Save as PDF' in the print dialog.");
+  }
+
+  function openPdfPrintView(run: ChatRun) {
+    const printable = window.open("", "_blank", "noopener,noreferrer,width=900,height=1000");
+    if (!printable) {
+      setError("Popup blocked. Allow popups to export the custom PDF.");
+      return;
+    }
+    const citationList = run.response.citations
+      .map((citation, index) => `<li>Evidence ${index + 1}${citation.page_start ? `, page ${citation.page_start}` : ""}</li>`)
+      .join("");
+    printable.document.write(`
+      <html>
+        <head>
+          <title>NIRMIQ Custom Exam PDF</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; color: #111; line-height: 1.6; }
+            h1 { margin-bottom: 4px; }
+            .meta { color: #555; font-size: 12px; margin-bottom: 24px; }
+            pre { white-space: pre-wrap; font-family: inherit; }
+            li { margin: 4px 0; }
+          </style>
+        </head>
+        <body>
+          <h1>NIRMIQ Custom Exam PDF</h1>
+          <div class="meta">${activeMaterialName} / ${modeLabel(run.mode)} / ${formatDate(run.timestamp)}</div>
+          <pre>${escapeHtml(run.response.answer)}</pre>
+          <h2>Citations</h2>
+          <ol>${citationList || "<li>No citations returned.</li>"}</ol>
+          <script>window.onload = () => window.print();</script>
+        </body>
+      </html>
+    `);
+    printable.document.close();
+  }
+
+  async function onCopyPaperMarkdown() {
+    if (!currentRun || workspaceSection !== "paper") return;
+    const markdown = buildPaperLabMarkdown(currentRun, paperLabArtifact, activeMaterialName);
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setError("Paper Lab Markdown copied with outline, matrix, answer, and citations.");
+    } catch {
+      setError("Clipboard copy failed. Select the answer text manually and copy it.");
+    }
+  }
+
   function selectDocument(item: DocumentItem) {
     setDocumentId(item.id);
     setSelectedChunkId("");
@@ -596,8 +997,11 @@ export default function Home() {
     setWorkspaceSection(section);
     const nextMode = STUDY_MODES.find((mode) => mode.section === section)?.value ?? "research";
     setStudyMode(nextMode);
+    setShowInspector(section === "exam");
     if (section === "general") {
       setRetrievalProfile("fast");
+    } else if (section === "paper") {
+      setRetrievalProfile("precision");
     } else if (section === "exam") {
       setRetrievalProfile("precision");
     } else {
@@ -663,6 +1067,7 @@ export default function Home() {
     setSelectedChunkId(chunkId);
     setSelectedDocumentDetail(null);
     void Promise.all([loadDocumentState(documentIdValue), loadDocumentDetail(documentIdValue)]);
+    setShowInspector(true);
     setDeepView("evidence");
   }
 
@@ -678,6 +1083,16 @@ export default function Home() {
   function applySuggestion(value: string) {
     setQuery(value);
     window.requestAnimationFrame(() => queryInputRef.current?.focus());
+  }
+
+  function unlockLocalWorkspace() {
+    const name = displayName.trim() || "Local Researcher";
+    setDisplayName(name);
+    setIsUnlocked(true);
+    window.localStorage.setItem("nirmiq.localProfileName", name);
+    window.localStorage.setItem("nirmiq.localEmail", email.trim());
+    window.localStorage.setItem("nirmiq.localPhone", phone.trim());
+    window.localStorage.setItem("nirmiq.localUnlocked", "true");
   }
 
   function onQueryKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -723,23 +1138,44 @@ export default function Home() {
     return (
       <main className="nirmiq-v2" suppressHydrationWarning>
         <section className="client-boot">
-          <p className="eyebrow">Local Research OS</p>
-          <h1>NIRMIQ</h1>
+          <p className="eyebrow">{PRODUCT_TAGLINE}</p>
+          <h1>{PRODUCT_NAME}</h1>
           <p>Preparing your local study workspace...</p>
         </section>
       </main>
     );
   }
 
+  if (!isUnlocked) {
+    return (
+      <LocalLogin
+        displayName={displayName}
+        email={email}
+        phone={phone}
+        onContinue={unlockLocalWorkspace}
+        onDisplayNameChange={setDisplayName}
+        onEmailChange={setEmail}
+        onPhoneChange={setPhone}
+      />
+    );
+  }
+
   return (
-    <main className="nirmiq-v2">
+    <main className={cx("nirmiq-v2", showLibrary && "library-open", showInspector && "inspector-open")}>
       <aside className="material-rail">
         <section className="identity-card">
-          <p className="eyebrow">Local Research OS</p>
-          <h1 className="identity-title">NIRMIQ</h1>
+          <div className="brand-lockup">
+            <div className="brand-mark" aria-hidden="true">
+              <img alt="" src="/brand/nirmiq-ais-mark.svg" />
+            </div>
+            <div>
+              <strong>{PRODUCT_NAME}</strong>
+              <span>{PRODUCT_TAGLINE}</span>
+            </div>
+          </div>
           <p className="copy">
-            Siddharth&apos;s private cockpit for documents, grounded chat, exam prep,
-            and evidence you can actually inspect.
+            {displayName}&apos;s local workspace for research-grade answers, citations, engineering papers,
+            and exam prep.
           </p>
           <div className="chip-row">
             <button className="chip" type="button" onClick={onHealthCheck} disabled={busy !== ""}>
@@ -749,6 +1185,11 @@ export default function Home() {
             <span className="chip sage">Local-first</span>
             <span className="chip teal">RTX 4050-aware</span>
           </div>
+          <div className="legal-links">
+            <a href="/privacy_policy.md" target="_blank" rel="noreferrer">Privacy</a>
+            <a href="/terms_conditions.md" target="_blank" rel="noreferrer">Terms</a>
+            <a href="/security.md" target="_blank" rel="noreferrer">Security</a>
+          </div>
         </section>
 
         <section className="rail-section">
@@ -757,6 +1198,17 @@ export default function Home() {
             <span className="chip copper">{documents.length} indexed</span>
           </div>
           <form className="material-form panel" onSubmit={onIngest}>
+            <button
+              className="button primary"
+              disabled={busy !== ""}
+              onClick={() => uploadInputRef.current?.click()}
+              type="button"
+            >
+              {busy === "ingest" ? "Uploading..." : "Upload file"}
+            </button>
+            <p className="tiny">
+              Supports PDF, text, Markdown, and image files. Photo OCR depends on local OCR availability.
+            </p>
             <label className="label">
               Local path
               <input
@@ -775,8 +1227,8 @@ export default function Home() {
                 placeholder="Unit 3 OS Notes"
               />
             </label>
-            <button className="button primary" disabled={!canIngest || busy !== ""} type="submit">
-              {busy === "ingest" ? "Indexing source..." : "Index source"}
+            <button className="button ghost" disabled={!canIngest || busy !== ""} type="submit">
+              {busy === "ingest" ? "Indexing source..." : "Index local path"}
             </button>
           </form>
         </section>
@@ -788,6 +1240,16 @@ export default function Home() {
               Refresh
             </button>
           </div>
+          {selectedDocument ? (
+            <button
+              className="button danger"
+              disabled={busy !== "" || !documentId}
+              onClick={onDeleteSelectedDocument}
+              type="button"
+            >
+              {busy === "delete" ? "Removing..." : "Remove selected source"}
+            </button>
+          ) : null}
           <div className="material-list">
             {documents.length ? (
               documents.map((item) => (
@@ -814,29 +1276,54 @@ export default function Home() {
 
       <section className="study-thread">
         <header className="thread-top">
-          <div className="workspace-switcher">
-            {WORKSPACE_SECTIONS.map((section) => (
-              <button
-                className={cx("section-button", workspaceSection === section.value && "active")}
-                data-testid={`workspace-${section.value}`}
-                key={section.value}
-                onClick={() => selectWorkspaceSection(section.value)}
-                type="button"
-              >
-                <strong>{section.label}</strong>
-                <span>{section.hint}</span>
+          <div className="thread-bar">
+            <div className="brand-lockup app">
+              <div className="brand-mark" aria-hidden="true">
+                <img alt="" src="/brand/nirmiq-ais-mark.svg" />
+              </div>
+              <div>
+                <strong>{PRODUCT_NAME}</strong>
+                <span>{PRODUCT_TAGLINE}</span>
+              </div>
+            </div>
+            <div className="workspace-switcher">
+              {WORKSPACE_SECTIONS.map((section) => (
+                <button
+                  className={cx("section-button", workspaceSection === section.value && "active")}
+                  data-testid={`workspace-${section.value}`}
+                  key={section.value}
+                  onClick={() => selectWorkspaceSection(section.value)}
+                  type="button"
+                >
+                  <strong>{section.label}</strong>
+                  <span>{section.hint}</span>
+                </button>
+              ))}
+            </div>
+            <div className="top-actions">
+              <button className="button ghost" type="button" onClick={() => setShowLibrary((current) => !current)}>
+                {showLibrary ? "Hide Library" : "Library"}
               </button>
-            ))}
+              <button className="button ghost" type="button" onClick={() => setShowInspector((current) => !current)}>
+                {showInspector ? "Hide Sources" : "Sources"}
+              </button>
+            </div>
           </div>
           <div className="thread-title">
             <p className="eyebrow">{currentSection.label} Workspace</p>
-            <h1>{workspaceSection === "general" ? "General Chat" : activeMaterialName}</h1>
+            <h1>
+              {workspaceSection === "general"
+                ? "Ask anything"
+                : workspaceSection === "paper"
+                  ? "Engineering Paper Lab"
+                  : workspaceSection === "exam"
+                    ? "Exam Lab"
+                    : activeMaterialName}
+            </h1>
             <p className="copy" style={{ maxWidth: 680 }}>{currentSection.hint}</p>
             <div className="chip-row">
               <span className="chip copper">{modeLabel(studyMode)}</span>
-              <span className="chip teal">{retrievalMode.toUpperCase()}</span>
-              <span className="chip sage">{retrievalProfile}</span>
-              <span className="chip">{sessionId}</span>
+              <span className="chip sage">{activeMaterialName}</span>
             </div>
           </div>
           <div className="mode-grid">
@@ -869,9 +1356,16 @@ export default function Home() {
                   <div className="bubble assistant">
                     <div className="message-meta">
                       <span className="tiny">NIRMIQ / {formatDate(run.timestamp)}</span>
-                      <span className={cx("chip", run.response.grounded ? "sage" : "copper")}>
-                        {run.response.grounded ? "grounded" : "review"} / {run.response.citations.length} citations
-                      </span>
+                      <div className="meta-chip-row">
+                        <span className={cx("chip", run.response.grounded ? "sage" : "copper")}>
+                          {run.response.grounded ? "grounded" : "review"} / {run.response.citations.length} citations
+                        </span>
+                        {getVerificationBadge(run.response) ? (
+                          <span className={cx("chip", getVerificationBadge(run.response)?.className)}>
+                            {getVerificationBadge(run.response)?.label}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     {run.mode === "study_guide" ? (
                       <StudyGuideAnswer answer={run.response.answer} />
@@ -903,10 +1397,12 @@ export default function Home() {
               <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
               <h2>
                 {workspaceSection === "general"
-                  ? "Chat freely, with local evidence when your documents are relevant."
+                  ? "Ask naturally. If local evidence is missing, NIRMIQ will say so."
+                  : workspaceSection === "paper"
+                    ? "Build engineering research papers with traceable multi-source citations."
                   : workspaceSection === "exam"
                     ? "Prepare answers and study guides from your exact notes."
-                    : "Drop a document in. Ask directly. Inspect every claim."}
+                    : "Upload a source. Summarize first. Then question every claim."}
               </h2>
               <div className="suggestions">
                 {availableModes.slice(0, 4).map((mode) => (
@@ -929,61 +1425,144 @@ export default function Home() {
 
         <form className="composer-wrap" ref={queryFormRef} onSubmit={onQuery}>
           <div className="composer-card">
-            <div className="composer-meta">
-              <label className="label">
-                Study thread
-                <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
-              </label>
-              <label className="label">
-                Retrieval
-                <select
-                  className="select"
-                  value={retrievalMode}
-                  onChange={(event) => setRetrievalMode(event.target.value as RetrievalMode)}
-                >
-                  <option value="hybrid">Hybrid</option>
-                  <option value="bm25">BM25</option>
-                  <option value="vector">Vector</option>
-                </select>
-              </label>
-              <label className="label">
-                Profile
-                <select
-                  className="select"
-                  value={retrievalProfile}
-                  onChange={(event) => setRetrievalProfile(event.target.value as RetrievalProfile)}
-                >
-                  {RETRIEVAL_PROFILES.map((profile) => (
-                    <option key={profile.value} value={profile.value}>
-                      {profile.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <textarea
-              className="textarea"
-              ref={queryInputRef}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={onQueryKeyDown}
-              placeholder={`Ask in ${currentMode.label} mode...`}
+            <input
+              accept=".pdf,.txt,.md,.markdown,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,image/*,application/pdf,text/*"
+              className="file-input"
+              onChange={onUploadFile}
+              ref={uploadInputRef}
+              type="file"
             />
-            <div className="composer-actions">
-              <div className="chip-row" style={{ marginTop: 0 }}>
-                <span className="chip">Grounding {groundingLabel}</span>
-                <span className="chip">Score {groundingScore.toFixed(2)}</span>
-                <span className="chip">{latestCitations.length} evidence links</span>
+            <div className="source-cockpit">
+              <div className="source-status">
+                <span className={cx("source-dot", selectedDocument && "ok")} />
+                <div>
+                  <span className="source-label">Selected source</span>
+                  <strong>{selectedDocument ? activeMaterialName : "No source selected"}</strong>
+                </div>
               </div>
-              <div className="chip-row" style={{ marginTop: 0 }}>
-                <button className="button ghost" type="button" onClick={clearThread}>
-                  Clear Thread
+              <div className="source-actions">
+                <span className="mini-stat">
+                  {selectedDocumentDetail?.active_chunk_count ?? selectedDocument?.active_chunk_count ?? 0} chunks
+                </span>
+                <span className={cx("mini-stat", queryResult?.grounded ? "ok" : "")}>
+                  {groundingLabel}
+                </span>
+                {workspaceSection === "exam" ? (
+                  <button
+                    className="quick-action"
+                    disabled={busy !== ""}
+                    onClick={onGenerateExamPdf}
+                    type="button"
+                  >
+                    Custom PDF
+                  </button>
+                ) : null}
+                <button
+                  className="quick-action"
+                  disabled={!documentId || busy !== ""}
+                  onClick={onSummarizeSelectedSource}
+                  type="button"
+                >
+                  Summarize PDF
                 </button>
-                <button className="button primary" disabled={!canQuery || busy !== ""} type="submit">
-                  {busy === "query" ? "Reading sources..." : "Ask NIRMIQ"}
+                <button
+                  className="quick-action ghost"
+                  disabled={busy !== ""}
+                  onClick={() => uploadInputRef.current?.click()}
+                  type="button"
+                >
+                  Upload
+                </button>
+                <button
+                  className="quick-action ghost"
+                  onClick={() => setComposerCollapsed((current) => !current)}
+                  type="button"
+                >
+                  {composerCollapsed ? "Open Search" : "Minimize"}
                 </button>
               </div>
             </div>
+            {composerCollapsed ? (
+              <div className="composer-minimized">
+                Search box minimized. Responses have more room. Use Open Search when you need to ask the next question.
+              </div>
+            ) : (
+              <>
+                <div className="composer-input-shell">
+                  <button
+                    aria-label="Upload file or photo"
+                    className="attach-button"
+                    disabled={busy !== ""}
+                    onClick={() => uploadInputRef.current?.click()}
+                    type="button"
+                    title="Upload PDF, document, or photo"
+                  >
+                    +
+                  </button>
+                  <textarea
+                    className="textarea"
+                    ref={queryInputRef}
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={onQueryKeyDown}
+                    placeholder={busy === "ingest" ? "Uploading and indexing your file..." : activePlaceholder}
+                  />
+                  <button className="send-button" disabled={!canQuery || busy !== ""} type="submit">
+                    {busy === "query" ? "Reading" : activeActionLabel}
+                  </button>
+                </div>
+                <details className="composer-settings">
+                  <summary>
+                    Tuning
+                    <span>{retrievalMode.toUpperCase()} / {retrievalProfile} / {sessionId}</span>
+                  </summary>
+                  <div className="composer-meta">
+                    <label className="label">
+                      Thread
+                      <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
+                    </label>
+                    <label className="label">
+                      Retrieval
+                      <select
+                        className="select"
+                        value={retrievalMode}
+                        onChange={(event) => setRetrievalMode(event.target.value as RetrievalMode)}
+                      >
+                        <option value="hybrid">Hybrid</option>
+                        <option value="bm25">BM25</option>
+                        <option value="vector">Vector</option>
+                      </select>
+                    </label>
+                    <label className="label">
+                      Profile
+                      <select
+                        className="select"
+                        value={retrievalProfile}
+                        onChange={(event) => setRetrievalProfile(event.target.value as RetrievalProfile)}
+                      >
+                        {RETRIEVAL_PROFILES.map((profile) => (
+                          <option key={profile.value} value={profile.value}>
+                            {profile.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </details>
+                <div className="composer-actions">
+                  <p className="composer-hint">
+                    {latestCitations.length
+                      ? `${latestCitations.length} evidence links ready. Click Sources to inspect citations.`
+                      : "Answers stay grounded in the selected source when evidence is available."}
+                  </p>
+                  <div className="chip-row" style={{ marginTop: 0 }}>
+                    <button className="clear-link" type="button" onClick={clearThread}>
+                      Clear Thread
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </form>
       </section>
@@ -1017,6 +1596,83 @@ export default function Home() {
             </button>
           ))}
         </div>
+
+        {workspaceSection === "paper" ? (
+          <section className="tool-panel rail-section" data-testid="paper-lab-panel">
+            <div className="panel">
+              <div className="section-head">
+                <div>
+                  <p className="eyebrow">V4 Paper Lab</p>
+                  <h2>Citation Workspace</h2>
+                </div>
+                <span className="chip sage">
+                  {paperLabArtifact?.evidence_count ?? latestCitations.length} evidence
+                </span>
+              </div>
+              <p className="copy">
+                Draft with source-backed structure. NIRMIQ organizes retrieved chunks into an outline,
+                citation clusters, and a related-work matrix.
+              </p>
+              <button
+                className="button primary"
+                disabled={!currentRun?.response.answer}
+                onClick={onCopyPaperMarkdown}
+                style={{ marginTop: 12 }}
+                type="button"
+              >
+                Copy Markdown Draft
+              </button>
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>Paper Outline</h2>
+                <span className="chip">{paperLabArtifact?.source_count ?? 0} sources</span>
+              </div>
+              <div className="timeline-list" style={{ marginTop: 12 }}>
+                {(paperLabArtifact?.outline ?? [
+                  "Title and problem framing",
+                  "Background and related work",
+                  "Methodology or system design",
+                  "Evidence-backed discussion",
+                  "Limitations and future work",
+                ]).map((item, index) => (
+                  <div className="timeline-card" key={`${item}-${index}`}>
+                    <div className="message-meta">
+                      <strong>{index + 1}. {item}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>Related-Work Matrix</h2>
+                <span className="chip">{paperLabArtifact?.related_work_matrix?.length ?? 0} rows</span>
+              </div>
+              <div className="timeline-list" style={{ marginTop: 12 }}>
+                {paperLabArtifact?.related_work_matrix?.slice(0, 5).map((row, index) => (
+                  <div className="timeline-card" key={`${row.evidence}-${index}`}>
+                    <div className="message-meta">
+                      <strong>{row.claim_area ?? "Evidence"}</strong>
+                      <span className="tiny">
+                        Evidence {row.evidence ?? index + 1}
+                        {row.page ? ` / p.${row.page}` : ""}
+                      </span>
+                    </div>
+                    <p className="chunk-text">{row.use_in_paper ?? "Use as supporting evidence."}</p>
+                    <span className="tiny">{previewText(row.excerpt, 180)}</span>
+                  </div>
+                )) ?? (
+                  <p className="copy">
+                    Ask Paper Lab for a research paper section to generate the matrix.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {workspaceSection === "exam" ? (
           <section className="tool-panel rail-section" data-testid="exam-lab-panel">

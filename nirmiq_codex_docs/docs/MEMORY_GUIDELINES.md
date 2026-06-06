@@ -1,4 +1,4 @@
-# Memory Guidelines — NIRMIQ ResearchOS
+# Memory Guidelines — NIRMIQ Academic Intelligence System
 
 ## Goal
 

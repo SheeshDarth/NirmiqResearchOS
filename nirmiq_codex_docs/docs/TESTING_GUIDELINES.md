@@ -1,4 +1,4 @@
-# Testing Guidelines — NIRMIQ ResearchOS
+# Testing Guidelines — NIRMIQ Academic Intelligence System
 
 ## Testing Priorities
 

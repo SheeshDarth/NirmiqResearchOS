@@ -39,6 +39,7 @@ class ChromaRepo:
                 "document_id": str(chunk["document_id"]),
                 "page_start": int(chunk["page_start"]) if chunk["page_start"] is not None else -1,
                 "page_end": int(chunk["page_end"]) if chunk["page_end"] is not None else -1,
+                "quality_score": float(chunk.get("quality_score", 1.0)),
             }
             for chunk in chunks
         ]
@@ -71,6 +72,7 @@ class ChromaRepo:
             score = 1.0 / (1.0 + max(distance, 0.0))
             page_start_raw = metadata.get("page_start") if isinstance(metadata, dict) else None
             page_end_raw = metadata.get("page_end") if isinstance(metadata, dict) else None
+            quality_score_raw = metadata.get("quality_score") if isinstance(metadata, dict) else 1.0
             hits.append(
                 {
                     "id": chunk_id,
@@ -79,6 +81,7 @@ class ChromaRepo:
                     "page_end": page_end_raw if page_end_raw != -1 else None,
                     "text": documents[idx] if idx < len(documents) else "",
                     "score": score,
+                    "quality_score": quality_score_raw,
                 }
             )
         return hits

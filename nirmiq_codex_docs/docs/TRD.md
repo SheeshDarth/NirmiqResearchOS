@@ -1,4 +1,4 @@
-# Technical Requirements Document — NIRMIQ ResearchOS
+# Technical Requirements Document — NIRMIQ Academic Intelligence System
 
 ## Technical Goal
 

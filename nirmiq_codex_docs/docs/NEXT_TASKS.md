@@ -1,4 +1,4 @@
-# Next Tasks — NIRMIQ ResearchOS
+# Next Tasks — NIRMIQ Academic Intelligence System
 
 ## Immediate
 

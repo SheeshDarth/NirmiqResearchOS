@@ -2,6 +2,7 @@ import re
 
 from app.adapters.llm.generator import Generator
 from app.core.config import Settings
+from app.domain.citation_coverage import citation_coverage
 from app.domain.models import RetrievalBundle
 from app.domain.retrieval_policy import RetrievalPolicy
 
@@ -35,6 +36,47 @@ _QUERY_STOPWORDS = {
     "with",
 }
 
+_CLAIM_STOPWORDS = _QUERY_STOPWORDS | {
+    "also",
+    "as",
+    "at",
+    "be",
+    "been",
+    "being",
+    "by",
+    "can",
+    "could",
+    "does",
+    "did",
+    "do",
+    "has",
+    "have",
+    "had",
+    "if",
+    "into",
+    "its",
+    "may",
+    "more",
+    "not",
+    "only",
+    "or",
+    "other",
+    "should",
+    "such",
+    "than",
+    "that",
+    "their",
+    "these",
+    "they",
+    "through",
+    "use",
+    "using",
+    "was",
+    "were",
+    "will",
+    "would",
+}
+
 
 class SynthesisService:
     def __init__(self, settings: Settings, policy: RetrievalPolicy, generator: Generator) -> None:
@@ -55,10 +97,14 @@ class SynthesisService:
         top_grounding_score = float(bundle.chunks[0].score if bundle.chunks else 0.0)
         citation_count = len(bundle.chunks)
         grounding_state = self._grounding_state(top_grounding_score, citation_count)
+        overview_query = self._is_document_overview_query(query, response_mode)
+        low_score_overview = grounding_state == "weak" and overview_query and citation_count >= 2
+        if low_score_overview:
+            grounding_state = "moderate"
         grounded = grounding_state != "weak"
         if not grounded:
             return (
-                "I do not have enough grounded context yet. Please ingest documents first.",
+                self._insufficient_context_message(citation_count),
                 False,
                 {
                     "generation_backend": "none",
@@ -66,6 +112,7 @@ class SynthesisService:
                     "citation_count": citation_count,
                     "grounding_state": grounding_state,
                     "grounding_summary": "weak evidence - no answer generated",
+                    "document_overview_request": overview_query,
                 },
             )
 
@@ -77,7 +124,15 @@ class SynthesisService:
             exam_profile=exam_profile,
             exam_context=exam_context,
         )
-        generated = await self._generator.answer(prompt=prompt, model=self._settings.generator_model_default)
+        generation_temperature = self._generation_temperature(
+            response_mode=response_mode,
+            context_chunks=selected,
+        )
+        generated = await self._generator.answer(
+            prompt=prompt,
+            model=self._settings.generator_model_default,
+            temperature=generation_temperature,
+        )
 
         if not generated:
             generated = self._fallback_answer(
@@ -89,6 +144,23 @@ class SynthesisService:
         elif not self._contains_citation_anchor(generated):
             generated = generated.rstrip() + "\n\nSources: [1]"
 
+        verification = self._verify_cited_claims(generated, selected)
+        answer_rewritten = False
+        if self._should_rewrite_for_faithfulness(verification):
+            generated = self._fallback_answer(
+                query=query,
+                context_chunks=selected,
+                response_mode=response_mode,
+                exam_context=exam_context,
+            )
+            fallback_verification = self._verify_cited_claims(generated, selected)
+            verification = {
+                **fallback_verification,
+                "original_unsupported_claims": verification["unsupported_claims"],
+                "original_cited_claims_checked": verification["cited_claims_checked"],
+            }
+            answer_rewritten = True
+
         meta = {
             "generation_backend": self._generator.last_backend,
             "grounding_score": top_grounding_score,
@@ -96,12 +168,35 @@ class SynthesisService:
             "context_chunks_used": len(selected),
             "grounding_state": grounding_state,
             "grounding_summary": self._grounding_summary(grounding_state, top_grounding_score, citation_count),
+            "document_overview_request": overview_query,
+            "low_score_overview_allowed": low_score_overview,
             "exam_profile_used": bool(exam_profile),
             "exam_context_used": bool(
                 exam_context and (exam_context.get("questions") or exam_context.get("diagrams"))
             ),
+            "citation_verification_state": verification["state"],
+            "generation_temperature": generation_temperature,
+            **citation_coverage(generated),
+            "cited_claims_checked": verification["cited_claims_checked"],
+            "unsupported_claims": verification["unsupported_claims"],
+            "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
+            "original_unsupported_claims": verification.get("original_unsupported_claims", []),
+            "answer_rewritten_for_faithfulness": answer_rewritten,
         }
         return (generated, True, meta)
+
+    def _generation_temperature(
+        self,
+        *,
+        response_mode: str,
+        context_chunks: list[tuple[int, str]],
+    ) -> float:
+        mode = response_mode.strip().lower()
+        total_words = sum(len(self._context_text(block).split()) for _, block in context_chunks)
+        long_form_modes = {"deep_research", "research_paper", "study_guide"}
+        if mode in long_form_modes and total_words >= 900:
+            return max(0.0, min(1.0, self._settings.generator_temperature_long_context))
+        return max(0.0, min(1.0, self._settings.generator_temperature_grounded))
 
     def _select_context(self, bundle: RetrievalBundle) -> list[tuple[int, str]]:
         selected: list[tuple[int, str]] = []
@@ -156,7 +251,12 @@ class SynthesisService:
         response_mode: str = "research",
         exam_context: dict[str, object] | None = None,
     ) -> str:
-        if response_mode.strip().lower() == "study_guide" and exam_context and exam_context.get("questions"):
+        mode = response_mode.strip().lower()
+        if SynthesisService._is_document_overview_query(query, response_mode):
+            return SynthesisService._fallback_document_summary(context_chunks=context_chunks)
+        if mode == "research_paper":
+            return SynthesisService._fallback_research_paper(query=query, context_chunks=context_chunks)
+        if mode == "study_guide" and exam_context and exam_context.get("questions"):
             return SynthesisService._fallback_study_guide(context_chunks=context_chunks, exam_context=exam_context)
 
         query_terms = SynthesisService._query_terms(query)
@@ -207,6 +307,11 @@ class SynthesisService:
                 "Format as a study guide with important questions, concise expandable-style answers, "
                 "diagram references when source diagrams are available, and cited evidence."
             )
+        if mode == "summary":
+            return (
+                "Summarize the selected document. Include: what it is about, main ideas, how it works, "
+                "why it matters, and limitations or caveats when supported. Use citations."
+            )
         if mode == "important_questions":
             return "Generate likely exam questions only when they are supported by the context."
         if mode == "compare_concepts":
@@ -215,6 +320,12 @@ class SynthesisService:
             return "Answer conversationally, but only from relevant uploaded document evidence. If the context is not relevant, abstain."
         if mode == "deep_research":
             return "Write a deeper research-style answer with clear sections, caveats, and evidence citations."
+        if mode == "research_paper":
+            return (
+                "Draft in an academic research-paper style for engineering students. Include a clear thesis, "
+                "related work, methodology or design considerations, limitations, and multiple citations from the context. "
+                "Do not fabricate papers, authors, results, or references not present in the retrieved source text."
+            )
         return "Explain clearly for a student using short sections and citations."
 
     @staticmethod
@@ -322,6 +433,30 @@ class SynthesisService:
         return selected
 
     @staticmethod
+    def _fallback_research_paper(query: str, context_chunks: list[tuple[int, str]]) -> str:
+        evidence = SynthesisService._best_evidence_sentences(
+            context_chunks=context_chunks,
+            query_terms=SynthesisService._query_terms(query),
+            limit=6,
+        )
+        if not evidence:
+            return "Research paper draft from the retrieved passages:\n- Not enough readable evidence was retrieved."
+
+        groups = [
+            ("Thesis", evidence[:2]),
+            ("Related Work", evidence[2:4]),
+            ("Engineering Considerations and Limitations", evidence[4:6]),
+        ]
+        sections = ["Research paper draft from retrieved sources:"]
+        for heading, items in groups:
+            if not items:
+                continue
+            sections.append(f"\n{heading}")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in items)
+        sections.append("\nUse this as a grounded draft scaffold; verify final references before submission.")
+        return "\n".join(sections)
+
+    @staticmethod
     def _fallback_heading(response_mode: str) -> str:
         mode = response_mode.strip().lower()
         if mode == "exam_answer":
@@ -338,7 +473,58 @@ class SynthesisService:
             return "I can answer this from the relevant uploaded material:"
         if mode == "deep_research":
             return "Deep research synthesis from the retrieved passages:"
+        if mode == "research_paper":
+            return "Research paper draft from the retrieved passages:"
+        if mode == "summary":
+            return "Document summary from the retrieved passages:"
         return "Based on the retrieved passages:"
+
+    @staticmethod
+    def _fallback_document_summary(context_chunks: list[tuple[int, str]]) -> str:
+        evidence = SynthesisService._best_evidence_sentences(
+            context_chunks=context_chunks,
+            query_terms={
+                "abstract",
+                "architecture",
+                "attention",
+                "model",
+                "method",
+                "result",
+                "training",
+                "task",
+                "system",
+                "approach",
+                "contribution",
+            },
+            limit=8,
+        )
+        if not evidence:
+            evidence = [
+                (idx, preview)
+                for idx, block in context_chunks[:4]
+                if (preview := SynthesisService._context_text(block)[:260].strip())
+            ]
+        if not evidence:
+            return "I found the document, but there was not enough readable text to summarize it."
+
+        sections = ["Document summary from the retrieved passages:"]
+        overview = evidence[:2]
+        main_points = evidence[2:6]
+        caveats = evidence[6:8]
+
+        sections.append("\nWhat it is about")
+        sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in overview)
+
+        if main_points:
+            sections.append("\nMain ideas")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in main_points)
+
+        if caveats:
+            sections.append("\nUseful caveats / details")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in caveats)
+
+        sections.append("\nIf you want, ask for a chapter-wise, page-wise, or exam-style summary next.")
+        return "\n".join(sections)
 
     @staticmethod
     def _context_text(block: str) -> str:
@@ -378,6 +564,137 @@ class SynthesisService:
     @staticmethod
     def _contains_citation_anchor(text: str) -> bool:
         return bool(re.search(r"\[\d+\]", text))
+
+    @staticmethod
+    def _verify_cited_claims(answer: str, context_chunks: list[tuple[int, str]]) -> dict[str, object]:
+        context_by_anchor = {
+            idx: SynthesisService._context_text(block).lower()
+            for idx, block in context_chunks
+        }
+        normalized_answer = re.sub(r"([.!?])\s+((?:\[\d+\]\s*)+)", r" \2\1", answer)
+        checked = 0
+        unsupported: list[dict[str, object]] = []
+        for sentence in SynthesisService._split_sentences(normalized_answer):
+            anchors = {
+                int(match)
+                for match in re.findall(r"\[(\d+)\]", sentence)
+                if int(match) in context_by_anchor
+            }
+            if not anchors:
+                continue
+            claim_terms = SynthesisService._claim_terms(sentence)
+            if len(claim_terms) < 3:
+                continue
+            checked += 1
+            support_scores = [
+                SynthesisService._claim_support_score(claim_terms, context_by_anchor[anchor])
+                for anchor in anchors
+            ]
+            best_score = max(support_scores) if support_scores else 0.0
+            matched_terms = int(round(best_score * len(claim_terms)))
+            if best_score < 0.35 and matched_terms < 3:
+                unsupported.append(
+                    {
+                        "claim": re.sub(r"\s+", " ", sentence).strip()[:220],
+                        "anchors": sorted(anchors),
+                        "support_score": round(best_score, 3),
+                    }
+                )
+        if checked == 0:
+            state = "unchecked"
+        elif unsupported:
+            state = "unsupported"
+        else:
+            state = "supported"
+        return {
+            "state": state,
+            "cited_claims_checked": checked,
+            "unsupported_claims": unsupported,
+        }
+
+    @staticmethod
+    def _should_rewrite_for_faithfulness(verification: dict[str, object]) -> bool:
+        unsupported = verification.get("unsupported_claims")
+        checked = int(verification.get("cited_claims_checked") or 0)
+        if not isinstance(unsupported, list) or checked <= 0:
+            return False
+        if len(unsupported) >= 2:
+            return True
+        return len(unsupported) == 1 and checked <= 2
+
+    @staticmethod
+    def _claim_terms(sentence: str) -> set[str]:
+        cleaned = re.sub(r"\[\d+\]", " ", sentence.lower())
+        return {
+            token
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9]{3,}", cleaned)
+            if token not in _CLAIM_STOPWORDS
+        }
+
+    @staticmethod
+    def _claim_support_score(claim_terms: set[str], context_text: str) -> float:
+        if not claim_terms:
+            return 1.0
+        context_terms = set(re.findall(r"[a-zA-Z][a-zA-Z0-9]{3,}", context_text.lower()))
+        matches = 0
+        for term in claim_terms:
+            if term in context_terms:
+                matches += 1
+                continue
+            stem = term[:6]
+            if len(stem) >= 5 and any(candidate.startswith(stem) for candidate in context_terms):
+                matches += 1
+        return matches / max(len(claim_terms), 1)
+
+    @staticmethod
+    def _is_document_overview_query(query: str, response_mode: str) -> bool:
+        mode = response_mode.strip().lower()
+        if mode == "summary":
+            return True
+        normalized = query.strip().lower()
+        if not normalized:
+            return False
+        overview_verbs = {
+            "summarize",
+            "summary",
+            "explain",
+            "overview",
+            "describe",
+            "understand",
+            "about",
+        }
+        document_terms = {
+            "pdf",
+            "document",
+            "doc",
+            "file",
+            "material",
+            "paper",
+            "source",
+            "notes",
+            "this",
+            "it",
+        }
+        tokens = set(re.findall(r"[a-zA-Z][a-zA-Z0-9]{1,}", normalized))
+        if tokens & overview_verbs and tokens & document_terms:
+            return True
+        return normalized in {
+            "explain",
+            "summarize",
+            "summary",
+            "what is this",
+            "what is this about",
+            "what is it about",
+        }
+
+    @staticmethod
+    def _insufficient_context_message(citation_count: int) -> str:
+        if citation_count > 0:
+            return (
+                "I found some matching evidence, but it is too weak to answer safely. "
+                "Try asking for a document summary, selecting the correct source, or adding more specific terms."
+            )
+        return "I do not have enough grounded context yet. Please upload or ingest documents first."
 
     def _grounding_state(self, grounding_score: float, citation_count: int) -> str:
         if citation_count <= 0 or grounding_score < self._min_grounding_score:

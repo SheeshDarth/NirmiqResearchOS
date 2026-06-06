@@ -1,0 +1,38 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="120" fill="#050708"/>
+  <rect x="34" y="34" width="444" height="444" rx="96" fill="url(#surface)" stroke="url(#edge)" stroke-width="3"/>
+  <path d="M256 74L407 161V335L256 422L105 335V161L256 74Z" stroke="#55C7E5" stroke-opacity="0.42" stroke-width="5"/>
+  <path d="M256 116L370 182V314L256 380L142 314V182L256 116Z" stroke="#7CF7C2" stroke-opacity="0.36" stroke-width="3"/>
+  <path d="M165 326V184H211L302 311V184H347V326H302L211 200V326H165Z" fill="url(#nirmiqN)"/>
+  <circle cx="256" cy="116" r="13" fill="#B5FFD9"/>
+  <circle cx="370" cy="182" r="10" fill="#55C7E5"/>
+  <circle cx="370" cy="314" r="10" fill="#7CF7C2"/>
+  <circle cx="256" cy="380" r="13" fill="#B5FFD9"/>
+  <circle cx="142" cy="314" r="10" fill="#55C7E5"/>
+  <circle cx="142" cy="182" r="10" fill="#7CF7C2"/>
+  <path d="M256 116L370 314M370 182L256 380M142 182L370 182M142 314L370 314M142 182L256 380M142 314L256 116" stroke="#EEF4F1" stroke-opacity="0.1" stroke-width="2"/>
+  <circle cx="256" cy="256" r="122" stroke="url(#halo)" stroke-width="2" stroke-dasharray="10 14"/>
+  <circle cx="256" cy="256" r="172" stroke="#7CF7C2" stroke-opacity="0.08" stroke-width="18"/>
+  <defs>
+    <linearGradient id="surface" x1="72" y1="52" x2="454" y2="461" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#10191D"/>
+      <stop offset="0.52" stop-color="#071014"/>
+      <stop offset="1" stop-color="#050708"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="80" y1="42" x2="432" y2="474" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7CF7C2" stop-opacity="0.75"/>
+      <stop offset="0.48" stop-color="#55C7E5" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#EEF4F1" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="nirmiqN" x1="166" y1="184" x2="348" y2="329" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEF4F1"/>
+      <stop offset="0.45" stop-color="#B5FFD9"/>
+      <stop offset="1" stop-color="#55C7E5"/>
+    </linearGradient>
+    <linearGradient id="halo" x1="134" y1="134" x2="378" y2="378" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7CF7C2" stop-opacity="0.1"/>
+      <stop offset="0.45" stop-color="#7CF7C2" stop-opacity="0.62"/>
+      <stop offset="1" stop-color="#55C7E5" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,4 +1,4 @@
-# NIRMIQ ResearchOS V3 Foundation
+# NIRMIQ Academic Intelligence System V3 Foundation
 
 ## Product Direction
 

@@ -13,6 +13,10 @@ class Settings(BaseModel):
     workspace_root: Path
     sqlite_path: Path
     chroma_path: Path
+    upload_path: Path
+    parse_cache_path: Path
+    local_ingest_allowed_roots: list[Path]
+    security_allow_arbitrary_local_paths: bool
     ollama_base_url: str
     embed_model: str
     reranker_model: str
@@ -22,6 +26,8 @@ class Settings(BaseModel):
     use_ollama_embeddings: bool
     use_ollama_reranker: bool
     ollama_timeout_seconds: float
+    generator_temperature_grounded: float
+    generator_temperature_long_context: float
     retrieval_k_bm25: int
     retrieval_k_vector: int
     retrieval_k_fused: int
@@ -39,6 +45,14 @@ class Settings(BaseModel):
         workspace_root = Path(__file__).resolve().parents[4]
         sqlite_default = workspace_root / "data" / "sqlite" / "nirmiq.db"
         chroma_default = workspace_root / "data" / "indexes" / "chroma"
+        upload_default = workspace_root / "data" / "raw" / "uploads"
+        parse_cache_default = workspace_root / "data" / "cache" / "parsed_pages"
+        allowed_roots_default = f"{workspace_root / 'data' / 'raw'},{upload_default}"
+        local_ingest_allowed_roots = [
+            Path(part.strip())
+            for part in os.getenv("LOCAL_INGEST_ALLOWED_ROOTS", allowed_roots_default).split(",")
+            if part.strip()
+        ]
         return cls(
             api_host=os.getenv("API_HOST", "127.0.0.1"),
             api_port=int(os.getenv("API_PORT", "8000")),
@@ -54,6 +68,12 @@ class Settings(BaseModel):
             workspace_root=workspace_root,
             sqlite_path=Path(os.getenv("SQLITE_PATH", str(sqlite_default))),
             chroma_path=Path(os.getenv("CHROMA_PATH", str(chroma_default))),
+            upload_path=Path(os.getenv("UPLOAD_PATH", str(upload_default))),
+            parse_cache_path=Path(os.getenv("PARSE_CACHE_PATH", str(parse_cache_default))),
+            local_ingest_allowed_roots=local_ingest_allowed_roots,
+            security_allow_arbitrary_local_paths=(
+                os.getenv("SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS", "false").lower() == "true"
+            ),
             ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
             embed_model=os.getenv("EMBED_MODEL", "nomic-embed-text"),
             reranker_model=os.getenv("RERANKER_MODEL", "bge-reranker-base"),
@@ -63,6 +83,8 @@ class Settings(BaseModel):
             use_ollama_embeddings=os.getenv("USE_OLLAMA_EMBEDDINGS", "true").lower() == "true",
             use_ollama_reranker=os.getenv("USE_OLLAMA_RERANKER", "false").lower() == "true",
             ollama_timeout_seconds=float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "4.0")),
+            generator_temperature_grounded=float(os.getenv("GENERATOR_TEMPERATURE_GROUNDED", "0.15")),
+            generator_temperature_long_context=float(os.getenv("GENERATOR_TEMPERATURE_LONG_CONTEXT", "0.85")),
             retrieval_k_bm25=int(os.getenv("RETRIEVAL_K_BM25", "20")),
             retrieval_k_vector=int(os.getenv("RETRIEVAL_K_VECTOR", "20")),
             retrieval_k_fused=int(os.getenv("RETRIEVAL_K_FUSED", "24")),
