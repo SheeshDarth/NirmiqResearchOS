@@ -53,8 +53,8 @@ Implementation rules:
 
 ### Landing/Login
 
-- Hero headline: NIRMIQ Academic Intelligence System.
-- Brief value proposition: local grounded academic assistant for papers, notes, textbooks, and question banks.
+- Hero headline: NIRMIQ ResearchOS.
+- Brief value proposition: upload, understand, verify, and learn from local academic material.
 - Captivating start animation: orbit-style mark animation around the NIRMIQ identity.
 - Login fields: name, email, phone.
 - Requirement: name plus either email or phone.

@@ -4,7 +4,7 @@ Last updated: 2026-06-06
 
 ## Project
 
-NIRMIQ Academic Intelligence System is an offline-first academic workspace for grounded document research, general chat, paper drafting, and exam preparation. The implementation target is a solo-developer MVP that runs well on a local laptop with RTX 4050-class constraints.
+NIRMIQ ResearchOS is an offline-first academic workspace for grounded document research, general chat, paper drafting, and exam preparation. The implementation target is a solo-developer MVP that runs well on a local laptop with RTX 4050-class constraints.
 
 It belongs to the broader NIRMIQ ecosystem, but this repository must remain independently runnable and useful without NIRMIQ OS, Mirror, Intelligence Engine, Agent System, or Echo.
 
@@ -93,7 +93,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 
 ## V3 Acceptance Criteria
 
-- Landing screen explains NIRMIQ Academic Intelligence System clearly.
+- Landing screen explains NIRMIQ ResearchOS clearly.
 - Login accepts display name plus email or phone.
 - Workspace section choice is clear: Research, Chat, Paper Lab, Exam Lab.
 - Composer adapts placeholder/action to the current section.

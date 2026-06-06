@@ -1,16 +1,15 @@
-# NIRMIQ Academic Intelligence System Context
+# NIRMIQ ResearchOS Context
 
-Last updated: 2026-05-30
+Last updated: 2026-06-06
 Current branch: `v3-foundation`
-Repository target: `https://github.com/SheeshDarth/NirmiqAcademicIntelligenceSystem`
-Current git remote may still point to the previous URL until the GitHub repository itself is renamed.
+Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
 ## Project Metadata
 
-Project name: NIRMIQ Academic Intelligence System
+Project name: NIRMIQ ResearchOS
 Project type: Offline-first adaptive academic intelligence system
 Owner/developer: Siddharth / SheeshDarth
 Target user: Solo local-first researcher/student/developer
@@ -20,7 +19,7 @@ Stable baseline branch: `main`
 
 ## Product Direction
 
-NIRMIQ Academic Intelligence System is a local-first document intelligence workspace for:
+NIRMIQ ResearchOS is the academic document intelligence workspace inside the broader NIRMIQ ecosystem. It is a local-first document intelligence system for:
 
 - Research over uploaded documents.
 - General local-first chatbot behavior with abstention when no evidence exists.
@@ -28,7 +27,7 @@ NIRMIQ Academic Intelligence System is a local-first document intelligence works
 - Grounded answers with citations and source inspection.
 - Low-VRAM, offline-friendly operation.
 
-The system should avoid cloud-first, enterprise, and multi-user complexity until the local MVP is strong.
+The system should avoid cloud-first, enterprise, and multi-user complexity until the local MVP is strong. The local FastAPI backend is part of the offline app runtime and must not be confused with a cloud API dependency.
 
 ## Core Technical Stack
 
@@ -1252,3 +1251,36 @@ Verification:
 Commit:
 
 - `2802deb` - Clarify offline-first local backend contract.
+
+### Latest Update: GitHub README ResearchOS Positioning
+
+Date: 2026-06-06
+
+Purpose:
+
+- The GitHub-facing README needed to reflect the user's NIRMIQ ResearchOS positioning: "Upload. Understand. Verify. Learn."
+- The update merges the user's stronger public narrative with the real V4 implementation state, avoiding claims that are not currently supported.
+
+Implemented:
+
+- Rewrote `README.md` as a polished public project overview for NIRMIQ ResearchOS.
+- Clarified that ResearchOS is an offline-first academic document intelligence system, not just a PDF chatbot.
+- Added the offline-first contract: local FastAPI backend is part of the app runtime, not a cloud API dependency.
+- Documented current V4 capabilities: upload, summary, grounded Q&A, source inspection, Research/Chat/Paper Lab/Exam Lab, summary cache, intent routing, trust badges, Paper Lab metadata, Exam Lab PDFs, readiness checks, and smoke script.
+- Updated project memory and handoff docs to treat NIRMIQ ResearchOS as the GitHub-facing academic document product name.
+- Preserved the broader NIRMIQ ecosystem framing without forcing a risky runtime folder/app rename during this docs-only pass.
+
+Tradeoffs:
+
+- Historical context entries still mention the earlier Academic Intelligence System naming so the implementation history remains traceable.
+- Runtime UI/browser metadata was not renamed in this pass because the user asked specifically for GitHub README/context updates and the current app preview should remain stable.
+
+Verification:
+
+- `git diff --check`: passed.
+- README/context spot check: passed.
+- Code tests/build were not rerun because this was a documentation-only positioning update.
+
+Commit:
+
+- Pending.

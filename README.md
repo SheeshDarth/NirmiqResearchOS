@@ -1,49 +1,250 @@
-# NIRMIQ Academic Intelligence System
+# NIRMIQ ResearchOS
 
-![NIRMIQ Academic Intelligence System mark](apps/web/public/brand/nirmiq-ais-mark.svg)
+> Upload. Understand. Verify. Learn.
 
-NIRMIQ Academic Intelligence System is a local-first academic intelligence workspace for grounded document research, citation-backed paper drafting, and exam preparation.
+![NIRMIQ ResearchOS mark](apps/web/public/brand/nirmiq-ais-mark.svg)
 
-It is built to run on a student laptop, stay useful offline, and keep uploaded material as the source of truth. A ChatGPT/OpenAI-linked account is not required for the core product.
+**NIRMIQ ResearchOS** is an offline-first academic document intelligence system built for students, researchers, and builders who need reliable answers from their own material.
 
-## What It Does
+It is not just a PDF chatbot.
 
-- Upload PDFs, text, Markdown, and images.
-- Summarize documents with citations.
-- Ask grounded questions against selected sources.
-- Inspect evidence chunks and source pages.
-- Use Research, Chat, Paper Lab, and Exam Lab workspaces.
-- Draft Paper Lab sections with related-work matrix, citation clusters, and Markdown export.
-- Generate Exam Lab answers, study guides, and printable custom PDFs.
-- Run locally with a FastAPI backend, Next.js, SQLite, optional Chroma, and optional Ollama.
+It is a grounded academic knowledge assistant that helps users upload documents, ask questions, prepare for exams, draft research sections, retrieve source-backed answers, and understand complex content without hallucinated responses.
 
-## Why It Is Different
+Core product direction: **NIRMIQ ResearchOS is the academic intelligence workspace inside the broader NIRMIQ ecosystem.**
 
-Most PDF chat apps stop at upload-and-answer. NIRMIQ focuses on:
+## Why NIRMIQ Exists
 
-- Local-first privacy.
-- Citation-aware answers.
-- Abstention when evidence is weak.
-- Retrieval metadata for debugging and evaluation.
-- Paper and exam workflows tailored for engineering students.
-- Low-VRAM local inference strategy for RTX 4050-class hardware.
-- Cloud/API-provider usage is future optional enhancement only, not the default or required path.
+Students and early researchers increasingly use AI to understand PDFs, lecture notes, textbooks, slides, lab manuals, previous-year questions, screenshots, and research papers.
+
+Most generic AI tools fail in the exact places academic work needs trust:
+
+- They hallucinate confident answers.
+- They lose uploaded document context.
+- They hit token limits on long material.
+- They provide uncited explanations.
+- They struggle with messy PDFs and technical notes.
+- They cannot reliably prove where an answer came from.
+- They are not optimized for exam preparation or paper writing.
+
+NIRMIQ ResearchOS was created to solve this problem.
+
+The goal is simple:
+
+> Give users accurate, source-grounded answers from their uploaded documents.
+
+## Core Vision
+
+NIRMIQ ResearchOS is a lightweight, offline-first, adaptive academic intelligence system capable of:
+
+- Document understanding.
+- Grounded question answering.
+- Citation-aware responses.
+- Whole-document summarization.
+- Exam preparation.
+- Research-paper drafting support.
+- Multi-document retrieval.
+- Contextual session memory.
+- Low-hallucination synthesis.
+- Local-first AI inference.
+
+## Offline-First Contract
+
+NIRMIQ uses a local FastAPI backend as part of the app runtime. This is **not** a cloud API dependency.
+
+Core behavior is designed to work locally:
+
+- Uploaded documents remain on the user's machine by default.
+- The app can run without a ChatGPT/OpenAI-linked account.
+- Ollama is optional for local generation.
+- Deterministic fallback paths keep the app usable when local models are unavailable.
+- Any future connected model/API-key mode must be opt-in and clearly disclose when document content leaves the machine.
+
+## What Makes It Different
+
+Most RAG apps follow a basic flow:
+
+```text
+Upload PDF
+Chunk text
+Embed chunks
+Retrieve chunks
+Ask LLM
+Hope it does not hallucinate
+```
+
+NIRMIQ uses a more reliable academic flow:
+
+```text
+Upload document
+Parse and normalize
+Adaptive chunking
+Hybrid retrieval
+BM25 plus optional vector search
+Reciprocal Rank Fusion
+Reranking and context packing
+Citation mapping
+Grounded answer generation
+Citation coverage and verification
+Student-friendly response
+```
+
+The focus is not just answering.
+
+The focus is answering with evidence.
 
 ## Current V4 Foundation
 
-Implemented:
+Implemented in the current repository:
 
-- Hybrid retrieval: BM25, optional vector retrieval, RRF, reranking hook.
-- Grounded synthesis with citation verification and fallback rewrites.
-- Chunk quality scoring to reduce noisy PDF/OCR chunks.
-- Selected-document summary cache by content hash.
-- Deterministic query intent routing.
-- Compact trust badge: `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
-- V4 Paper Lab citation workspace:
-  - suggested paper outline
-  - related-work matrix
-  - citation clusters
-  - Markdown draft copy export
+- Upload PDFs, text, Markdown, and images.
+- Ingest local-path documents from trusted corpus roots.
+- Summarize selected PDFs with citations.
+- Ask grounded questions against selected sources.
+- Inspect evidence chunks, pages, and source details.
+- Use four workspaces: Research, Chat, Paper Lab, and Exam Lab.
+- Run hybrid retrieval with BM25, optional vector search, RRF, and reranking hooks.
+- Use selected-document summary caching keyed by document id, content hash, and summary profile.
+- Route query intent deterministically for summary, lookup, compare, deep research, paper, exam, chat, and unclear prompts.
+- Show compact trust signals: `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
+- Fall back to extractive grounded answers when evidence or citation verification is weak.
+- Use Paper Lab for citation clusters, related-work matrix, suggested outline, and Markdown draft export.
+- Use Exam Lab for marks-oriented answers, study guides, question-bank support, and printable custom PDFs.
+- Check local publish readiness through `/health/readiness` and `scripts/publish_smoke.ps1`.
+
+## Workspaces
+
+### Research
+
+For regular and deep research over uploaded documents.
+
+Use it to:
+
+- Summarize a PDF.
+- Explain a concept from a source.
+- Ask technical questions.
+- Compare ideas across material.
+- Inspect citations only when needed.
+
+### Chat
+
+For general conversation in a local-first assistant lane.
+
+Current MVP behavior:
+
+- Uses uploaded documents when relevant.
+- Can use session context.
+- Abstains when there is not enough local evidence.
+- Does not require an external AI provider.
+
+Future connected behavior should be opt-in only.
+
+### Paper Lab
+
+For engineering students and early researchers building citation-backed academic work.
+
+Current foundation supports:
+
+- Paper section drafting from retrieved sources.
+- Related-work matrix previews.
+- Citation clusters.
+- Suggested outline.
+- Copyable Markdown draft package.
+
+### Exam Lab
+
+For exam preparation from uploaded notes, textbooks, PDFs, diagrams, and question banks.
+
+Current foundation supports:
+
+- Exam-style answers.
+- Study-guide generation.
+- Important question workflows.
+- Printable custom PDF output from grounded responses.
+
+## Evidence Trail
+
+Every strong answer should be traceable.
+
+NIRMIQ surfaces:
+
+- Source document.
+- Page number.
+- Chunk reference.
+- Supporting evidence.
+- Grounding status.
+- Citation coverage.
+
+This lets users verify the answer instead of blindly trusting it.
+
+## Tech Stack
+
+Backend:
+
+- FastAPI.
+- Python.
+- SQLite.
+- ChromaDB as optional vector storage.
+- PyMuPDF.
+- Tesseract OCR adapter.
+- BM25 retrieval.
+- Ollama adapter for local generation.
+
+Frontend:
+
+- Next.js.
+- TypeScript.
+- PWA-ready app structure.
+
+Retrieval and synthesis:
+
+- BM25 lexical retrieval.
+- Optional semantic vector retrieval.
+- Reciprocal Rank Fusion.
+- Reranking hooks.
+- Context packing.
+- Citation-aware grounded synthesis.
+- Citation coverage metadata.
+- Faithfulness rewrite fallback.
+
+Model strategy:
+
+- Local-first inference.
+- RTX 4050-friendly constraints.
+- Low VRAM preference.
+- Optional Ollama models such as Phi-3 Mini, Qwen2.5 3B, DeepSeek Coder 6.7B, and `nomic-embed-text`.
+
+## Architecture
+
+```text
+Next.js frontend
+Local FastAPI backend
+Ingestion service
+Indexing service
+Retrieval service
+Memory service
+Synthesis service
+Verification and trust layer
+SQLite plus optional Chroma storage
+```
+
+## Repository Structure
+
+```text
+C:\Nirmiq-researchOS
+apps/
+  api/                  FastAPI backend
+  web/                  Next.js frontend
+data/
+  raw/                  Uploaded/local source documents
+  processed/            Parsed pages, chunks, diagrams, eval data
+  indexes/              Local retrieval/vector indexes
+  sqlite/               Local database files
+docs/                   Product, security, publish, and architecture docs
+scripts/                Local startup, smoke, and evaluation scripts
+nirmiq_codex_docs/      Codex planning and handoff knowledge base
+README.md               GitHub-facing project overview
+context.md              Current project memory and implementation log
+```
 
 ## Quick Start
 
@@ -78,6 +279,13 @@ cd C:\Nirmiq-researchOS
 .\scripts\publish_smoke.ps1
 ```
 
+Expected:
+
+- Local backend health returns `ok`.
+- Readiness reports local-first status.
+- Readiness reports `cloud_api_required=false`.
+- Web shell includes NIRMIQ branding.
+
 ## Tests
 
 ```powershell
@@ -91,15 +299,41 @@ npm run build
 
 ## Demo Flow
 
-1. Open the app and enter local profile details.
-2. Upload or select a PDF.
-3. Click `Summarize PDF`.
-4. Inspect citations in `Sources`.
-5. Switch to `Paper Lab`.
-6. Ask for a related-work or methodology section.
-7. Show the Paper Lab outline and related-work matrix.
-8. Click `Copy Markdown Draft`.
-9. Switch to `Exam Lab` and generate a study guide or custom PDF.
+1. Open the app.
+2. Enter local profile details.
+3. Upload or select a PDF.
+4. Click `Summarize PDF`.
+5. Inspect citations in `Sources`.
+6. Switch to `Paper Lab`.
+7. Ask for a related-work or methodology section.
+8. Show the outline, citation clusters, and related-work matrix.
+9. Click `Copy Markdown Draft`.
+10. Switch to `Exam Lab` and generate a study guide or custom PDF.
+
+## Evaluation Goals
+
+NIRMIQ aims to measure answer quality instead of relying on vibes.
+
+Useful metrics:
+
+- Recall@K.
+- MRR.
+- Citation coverage.
+- Grounding strength.
+- Abstention correctness.
+- Hallucination flags.
+- Retrieval latency.
+- Context token usage.
+
+## Philosophy
+
+```text
+Trust over fluency
+Evidence over guessing
+Retrieval quality over model size
+Student learning over AI showmanship
+Offline access over cloud dependency
+```
 
 ## Important Docs
 
@@ -107,14 +341,22 @@ npm run build
 - [Backend architecture](backend_architecture.md)
 - [Product requirements](prd.md)
 - [Technical requirements](trd.md)
+- [UI/UX specification](UI_UX.md)
+- [Debugging guide](debugging.md)
 - [Accuracy and hallucination audit](docs/accuracy_precision_audit.md)
 - [Internship impact plan](docs/internship_impact_plan.md)
 - [NIRMIQ ecosystem](docs/nirmiq_ecosystem.md)
 
-## Notes
+## Current Status
 
-- The local profile screen is a UX gate, not production authentication.
-- Core document Q&A works without cloud APIs.
-- Ollama is optional; deterministic fallback paths keep the app usable when local models are offline.
-- Any connected ChatGPT/OpenAI account mode should be opt-in only and used as an add-on for response improvement, not as the main operating path.
-- Target GitHub repository name: `NirmiqAcademicIntelligenceSystem`.
+This project is under active development.
+
+NIRMIQ ResearchOS is being built as a solo-developer AI systems project focused on practical student problems, local AI infrastructure, trustworthy document intelligence, and publishable portfolio value.
+
+## Author
+
+Built by Siddharth as part of the NIRMIQ ecosystem.
+
+## License
+
+To be decided.

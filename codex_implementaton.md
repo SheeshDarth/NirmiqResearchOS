@@ -18,9 +18,10 @@ After each meaningful project work unit:
 
 ## Product Identity
 
-- Repository/project: NIRMIQ Academic Intelligence System.
-- User-facing name: NIRMIQ Academic Intelligence System.
-- Positioning: local-first academic intelligence workspace for grounded research, chat, paper drafting, and exam preparation.
+- Repository/project: NIRMIQ ResearchOS.
+- User-facing GitHub name: NIRMIQ ResearchOS.
+- Positioning: offline-first academic document intelligence workspace for grounded research, chat, paper drafting, and exam preparation.
+- Ecosystem note: this product remains independently useful while fitting under the broader NIRMIQ ecosystem.
 
 ## Completed Phases
 
@@ -196,3 +197,13 @@ Verification:
 - Backend unit/integration suite: `29 passed`.
 - `python -m compileall apps/api/app`: passed.
 - `npm run build`: passed.
+
+## Latest GitHub README Positioning Work
+
+Date: 2026-06-06
+
+- Rewrote the GitHub README around NIRMIQ ResearchOS and the promise: upload, understand, verify, learn.
+- Preserved the implemented V4 feature truth instead of presenting older planned-only phase language.
+- Clarified offline-first behavior, local backend status, no cloud API requirement, and future opt-in connected model boundaries.
+- Updated PRD/TRD/UI handoff references so future Codex work treats ResearchOS as the GitHub-facing product name.
+- Left runtime/UI renaming for a separate pass to avoid destabilizing the working preview.

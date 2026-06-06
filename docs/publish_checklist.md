@@ -4,7 +4,7 @@ Last updated: 2026-06-06
 
 ## Target
 
-Publish a working V4 foundation demo by 2026-06-07.
+Publish a working NIRMIQ ResearchOS V4 foundation demo by 2026-06-07.
 
 ## Pre-Publish Commands
 
@@ -89,4 +89,4 @@ python scripts/eval_retrieval.py --dataset data/processed/eval/qa_labels.jsonl -
 - Keep the repo local-first and offline-capable.
 - Do not promise production authentication yet.
 - Do not claim cloud sync, internet search, or ChatGPT/OpenAI account dependency.
-- Present this as a working local academic intelligence workspace with grounded RAG, citations, Paper Lab, and Exam Lab.
+- Present this as NIRMIQ ResearchOS: a working local academic document intelligence workspace with grounded RAG, citations, Paper Lab, and Exam Lab.
