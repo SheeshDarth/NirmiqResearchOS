@@ -1251,4 +1251,4 @@ Verification:
 
 Commit:
 
-- Pending until the clarification commit is created.
+- `2802deb` - Clarify offline-first local backend contract.
