@@ -1225,4 +1225,4 @@ Verification:
 
 Commit:
 
-- Pending until the hotfix commit is created.
+- `fa85a78` - Fix Chroma dimension mismatch preview failures.
