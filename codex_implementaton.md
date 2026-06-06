@@ -226,3 +226,4 @@ Verification:
 - `python -m compileall apps/api/app`: passed.
 - `npm run build`: passed.
 - `git diff --check`: passed.
+- Commit: `6e53767` - Add low-memory local model runtime profile.

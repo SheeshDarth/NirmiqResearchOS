@@ -1323,4 +1323,4 @@ Verification:
 
 Commit:
 
-- Pending.
+- `6e53767` - Add low-memory local model runtime profile.
