@@ -253,3 +253,4 @@ Remaining UI debt:
 - Split `apps/web/app/page.tsx` into smaller components.
 - Manually review mobile sidebar and Deep Research panel behavior.
 - Reduce density inside Deep Research after real usage feedback.
+- Commit: `d19de62` - Transform UI into ChatGPT-style study shell.

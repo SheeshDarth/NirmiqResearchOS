@@ -1382,4 +1382,4 @@ Remaining UI debt:
 
 Commit:
 
-- Pending.
+- `d19de62` - Transform UI into ChatGPT-style study shell.
