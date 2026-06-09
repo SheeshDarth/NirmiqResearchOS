@@ -1,6 +1,6 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-06-06
+Last updated: 2026-06-09
 Current branch: `v3-foundation`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
@@ -1324,3 +1324,62 @@ Verification:
 Commit:
 
 - `6e53767` - Add low-memory local model runtime profile.
+
+### Latest Update: Minimal ChatGPT-Style UI Transformation
+
+Date: 2026-06-09
+
+Purpose:
+
+- Transform NIRMIQ ResearchOS toward a ChatGPT-like local academic document interface without changing backend APIs or removing Paper Lab/Exam Lab capabilities.
+
+Implemented:
+
+- Made Chat the default primary route while preserving Research, Paper Lab, and Exam Lab.
+- Opened the left rail by default and reshaped it into a study sidebar:
+  - New Study Thread
+  - Recent Study Threads
+  - Study Material upload
+  - Knowledge Base
+  - Local runtime status
+- Kept upload accessible from the composer and the sidebar.
+- Moved local-path ingestion into an advanced disclosure so normal users feel like they are attaching study material, not managing a database.
+- Replaced the old `Sources` toggle with a collapsible `Deep Research` panel.
+- Added evidence/trust copy under assistant answers:
+  - grounded answer copy
+  - citation coverage warning copy
+  - insufficient evidence copy
+  - `View Deep Research` action
+- Added an `Evidence Trail` label above citation chips under answers.
+- Moved detailed mode routing into compact composer tuning with a `Route` selector.
+- Simplified the local login/landing page into a single focused message: "Chat with your study material."
+- Retuned visible UI colors toward graphite, research ivory, oxide copper, deep teal, and sage.
+- Cleaned safe ResearchOS naming traces in frontend metadata and private package metadata.
+- Cleaned safe ResearchOS naming traces in public privacy, terms, and security markdown.
+- Updated README demo wording and UI/UX handoff notes.
+
+Preserved:
+
+- Existing backend APIs.
+- Existing upload/query/document/exam/paper capabilities.
+- Paper Lab metadata/export panel.
+- Exam Lab profile/question-bank/diagram/custom-PDF tooling.
+- Citation chips, trust badges, and evidence drilldown.
+
+Verification:
+
+- `npm run build`: passed after frontend and public markdown changes.
+- Active frontend/legal naming scan: no `Academic Intelligence System`, `Sources` toggle, `Source Intake`, `Source Vault`, or `nirmiq-ais-web` traces outside historical context.
+- Browser visual QA was not run because the browser skill path was unavailable and no callable browser inspection tool was exposed in this session.
+
+Remaining UI debt:
+
+- `apps/web/app/page.tsx` is still a large single component and should eventually be split into sidebar, chat thread, composer, Deep Research, Paper Lab, and Exam Lab components.
+- Some older historical naming remains in archived context entries and public/legal markdown files.
+- The Knowledge Base sidebar is always visible on desktop; mobile behavior should be manually reviewed.
+- Deep Research is cleaner but still dense because it contains evidence, context, compare, eval, Paper Lab, and Exam Lab panels in one rail.
+- Chat routing is compact, but automatic intent-driven UI hints can be improved after more real usage.
+
+Commit:
+
+- Pending.

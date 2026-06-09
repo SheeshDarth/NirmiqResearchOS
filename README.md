@@ -304,7 +304,7 @@ npm run build
 2. Enter local profile details.
 3. Upload or select a PDF.
 4. Click `Summarize PDF`.
-5. Inspect citations in `Sources`.
+5. Inspect citations in `Deep Research`.
 6. Switch to `Paper Lab`.
 7. Ask for a related-work or methodology section.
 8. Show the outline, citation clusters, and related-work matrix.

@@ -38,7 +38,7 @@ Implementation rules:
 - Prefer `transform` and `opacity`.
 - Keep timings below roughly 700ms.
 - Use `prefers-reduced-motion` to disable motion for users who request it.
-- Keep the current graphite, teal, mint, and minimal amber palette.
+- Keep the current graphite, research ivory, oxide copper, deep teal, and sage palette.
 
 ## UX Principles
 
@@ -55,16 +55,17 @@ Implementation rules:
 
 - Hero headline: NIRMIQ ResearchOS.
 - Brief value proposition: upload, understand, verify, and learn from local academic material.
-- Captivating start animation: orbit-style mark animation around the NIRMIQ identity.
+- Start screen should stay calm and minimal, with no heavy animation or dashboard cards.
 - Login fields: name, email, phone.
 - Requirement: name plus either email or phone.
 - Current auth behavior: local profile gate only, not cloud authentication.
 
 ### Main Workspace
 
-- Top nav: Research, Chat, Paper Lab, Exam Lab.
-- Right actions: Library and Sources.
-- Source cockpit: selected source, chunk count, grounding state, quick summarize/upload/custom PDF actions.
+- Left sidebar: New Study Thread, recent local threads, Study Material upload, Knowledge Base, runtime status.
+- Top nav: compact Research, Chat, Paper Lab, Exam Lab route selector.
+- Right action: collapsible Deep Research panel.
+- Source cockpit: active sources, chunk count, grounding state, quick summarize/upload/custom PDF actions.
 - Conversation thread: primary reading area.
 - Composer: compact by default, minimizable.
 
@@ -78,7 +79,7 @@ Implementation rules:
 ## Composer Requirements
 
 - Must include file/photo/document upload.
-- Must show the selected source.
+- Must show active sources.
 - Must support `Minimize` and `Open Search`.
 - Must keep the send action visible.
 - Must not block response scrolling.
@@ -89,7 +90,7 @@ Implementation rules:
 
 - Default: show a compact grounded/citation count on answer cards.
 - Evidence chips link to citations.
-- Source drawer shows detailed citation cards and source chunks.
+- Deep Research panel shows detailed citation cards and source chunks.
 - For casual Chat, citations can be hidden unless document context is used.
 - For Paper Lab and Exam Lab, citations should be more prominent.
 
@@ -104,14 +105,14 @@ Implementation rules:
 ## Known UX Risks
 
 - Too many controls can make NIRMIQ feel like a debug console.
-- The source drawer should not be open by default for new users.
+- The Deep Research panel should not be open by default for new users.
 - Research answers can become long; the minimized composer is necessary.
 - Paper Lab and Exam Lab need stronger guided flows in V4.
 
 ## V4 UX Direction
 
 - Guided project setup cards.
-- “Explain this document” onboarding flow.
+- "Explain this document" onboarding flow.
 - Citation hover previews.
 - Split source reader for long papers.
 - Paper Lab templates: literature review, methodology, limitations, abstract.

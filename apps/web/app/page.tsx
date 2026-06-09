@@ -105,10 +105,10 @@ type PaperLabArtifact = {
   citation_clusters?: Record<string, PaperLabMatrixRow[]>;
 };
 
-const DEFAULT_SOURCE_PATH = "C:\\Nirmiq-Academic Intelligence System\\data\\raw\\attention_is_all_you_need.pdf";
+const DEFAULT_SOURCE_PATH = "C:\\Nirmiq-researchOS\\data\\raw\\attention_is_all_you_need.pdf";
 const PRODUCT_NAME = "NIRMIQ";
-const PRODUCT_TAGLINE = "Academic Intelligence System";
-const PRODUCT_DESCRIPTION = "Private academic intelligence for documents, citations, papers, and exams.";
+const PRODUCT_TAGLINE = "ResearchOS";
+const PRODUCT_DESCRIPTION = "ChatGPT-like local study intelligence for grounded documents, citations, papers, and exams.";
 
 const WORKSPACE_SECTIONS: Array<{
   value: WorkspaceSection;
@@ -285,6 +285,20 @@ function getVerificationBadge(response: QueryResponse | null): { label: string; 
   return null;
 }
 
+function getTrustCopy(response: QueryResponse | null): string {
+  if (!response) return "Attach study material or ask from your indexed documents.";
+  const coverage = response.retrieval_meta?.citation_coverage;
+  const numericCoverage =
+    typeof coverage === "number" ? coverage : typeof coverage === "string" ? Number(coverage) : null;
+  if (response.grounded && (numericCoverage === null || numericCoverage >= 0.45)) {
+    return "Answer grounded in your study material.";
+  }
+  if (response.grounded) {
+    return "Answer uses local evidence, but citation coverage needs review.";
+  }
+  return "I could not find enough evidence in your uploaded documents.";
+}
+
 function getPaperLabArtifact(response: QueryResponse | null): PaperLabArtifact | null {
   const raw = response?.retrieval_meta?.paper_lab;
   if (!raw || typeof raw !== "object") return null;
@@ -457,48 +471,30 @@ function LocalLogin({
 
   return (
     <main className="login-shell">
-      <section className="login-card landing-card">
-        <div className="landing-grid">
-          <div className="landing-copy">
-            <div className="brand-lockup hero">
-              <div className="brand-mark" aria-hidden="true">
-                <img alt="" src="/brand/nirmiq-ais-mark.svg" />
-              </div>
-              <div>
-                <strong>{PRODUCT_NAME}</strong>
-                <span>{PRODUCT_TAGLINE}</span>
-              </div>
-            </div>
-            <h1>Turn academic chaos into cited intelligence.</h1>
-            <p className="copy">
-              Upload papers, notes, textbooks, or question banks. NIRMIQ helps you summarize,
-              question, cite, draft, and revise from your own sources while staying local-first.
-            </p>
-            <div className="login-proof">
-              <span>Grounded answers</span>
-              <span>Paper Lab</span>
-              <span>Exam Lab</span>
-              <span>Offline-first</span>
-            </div>
-            <div className="why-nirmiq">
-              <strong>Built for students who want proof, not vibes.</strong>
-              <p>
-                Every serious response is designed to stay tied to source chunks, citations,
-                diagrams, and local memory instead of becoming a generic chatbot answer.
-              </p>
-            </div>
+      <section className="login-card landing-card minimal-login">
+        <div className="brand-lockup hero">
+          <div className="brand-mark" aria-hidden="true">
+            <img alt="" src="/brand/nirmiq-ais-mark.svg" />
           </div>
-          <div className="login-panel">
-            <div className="hero-orbit" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-              <strong />
-            </div>
-            <h2>Enter your local workspace</h2>
-            <p className="tiny">
-              Local profile only for V3. Email/phone are stored in this browser for continuity, not sent to a cloud auth service.
-            </p>
+          <div>
+            <strong>{PRODUCT_NAME}</strong>
+            <span>{PRODUCT_TAGLINE}</span>
+          </div>
+        </div>
+        <div className="landing-copy">
+          <p className="eyebrow">Local study intelligence</p>
+          <h1>Chat with your study material.</h1>
+          <p className="copy">
+            Upload PDFs, notes, papers, question banks, or images. Ask naturally and get answers
+            grounded in your own sources with citations.
+          </p>
+        </div>
+        <div className="login-panel">
+          <h2>Start a local study thread</h2>
+          <p className="tiny">
+            Local profile only. No cloud account, no API key, no hosted auth.
+          </p>
+          <div className="login-fields">
             <label className="label">
               Name
               <input
@@ -528,10 +524,10 @@ function LocalLogin({
                 value={phone}
               />
             </label>
-            <button className="button primary" disabled={!canContinue} onClick={onContinue} type="button">
-              Continue
-            </button>
           </div>
+          <button className="button primary" disabled={!canContinue} onClick={onContinue} type="button">
+            Open NIRMIQ
+          </button>
         </div>
       </section>
     </main>
@@ -580,7 +576,7 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [composerCollapsed, setComposerCollapsed] = useState(false);
-  const [showLibrary, setShowLibrary] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(true);
   const [showInspector, setShowInspector] = useState(false);
   const [health, setHealth] = useState("unknown");
   const [busy, setBusy] = useState<BusyState>("");
@@ -594,8 +590,8 @@ export default function Home() {
   const [ingestStatus, setIngestStatus] = useState<IngestStatusResponse | null>(null);
   const [ingestJobs, setIngestJobs] = useState<IngestJobsResponse | null>(null);
   const [sessionId, setSessionId] = useState("siddharth-study-thread");
-  const [workspaceSection, setWorkspaceSection] = useState<WorkspaceSection>("research");
-  const [studyMode, setStudyMode] = useState<StudyMode>("research");
+  const [workspaceSection, setWorkspaceSection] = useState<WorkspaceSection>("general");
+  const [studyMode, setStudyMode] = useState<StudyMode>("general_chat");
   const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>("hybrid");
   const [retrievalProfile, setRetrievalProfile] = useState<RetrievalProfile>("balanced");
   const [query, setQuery] = useState("");
@@ -911,7 +907,7 @@ export default function Home() {
 
   async function onSummarizeSelectedSource() {
     if (!documentId || busy !== "") {
-      setError("Upload or select a source before summarizing.");
+      setError("Upload or select study material before summarizing.");
       return;
     }
     setWorkspaceSection("research");
@@ -934,7 +930,7 @@ export default function Home() {
     setStudyMode("study_guide");
     setRetrievalProfile("precision");
     await executeQuery(
-      "Generate a custom exam PDF study guide from the selected source. Include important questions, concise answers, marks-ready structure, and citations.",
+      "Generate a custom exam PDF study guide from the selected study material. Include important questions, concise answers, marks-ready structure, and citations.",
       "study_guide",
     );
     setError("Custom PDF content generated. Click Custom PDF again and choose 'Save as PDF' in the print dialog.");
@@ -997,7 +993,6 @@ export default function Home() {
     setWorkspaceSection(section);
     const nextMode = STUDY_MODES.find((mode) => mode.section === section)?.value ?? "research";
     setStudyMode(nextMode);
-    setShowInspector(section === "exam");
     if (section === "general") {
       setRetrievalProfile("fast");
     } else if (section === "paper") {
@@ -1174,27 +1169,55 @@ export default function Home() {
             </div>
           </div>
           <p className="copy">
-            {displayName}&apos;s local workspace for research-grade answers, citations, engineering papers,
+            {displayName}&apos;s local ChatGPT-style workspace for study material, citations, papers,
             and exam prep.
           </p>
           <div className="chip-row">
             <button className="chip" type="button" onClick={onHealthCheck} disabled={busy !== ""}>
               <span className={cx("status-dot", health === "ok" && "ok")} />
-              API {health}
+              Local runtime {health}
             </button>
             <span className="chip sage">Local-first</span>
-            <span className="chip teal">RTX 4050-aware</span>
+            <span className="chip teal">{documents.length} materials</span>
           </div>
-          <div className="legal-links">
-            <a href="/privacy_policy.md" target="_blank" rel="noreferrer">Privacy</a>
-            <a href="/terms_conditions.md" target="_blank" rel="noreferrer">Terms</a>
-            <a href="/security.md" target="_blank" rel="noreferrer">Security</a>
+          <button className="button primary sidebar-new-thread" type="button" onClick={clearThread}>
+            New Study Thread
+          </button>
+        </section>
+
+        <section className="rail-section">
+          <div className="section-head">
+            <h2>Recent Study Threads</h2>
+            <span className="chip copper">{queryHistory.length}</span>
+          </div>
+          <div className="timeline-list">
+            {queryHistory.length ? (
+              queryHistory.slice(-4).reverse().map((run) => (
+                <button
+                  className="material-card"
+                  key={`${run.timestamp}-thread`}
+                  onClick={() => {
+                    setSessionId(run.session_id);
+                    applySuggestion(run.query);
+                  }}
+                  type="button"
+                >
+                  <span className="material-title">{previewText(run.query, 64)}</span>
+                  <span className="tiny">{modeLabel(run.mode)} / {formatDate(run.timestamp)}</span>
+                </button>
+              ))
+            ) : (
+              <div className="material-card">
+                <strong>No thread history yet</strong>
+                <p className="copy">Ask your first question to start a local study thread.</p>
+              </div>
+            )}
           </div>
         </section>
 
         <section className="rail-section">
           <div className="section-head">
-            <h2>Source Intake</h2>
+            <h2>Study Material</h2>
             <span className="chip copper">{documents.length} indexed</span>
           </div>
           <form className="material-form panel" onSubmit={onIngest}>
@@ -1209,33 +1232,39 @@ export default function Home() {
             <p className="tiny">
               Supports PDF, text, Markdown, and image files. Photo OCR depends on local OCR availability.
             </p>
-            <label className="label">
-              Local path
-              <input
-                className="input"
-                value={sourcePath}
-                onChange={(event) => setSourcePath(event.target.value)}
-                placeholder={DEFAULT_SOURCE_PATH}
-              />
-            </label>
-            <label className="label">
-              Material title
-              <input
-                className="input"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Unit 3 OS Notes"
-              />
-            </label>
-            <button className="button ghost" disabled={!canIngest || busy !== ""} type="submit">
-              {busy === "ingest" ? "Indexing source..." : "Index local path"}
-            </button>
+            <details className="composer-settings compact-details">
+              <summary>
+                Add by local path
+                <span>Advanced</span>
+              </summary>
+              <label className="label">
+                Local path
+                <input
+                  className="input"
+                  value={sourcePath}
+                  onChange={(event) => setSourcePath(event.target.value)}
+                  placeholder={DEFAULT_SOURCE_PATH}
+                />
+              </label>
+              <label className="label">
+                Material title
+                <input
+                  className="input"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Unit 3 OS Notes"
+                />
+              </label>
+              <button className="button ghost" disabled={!canIngest || busy !== ""} type="submit">
+                {busy === "ingest" ? "Indexing source..." : "Index local path"}
+              </button>
+            </details>
           </form>
         </section>
 
         <section className="rail-section">
           <div className="section-head">
-            <h2>Source Vault</h2>
+            <h2>Knowledge Base</h2>
             <button className="button ghost" type="button" onClick={() => void loadDocuments()} disabled={busy !== ""}>
               Refresh
             </button>
@@ -1247,7 +1276,7 @@ export default function Home() {
               onClick={onDeleteSelectedDocument}
               type="button"
             >
-              {busy === "delete" ? "Removing..." : "Remove selected source"}
+              {busy === "delete" ? "Removing..." : "Remove material"}
             </button>
           ) : null}
           <div className="material-list">
@@ -1270,6 +1299,11 @@ export default function Home() {
                 <p className="copy">Add a PDF or text file from your laptop to begin.</p>
               </div>
             )}
+          </div>
+          <div className="legal-links sidebar-links">
+            <a href="/privacy_policy.md" target="_blank" rel="noreferrer">Privacy</a>
+            <a href="/terms_conditions.md" target="_blank" rel="noreferrer">Terms</a>
+            <a href="/security.md" target="_blank" rel="noreferrer">Security</a>
           </div>
         </section>
       </aside>
@@ -1302,42 +1336,21 @@ export default function Home() {
             </div>
             <div className="top-actions">
               <button className="button ghost" type="button" onClick={() => setShowLibrary((current) => !current)}>
-                {showLibrary ? "Hide Library" : "Library"}
+                {showLibrary ? "Hide Knowledge Base" : "Knowledge Base"}
               </button>
               <button className="button ghost" type="button" onClick={() => setShowInspector((current) => !current)}>
-                {showInspector ? "Hide Sources" : "Sources"}
+                {showInspector ? "Hide Deep Research" : "Deep Research"}
               </button>
             </div>
           </div>
-          <div className="thread-title">
-            <p className="eyebrow">{currentSection.label} Workspace</p>
-            <h1>
+          <div className="route-strip">
+            <span className="chip copper">{modeLabel(studyMode)}</span>
+            <span className="chip sage">{selectedDocument ? activeMaterialName : "No active source"}</span>
+            <span className="tiny">
               {workspaceSection === "general"
-                ? "Ask anything"
-                : workspaceSection === "paper"
-                  ? "Engineering Paper Lab"
-                  : workspaceSection === "exam"
-                    ? "Exam Lab"
-                    : activeMaterialName}
-            </h1>
-            <p className="copy" style={{ maxWidth: 680 }}>{currentSection.hint}</p>
-            <div className="chip-row">
-              <span className="chip copper">{modeLabel(studyMode)}</span>
-              <span className="chip sage">{activeMaterialName}</span>
-            </div>
-          </div>
-          <div className="mode-grid">
-            {availableModes.map((mode) => (
-              <button
-                className={cx("mode-button", studyMode === mode.value && "active")}
-                key={mode.value}
-                onClick={() => setStudyMode(mode.value)}
-                type="button"
-              >
-                <strong>{mode.label}</strong>
-                <div className="tiny">{mode.hint}</div>
-              </button>
-            ))}
+                ? "Chat first. NIRMIQ cites local material when evidence is available."
+                : currentSection.hint}
+            </span>
           </div>
         </header>
 
@@ -1372,8 +1385,25 @@ export default function Home() {
                     ) : (
                       <div className="answer">{run.response.answer}</div>
                     )}
+                    <div className="trust-line">
+                      <span className={cx("chip", run.response.grounded ? "sage" : "copper")}>
+                        {getTrustCopy(run.response)}
+                      </span>
+                      <button
+                        className="clear-link"
+                        onClick={() => {
+                          setQueryResult(run.response);
+                          setShowInspector(true);
+                          setDeepView("evidence");
+                        }}
+                        type="button"
+                      >
+                        View Deep Research
+                      </button>
+                    </div>
                     {run.response.citations.length ? (
-                      <div className="citation-row">
+                      <div className="citation-row evidence-trail">
+                        <span className="evidence-label">Evidence Trail</span>
                         {run.response.citations.slice(0, 6).map((citation, citationIndex) => (
                           <button
                             className={cx("citation-chip", citation.chunk_id === selectedChunkId && "active")}
@@ -1395,29 +1425,53 @@ export default function Home() {
           ) : (
             <section className="empty-state">
               <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
-              <h2>
-                {workspaceSection === "general"
-                  ? "Ask naturally. If local evidence is missing, NIRMIQ will say so."
-                  : workspaceSection === "paper"
-                    ? "Build engineering research papers with traceable multi-source citations."
-                  : workspaceSection === "exam"
-                    ? "Prepare answers and study guides from your exact notes."
-                    : "Upload a source. Summarize first. Then question every claim."}
-              </h2>
+              <h2>What do you want to understand today?</h2>
+              <p className="copy">Upload study material or ask from your indexed documents.</p>
               <div className="suggestions">
-                {availableModes.slice(0, 4).map((mode) => (
-                  <button
-                    className="button ghost"
-                    key={mode.value}
-                    onClick={() => {
-                      setStudyMode(mode.value);
-                      applySuggestion(mode.prompt);
-                    }}
-                    type="button"
-                  >
-                    {mode.label}
-                  </button>
-                ))}
+                <button
+                  className="button ghost"
+                  onClick={() => {
+                    selectWorkspaceSection("research");
+                    setStudyMode("research");
+                    applySuggestion("Explain this topic simply from my study material.");
+                  }}
+                  type="button"
+                >
+                  Explain this topic simply
+                </button>
+                <button
+                  className="button ghost"
+                  onClick={() => {
+                    selectWorkspaceSection("exam");
+                    setStudyMode("exam_answer");
+                    applySuggestion("Make this into a 10-mark exam answer.");
+                  }}
+                  type="button"
+                >
+                  Make 10-mark exam answer
+                </button>
+                <button
+                  className="button ghost"
+                  onClick={() => {
+                    selectWorkspaceSection("research");
+                    setStudyMode("summary");
+                    applySuggestion("Summarize selected document.");
+                  }}
+                  type="button"
+                >
+                  Summarize selected document
+                </button>
+                <button
+                  className="button ghost"
+                  onClick={() => {
+                    selectWorkspaceSection("exam");
+                    setStudyMode("compare_concepts");
+                    applySuggestion("Compare concepts from my notes.");
+                  }}
+                  type="button"
+                >
+                  Compare concepts from my notes
+                </button>
               </div>
             </section>
           )}
@@ -1436,8 +1490,8 @@ export default function Home() {
               <div className="source-status">
                 <span className={cx("source-dot", selectedDocument && "ok")} />
                 <div>
-                  <span className="source-label">Selected source</span>
-                  <strong>{selectedDocument ? activeMaterialName : "No source selected"}</strong>
+                  <span className="source-label">Active Sources</span>
+                  <strong>{selectedDocument ? activeMaterialName : "No material attached"}</strong>
                 </div>
               </div>
               <div className="source-actions">
@@ -1522,6 +1576,20 @@ export default function Home() {
                       <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
                     </label>
                     <label className="label">
+                      Route
+                      <select
+                        className="select"
+                        value={studyMode}
+                        onChange={(event) => setStudyMode(event.target.value as StudyMode)}
+                      >
+                        {availableModes.map((mode) => (
+                          <option key={mode.value} value={mode.value}>
+                            {mode.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="label">
                       Retrieval
                       <select
                         className="select"
@@ -1552,8 +1620,8 @@ export default function Home() {
                 <div className="composer-actions">
                   <p className="composer-hint">
                     {latestCitations.length
-                      ? `${latestCitations.length} evidence links ready. Click Sources to inspect citations.`
-                      : "Answers stay grounded in the selected source when evidence is available."}
+                      ? `${latestCitations.length} evidence links ready. Open Deep Research to inspect citations.`
+                      : "Answers stay grounded in the selected study material when evidence is available."}
                   </p>
                   <div className="chip-row" style={{ marginTop: 0 }}>
                     <button className="clear-link" type="button" onClick={clearThread}>
@@ -1568,6 +1636,15 @@ export default function Home() {
       </section>
 
       <aside className="deep-rail">
+        <div className="deep-panel-head">
+          <div>
+            <p className="eyebrow">Deep Research</p>
+            <h2>Evidence and reasoning details</h2>
+          </div>
+          <button className="button ghost" type="button" onClick={() => setShowInspector(false)}>
+            Close
+          </button>
+        </div>
         <section className="grounding-meter">
           <div className="section-head">
             <div>

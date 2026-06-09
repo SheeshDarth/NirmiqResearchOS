@@ -227,3 +227,29 @@ Verification:
 - `npm run build`: passed.
 - `git diff --check`: passed.
 - Commit: `6e53767` - Add low-memory local model runtime profile.
+
+## Latest Minimal ChatGPT-Style UI Transformation
+
+Date: 2026-06-09
+
+- Made Chat the default primary workspace while preserving Research, Paper Lab, and Exam Lab.
+- Reworked the left rail into a ChatGPT-like study sidebar with New Study Thread, recent study threads, Study Material upload, Knowledge Base, and local runtime status.
+- Kept upload in the composer and moved local-path ingestion behind an advanced disclosure.
+- Replaced the user-facing `Sources` toggle with a collapsible `Deep Research` panel.
+- Added answer-level trust copy, Evidence Trail labeling, and a `View Deep Research` action under assistant responses.
+- Moved detailed mode routing into compact composer tuning with a `Route` selector.
+- Simplified the local landing/login screen and cleaned safe ResearchOS naming traces.
+- Cleaned public privacy, terms, and security markdown naming traces.
+- Retuned visible UI colors toward graphite, research ivory, oxide copper, deep teal, and sage.
+
+Verification:
+
+- `npm run build`: passed.
+- Active frontend/legal naming scan: passed.
+- Browser visual QA unavailable because no callable browser inspection tool was exposed in this session.
+
+Remaining UI debt:
+
+- Split `apps/web/app/page.tsx` into smaller components.
+- Manually review mobile sidebar and Deep Research panel behavior.
+- Reduce density inside Deep Research after real usage feedback.
