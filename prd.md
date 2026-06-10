@@ -1,6 +1,6 @@
 # NIRMIQ Product Requirements Document
 
-Last updated: 2026-06-06
+Last updated: 2026-06-10
 
 ## Product Name
 
@@ -47,6 +47,16 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 - V3.1 summary cache for repeated selected-document summaries.
 - Deterministic intent routing for summary, factual lookup, compare, paper, exam, and chat prompts.
 - Compact trust badge for citation verification and citation coverage.
+
+## V4 Golden Demo Scope
+
+- Bundled offline demo corpus under `data/raw/golden_demo`.
+- One-click `Load Golden Demo` action in the app.
+- Locked reviewer prompts for Research, Summary, Paper Lab, Exam Lab, and abstention.
+- Compact Deep Research proof strip showing intent, citation coverage, cache state, and source type.
+- Local Markdown answer export with citations.
+- Publish script `scripts/golden_demo.ps1` for repeatable corpus indexing and smoke queries.
+- General Chat abstention proof: unsupported prompts should return no grounded answer and no citations.
 
 ## V3 Non-Goals
 
@@ -102,6 +112,9 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 - Composer minimization increases visible reading area.
 - Local build and backend tests stay green.
 - Demo flow can be completed without internet.
+- Golden demo can be warm-started from bundled files without internet.
+- Reviewer can inspect a citation and focus the exact source chunk.
+- Reviewer can export a grounded answer with citations as a local Markdown artifact.
 - Direct filesystem ingestion cannot accidentally index private files outside trusted corpus roots.
 - Longer research drafts feel useful without sacrificing citation verification.
 - Repeated selected-document summaries return faster from cache.

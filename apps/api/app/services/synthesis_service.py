@@ -20,9 +20,12 @@ _QUERY_STOPWORDS = {
     "cited",
     "citation",
     "citations",
+    "corpus",
+    "does",
     "for",
     "from",
     "give",
+    "how",
     "in",
     "is",
     "it",
@@ -32,7 +35,13 @@ _QUERY_STOPWORDS = {
     "the",
     "this",
     "to",
+    "say",
+    "says",
     "what",
+    "when",
+    "where",
+    "which",
+    "who",
     "with",
 }
 
@@ -98,9 +107,30 @@ class SynthesisService:
         citation_count = len(bundle.chunks)
         grounding_state = self._grounding_state(top_grounding_score, citation_count)
         overview_query = self._is_document_overview_query(query, response_mode)
+        context_relevance = self._context_relevance(query=query, bundle=bundle)
+        strict_relevance_required = response_mode.strip().lower() == "general_chat"
         low_score_overview = grounding_state == "weak" and overview_query and citation_count >= 2
         if low_score_overview:
             grounding_state = "moderate"
+        if strict_relevance_required and context_relevance["context_relevance_state"] == "unrelated":
+            return (
+                (
+                    "I do not have enough relevant uploaded context to answer that safely. "
+                    "Upload source material for this question, select the right document, or use an external/internet model "
+                    "later when that optional mode is available."
+                ),
+                False,
+                {
+                    "generation_backend": "none",
+                    "grounding_score": top_grounding_score,
+                    "citation_count": citation_count,
+                    "grounding_state": "weak",
+                    "grounding_summary": "retrieved evidence was unrelated to the query",
+                    "document_overview_request": overview_query,
+                    "low_score_overview_allowed": low_score_overview,
+                    **context_relevance,
+                },
+            )
         grounded = grounding_state != "weak"
         if not grounded:
             return (
@@ -113,6 +143,8 @@ class SynthesisService:
                     "grounding_state": grounding_state,
                     "grounding_summary": "weak evidence - no answer generated",
                     "document_overview_request": overview_query,
+                    "low_score_overview_allowed": low_score_overview,
+                    **context_relevance,
                 },
             )
 
@@ -170,6 +202,7 @@ class SynthesisService:
             "grounding_summary": self._grounding_summary(grounding_state, top_grounding_score, citation_count),
             "document_overview_request": overview_query,
             "low_score_overview_allowed": low_score_overview,
+            **context_relevance,
             "exam_profile_used": bool(exam_profile),
             "exam_context_used": bool(
                 exam_context and (exam_context.get("questions") or exam_context.get("diagrams"))
@@ -560,6 +593,35 @@ class SynthesisService:
                 if term in sentence_lower or any(word.startswith(term[:5]) for word in sentence_lower.split())
             )
         )
+
+    @staticmethod
+    def _context_relevance(query: str, bundle: RetrievalBundle) -> dict[str, object]:
+        query_terms = SynthesisService._query_terms(query)
+        context_terms: set[str] = set()
+        for chunk in bundle.chunks[:5]:
+            context_terms.update(re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", chunk.text.lower()))
+
+        matched_terms = sorted(
+            term
+            for term in query_terms
+            if term in context_terms
+            or any(len(term) >= 5 and candidate.startswith(term[:6]) for candidate in context_terms)
+        )
+        score = len(matched_terms) / max(len(query_terms), 1)
+        if not query_terms:
+            state = "unknown"
+        elif len(matched_terms) >= 2 or score >= 0.34 or (
+            len(matched_terms) == 1 and len(query_terms) <= 2
+        ):
+            state = "related"
+        else:
+            state = "unrelated"
+        return {
+            "context_relevance_score": round(score, 3),
+            "context_relevance_state": state,
+            "context_relevance_terms": sorted(query_terms),
+            "context_relevance_matched_terms": matched_terms,
+        }
 
     @staticmethod
     def _contains_citation_anchor(text: str) -> bool:

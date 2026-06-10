@@ -1,6 +1,6 @@
 # NIRMIQ Technical Requirements Document
 
-Last updated: 2026-06-06
+Last updated: 2026-06-10
 
 ## Project
 
@@ -23,6 +23,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 ## Functional Requirements
 
 - Upload PDFs, text, Markdown, and images through a ChatGPT-like composer.
+- Load a bundled golden demo corpus from trusted local raw files.
 - Ingest uploaded or local-path documents into raw storage, parsed pages, chunks, indexes, and document metadata.
 - Ask grounded questions against selected documents.
 - Summarize a whole PDF even when the prompt is broad.
@@ -50,6 +51,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Maintainable: prefer fewer services and explicit orchestration.
 - Stable: backend tests must isolate temp SQLite/Chroma/cache paths.
 - Grounded: response generation must cite retrieved chunks or abstain when context is weak.
+- Relevant: General Chat must abstain when retrieved chunks do not overlap the actual subject of the user query.
 - Faithful: cited generated claims must pass deterministic verification or be rewritten to extractive fallback.
 - Fast enough for demos: repeated PDF parsing should use content-hash page cache.
 - Efficient: repeated selected-document summaries should reuse SQLite cache until source content changes.
@@ -80,6 +82,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Use document-scoped fallback when a selected document exists and broad prompts retrieve low lexical scores.
 - Include debug metadata for evaluation and development.
 - Use deterministic intent routing to expand retrieval hints for summaries, comparisons, deep research, paper drafting, and exam workflows.
+- Apply a lightweight query/context relevance gate before General Chat synthesis so old corpus chunks do not create false grounded answers.
 - Paper drafting responses should expose deterministic paper-structure metadata without adding another generation pass.
 - Avoid graph databases in V3 unless the measured baseline proves SQLite concept graph expansion is insufficient.
 
@@ -92,6 +95,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - File uploads must be content-checked for common spoofing cases before indexing.
 - Any future API-key mode must make cloud usage obvious before sending content.
 - Provide local data purge/export controls before broader beta use.
+- Provide a scoped golden demo warm-start script that indexes bundled files and checks citation-bearing smoke queries.
 
 ## V3 Acceptance Criteria
 
@@ -106,3 +110,4 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Backend unit/integration tests pass.
 - `context.md` and handoff docs are updated after the work.
 - V3.1 summary cache, intent routing, and trust metadata tests pass.
+- V4 golden demo script indexes bundled sources and returns citations for locked proof queries.

@@ -1,11 +1,52 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-06-09
+Last updated: 2026-06-10
 Current branch: `v3-foundation`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-06-10 Golden Demo Sprint
+
+Objective: convert the broad polish backlog into a publishable golden demo path for reviewers.
+
+Implemented so far in this session:
+
+- Installed Codex skills `llm-council` and `graphify` under `C:\Users\Siddharth\.codex\skills`.
+- Ran an LLM Council war-room on the polish backlog.
+- Council verdict: use the strategic spine `messy academic docs -> trustworthy inspectable offline research`, and execute with a frozen-backend golden demo sprint.
+- Added bundled offline demo corpus under `data/raw/golden_demo`.
+- Added expected-source manifest at `data/processed/eval/golden_demo_expected_sources.json`.
+- Added `scripts/golden_demo.ps1` to index bundled sources and run citation-bearing smoke queries.
+- Added UI `Load Golden Demo` action, locked demo prompts, compact Deep Research proof strip, and local Markdown answer export.
+- Added `docs/demo_script.md` and `docs/benchmark_report.md`.
+- Added a strict local relevance gate for General Chat so retrieved chunks must match the actual subject of the query before NIRMIQ answers.
+- Updated the golden demo abstention check to fail if an unsupported chat prompt returns grounded output or citations.
+- Updated README, PRD, TRD, UI/UX spec, and publish checklist for the golden demo path.
+
+Golden demo acceptance bar:
+
+- Reviewer can load local corpus without internet.
+- Reviewer can ask a locked research question and get citations.
+- Evidence chips open Deep Research and focus source chunks.
+- Proof strip shows intent, citation coverage, cache state, and source type.
+- Reviewer can export an answer with citations as Markdown.
+- Reviewer can remove selected local material as the privacy/purge moment.
+- Unsupported chat prompts abstain with zero citations instead of answering from unrelated material.
+
+Verification completed:
+
+- `python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q`: 31 passed, 1 warning.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build` from `apps/web`: passed.
+- `scripts/golden_demo.ps1` against local API port `8012`: four grounded queries passed, abstention passed.
+
+Implementation tradeoff:
+
+- No broad frontend component split in this sprint.
+- Backend retrieval/model/schema stayed frozen except for the trust-blocking General Chat relevance gate.
+- No GraphRAG, cloud/API, auth, or agent feature expansion.
 
 ## Project Metadata
 

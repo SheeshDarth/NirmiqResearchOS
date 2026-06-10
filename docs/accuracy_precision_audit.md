@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-06-06
+Last updated: 2026-06-10
 
 ## Research Basis
 
@@ -66,7 +66,29 @@ Recommended next fix:
 - Add `data/processed/eval/nirmiq_v3_labels.jsonl`.
 - Track hit rate, MRR, citation coverage, abstention correctness, and answer faithfulness.
 
-### 4. Query Intent Router Needs Continued Tuning
+Golden demo mitigation:
+
+- Added `data/processed/eval/golden_demo_expected_sources.json` as a lightweight source expectation manifest.
+- Added `scripts/golden_demo.ps1` to verify citation presence on locked demo queries and abstention on an unsupported chat prompt.
+- This is not a statistical benchmark yet; it is a repeatability and publish-readiness check.
+
+### 4. General Chat Can Retrieve Irrelevant Old Corpus Chunks
+
+Before the golden demo hardening pass, a general-chat question could retrieve unrelated old indexed material and still receive a grounded-looking answer if scores and citation counts were high enough.
+
+Mitigation added:
+
+- Added deterministic query/context relevance metadata in `SynthesisService`.
+- General Chat now abstains when the real subject terms do not overlap the retrieved chunks.
+- Ungrounded abstentions return zero citations so the UI does not imply source support.
+- Integration tests now cover an unsupported fictional query.
+- Golden demo smoke now fails if the unsupported chat prompt returns grounded output or citations.
+
+Remaining gap:
+
+- The relevance gate is lexical by design. A future semantic entailment check could improve paraphrase handling if it stays fast enough for local hardware.
+
+### 5. Query Intent Router Needs Continued Tuning
 
 The deterministic V3.1 router now classifies summary, factual lookup, compare, deep research, paper draft, exam, general chat, and unclear prompts.
 
@@ -74,7 +96,7 @@ Remaining gap:
 
 - The router is intentionally lexical. It should be evaluated against a labeled NIRMIQ dataset before adding more branches.
 
-### 5. Summary Cache Needs UX Observation
+### 6. Summary Cache Needs UX Observation
 
 Repeated selected-document summaries now reuse SQLite cache by document id, content hash, and summary profile.
 

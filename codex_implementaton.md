@@ -1,6 +1,6 @@
 # Codex Implementation Log
 
-Last updated: 2026-06-06
+Last updated: 2026-06-10
 
 Note: filename spelling follows the user request: `codex_implementaton.md`.
 
@@ -64,6 +64,21 @@ After each meaningful project work unit:
 - Added V4 Paper Lab foundation with related-work matrix, citation clusters, outline metadata, and Markdown copy export.
 - Added V4 publish readiness endpoint, smoke script, README refresh, and publish checklist.
 
+### V4 Golden Demo Sprint
+
+- Installed `llm-council` and `graphify` Codex skills for future planning/graph workflows.
+- Ran a council-style sprint review and selected the golden demo strategy.
+- Added bundled local demo corpus under `data/raw/golden_demo`.
+- Added `scripts/golden_demo.ps1` to warm-start the corpus and run citation-bearing smoke queries.
+- Added one-click `Load Golden Demo` UI flow.
+- Added locked demo prompts for Research, Summary, Paper Lab, Exam Lab, and abstention.
+- Added compact Deep Research proof strip using existing retrieval metadata.
+- Added local Markdown export for answer plus citations.
+- Added `docs/demo_script.md` and `docs/benchmark_report.md`.
+- Added General Chat context-relevance gating so unrelated retrieved chunks cannot produce a grounded answer.
+- Hardened `scripts/golden_demo.ps1` to fail if the abstention prompt returns grounded output or citations.
+- Verified the sprint with backend tests, API compile, frontend production build, and golden demo smoke.
+
 ## Important Commits So Far
 
 - `30261b7`: Compact research composer layout.
@@ -88,6 +103,7 @@ After each meaningful project work unit:
 - Show one compact answer trust badge rather than exposing raw debug metadata by default.
 - Use Paper Lab for grounded research-paper scaffolds that can be copied as Markdown.
 - Use `/health/readiness` and `scripts/publish_smoke.ps1` before public demo/publish.
+- Use `scripts/golden_demo.ps1` to verify the reviewer proof path and abstention behavior before recording demos.
 - Treat FastAPI as the local backend runtime, not a cloud API dependency.
 - Keep ChatGPT/OpenAI account usage as a future optional add-on only.
 
@@ -95,6 +111,7 @@ After each meaningful project work unit:
 
 - `npm run build` from `apps/web`.
 - Backend unit/integration tests from repo root with `PYTHONPATH=apps/api`.
+- `scripts/golden_demo.ps1` after the backend is running.
 - Browser smoke: open `http://127.0.0.1:3002`, verify no console errors, upload/select source, summarize, inspect citations.
 
 ## Future Codex Workflow

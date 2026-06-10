@@ -46,7 +46,7 @@ type StudyMode =
   | "important_questions"
   | "compare_concepts"
   | "study_guide";
-type BusyState = "" | "health" | "ingest" | "query" | "status" | "documents" | "delete";
+type BusyState = "" | "health" | "ingest" | "query" | "status" | "documents" | "delete" | "demo";
 type DeepView = "evidence" | "context" | "compare" | "eval";
 type Chunk = DocumentDetailResponse["chunks"][number];
 
@@ -103,6 +103,15 @@ type PaperLabArtifact = {
   outline?: string[];
   related_work_matrix?: PaperLabMatrixRow[];
   citation_clusters?: Record<string, PaperLabMatrixRow[]>;
+};
+
+type GoldenDemoQuestion = {
+  label: string;
+  section: WorkspaceSection;
+  mode: StudyMode;
+  query: string;
+  note: string;
+  sourcePathIncludes?: string;
 };
 
 const DEFAULT_SOURCE_PATH = "C:\\Nirmiq-researchOS\\data\\raw\\attention_is_all_you_need.pdf";
@@ -225,6 +234,67 @@ const RETRIEVAL_PROFILES: Array<{ value: RetrievalProfile; label: string }> = [
   { value: "precision", label: "Precision" },
 ];
 
+const GOLDEN_DEMO_SOURCES = [
+  {
+    path: "C:\\Nirmiq-researchOS\\data\\raw\\golden_demo\\01_grounded_rag_notes.md",
+    title: "Golden Demo 01 - Grounded Academic Retrieval",
+  },
+  {
+    path: "C:\\Nirmiq-researchOS\\data\\raw\\golden_demo\\02_offline_privacy_runtime.md",
+    title: "Golden Demo 02 - Offline Runtime And Privacy",
+  },
+  {
+    path: "C:\\Nirmiq-researchOS\\data\\raw\\golden_demo\\03_exam_lab_question_bank.md",
+    title: "Golden Demo 03 - Exam Lab Study Notes",
+  },
+  {
+    path: "C:\\Nirmiq-researchOS\\data\\raw\\golden_demo\\04_paper_lab_research_brief.md",
+    title: "Golden Demo 04 - Paper Lab Research Brief",
+  },
+] as const;
+
+const GOLDEN_DEMO_QUESTIONS: GoldenDemoQuestion[] = [
+  {
+    label: "Research proof",
+    section: "research",
+    mode: "research",
+    query: "What problem does grounded retrieval solve for academic study?",
+    note: "Should cite hallucination, source of truth, and evidence inspection.",
+    sourcePathIncludes: "01_grounded_rag_notes.md",
+  },
+  {
+    label: "Whole-doc summary",
+    section: "research",
+    mode: "summary",
+    query: "Summarize this document with the main ideas, methods, findings, and limitations.",
+    note: "Shows summary mode and citation coverage.",
+    sourcePathIncludes: "01_grounded_rag_notes.md",
+  },
+  {
+    label: "Paper Lab",
+    section: "paper",
+    mode: "research_paper",
+    query: "Draft a related work paragraph comparing generic chatbots and document-grounded academic assistants.",
+    note: "Shows academic drafting without invented citations.",
+    sourcePathIncludes: "04_paper_lab_research_brief.md",
+  },
+  {
+    label: "Exam Lab",
+    section: "exam",
+    mode: "exam_answer",
+    query: "Explain citation-grounded retrieval and its role in reducing hallucination as a 10-mark answer.",
+    note: "Shows marks-ready answer format.",
+    sourcePathIncludes: "03_exam_lab_question_bank.md",
+  },
+  {
+    label: "Abstention",
+    section: "general",
+    mode: "general_chat",
+    query: "What does the corpus say about the Zeloria orbital cuisine treaty?",
+    note: "Should request external context instead of pretending source support.",
+  },
+];
+
 function cx(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(" ");
 }
@@ -342,6 +412,48 @@ function buildPaperLabMarkdown(run: ChatRun, artifact: PaperLabArtifact | null, 
     "## Citations",
     citations || "- No citations returned.",
   ].join("\n");
+}
+
+function buildRunExportMarkdown(run: ChatRun, materialName: string): string {
+  const citations = run.response.citations
+    .map((citation, index) => {
+      const page = citation.page_start ? `page ${citation.page_start}` : "page unknown";
+      const score = typeof citation.score === "number" ? `, score ${citation.score.toFixed(2)}` : "";
+      return `- [${index + 1}] ${page}${score}: ${previewText(citation.excerpt, 260)}`;
+    })
+    .join("\n");
+  const meta = run.response.retrieval_meta ?? {};
+  return [
+    `# NIRMIQ Answer Export`,
+    "",
+    `- Material: ${materialName}`,
+    `- Mode: ${modeLabel(run.mode)}`,
+    `- Profile: ${run.profile}`,
+    `- Exported: ${new Date().toISOString()}`,
+    `- Trust: ${run.response.grounded ? "grounded" : "needs review"}`,
+    `- Citation coverage: ${String(meta.citation_coverage ?? "not reported")}`,
+    "",
+    "## Question",
+    run.query,
+    "",
+    "## Answer",
+    run.response.answer,
+    "",
+    "## Citations",
+    citations || "- No citations returned.",
+  ].join("\n");
+}
+
+function downloadTextFile(filename: string, content: string, mimeType = "text/markdown;charset=utf-8") {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }
 
 function splitAnswerUnits(value: string): string[] {
@@ -650,6 +762,19 @@ export default function Home() {
   const activeMaterialName = selectedDocumentDetail?.title || selectedDocument?.title || "No study material selected";
   const activePlaceholder = composerPlaceholder(workspaceSection, currentMode.value, activeMaterialName);
   const activeActionLabel = workspaceVerb(workspaceSection);
+  const isGoldenDemoSource = Boolean(
+    selectedDocument?.source_path?.includes("\\golden_demo\\") ||
+      selectedDocument?.source_path?.includes("/golden_demo/") ||
+      selectedDocumentDetail?.source_path?.includes("\\golden_demo\\") ||
+      selectedDocumentDetail?.source_path?.includes("/golden_demo/"),
+  );
+  const retrievalMeta = queryResult?.retrieval_meta ?? {};
+  const citationCoverage =
+    typeof retrievalMeta.citation_coverage === "number"
+      ? `${Math.round(retrievalMeta.citation_coverage * 100)}%`
+      : "not reported";
+  const detectedIntent =
+    typeof retrievalMeta.detected_intent === "string" ? retrievalMeta.detected_intent : "not routed yet";
 
   useEffect(() => {
     const storedName = window.localStorage.getItem("nirmiq.localProfileName");
@@ -821,6 +946,52 @@ export default function Home() {
     }
   }
 
+  async function onLoadGoldenDemo() {
+    if (busy !== "") return;
+    setBusy("demo");
+    setError("");
+    try {
+      const loadedIds: string[] = [];
+      for (const source of GOLDEN_DEMO_SOURCES) {
+        const response = await ingestDocument({
+          source_path: source.path,
+          title: source.title,
+          force_reindex: false,
+        });
+        loadedIds.push(response.document_id);
+      }
+
+      const documentList = await listDocuments();
+      setDocuments(documentList.items);
+      const firstDemoDocument =
+        documentList.items.find((item) => item.source_path.includes("01_grounded_rag_notes.md")) ??
+        documentList.items.find((item) => loadedIds.includes(item.id)) ??
+        documentList.items[0];
+
+      if (firstDemoDocument) {
+        setDocumentId(firstDemoDocument.id);
+        setSelectedChunkId("");
+        await Promise.all([loadDocumentState(firstDemoDocument.id), loadDocumentDetail(firstDemoDocument.id)]);
+      }
+
+      const firstQuestion = GOLDEN_DEMO_QUESTIONS[0];
+      setWorkspaceSection(firstQuestion.section);
+      setStudyMode(firstQuestion.mode);
+      setRetrievalProfile("balanced");
+      setRetrievalMode("hybrid");
+      setQuery(firstQuestion.query);
+      setShowLibrary(false);
+      setShowInspector(true);
+      setDeepView("evidence");
+      setError("Golden demo loaded. Press Ask to run the first proof question.");
+      window.requestAnimationFrame(() => queryInputRef.current?.focus());
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function onDeleteSelectedDocument() {
     if (!documentId || busy !== "") return;
     const label = selectedDocumentDetail?.title || selectedDocument?.title || "selected document";
@@ -981,6 +1152,16 @@ export default function Home() {
     }
   }
 
+  function onExportCurrentRun() {
+    if (!currentRun) {
+      setError("Ask a question first, then export the answer and citations.");
+      return;
+    }
+    const filename = `nirmiq-answer-${new Date().toISOString().slice(0, 10)}.md`;
+    downloadTextFile(filename, buildRunExportMarkdown(currentRun, activeMaterialName));
+    setError("Answer exported locally as Markdown with citations.");
+  }
+
   function selectDocument(item: DocumentItem) {
     setDocumentId(item.id);
     setSelectedChunkId("");
@@ -1002,6 +1183,29 @@ export default function Home() {
     } else {
       setRetrievalProfile("balanced");
     }
+  }
+
+  function applyGoldenDemoQuestion(sample: GoldenDemoQuestion) {
+    const matchingDocument = sample.sourcePathIncludes
+      ? documents.find((item) => item.source_path.includes(sample.sourcePathIncludes ?? ""))
+      : null;
+    if (sample.sourcePathIncludes && !matchingDocument) {
+      setError("Load the golden demo first so this prompt can attach the expected source.");
+    }
+    if (matchingDocument) {
+      setDocumentId(matchingDocument.id);
+      setSelectedChunkId("");
+      setSelectedDocumentDetail(null);
+      void Promise.all([loadDocumentState(matchingDocument.id), loadDocumentDetail(matchingDocument.id)]);
+    }
+    selectWorkspaceSection(sample.section);
+    setStudyMode(sample.mode);
+    setRetrievalMode("hybrid");
+    setRetrievalProfile(sample.section === "general" ? "fast" : sample.section === "research" ? "balanced" : "precision");
+    setQuery(sample.query);
+    setShowInspector(true);
+    setDeepView("evidence");
+    window.requestAnimationFrame(() => queryInputRef.current?.focus());
   }
 
   async function onSaveExamProfile() {
@@ -1183,6 +1387,35 @@ export default function Home() {
           <button className="button primary sidebar-new-thread" type="button" onClick={clearThread}>
             New Study Thread
           </button>
+          <button className="button ghost sidebar-new-thread" type="button" onClick={onLoadGoldenDemo} disabled={busy !== ""}>
+            {busy === "demo" ? "Loading demo..." : "Load Golden Demo"}
+          </button>
+        </section>
+
+        <section className="rail-section golden-demo-card">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">Publish Proof</p>
+              <h2>Golden Demo</h2>
+            </div>
+            <span className="chip sage">offline</span>
+          </div>
+          <p className="copy">
+            Loads four local demo sources and locks the review path: research, summary, paper, exam, and abstention.
+          </p>
+          <div className="timeline-list">
+            {GOLDEN_DEMO_QUESTIONS.map((sample) => (
+              <button
+                className="material-card demo-prompt-card"
+                key={sample.label}
+                onClick={() => applyGoldenDemoQuestion(sample)}
+                type="button"
+              >
+                <span className="material-title">{sample.label}</span>
+                <span className="tiny">{sample.note}</span>
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="rail-section">
@@ -1427,6 +1660,16 @@ export default function Home() {
               <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
               <h2>What do you want to understand today?</h2>
               <p className="copy">Upload study material or ask from your indexed documents.</p>
+              <div className="golden-path-panel">
+                <div>
+                  <p className="eyebrow">Reviewer path</p>
+                  <strong>Try the local golden demo</strong>
+                  <span>Seed corpus, locked prompts, citations, export, and source removal.</span>
+                </div>
+                <button className="button primary" type="button" onClick={onLoadGoldenDemo} disabled={busy !== ""}>
+                  {busy === "demo" ? "Loading..." : "Load demo"}
+                </button>
+              </div>
               <div className="suggestions">
                 <button
                   className="button ghost"
@@ -1518,6 +1761,14 @@ export default function Home() {
                   type="button"
                 >
                   Summarize PDF
+                </button>
+                <button
+                  className="quick-action ghost"
+                  disabled={!currentRun || busy !== ""}
+                  onClick={onExportCurrentRun}
+                  type="button"
+                >
+                  Export
                 </button>
                 <button
                   className="quick-action ghost"
@@ -1659,6 +1910,24 @@ export default function Home() {
           <p className="copy">
             Evidence first. Memory can help the thread, but uploaded material remains the source of truth.
           </p>
+          <div className="proof-grid">
+            <div>
+              <span>Intent</span>
+              <strong>{detectedIntent}</strong>
+            </div>
+            <div>
+              <span>Citation coverage</span>
+              <strong>{citationCoverage}</strong>
+            </div>
+            <div>
+              <span>Cache</span>
+              <strong>{retrievalMeta.cache_hit === true ? "hit" : retrievalMeta.cache_hit === false ? "miss" : "n/a"}</strong>
+            </div>
+            <div>
+              <span>Source</span>
+              <strong>{isGoldenDemoSource ? "golden demo" : selectedDocument ? "local material" : "none"}</strong>
+            </div>
+          </div>
         </section>
 
         <div className="tab-row">

@@ -947,6 +947,54 @@ button.chunk-card:hover {
   gap: 9px;
 }
 
+.golden-path-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(760px, 100%);
+  margin: 0 auto;
+  border: 1px solid rgba(184, 106, 60, 0.24);
+  border-radius: 24px;
+  padding: 14px;
+  text-align: left;
+  background:
+    linear-gradient(135deg, rgba(184, 106, 60, 0.11), transparent 42%),
+    rgba(13, 17, 23, 0.74);
+}
+
+.golden-path-panel strong,
+.golden-path-panel span {
+  display: block;
+}
+
+.golden-path-panel strong {
+  margin-top: 4px;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  letter-spacing: -0.04em;
+}
+
+.golden-path-panel span {
+  margin-top: 5px;
+  color: var(--nirmiq-text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.golden-demo-card {
+  border: 1px solid rgba(184, 106, 60, 0.18);
+  border-radius: 22px;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(184, 106, 60, 0.08), transparent 48%),
+    rgba(8, 10, 13, 0.42);
+}
+
+.demo-prompt-card {
+  text-align: left;
+}
+
 .turn-list {
   display: grid;
   gap: 24px;
@@ -1468,6 +1516,40 @@ button.chunk-card:hover {
   background: linear-gradient(90deg, var(--nirmiq-error), var(--nirmiq-warning), var(--nirmiq-sage));
 }
 
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.proof-grid div {
+  border: 1px solid var(--nirmiq-border);
+  border-radius: 14px;
+  padding: 9px;
+  background: rgba(5, 6, 8, 0.34);
+}
+
+.proof-grid span {
+  display: block;
+  color: var(--nirmiq-text-subtle);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.proof-grid strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 5px;
+  color: var(--nirmiq-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tab-row {
   justify-content: flex-start;
   flex-wrap: wrap;
@@ -1816,11 +1898,17 @@ button.chunk-card:hover {
     flex-direction: column;
   }
 
+  .golden-path-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .mode-grid,
   .composer-meta,
   .source-cockpit,
   .exam-grid,
-  .metric-grid {
+  .metric-grid,
+  .proof-grid {
     grid-template-columns: 1fr;
     min-width: 0;
   }

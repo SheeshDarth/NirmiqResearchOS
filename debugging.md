@@ -1,6 +1,6 @@
 # NIRMIQ Debugging Guide
 
-Last updated: 2026-06-06
+Last updated: 2026-06-10
 
 ## Local URLs
 
@@ -37,6 +37,24 @@ $env:TMPDIR='C:\Nirmiq-researchOS\temp\pytest'
 New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
 python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q -o cache_dir=C:\Nirmiq-researchOS\temp\pytest-cache
 ```
+
+## Golden Demo Debug
+
+Warm-start the bundled corpus:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\golden_demo.ps1
+```
+
+If this fails:
+
+- Confirm the backend is running at `http://127.0.0.1:8000`.
+- Confirm `data/raw/golden_demo/*.md` files exist.
+- Confirm local path ingestion roots include `C:\Nirmiq-researchOS\data\raw`.
+- Run `GET /health/readiness` and check database status.
+- If a query has no citations, use the UI `Deep Research` panel to inspect retrieved chunks and try BM25 mode.
+- If the abstention check fails, inspect `retrieval_meta.context_relevance_state`; General Chat should only answer when actual subject terms overlap retrieved chunks.
 
 ## Common Issues
 

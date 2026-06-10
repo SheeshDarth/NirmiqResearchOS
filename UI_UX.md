@@ -1,6 +1,6 @@
 # NIRMIQ UI/UX Specification
 
-Last updated: 2026-05-30
+Last updated: 2026-06-10
 
 Note: the requested filename `UI/UX.md` is represented as `UI_UX.md` because Windows treats `/` as a path separator.
 
@@ -48,6 +48,7 @@ Implementation rules:
 - Make selected source obvious at the point of asking.
 - Let the user reclaim reading space by minimizing the composer.
 - Avoid exam-only framing; Research and Chat are general document-intelligence lanes.
+- Golden demo first: reviewers should be able to load a local corpus and run the proof path without understanding backend internals.
 
 ## Screen Model
 
@@ -73,6 +74,7 @@ Implementation rules:
 
 - Research: explains, summarizes, and performs deep document analysis.
 - Chat: general local assistant; uses document context if relevant and abstains if not enough context.
+- Chat abstentions should read like a useful local-first boundary, not a failure: explain that uploaded context is insufficient and avoid showing citation chips.
 - Paper Lab: asks for academic section drafting, related work, limitations, methodology, and citation-backed paragraphs.
 - Exam Lab: asks for answer format, marks, question-bank support, study guides, and custom printable PDFs.
 
@@ -85,6 +87,7 @@ Implementation rules:
 - Must not block response scrolling.
 - Must adapt placeholder and action label to the selected workspace.
 - Minimized composer should become a quiet command pill, not a blank collapsed area.
+- Golden demo prompts should be visible but not dominate normal usage.
 
 ## Citations UX
 
@@ -93,6 +96,7 @@ Implementation rules:
 - Deep Research panel shows detailed citation cards and source chunks.
 - For casual Chat, citations can be hidden unless document context is used.
 - For Paper Lab and Exam Lab, citations should be more prominent.
+- Deep Research can show a compact proof strip with intent, citation coverage, cache state, and source type.
 
 ## Accessibility Requirements
 

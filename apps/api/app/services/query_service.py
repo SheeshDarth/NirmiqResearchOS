@@ -71,7 +71,7 @@ class QueryService:
             exam_profile=payload.exam_profile.model_dump() if payload.exam_profile else None,
             exam_context=exam_context,
         )
-        citations = to_citations(bundle.chunks)
+        citations = to_citations(bundle.chunks) if grounded else []
         combined_meta = {
             **bundle.meta,
             **synthesis_meta,

@@ -1,0 +1,37 @@
+{
+  "dataset": "nirmiq-golden-demo",
+  "target_user": "Engineering students and early researchers who need offline, source-verifiable academic answers.",
+  "acceptance_bar": "A reviewer can load the local demo corpus, ask a research question, inspect the evidence trail, export the answer, and remove a source without internet.",
+  "samples": [
+    {
+      "mode": "research",
+      "query": "What problem does grounded retrieval solve for academic study?",
+      "expected_source_files": ["01_grounded_rag_notes.md"],
+      "expected_terms": ["hallucination", "cite", "source of truth", "evidence"]
+    },
+    {
+      "mode": "summary",
+      "query": "Summarize this document with the main ideas, methods, findings, and limitations.",
+      "expected_source_files": ["01_grounded_rag_notes.md"],
+      "expected_terms": ["retrieval", "chunks", "citation", "abstain"]
+    },
+    {
+      "mode": "research_paper",
+      "query": "Draft a related work paragraph comparing generic chatbots and document-grounded academic assistants.",
+      "expected_source_files": ["04_paper_lab_research_brief.md"],
+      "expected_terms": ["generic chatbots", "document-grounded", "auditable", "citations"]
+    },
+    {
+      "mode": "exam_answer",
+      "query": "Explain citation-grounded retrieval and its role in reducing hallucination as a 10-mark answer.",
+      "expected_source_files": ["03_exam_lab_question_bank.md"],
+      "expected_terms": ["definition", "pipeline", "hallucination", "limitations"]
+    },
+    {
+      "mode": "general_chat",
+      "query": "What does the corpus say about the Zeloria orbital cuisine treaty?",
+      "expected_behavior": "abstain_or_request_external_context",
+      "expected_terms": ["not enough", "context", "uploaded", "external"]
+    }
+  ]
+}

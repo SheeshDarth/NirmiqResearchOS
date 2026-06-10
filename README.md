@@ -96,6 +96,10 @@ The focus is answering with evidence.
 
 Implemented in the current repository:
 
+- Bundled `Load Golden Demo` flow with four local academic Markdown sources.
+- Locked reviewer prompts for Research, Summary, Paper Lab, Exam Lab, and abstention behavior.
+- Golden demo smoke script that fails if unsupported chat prompts return grounded answers.
+- Local answer export as Markdown with citations.
 - Upload PDFs, text, Markdown, and images.
 - Ingest local-path documents from trusted corpus roots.
 - Summarize selected PDFs with citations.
@@ -107,6 +111,7 @@ Implemented in the current repository:
 - Route query intent deterministically for summary, lookup, compare, deep research, paper, exam, chat, and unclear prompts.
 - Show compact trust signals: `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
 - Fall back to extractive grounded answers when evidence or citation verification is weak.
+- Abstain in Chat when retrieved material is unrelated to the actual question subject.
 - Use Paper Lab for citation clusters, related-work matrix, suggested outline, and Markdown draft export.
 - Use Exam Lab for marks-oriented answers, study guides, question-bank support, and printable custom PDFs.
 - Check local publish readiness through `/health/readiness` and `scripts/publish_smoke.ps1`.
@@ -286,6 +291,36 @@ Expected:
 - Readiness reports local-first status.
 - Readiness reports `cloud_api_required=false`.
 - Web shell includes NIRMIQ branding.
+
+## Golden Demo
+
+The fastest way to review NIRMIQ is the bundled offline golden demo.
+
+Warm-start the local corpus:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\golden_demo.ps1
+```
+
+Then open `http://127.0.0.1:3002`, log in with a local profile, and click `Load Golden Demo`.
+
+The golden path proves:
+
+- Local corpus indexing without internet.
+- Research answers with citations.
+- Evidence chips that open focused source chunks.
+- Paper Lab citation-backed drafting.
+- Exam Lab marks-oriented answers.
+- Abstention behavior for unsupported general questions.
+- Local Markdown export of answer plus citations.
+- Selected source removal as the privacy/purge moment.
+
+Primary demo docs:
+
+- [Golden demo script](docs/demo_script.md)
+- [Golden benchmark report](docs/benchmark_report.md)
+- [Publish checklist](docs/publish_checklist.md)
 
 ## Tests
 

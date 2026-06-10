@@ -21,6 +21,8 @@ data/cache/*
 !data/cache/.gitkeep
 data/raw/*
 !data/raw/.gitkeep
+!data/raw/golden_demo/
+!data/raw/golden_demo/*.md
 data/processed/diagrams/*
 !data/processed/.gitkeep
 data/indexes/chroma/*

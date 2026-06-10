@@ -80,6 +80,24 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert isinstance(body["retrieval_meta"]["grounding_summary"], str)
         assert body["retrieval_meta"]["citation_count"] >= 1
 
+        unrelated_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "What does the corpus say about the Zeloria orbital cuisine treaty?",
+                "mode": "general_chat",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert unrelated_response.status_code == 200
+        unrelated_body = unrelated_response.json()
+        assert unrelated_body["grounded"] is False
+        assert unrelated_body["citations"] == []
+        assert "not have enough relevant uploaded context" in unrelated_body["answer"]
+        assert unrelated_body["retrieval_meta"]["context_relevance_state"] == "unrelated"
+        assert unrelated_body["retrieval_meta"]["grounding_state"] == "weak"
+
         summary_response = client.post(
             "/query",
             json={
