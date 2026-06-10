@@ -55,6 +55,7 @@ cd C:\Nirmiq-researchOS
 
 Verified on 2026-06-10 against a local FastAPI instance:
 
+- Implementation commit: `928906b`.
 - Research query: passed with citations.
 - Summary-style research query: passed with citations.
 - Exam Lab query: passed with citations.

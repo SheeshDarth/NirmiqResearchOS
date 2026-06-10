@@ -66,6 +66,7 @@ After each meaningful project work unit:
 
 ### V4 Golden Demo Sprint
 
+- Commit: `928906b` (`Add golden demo sprint`).
 - Installed `llm-council` and `graphify` Codex skills for future planning/graph workflows.
 - Ran a council-style sprint review and selected the golden demo strategy.
 - Added bundled local demo corpus under `data/raw/golden_demo`.

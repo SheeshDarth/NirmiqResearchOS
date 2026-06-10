@@ -42,6 +42,10 @@ Verification completed:
 - `npm run build` from `apps/web`: passed.
 - `scripts/golden_demo.ps1` against local API port `8012`: four grounded queries passed, abstention passed.
 
+Commit recorded:
+
+- `928906b` - Added the golden demo sprint implementation, sample corpus, UI proof path, smoke script, docs, and General Chat relevance gate.
+
 Implementation tradeoff:
 
 - No broad frontend component split in this sprint.
