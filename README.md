@@ -254,20 +254,35 @@ context.md              Current project memory and implementation log
 
 ## Quick Start
 
-Backend:
+Install once:
 
 ```powershell
-cd C:\Nirmiq-researchOS\apps\api
+cd C:\Nirmiq-researchOS
+cd apps\api
 python -m pip install -e .
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+cd ..\web
+npm install
 ```
 
-Frontend:
+Run local preview:
 
 ```powershell
-cd C:\Nirmiq-researchOS\apps\web
-npm install
-npm run dev
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -OpenBrowser
+```
+
+Run local preview and warm-start the bundled golden demo:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
+```
+
+Stop processes started by the launcher:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\stop_local.ps1
 ```
 
 Open:
@@ -278,7 +293,16 @@ Open:
 
 ## Publish Smoke Check
 
-After backend and frontend are running:
+Strongest EOD check:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\ship_check.ps1
+```
+
+This runs backend tests, API compile, frontend production build, local smoke check, and the golden demo.
+
+If backend and frontend are already running and you only want the lightweight smoke:
 
 ```powershell
 cd C:\Nirmiq-researchOS
@@ -296,7 +320,14 @@ Expected:
 
 The fastest way to review NIRMIQ is the bundled offline golden demo.
 
-Warm-start the local corpus:
+One-command path:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
+```
+
+Backend-only warm-start:
 
 ```powershell
 cd C:\Nirmiq-researchOS
@@ -320,6 +351,7 @@ Primary demo docs:
 
 - [Golden demo script](docs/demo_script.md)
 - [Golden benchmark report](docs/benchmark_report.md)
+- [Folio competitive review](docs/folio_competitive_review.md)
 - [Publish checklist](docs/publish_checklist.md)
 
 ## Tests

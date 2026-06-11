@@ -10,6 +10,14 @@ Publish a working NIRMIQ ResearchOS V4 golden demo by 2026-06-11.
 
 Run from `C:\Nirmiq-researchOS`.
 
+Full EOD ship check:
+
+```powershell
+.\scripts\ship_check.ps1
+```
+
+Manual equivalent:
+
 ```powershell
 $env:PYTHONPATH='apps/api'
 python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q
@@ -20,14 +28,28 @@ npm run build
 
 ## Local Demo Startup
 
-Terminal 1:
+Preferred one-command preview:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -OpenBrowser
+```
+
+Preferred golden-demo preview:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
+```
+
+Fallback Terminal 1:
 
 ```powershell
 cd C:\Nirmiq-researchOS
 .\scripts\run_api.ps1
 ```
 
-Terminal 2:
+Fallback Terminal 2:
 
 ```powershell
 cd C:\Nirmiq-researchOS
@@ -58,7 +80,7 @@ Expected:
 
 ## Golden Demo Warm Start
 
-After backend is running:
+If backend is already running:
 
 ```powershell
 cd C:\Nirmiq-researchOS

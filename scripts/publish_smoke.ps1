@@ -14,17 +14,17 @@ Write-Output "NIRMIQ publish smoke check"
 Write-Output "Local backend: $apiBase"
 Write-Output "Web: $webBase"
 
-$health = Invoke-RestMethod -Uri "$apiBase/health" -Method Get -TimeoutSec 8
+$health = Invoke-RestMethod -Uri "$apiBase/health" -Method Get -TimeoutSec 12
 if ($health.status -ne "ok") {
     throw "Local backend health failed: $($health | ConvertTo-Json -Compress)"
 }
 
-$readiness = Invoke-RestMethod -Uri "$apiBase/health/readiness" -Method Get -TimeoutSec 8
+$readiness = Invoke-RestMethod -Uri "$apiBase/health/readiness" -Method Get -TimeoutSec 25
 if ($readiness.database -ne "ok") {
     throw "Readiness database check failed: $($readiness | ConvertTo-Json -Compress)"
 }
 
-$web = Invoke-WebRequest -Uri $webBase -UseBasicParsing -TimeoutSec 12
+$web = Invoke-WebRequest -Uri $webBase -UseBasicParsing -TimeoutSec 25
 if ($web.Content -notmatch "NIRMIQ") {
     throw "Web app loaded, but NIRMIQ branding was not detected."
 }

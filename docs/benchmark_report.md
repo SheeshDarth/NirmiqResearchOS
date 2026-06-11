@@ -1,6 +1,6 @@
 # NIRMIQ Golden Demo Benchmark Report
 
-Last updated: 2026-06-10
+Last updated: 2026-06-11
 
 ## Scope
 
@@ -37,7 +37,14 @@ Bundled corpus:
 
 ## Command
 
-Run after backend is available:
+Run the full EOD ship check:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\ship_check.ps1
+```
+
+Run only the golden demo after backend is available:
 
 ```powershell
 cd C:\Nirmiq-researchOS
@@ -53,9 +60,13 @@ cd C:\Nirmiq-researchOS
 
 ## Latest Local Result
 
-Verified on 2026-06-10 against a local FastAPI instance:
+Verified on 2026-06-11 with `scripts/ship_check.ps1`:
 
 - Implementation commit: `928906b`.
+- Backend tests: 31 passed, 1 warning.
+- API compile: passed.
+- Web production build: passed.
+- Publish smoke: passed with `cloud_api_required=false`.
 - Research query: passed with citations.
 - Summary-style research query: passed with citations.
 - Exam Lab query: passed with citations.

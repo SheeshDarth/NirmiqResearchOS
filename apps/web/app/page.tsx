@@ -600,6 +600,19 @@ function LocalLogin({
             Upload PDFs, notes, papers, question banks, or images. Ask naturally and get answers
             grounded in your own sources with citations.
           </p>
+          <div className="login-proof" aria-label="NIRMIQ trust proof">
+            <span>offline core</span>
+            <span>citation trail</span>
+            <span>abstains when unsupported</span>
+            <span>paper + exam labs</span>
+          </div>
+          <div className="why-nirmiq">
+            <strong>Not just a PDF chatbot.</strong>
+            <p>
+              NIRMIQ is built for academic work: verify sources, draft cited sections, prepare
+              exams, and prove when the uploaded material is not enough.
+            </p>
+          </div>
         </div>
         <div className="login-panel">
           <h2>Start a local study thread</h2>

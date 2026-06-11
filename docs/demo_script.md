@@ -16,15 +16,14 @@ Engineering students, early researchers, and technical reviewers who care about 
 
 ## Setup
 
-Start the backend and frontend:
+Start the local preview and warm-start the demo corpus:
 
 ```powershell
 cd C:\Nirmiq-researchOS
-.\scripts\run_api.ps1
-.\scripts\run_web.ps1
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
 ```
 
-Warm-start the golden corpus:
+If the backend is already running, warm-start only the golden corpus:
 
 ```powershell
 cd C:\Nirmiq-researchOS

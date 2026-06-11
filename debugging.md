@@ -1,6 +1,6 @@
 # NIRMIQ Debugging Guide
 
-Last updated: 2026-06-10
+Last updated: 2026-06-11
 
 ## Local URLs
 
@@ -8,6 +8,29 @@ Last updated: 2026-06-10
 - API: `http://127.0.0.1:8000`
 
 ## Start Backend
+
+Preferred one-command preview:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -OpenBrowser
+```
+
+Preview with bundled demo corpus:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
+```
+
+Stop launcher-created preview processes:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\stop_local.ps1
+```
+
+Manual backend:
 
 ```powershell
 cd C:\Nirmiq-researchOS\apps\api
@@ -22,6 +45,15 @@ npm run dev
 ```
 
 ## Build And Test
+
+Full EOD verification:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\ship_check.ps1
+```
+
+Manual frontend build:
 
 ```powershell
 cd C:\Nirmiq-researchOS\apps\web

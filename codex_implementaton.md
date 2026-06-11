@@ -1,6 +1,6 @@
 # Codex Implementation Log
 
-Last updated: 2026-06-10
+Last updated: 2026-06-11
 
 Note: filename spelling follows the user request: `codex_implementaton.md`.
 
@@ -80,6 +80,18 @@ After each meaningful project work unit:
 - Hardened `scripts/golden_demo.ps1` to fail if the abstention prompt returns grounded output or citations.
 - Verified the sprint with backend tests, API compile, frontend production build, and golden demo smoke.
 
+### V4 EOD Launch Sprint
+
+- Resolved the Folio reference to `kartikdubey17/FOLIO` release `v0.1.0`.
+- Added `docs/folio_competitive_review.md` to define the competitive response.
+- Added `scripts/run_local.ps1` for one-command local preview.
+- Added `scripts/stop_local.ps1` for scoped launcher cleanup.
+- Added `scripts/ship_check.ps1` for full EOD verification.
+- Hardened `scripts/publish_smoke.ps1` with more realistic local readiness timeouts.
+- Updated README, publish checklist, and project context with the one-command run path.
+- Updated the landing screen proof chips to emphasize offline core, citation trail, abstention, and Paper/Exam labs.
+- Verified `scripts/ship_check.ps1` end to end on 2026-06-11.
+
 ## Important Commits So Far
 
 - `30261b7`: Compact research composer layout.
@@ -104,6 +116,8 @@ After each meaningful project work unit:
 - Show one compact answer trust badge rather than exposing raw debug metadata by default.
 - Use Paper Lab for grounded research-paper scaffolds that can be copied as Markdown.
 - Use `/health/readiness` and `scripts/publish_smoke.ps1` before public demo/publish.
+- Use `scripts/run_local.ps1 -GoldenDemo -OpenBrowser` for reviewer preview.
+- Use `scripts/ship_check.ps1` as the strongest pre-publish verification.
 - Use `scripts/golden_demo.ps1` to verify the reviewer proof path and abstention behavior before recording demos.
 - Treat FastAPI as the local backend runtime, not a cloud API dependency.
 - Keep ChatGPT/OpenAI account usage as a future optional add-on only.

@@ -1,13 +1,56 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-06-10
+Last updated: 2026-06-11
 Current branch: `v3-foundation`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
-## Latest Session Update - 2026-06-10 Golden Demo Sprint
+## Latest Session Update - 2026-06-11 EOD Launch Sprint
+
+Objective: respond to the shipped Folio reference, simplify running NIRMIQ, and make the project demo-shippable by end of day.
+
+External reference checked:
+
+- LinkedIn short link resolved to `https://github.com/kartikdubey17/FOLIO/releases/tag/v0.1.0`.
+- Folio v0.1.0 positions itself as a personal offline AI document assistant for PDF upload, local Q&A, privacy, lightweight Tauri desktop runtime, and offline usage.
+- NIRMIQ differentiation should remain academic intelligence rather than generic PDF chat: citations, abstention, Deep Research, Paper Lab, Exam Lab, benchmarked golden demo, and local-first proof.
+
+Implemented in this session:
+
+- Added `scripts/run_local.ps1` for one-command local preview.
+- Added `scripts/stop_local.ps1` to stop only launcher-created local preview PIDs.
+- Added `scripts/ship_check.ps1` for full EOD verification: backend tests, API compile, web build, publish smoke, golden demo, and scoped process cleanup.
+- Hardened `scripts/publish_smoke.ps1` timeouts for local startup/readiness probes.
+- Added `docs/folio_competitive_review.md`.
+- Updated README and publish checklist with one-command run/ship-check instructions.
+- Updated landing screen proof chips to communicate offline core, citation trail, abstention, and Paper/Exam labs.
+
+Verification completed:
+
+- `scripts/ship_check.ps1`: passed.
+- Backend tests inside ship check: 31 passed, 1 warning.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed, first-load JS about 115 kB.
+- Publish smoke: backend health OK, readiness ready, `cloud_api_required=false`, web shell returned NIRMIQ.
+- Golden demo: four grounded checks passed with citations; unsupported chat prompt abstained with zero citations.
+
+Run command for review:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
+```
+
+Pre-publish command:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\ship_check.ps1
+```
+
+## Previous Session Update - 2026-06-10 Golden Demo Sprint
 
 Objective: convert the broad polish backlog into a publishable golden demo path for reviewers.
 
@@ -289,18 +332,18 @@ Latest verified commands before this context file:
 
 ## Run Instructions
 
-Start API:
+Fast local preview:
 
 ```powershell
-cd C:\Nirmiq-researchOS\apps\api
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -OpenBrowser
 ```
 
-Start web:
+Fast local preview with bundled demo corpus:
 
 ```powershell
-cd C:\Nirmiq-researchOS\apps\web
-npm run dev
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
 ```
 
 Open app:
@@ -315,6 +358,13 @@ Run backend tests:
 cd C:\Nirmiq-researchOS
 $env:PYTHONPATH='apps/api'
 python -m pytest apps/api/app/tests/unit/test_health_contract.py apps/api/app/tests/integration -q
+```
+
+Run complete EOD ship check:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\ship_check.ps1
 ```
 
 Run frontend build:
