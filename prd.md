@@ -135,3 +135,19 @@ NIRMIQ is not a generic upload-and-chat clone. It is a local academic intelligen
 - Local data purge/export controls.
 - Retrieval evaluation dataset for NIRMIQ academic use cases.
 - Streaming answers after synthesis reliability is stable.
+
+## 2026-06-11 Accuracy Rescue Acceptance Update
+
+Added acceptance criteria for demo reliability:
+
+- A selected textbook with active chunks must answer a factual definition/solution question using relevant textbook pages.
+- Missing configured local models must not silently degrade answer quality when another answer-capable local model is installed.
+- Generated answers must be citation-anchored sentence by sentence where possible.
+- Unsupported specific claims must be rewritten to source-only fallback instead of being shown as verified.
+- Stale library rows must not appear as healthy indexed material.
+
+Validated source:
+
+- `Hands-On Machine Learning with Scikit-Learn, Keras and TensorFlow`
+- Clean document id: `e9b7b4ff-b679-44db-a2cf-bbb945caee22`
+- Active chunks: `1833`

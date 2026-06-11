@@ -20,7 +20,7 @@ class DocumentsService:
             DocumentItem(
                 id=row["id"],
                 title=row.get("title"),
-                status=row["status"],
+                status=self._display_status(row["status"], int(row["active_chunk_count"])),
                 source_path=row["source_path"],
                 active_chunk_count=int(row["active_chunk_count"]),
                 updated_at=row["updated_at"],
@@ -65,3 +65,11 @@ class DocumentsService:
             raise ValueError(f"Document not found: {document_id}")
         await self._chroma_repo.delete_document(document_id)
         return DocumentDeleteResponse(document_id=document_id, deleted=True)
+
+    @staticmethod
+    def _display_status(status: str, active_chunk_count: int) -> str:
+        if status == "indexed" and active_chunk_count <= 0:
+            return "needs_reindex"
+        if status == "failed" and active_chunk_count > 0:
+            return "needs_reindex"
+        return status

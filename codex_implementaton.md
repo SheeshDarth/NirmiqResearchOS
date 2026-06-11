@@ -289,3 +289,34 @@ Remaining UI debt:
 - Manually review mobile sidebar and Deep Research panel behavior.
 - Reduce density inside Deep Research after real usage feedback.
 - Commit: `d19de62` - Transform UI into ChatGPT-style study shell.
+
+## 2026-06-11 Implementation Log - Accuracy Rescue
+
+Work completed:
+
+- Diagnosed the answer-quality failure against a real indexed textbook.
+- Found missing default model, Qwen empty-response behavior, short Ollama timeout, stale document rows, weak overview retrieval, and loose faithfulness checks.
+- Implemented installed-model routing and Mistral-first answer generation for the current machine.
+- Added summary/factual context seeding, lightweight retrieval stemming, citation anchoring, and conservative unsupported-claim rewrite.
+- Added tests for the new reliability path.
+- Reindexed the selected textbook and validated live API answers.
+
+Files touched in this implementation:
+
+- `apps/api/app/adapters/llm/generator.py`
+- `apps/api/app/adapters/llm/ollama_client.py`
+- `apps/api/app/adapters/llm/reranker.py`
+- `apps/api/app/adapters/retrieval/bm25_index.py`
+- `apps/api/app/core/config.py`
+- `apps/api/app/services/documents_service.py`
+- `apps/api/app/services/query_service.py`
+- `apps/api/app/services/synthesis_service.py`
+- `apps/api/app/tests/unit/test_bm25_stemming.py`
+- `apps/api/app/tests/unit/test_low_memory_runtime.py`
+- `apps/api/app/tests/unit/test_synthesis_faithfulness.py`
+
+Verification:
+
+- Backend tests: `34 passed, 1 warning`.
+- Compileall: passed.
+- Web build: passed.

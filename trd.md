@@ -111,3 +111,24 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - `context.md` and handoff docs are updated after the work.
 - V3.1 summary cache, intent routing, and trust metadata tests pass.
 - V4 golden demo script indexes bundled sources and returns citations for locked proof queries.
+
+## 2026-06-11 Accuracy Rescue Technical Update
+
+New technical requirements now satisfied:
+
+- Ollama generation model must be resolved against installed local models before calling `/api/generate`.
+- Generation metadata must expose requested model, used model, fallback routing, and errors in debug metadata.
+- Selected-document summaries must use a cache profile version that changes when summary retrieval logic changes.
+- Selected-document factual queries must augment hybrid retrieval with focused source chunks for definition and solution cues.
+- Lexical retrieval must handle lightweight morphology variants without adding heavy NLP dependencies.
+- Faithfulness verification must reject plausible but unsupported technique lists.
+
+Validation commands:
+
+```powershell
+$env:PYTHONPATH='apps/api'
+python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q --basetemp=C:\Nirmiq-researchOS\temp\pytest-base -o cache_dir=C:\Nirmiq-researchOS\temp\pytest-cache
+python -m compileall apps/api/app
+cd apps/web
+npm run build
+```

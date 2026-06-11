@@ -104,3 +104,42 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - Multi-document source diversity controls for Paper Lab.
 - Local data purge/export endpoints.
 - Optional local agent orchestrator with explicit tool allowlists and approval gates.
+
+## 2026-06-11 Accuracy Rescue Architecture Update
+
+The query lifecycle now includes two selected-document context augmentation steps before synthesis:
+
+1. Summary seed augmentation for selected-document summary intent.
+2. Focused factual seed augmentation for selected-document definition/solution/exam/deep-research style prompts.
+
+Updated query lifecycle:
+
+1. Receive prompt and selected document.
+2. Detect deterministic intent.
+3. Resolve retrieval profile and mode.
+4. Return cached selected-document summary only when the summary profile and content hash match.
+5. Run hybrid retrieval.
+6. Add summary/factual seed chunks when applicable.
+7. Synthesize with the best installed local generation model.
+8. Anchor uncited generated sentences to source chunks.
+9. Verify cited claims conservatively.
+10. Rewrite to source-only fallback when unsupported specific claims are detected.
+11. Return trust metadata and citations.
+
+Model routing:
+
+- The generator now discovers installed Ollama models and records requested versus used model metadata.
+- `mistral:7b-instruct-q4_K_M` is preferred for answer text on this machine because `qwen3.5:4b` returned empty response text under the tested generation budget.
+- Embedding and reranking remain independently toggleable.
+
+Retrieval changes:
+
+- BM25 and lexical reranker now apply light stemming for common English morphology.
+- Summary prompts seed context with early outline-like chunks.
+- Factual selected-document prompts seed context with chunks that contain focus terms plus definition/solution cues.
+
+Trust behavior:
+
+- Generated answers are not trusted just because they have citations.
+- Unsupported specific claims trigger source-only rewrite.
+- Stale `indexed` documents with no active chunks are surfaced as `needs_reindex` in the library API.

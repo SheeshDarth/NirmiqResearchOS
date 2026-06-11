@@ -91,6 +91,28 @@ def test_supported_cited_generation_is_preserved() -> None:
     assert meta["unsupported_claims"] == []
 
 
+def test_uncited_generated_sentences_are_anchored_to_best_context() -> None:
+    generated = "NIRMIQ uses grounded retrieval and citation-aware synthesis for academic documents."
+    service = SynthesisService(
+        settings=_settings(),
+        policy=RetrievalPolicy(min_grounding_score=0.1),
+        generator=FakeGenerator(generated),  # type: ignore[arg-type]
+    )
+
+    answer, grounded, meta = asyncio.run(
+        service.synthesize(
+            query="What does NIRMIQ use?",
+            bundle=_bundle(),
+            response_mode="research",
+        )
+    )
+
+    assert grounded is True
+    assert answer.endswith("[1]")
+    assert meta["citation_coverage"] == 1.0
+    assert meta["citation_verification_state"] == "supported"
+
+
 def test_long_context_deep_research_uses_configured_creative_temperature() -> None:
     generator = FakeGenerator("NIRMIQ uses grounded retrieval and citation-aware synthesis. [1]")
     service = SynthesisService(

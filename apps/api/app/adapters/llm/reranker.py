@@ -76,4 +76,27 @@ class Reranker:
     def _tokenize(text: str) -> list[str]:
         lowered = text.lower()
         sanitized = "".join(ch if ch.isalnum() or ch.isspace() else " " for ch in lowered)
-        return [token for token in sanitized.split() if token]
+        tokens: list[str] = []
+        for token in sanitized.split():
+            if not token:
+                continue
+            tokens.append(token)
+            stem = Reranker._light_stem(token)
+            if stem != token:
+                tokens.append(stem)
+        return tokens
+
+    @staticmethod
+    def _light_stem(token: str) -> str:
+        if len(token) > 5 and token.endswith("ing"):
+            stem = token[:-3]
+            if len(stem) > 3 and stem[-1] == stem[-2]:
+                stem = stem[:-1]
+            return stem
+        if len(token) > 4 and token.endswith("ed"):
+            return token[:-1] if token.endswith("eed") else token[:-2]
+        if len(token) > 4 and token.endswith("e"):
+            return token[:-1]
+        if len(token) > 4 and token.endswith("s"):
+            return token[:-1]
+        return token

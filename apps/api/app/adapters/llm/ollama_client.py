@@ -28,6 +28,9 @@ class OllamaClient:
         self._health_cache_ttl = timedelta(seconds=10)
         self._last_health_check: datetime | None = None
         self._last_health_result = False
+        self._model_cache_ttl = timedelta(seconds=30)
+        self._last_model_check: datetime | None = None
+        self._last_model_result: list[str] = []
 
     async def is_available(self) -> bool:
         now = datetime.now(timezone.utc)
@@ -44,6 +47,32 @@ class OllamaClient:
             self._last_health_result = False
         self._last_health_check = now
         return self._last_health_result
+
+    async def list_models(self) -> list[str]:
+        now = datetime.now(timezone.utc)
+        if (
+            self._last_model_check is not None
+            and now - self._last_model_check < self._model_cache_ttl
+        ):
+            return self._last_model_result
+        try:
+            async with httpx.AsyncClient(timeout=1.0) as client:
+                response = await client.get(f"{self._base_url}/api/tags")
+                response.raise_for_status()
+                data = response.json()
+                models = data.get("models", []) if isinstance(data, dict) else []
+                self._last_model_result = [
+                    str(item.get("name"))
+                    for item in models
+                    if isinstance(item, dict) and item.get("name")
+                ]
+                self._last_health_result = True
+        except Exception:
+            self._last_model_result = []
+            self._last_health_result = False
+        self._last_model_check = now
+        self._last_health_check = now
+        return self._last_model_result
 
     async def generate(self, prompt: str, model: str, temperature: float = 0.0) -> str:
         payload = {

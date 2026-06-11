@@ -182,3 +182,46 @@ This keeps long answers less flat while preserving grounded behavior.
 2. Use the dataset to tune intent routing and summary retrieval hints.
 3. Add document-level summary variants only if users need chapter-wise or exam-style cached summaries.
 4. Add optional semantic entailment verifier only when local model latency is acceptable.
+
+## 2026-06-11 Accuracy Rescue Notes
+
+The demo failure was primarily an accuracy and runtime-routing issue, not a UI-only issue.
+
+Findings:
+
+- `phi3:mini` was configured but not installed locally.
+- `qwen3.5:4b` was installed but produced empty `response` text for direct generation because the output budget was consumed by `thinking`.
+- `mistral:7b-instruct-q4_K_M` produced usable answer text and is now preferred when the configured default is missing.
+- Long-document summaries need outline seeding; plain hybrid retrieval can over-rank resource/index chunks.
+- Factual textbook questions need focused definition/solution seeding so phrase variants do not hide the correct page.
+
+Mitigations added:
+
+- Ollama model discovery and installed-model routing.
+- Mistral-first local generation preference for this available model set.
+- Runtime defaults: `OLLAMA_TIMEOUT_SECONDS=120`, `OLLAMA_NUM_PREDICT=512`.
+- Light stemming in BM25 and lexical reranker.
+- Summary seed chunks from early outline material.
+- Focused factual seed chunks for selected documents.
+- Conservative cited-claim verification threshold.
+- Sentence-level citation anchoring for generated prose.
+- Source-only structured fallback for definition-plus-solution prompts.
+
+Validated live textbook query:
+
+```text
+What is overfitting and how can it be reduced?
+```
+
+Expected answer behavior:
+
+- Use source-only rewrite if the model adds unsupported techniques.
+- Include the page 58 definition: overfitting performs well on training data but does not generalize well.
+- Include page 59 remedies: simplify/constrain model, reduce attributes, gather more data, reduce noise/outliers.
+
+Remaining accuracy debt:
+
+- Build a 20-40 item retrieval eval set from textbooks, notes, and research papers.
+- Track Recall@K, MRR, citation coverage, rewrite rate, abstention correctness, and latency.
+- Add chapter-wise summary profiles instead of relying only on generic selected-document summaries.
+- Consider a local entailment verifier only if it stays fast enough on RTX 4050 hardware.

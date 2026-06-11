@@ -249,3 +249,53 @@ This is a user-level Git ignore permission issue and does not block project comm
 4. Confirm no console errors in browser.
 5. Update `context.md` after every meaningful change.
 6. Push to GitHub after every completed work unit.
+
+### Textbook Answers Are Wrong Or Too Generic
+
+Checklist:
+
+- Confirm the selected document has active chunks. A row marked `needs_reindex` should not be used for demo answers.
+- Confirm Ollama has an answer-capable local model installed. Current routing prefers `mistral:7b-instruct-q4_K_M` when `phi3:mini` is missing.
+- Check debug metadata:
+  - `generation_model_requested`
+  - `generation_model_used`
+  - `generation_model_fallback`
+  - `answer_rewritten_for_faithfulness`
+  - `focused_seed_chunks`
+  - `summary_seed_chunks`
+- If `generation_backend=fallback`, the answer should still be source-only and cited, but it may be more extractive.
+- If the local model adds unsupported techniques, the faithfulness verifier should rewrite the answer into source-only form.
+
+Known validated textbook smoke:
+
+```powershell
+# Document id from the 2026-06-11 clean index
+$doc='e9b7b4ff-b679-44db-a2cf-bbb945caee22'
+```
+
+Query:
+
+```text
+What is overfitting and how can it be reduced?
+```
+
+Expected evidence:
+
+- Page 58 definition of overfitting.
+- Page 59 solutions including simplifying/constraining the model, gathering more data, and reducing noise/outliers.
+
+### Ollama Returns Empty Answer Text
+
+Observed with `qwen3.5:4b`: Ollama can return an empty `response` while filling a `thinking` field. This is not acceptable for the user-facing answer path.
+
+Mitigation:
+
+- Prefer `mistral:7b-instruct-q4_K_M` for generation when available.
+- Keep Qwen as a lower-priority fallback unless its response behavior is retested with a better local prompt/budget.
+
+Updated local runtime defaults:
+
+```powershell
+$env:OLLAMA_TIMEOUT_SECONDS='120'
+$env:OLLAMA_NUM_PREDICT='512'
+```

@@ -1490,3 +1490,57 @@ Remaining UI debt:
 Commit:
 
 - `d19de62` - Transform UI into ChatGPT-style study shell.
+
+### Latest Update: Accuracy Rescue And Textbook Grounding Pass
+
+Date: 2026-06-11
+
+Purpose:
+
+- The working demo was failing on answer quality: the app appeared to retrieve sources, but answers were weak, sometimes stale, and sometimes plausible rather than strictly grounded.
+- The validation source for this pass was `Hands-On Machine Learning with Scikit-Learn, Keras and TensorFlow`, indexed from `data/raw/uploads/Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-5b287bd745.pdf`.
+
+Root causes found:
+
+- The default generation model was `phi3:mini`, but this machine did not have that model installed.
+- `qwen3.5:4b` was installed but returned most content in Ollama's `thinking` field and an empty `response`, so it was unsafe as the first generation model for the demo.
+- The Ollama timeout was too short for cold local generation.
+- Long-textbook summary retrieval could pull bibliography/resource chunks instead of the document outline.
+- Factual queries such as `What is overfitting and how can it be reduced?` over-focused on one wording path and missed the textbook definition page.
+- Generated answers could include plausible ML techniques not present in the retrieved source chunks.
+- Stale document rows with `indexed` plus `0` chunks made the library look healthier than it was.
+
+Implemented:
+
+- Added cached Ollama model discovery through `/api/tags`.
+- Added generator model routing: prefer installed instruct models for answer text, with `mistral:7b-instruct-q4_K_M` preferred over `qwen3.5:4b` on this machine.
+- Added generation metadata: requested model, used model, fallback flag, and error string.
+- Raised default Ollama timeout to `120s` and reduced default prediction cap to `512` for local stability.
+- Added light stemming to BM25 and lexical reranking for variants such as `reduce`, `reduced`, `reducing`, `overfit`, and `overfitting`.
+- Added selected-document summary seeding from early outline chunks.
+- Added selected-document factual seeding for definition/solution questions.
+- Tightened cited-claim verification so unsupported specific techniques trigger source-only rewrite.
+- Added citation anchoring for uncited generated sentences instead of appending a weak `Sources: [1]` footer.
+- Added structured source-only fallback for definition-plus-solution questions.
+- Filtered low-value resource/bibliography sentences from summary fallback.
+- Marked stale library rows as `needs_reindex` when they are not actually usable.
+- Added tests for model routing, BM25 morphology matching, citation anchoring, and faithfulness preservation.
+
+Validation:
+
+- Clean textbook index created: `e9b7b4ff-b679-44db-a2cf-bbb945caee22`, `1833` active chunks.
+- Live query tested: `What is overfitting and how can it be reduced?`
+- Result used `mistral:7b-instruct-q4_K_M`, retrieved page 58 definition and page 59 solutions, rewrote unsupported model additions into source-only form, and returned cited textbook evidence.
+- Full backend suite: `34 passed, 1 warning`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build` from `apps/web`: passed.
+
+Tradeoffs:
+
+- Some answers are now more conservative and extractive when the local model adds unsupported claims. This is intentional for demo reliability and hallucination reduction.
+- First uncached summaries on large textbooks can still take around a minute on local models; repeated selected-document summaries use cache.
+- The textbook summary is cleaner than before but remains extractive. A later V4 upgrade should add chapter-aware summary profiles and a proper retrieval eval set.
+
+Commit:
+
+- Pending in this work unit: accuracy rescue, model routing, focused retrieval seeding, and faithfulness hardening.

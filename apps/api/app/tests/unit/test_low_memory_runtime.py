@@ -1,6 +1,7 @@
 import asyncio
 
 from app.adapters.llm.embedder import Embedder
+from app.adapters.llm.generator import Generator
 from app.adapters.llm.ollama_client import OllamaClient
 
 
@@ -61,3 +62,31 @@ def test_embedder_batches_ollama_embeddings_to_reduce_memory_pressure() -> None:
     assert len(vectors) == 5
     assert [len(batch) for batch in fake.batches] == [2, 2, 1]
     assert embedder.last_backend == "ollama"
+
+
+def test_generator_uses_installed_instruct_model_when_default_is_missing() -> None:
+    class FakeOllama:
+        def __init__(self) -> None:
+            self.generated_with: str | None = None
+
+        async def is_available(self) -> bool:
+            return True
+
+        async def list_models(self) -> list[str]:
+            return ["nomic-embed-text:latest", "qwen3.5:4b", "mistral:7b-instruct-q4_K_M"]
+
+        async def generate(self, prompt: str, model: str, temperature: float = 0.0) -> str:
+            self.generated_with = model
+            return "Grounded answer. [1]"
+
+    fake = FakeOllama()
+    generator = Generator(ollama_client=fake, default_model="phi3:mini", use_ollama=True)  # type: ignore[arg-type]
+
+    answer = asyncio.run(generator.answer(prompt="Answer with citations.", temperature=0.1))
+
+    assert answer == "Grounded answer. [1]"
+    assert fake.generated_with == "mistral:7b-instruct-q4_K_M"
+    assert generator.last_backend == "ollama"
+    assert generator.last_model_requested == "phi3:mini"
+    assert generator.last_model_used == "mistral:7b-instruct-q4_K_M"
+    assert generator.last_model_fallback is True
