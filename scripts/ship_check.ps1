@@ -20,8 +20,19 @@ function Repair-PathEnvironment {
 
 function Test-LocalPort {
     param([int]$Port)
-    $listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
-    return $null -ne $listener
+    $client = [System.Net.Sockets.TcpClient]::new()
+    try {
+        $async = $client.BeginConnect("127.0.0.1", $Port, $null, $null)
+        if (-not $async.AsyncWaitHandle.WaitOne(600)) {
+            return $false
+        }
+        $client.EndConnect($async)
+        return $true
+    } catch {
+        return $false
+    } finally {
+        $client.Close()
+    }
 }
 
 function Wait-ForUrl {
@@ -79,6 +90,12 @@ $apiBase = "http://127.0.0.1:8000"
 $webBase = "http://127.0.0.1:3002"
 
 try {
+    Write-Output "Stopping any existing NIRMIQ preview before build/check..."
+    powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "stop_local.ps1")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to stop existing NIRMIQ preview before ship check."
+    }
+
     if (-not $SkipTests) {
         Push-Location $root
         $env:PYTHONPATH = "apps/api"

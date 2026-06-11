@@ -86,11 +86,14 @@ After each meaningful project work unit:
 - Added `docs/folio_competitive_review.md` to define the competitive response.
 - Added `scripts/run_local.ps1` for one-command local preview.
 - Added `scripts/stop_local.ps1` for scoped launcher cleanup.
+- Added `NIRMIQ ResearchOS.cmd`, `NIRMIQ Stop.cmd`, and `scripts/create_windows_shortcut.ps1` for Windows app-like launch.
+- Added `docs/windows_app_packaging.md`.
 - Added `scripts/ship_check.ps1` for full EOD verification.
 - Hardened `scripts/publish_smoke.ps1` with more realistic local readiness timeouts.
+- Hardened `scripts/stop_local.ps1` to terminate the full Next.js child process tree and avoid stale `.next` cache errors.
 - Updated README, publish checklist, and project context with the one-command run path.
 - Updated the landing screen proof chips to emphasize offline core, citation trail, abstention, and Paper/Exam labs.
-- Verified `scripts/ship_check.ps1` end to end on 2026-06-11.
+- Verified `scripts/ship_check.ps1` end to end on 2026-06-11 and recreated a persistent preview afterward.
 
 ## Important Commits So Far
 

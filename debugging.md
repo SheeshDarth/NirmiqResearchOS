@@ -16,6 +16,12 @@ cd C:\Nirmiq-researchOS
 .\scripts\run_local.ps1 -OpenBrowser
 ```
 
+Windows double-click preview:
+
+```text
+NIRMIQ ResearchOS.cmd
+```
+
 Preview with bundled demo corpus:
 
 ```powershell
@@ -28,6 +34,15 @@ Stop launcher-created preview processes:
 ```powershell
 cd C:\Nirmiq-researchOS
 .\scripts\stop_local.ps1
+```
+
+If Next.js shows `Cannot find module './398.js'` or missing `.next` manifest errors, stop the preview first, then delete the generated `.next` cache and relaunch:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\stop_local.ps1
+Remove-Item -Recurse -Force .\apps\web\.next
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
 ```
 
 Manual backend:

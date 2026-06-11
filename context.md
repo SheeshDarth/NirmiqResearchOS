@@ -21,11 +21,16 @@ Implemented in this session:
 
 - Added `scripts/run_local.ps1` for one-command local preview.
 - Added `scripts/stop_local.ps1` to stop only launcher-created local preview PIDs.
+- Added root double-click launchers `NIRMIQ ResearchOS.cmd` and `NIRMIQ Stop.cmd`.
+- Added `scripts/create_windows_shortcut.ps1` for Desktop/Start Menu shortcuts.
+- Added `docs/windows_app_packaging.md` explaining why one-click launcher is the right EOD Windows-app layer and why a full installer should be a separate sprint.
 - Added `scripts/ship_check.ps1` for full EOD verification: backend tests, API compile, web build, publish smoke, golden demo, and scoped process cleanup.
 - Hardened `scripts/publish_smoke.ps1` timeouts for local startup/readiness probes.
+- Hardened `scripts/stop_local.ps1` to stop the full Next.js child process tree, preventing stale `.next` cache errors after restart.
 - Added `docs/folio_competitive_review.md`.
 - Updated README and publish checklist with one-command run/ship-check instructions.
 - Updated landing screen proof chips to communicate offline core, citation trail, abstention, and Paper/Exam labs.
+- Created Windows Desktop shortcuts: `NIRMIQ ResearchOS.lnk` and `Stop NIRMIQ ResearchOS.lnk`.
 
 Verification completed:
 
@@ -35,12 +40,19 @@ Verification completed:
 - `npm run build`: passed, first-load JS about 115 kB.
 - Publish smoke: backend health OK, readiness ready, `cloud_api_required=false`, web shell returned NIRMIQ.
 - Golden demo: four grounded checks passed with citations; unsupported chat prompt abstained with zero citations.
+- Persistent preview after ship check: API `ok`, web `200`, NIRMIQ shell present at `http://127.0.0.1:3002`.
 
 Run command for review:
 
 ```powershell
 cd C:\Nirmiq-researchOS
 .\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
+```
+
+Windows double-click preview:
+
+```text
+NIRMIQ ResearchOS.cmd
 ```
 
 Pre-publish command:

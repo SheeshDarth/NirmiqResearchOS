@@ -20,8 +20,19 @@ function Repair-PathEnvironment {
 
 function Test-LocalPort {
     param([int]$Port)
-    $listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
-    return $null -ne $listener
+    $client = [System.Net.Sockets.TcpClient]::new()
+    try {
+        $async = $client.BeginConnect("127.0.0.1", $Port, $null, $null)
+        if (-not $async.AsyncWaitHandle.WaitOne(600)) {
+            return $false
+        }
+        $client.EndConnect($async)
+        return $true
+    } catch {
+        return $false
+    } finally {
+        $client.Close()
+    }
 }
 
 function Wait-ForUrl {

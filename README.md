@@ -271,6 +271,12 @@ cd C:\Nirmiq-researchOS
 .\scripts\run_local.ps1 -OpenBrowser
 ```
 
+Or double-click:
+
+```text
+NIRMIQ ResearchOS.cmd
+```
+
 Run local preview and warm-start the bundled golden demo:
 
 ```powershell
@@ -283,6 +289,19 @@ Stop processes started by the launcher:
 ```powershell
 cd C:\Nirmiq-researchOS
 .\scripts\stop_local.ps1
+```
+
+Or double-click:
+
+```text
+NIRMIQ Stop.cmd
+```
+
+Create desktop shortcuts:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\create_windows_shortcut.ps1 -Desktop
 ```
 
 Open:
@@ -352,6 +371,7 @@ Primary demo docs:
 - [Golden demo script](docs/demo_script.md)
 - [Golden benchmark report](docs/benchmark_report.md)
 - [Folio competitive review](docs/folio_competitive_review.md)
+- [Windows app packaging](docs/windows_app_packaging.md)
 - [Publish checklist](docs/publish_checklist.md)
 
 ## Tests

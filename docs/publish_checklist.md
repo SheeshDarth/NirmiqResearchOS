@@ -35,11 +35,23 @@ cd C:\Nirmiq-researchOS
 .\scripts\run_local.ps1 -OpenBrowser
 ```
 
+Windows double-click preview:
+
+```text
+NIRMIQ ResearchOS.cmd
+```
+
 Preferred golden-demo preview:
 
 ```powershell
 cd C:\Nirmiq-researchOS
 .\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
+```
+
+Optional desktop shortcut:
+
+```powershell
+.\scripts\create_windows_shortcut.ps1 -Desktop
 ```
 
 Fallback Terminal 1:
