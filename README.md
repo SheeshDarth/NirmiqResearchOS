@@ -117,6 +117,27 @@ Implemented in the current repository:
 - Check local publish readiness through `/health/readiness` and `scripts/publish_smoke.ps1`.
 - Run with a low-memory local model profile: bounded Ollama context, bounded prediction length, short keep-alive, and batched embeddings.
 
+## What Works Now
+
+- Upload and index PDF, Markdown, text, and image files locally.
+- Ask selected-document questions with citations and trust metadata.
+- Summarize selected PDFs with summary caching.
+- Inspect evidence chunks in the Deep Research panel.
+- Run Research, Chat, Paper Lab, and Exam Lab modes from one workspace.
+- Export grounded answers/drafts as local Markdown.
+- Generate Exam Lab custom PDFs from grounded responses.
+- Run local smoke checks, backend tests, and frontend production build.
+- Evaluate retrieval on a bundled 10-question demo dataset.
+
+## Planned Next
+
+- Larger retrieval eval set from real engineering notes, papers, and exam PDFs.
+- Chapter-wise and section-wise summaries for long textbooks.
+- Screenshot/GIF assets for the public README.
+- Local data purge/export UI.
+- GraphRAG-lite concept expansion only after baseline retrieval metrics justify it.
+- Optional connected model mode only with explicit user consent and privacy disclosure.
+
 ## Workspaces
 
 ### Research
@@ -258,17 +279,14 @@ Install once:
 
 ```powershell
 cd C:\Nirmiq-researchOS
-cd apps\api
-python -m pip install -e .
-cd ..\web
-npm install
+.\scripts\bootstrap.ps1
 ```
 
 Run local preview:
 
 ```powershell
 cd C:\Nirmiq-researchOS
-.\scripts\run_local.ps1 -OpenBrowser
+.\scripts\start_local.ps1 -OpenBrowser
 ```
 
 Or double-click:
@@ -281,7 +299,7 @@ Run local preview and warm-start the bundled golden demo:
 
 ```powershell
 cd C:\Nirmiq-researchOS
-.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
+.\scripts\start_local.ps1 -GoldenDemo -OpenBrowser
 ```
 
 Stop processes started by the launcher:
@@ -304,11 +322,74 @@ cd C:\Nirmiq-researchOS
 .\scripts\create_windows_shortcut.ps1 -Desktop
 ```
 
-Open:
+Useful local URLs after the app starts:
 
 - Web: `http://127.0.0.1:3002`
 - Local backend: `http://127.0.0.1:8000`
 - Readiness: `http://127.0.0.1:8000/health/readiness`
+
+## Docker Dev Run
+
+Docker is optional. The Windows PowerShell launcher is the primary local path.
+
+Fresh Docker dev start:
+
+```powershell
+cd C:\Nirmiq-researchOS
+docker compose -f docker-compose.local.yml up
+```
+
+Then open:
+
+- Web: `http://127.0.0.1:3002`
+- API health: `http://127.0.0.1:8000/health`
+
+Notes:
+
+- The compose file installs Python and Node dependencies inside dev containers.
+- Ollama is disabled by default in Docker compose so the demo works without GPU passthrough.
+- For best local model performance on Windows, use `scripts/start_local.ps1` instead of Docker.
+
+## Demo Dataset And Retrieval Results
+
+NIRMIQ includes a small, original PDF demo dataset for recruiters and reviewers:
+
+- `data/raw/demo_pdfs/nirmiq_rag_reference.pdf`
+- `data/raw/demo_pdfs/nirmiq_exam_reference.pdf`
+- `data/processed/eval/demo_academic_qa.jsonl`
+
+Load and evaluate:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\start_local.ps1
+.\scripts\load_demo_dataset.ps1 -ForceReindex
+.\scripts\eval_demo_dataset.ps1
+```
+
+Latest local retrieval results on 10 labeled questions:
+
+| Mode | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | Citation expected coverage |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 0.95 | 1.00 | 1.00 | 1.00 | 0.708 | 1.00 |
+| BM25 | 0.90 | 1.00 | 1.00 | 1.00 | 0.642 | 1.00 |
+
+Details:
+
+- [Demo dataset](docs/demo_dataset.md)
+- [Retrieval evaluation results](docs/retrieval_eval_results.md)
+- [Benchmark report](docs/benchmark_report.md)
+
+## Screenshots And GIFs
+
+Recommended public README assets:
+
+- Upload PDF.
+- Ask grounded question.
+- Open citation trail.
+- Compare answer runs.
+
+Capture checklist: [Demo assets guide](docs/demo_assets.md).
 
 ## Publish Smoke Check
 
@@ -426,6 +507,9 @@ Offline access over cloud dependency
 ## Important Docs
 
 - [Publish checklist](docs/publish_checklist.md)
+- [Demo dataset](docs/demo_dataset.md)
+- [Retrieval evaluation results](docs/retrieval_eval_results.md)
+- [Demo assets guide](docs/demo_assets.md)
 - [Backend architecture](backend_architecture.md)
 - [Product requirements](prd.md)
 - [Technical requirements](trd.md)

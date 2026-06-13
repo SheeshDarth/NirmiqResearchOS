@@ -23,6 +23,8 @@ data/raw/*
 !data/raw/.gitkeep
 !data/raw/golden_demo/
 !data/raw/golden_demo/*.md
+!data/raw/demo_pdfs/
+!data/raw/demo_pdfs/*.pdf
 data/processed/diagrams/*
 !data/processed/.gitkeep
 data/indexes/chroma/*

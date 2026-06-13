@@ -76,3 +76,26 @@ Verified on 2026-06-11 with `scripts/ship_check.ps1`:
 ## Tradeoff
 
 This benchmark favors demo reliability over statistical breadth. A larger retrieval evaluation dataset should still be added later, but not before the golden path is stable.
+
+## Demo Academic Retrieval Results
+
+Updated on 2026-06-13 with the lightweight PDF demo dataset:
+
+- Dataset: `data/processed/eval/demo_academic_qa.jsonl`
+- Sources: `data/raw/demo_pdfs/nirmiq_rag_reference.pdf`, `data/raw/demo_pdfs/nirmiq_exam_reference.pdf`
+- Samples: 10 phrase-labeled QA items
+
+| Mode | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | Citation expected coverage |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 0.95 | 1.00 | 1.00 | 1.00 | 0.708 | 1.00 |
+| BM25 | 0.90 | 1.00 | 1.00 | 1.00 | 0.642 | 1.00 |
+
+Command:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\load_demo_dataset.ps1 -ForceReindex
+.\scripts\eval_demo_dataset.ps1
+```
+
+Detailed report: `docs/retrieval_eval_results.md`.

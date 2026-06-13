@@ -1,0 +1,38 @@
+{
+  "dataset": "data\\processed\\eval\\demo_academic_qa.jsonl",
+  "evaluation_mode": "retrieval",
+  "modes": [
+    "hybrid",
+    "bm25"
+  ],
+  "results": {
+    "hybrid": {
+      "mode": "hybrid",
+      "samples": 10,
+      "target_level": "phrase",
+      "mrr": 0.95,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@8": 1.0,
+      "ndcg@3": 0.7082425918788215,
+      "ndcg@5": 0.6953747720532425,
+      "ndcg@8": 0.6953747720532425,
+      "citation_presence_rate": 1.0,
+      "citation_expected_coverage": 1.0
+    },
+    "bm25": {
+      "mode": "bm25",
+      "samples": 10,
+      "target_level": "phrase",
+      "mrr": 0.9,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@8": 1.0,
+      "ndcg@3": 0.6417273761393808,
+      "ndcg@5": 0.6288595563138017,
+      "ndcg@8": 0.6288595563138017,
+      "citation_presence_rate": 1.0,
+      "citation_expected_coverage": 1.0
+    }
+  }
+}

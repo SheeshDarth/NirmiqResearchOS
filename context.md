@@ -1544,3 +1544,66 @@ Tradeoffs:
 Commit:
 
 - Pending in this work unit: accuracy rescue, model routing, focused retrieval seeding, and faithfulness hardening.
+
+### Latest Update: Recruiter-Facing Demo Dataset And README Polish
+
+Date: 2026-06-13
+
+Purpose:
+
+- Position NIRMIQ ResearchOS as the strongest GenAI/RAG/document-AI internship project.
+- Make the GitHub README easier for recruiters to evaluate quickly.
+- Add real demo data, sample questions, measurable retrieval metrics, one-command startup, and working Docker dev instructions.
+
+Implemented:
+
+- Added two original sample PDFs under `data/raw/demo_pdfs/`:
+  - `nirmiq_rag_reference.pdf`
+  - `nirmiq_exam_reference.pdf`
+- Added 10 sample QA labels with expected answers and phrase-level evidence targets:
+  - `data/processed/eval/demo_academic_qa.jsonl`
+- Extended `scripts/eval_retrieval.py` to support `expected_phrases` labels and nDCG metrics.
+- Added generated retrieval metrics output:
+  - `data/processed/eval/demo_retrieval_metrics.json`
+- Added scripts:
+  - `scripts/start_local.ps1`
+  - `scripts/load_demo_dataset.ps1`
+  - `scripts/eval_demo_dataset.ps1`
+- Updated `scripts/eval_retrieval.ps1` to run the demo dataset by default.
+- Updated `docker-compose.local.yml` with API and web services that install dependencies in dev containers.
+- Updated README with:
+  - `What Works Now`
+  - `Planned Next`
+  - one-command startup via `scripts/start_local.ps1`
+  - Docker dev instructions
+  - demo dataset and retrieval metrics
+  - screenshot/GIF capture checklist links
+- Added docs:
+  - `docs/demo_dataset.md`
+  - `docs/retrieval_eval_results.md`
+  - `docs/demo_assets.md`
+- Updated `docs/benchmark_report.md` with the measured demo retrieval table.
+- Added `.gitignore` exceptions so only curated demo PDFs are tracked, not user uploads.
+
+Latest demo retrieval metrics:
+
+- Hybrid: MRR `0.95`, Recall@3/5/8 `1.00`, nDCG@3 `0.708`, citation expected coverage `1.00`.
+- BM25: MRR `0.90`, Recall@3/5/8 `1.00`, nDCG@3 `0.642`, citation expected coverage `1.00`.
+
+Validation:
+
+- `scripts/load_demo_dataset.ps1 -ForceReindex`: indexed both demo PDFs successfully.
+- `scripts/eval_demo_dataset.ps1`: produced metrics successfully.
+- `python -m py_compile scripts/eval_retrieval.py`: passed.
+- Focused backend tests: `4 passed`.
+- `docker compose -f docker-compose.local.yml config`: valid config; Docker emitted only a user-level config permission warning.
+- `npm run build`: passed.
+
+Tradeoffs:
+
+- Actual README screenshots/GIFs were not captured in this session because no screenshot-capable browser tool was available. The repo now includes an explicit capture checklist in `docs/demo_assets.md`.
+- Docker compose is a dev/demo path and installs dependencies at startup. The Windows PowerShell launcher remains the best local path for performance.
+
+Commit:
+
+- Pending in this work unit: recruiter polish, demo dataset, retrieval eval metrics, Docker dev setup, README cleanup.
