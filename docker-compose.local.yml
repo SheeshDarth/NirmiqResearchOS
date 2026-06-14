@@ -1,6 +1,8 @@
 services:
   api:
-    image: python:3.12-slim
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
     working_dir: /workspace/apps/api
     volumes:
       - ./:/workspace
@@ -12,23 +14,23 @@ services:
       USE_OLLAMA_EMBEDDINGS: "false"
       USE_OLLAMA_RERANKER: "false"
       LOW_MEMORY_MODE: "true"
-    command: >
-      sh -c "python -m pip install -e . &&
-      python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
 
   web:
-    image: node:22-alpine
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
     working_dir: /workspace/apps/web
     volumes:
       - ./:/workspace
+      - web_node_modules:/workspace/apps/web/node_modules
     environment:
       NEXT_PUBLIC_API_BASE: http://127.0.0.1:8000
-    command: >
-      sh -c "npm install &&
-      npm run dev"
     ports:
       - "3002:3002"
     depends_on:
       - api
+
+volumes:
+  web_node_modules:

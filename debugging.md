@@ -71,18 +71,13 @@ cd C:\Nirmiq-researchOS
 Manual frontend build:
 
 ```powershell
-cd C:\Nirmiq-researchOS\apps\web
-npm run build
+cd C:\Nirmiq-researchOS
+npm.cmd run build
 ```
 
 ```powershell
 cd C:\Nirmiq-researchOS
-$env:PYTHONPATH='apps/api'
-$env:TEMP='C:\Nirmiq-researchOS\temp\pytest'
-$env:TMP='C:\Nirmiq-researchOS\temp\pytest'
-$env:TMPDIR='C:\Nirmiq-researchOS\temp\pytest'
-New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
-python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q -o cache_dir=C:\Nirmiq-researchOS\temp\pytest-cache
+.\scripts\test_api.ps1
 ```
 
 ## Golden Demo Debug
@@ -188,6 +183,60 @@ powershell -ExecutionPolicy Bypass -File .\scripts\publish_smoke.ps1
 ```
 
 If the web TypeError persists, stop the web listener, delete generated `apps\web\.next`, and restart `.\scripts\run_web.ps1`.
+
+### Upload Returns 413 Request Body Too Large
+
+Cause: the API rejected the request before ingestion because `Content-Length` exceeded `MAX_REQUEST_BODY_BYTES`.
+
+Default:
+
+```powershell
+$env:MAX_REQUEST_BODY_BYTES='78643200'
+```
+
+Fix:
+
+- Use a smaller PDF or split a very large textbook.
+- Increase `MAX_REQUEST_BODY_BYTES` only for trusted local runs.
+- Keep the default for public demo safety.
+
+### API Versioned Route Check
+
+Current local routes still work, and `/api/v1` aliases are also available.
+
+Smoke:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/health
+```
+
+Both should return:
+
+```json
+{"status":"ok"}
+```
+
+### Docker Compose Fails To Start
+
+First validate config:
+
+```powershell
+docker compose -f docker-compose.local.yml config
+```
+
+If the web container cannot find `node_modules`, remove the named volume and rebuild:
+
+```powershell
+docker compose -f docker-compose.local.yml down -v
+docker compose -f docker-compose.local.yml up --build
+```
+
+Use the Windows launcher for best RTX 4050/Ollama performance:
+
+```powershell
+.\scripts\start_local.ps1 -GoldenDemo -OpenBrowser
+```
 
 ### Summary Still Feels Slow
 

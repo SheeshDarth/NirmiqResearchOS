@@ -1,6 +1,6 @@
 # NIRMIQ ResearchOS Security Notes
 
-Last updated: 2026-06-02
+Last updated: 2026-06-14
 
 ## Current security model
 
@@ -15,10 +15,16 @@ NIRMIQ currently runs as a local single-user application. The login screen is a 
   - `X-Frame-Options: DENY`
   - `Referrer-Policy: no-referrer`
   - `Permissions-Policy` denying camera, microphone, and geolocation.
+- Response compression for larger local API responses.
+- Request body size limit through `MAX_REQUEST_BODY_BYTES`.
+- Production-only security header toggles:
+  - `ENABLE_HSTS=true`
+  - `ENABLE_CONTENT_SECURITY_POLICY=true`
 - Diagram asset serving by asset ID with path validation to prevent arbitrary file serving.
 - Local path ingestion is restricted by default to configured corpus roots.
 - Uploads are content-sniffed for common spoofing cases before indexing.
 - Runtime/generated database and vector files ignored by Git.
+- SQLite migration identifiers are allowlisted to avoid dynamic user-controlled SQL identifiers.
 
 ## V3 Local Data Protection Protocol
 
@@ -42,6 +48,8 @@ NIRMIQ is designed to protect the user from accidental data leakage while preser
 - Local documents and extracted diagrams remain on disk.
 - If optional cloud/API providers are added later, explicit consent, redaction controls, and visible mode labels are required.
 - SQLite and raw document files are not encrypted at rest yet.
+- No external error-tracking service is enabled because default telemetry would conflict with the local-first privacy contract.
+- HSTS is disabled by default because local HTTP development should not set HTTPS-only browser policy.
 
 ## Recommended next security work
 
@@ -51,3 +59,4 @@ NIRMIQ is designed to protect the user from accidental data leakage while preser
 4. Add provider consent screens before sending content to external APIs.
 5. Add audit log export for document operations.
 6. Add optional local encryption for SQLite, raw uploads, extracted diagrams, and parse cache.
+7. Add local bug-report bundle export for logs without sending telemetry to a third party.

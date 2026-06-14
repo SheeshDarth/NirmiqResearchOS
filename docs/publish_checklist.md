@@ -1,10 +1,10 @@
 # NIRMIQ Publish Checklist
 
-Last updated: 2026-06-10
+Last updated: 2026-06-14
 
 ## Target
 
-Publish a working NIRMIQ ResearchOS V4 golden demo by 2026-06-11.
+Publish a working NIRMIQ ResearchOS local-first golden demo with clear GitHub credibility, repeatable startup, CI, and measured retrieval evidence.
 
 ## Pre-Publish Commands
 
@@ -16,15 +16,35 @@ Full EOD ship check:
 .\scripts\ship_check.ps1
 ```
 
+Root command equivalent:
+
+```powershell
+npm.cmd run ship:check
+```
+
 Manual equivalent:
 
 ```powershell
-$env:PYTHONPATH='apps/api'
-python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q
-python -m compileall apps/api/app
-cd apps/web
-npm run build
+.\scripts\test_api.ps1
+npm.cmd run compile:api
+npm.cmd run build
 ```
+
+Public repo checks:
+
+```powershell
+docker compose -f docker-compose.local.yml config
+git status --short
+```
+
+Expected repo hygiene:
+
+- `.github/workflows/ci.yml` exists.
+- `.github/CODEOWNERS` exists.
+- `LICENSE` exists.
+- `package.json` root command hub exists.
+- `apps/api/Dockerfile` exists.
+- `apps/web/Dockerfile` exists.
 
 ## Local Demo Startup
 
@@ -148,3 +168,6 @@ python scripts/eval_retrieval.py --dataset data/processed/eval/qa_labels.jsonl -
 - Do not promise production authentication yet.
 - Do not claim cloud sync, internet search, or ChatGPT/OpenAI account dependency.
 - Present this as NIRMIQ ResearchOS: a working local academic document intelligence workspace with a repeatable golden path for grounded answers, citation inspection, Paper Lab, Exam Lab, export, and local source removal.
+- If linking publicly, call it a local-first portfolio/demo MVP, not a hosted SaaS.
+- Use `/api/v1/*` in future clients, but keep existing local routes working for current UI stability.
+- Keep HSTS/CSP disabled on local HTTP unless running behind HTTPS/proxy.

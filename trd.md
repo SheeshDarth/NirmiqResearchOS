@@ -60,6 +60,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 ## API Requirements
 
 - `GET /health`: service health and dependency status.
+- `GET /api/v1/health`: versioned alias for health.
 - `GET /health/readiness`: local demo readiness, indexed document count, active chunk count, vector/Ollama availability, and local-first status.
 - `POST /ingest`: ingest document by source path.
 - `POST /ingest/upload`: upload file and ingest it.
@@ -72,6 +73,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - `POST /query` debug metadata may include `paper_lab` only for paper-draft intent.
 - `GET /memory/{session_id}`: session memory snapshot.
 - Exam routes for profiles, question banks, and study/exam artifacts.
+- `/api/v1/*` aliases must remain available for all current API groups while legacy local routes remain stable for the existing frontend.
 
 ## Retrieval Requirements
 
@@ -96,6 +98,10 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Any future API-key mode must make cloud usage obvious before sending content.
 - Provide local data purge/export controls before broader beta use.
 - Provide a scoped golden demo warm-start script that indexes bundled files and checks citation-bearing smoke queries.
+- Enforce a configurable request body size limit through `MAX_REQUEST_BODY_BYTES`.
+- Keep HSTS and CSP opt-in for production/proxy deployments, not enabled by default for local HTTP.
+- Avoid cloud error tracking by default; prefer local bug-report bundle export for the offline/privacy posture.
+- Keep checked-in Dockerfiles and CI config current enough for reviewer verification.
 
 ## V3 Acceptance Criteria
 
@@ -126,9 +132,7 @@ New technical requirements now satisfied:
 Validation commands:
 
 ```powershell
-$env:PYTHONPATH='apps/api'
-python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q --basetemp=C:\Nirmiq-researchOS\temp\pytest-base -o cache_dir=C:\Nirmiq-researchOS\temp\pytest-cache
-python -m compileall apps/api/app
-cd apps/web
-npm run build
+.\scripts\test_api.ps1
+npm.cmd run compile:api
+npm.cmd run build
 ```

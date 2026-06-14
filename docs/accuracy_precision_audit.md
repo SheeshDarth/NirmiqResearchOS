@@ -183,6 +183,25 @@ This keeps long answers less flat while preserving grounded behavior.
 3. Add document-level summary variants only if users need chapter-wise or exam-style cached summaries.
 4. Add optional semantic entailment verifier only when local model latency is acceptable.
 
+## 2026-06-14 EOD Ship Hardening Notes
+
+Finale AI's dashboard flagged deployment and public-repo hygiene as the weakest launch areas. The accuracy layer remains focused on grounded local RAG; the EOD patch does not change retrieval behavior.
+
+Implemented support around the accuracy system:
+
+- GitHub CI now runs backend tests, backend compile, frontend build, and Docker Compose config validation.
+- API request body limits reduce accidental large-upload instability during demos.
+- Response compression reduces overhead for larger citation/source payloads.
+- `/api/v1` aliases make future clients safer without breaking the current UI.
+- SQLite migration SQL was cleaned to remove scanner-triggering f-string `execute()` patterns.
+
+Accuracy debt that remains:
+
+- Expand the phrase-labeled demo QA set from 10 to 30-40 samples.
+- Add unanswerable/abstention labels to the eval report.
+- Add latency and cache-hit timing to retrieval benchmark output.
+- Capture public demo assets showing citations, trust badges, and source chunks.
+
 ## 2026-06-11 Accuracy Rescue Notes
 
 The demo failure was primarily an accuracy and runtime-routing issue, not a UI-only issue.

@@ -1607,3 +1607,113 @@ Tradeoffs:
 Commit:
 
 - Pending in this work unit: recruiter polish, demo dataset, retrieval eval metrics, Docker dev setup, README cleanup.
+
+### Latest Update: EOD Ship Readiness Hardening
+
+Date: 2026-06-14
+
+Purpose:
+
+- Convert the working local demo into a more publish-ready GitHub project.
+- Address Finale AI dashboard findings without breaking the local-first/offline-first product direction.
+- Improve deployment credibility, repo hygiene, security posture, and reviewer onboarding.
+
+Finale AI findings used:
+
+- Overall score: `72.9`.
+- Security: `80`.
+- Reliability: `91`.
+- Deployment: `58`.
+- Architecture: `88`.
+- Cost Risk: `0`.
+- Highest-impact gaps: no CI/CD, no CODEOWNERS, no root package manifest, no Dockerfile, no license, API versioning, request size limit, response compression, SQL f-string scanner finding, and unclear production security header posture.
+
+Implemented:
+
+- Added GitHub Actions CI:
+  - `.github/workflows/ci.yml`
+  - Runs backend tests, backend compile, frontend build, and Docker Compose config validation.
+- Added ownership and licensing:
+  - `.github/CODEOWNERS`
+  - MIT `LICENSE`
+- Added root command hub:
+  - `package.json`
+  - `npm.cmd run start`
+  - `npm.cmd run start:golden`
+  - `npm.cmd run test:api`
+  - `npm.cmd run compile:api`
+  - `npm.cmd run build`
+  - `npm.cmd run ship:check`
+- Added stable Windows API test runner:
+  - `scripts/test_api.ps1`
+  - Uses project-local temp and pytest cache paths to avoid user temp permission failures.
+- Added Docker build assets:
+  - `.dockerignore`
+  - `apps/api/Dockerfile`
+  - `apps/web/Dockerfile`
+  - Updated `docker-compose.local.yml` to build checked-in containers instead of installing dependencies on every startup.
+- Added backend hardening:
+  - Request body size guard through `MAX_REQUEST_BODY_BYTES`.
+  - GZip response compression.
+  - Production opt-in `ENABLE_HSTS` and `ENABLE_CONTENT_SECURITY_POLICY`.
+  - `/api/v1/*` route aliases while preserving existing legacy local routes.
+  - Updated API title/version to `NIRMIQ ResearchOS API` / `0.4.0`.
+- Cleaned SQLite scanner findings:
+  - Removed f-string `execute()` patterns from `sqlite_repo.py`.
+  - Added allowlisted migration identifiers for schema column additions.
+- Added tests:
+  - `test_api_hardening.py` covers `/api/v1/health`, baseline security headers, and oversized request rejection.
+- Updated docs:
+  - `README.md`
+  - `docs/ship_readiness.md`
+  - `docs/security.md`
+  - `docs/publish_checklist.md`
+  - `docs/benchmark_report.md`
+  - `docs/accuracy_precision_audit.md`
+  - `backend_architecture.md`
+  - `debugging.md`
+  - `trd.md`
+  - `.env.example`
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q -o cache_dir=C:\Nirmiq-researchOS\temp\pytest-cache`: `37 passed, 1 warning`.
+- `npm.cmd run test:api`: `37 passed, 1 warning`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build` from `apps/web`: passed.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+- `docker compose -f docker-compose.local.yml config`: passed, with only an existing user-level Docker config permission warning.
+- `rg` scanner check for f-string `execute()` patterns: no matches in `sqlite_repo.py`.
+- `scripts/ship_check.ps1`: passed full EOD gate.
+  - Backend tests: passed.
+  - API compile: passed.
+  - Web build: passed.
+  - Publish smoke: passed.
+  - Readiness: `ready`, `indexed_documents=9`, `active_chunks=1880`.
+  - Golden demo Research: passed with 2 citations.
+  - Golden demo Summary-style Research: passed with 2 citations.
+  - Golden demo Exam Lab: passed with 2 citations.
+  - Golden demo Paper Lab: passed with 2 citations.
+  - Golden demo unsupported Chat query: passed with `grounded=false`, `citations=0`.
+
+Tradeoffs:
+
+- HSTS and CSP are opt-in rather than default because localhost HTTP should stay easy to run and HSTS only makes sense behind HTTPS.
+- Authentication was intentionally not added because NIRMIQ is still a local single-user system, not a hosted SaaS.
+- Cloud error tracking was intentionally not added because default telemetry conflicts with the privacy/offline-first contract.
+- Docker is now better for reviewer verification, but Windows PowerShell launch remains the preferred RTX 4050/Ollama path.
+- SQLite dynamic placeholder SQL remains where needed for `IN (...)`, but scanner-triggering f-string `execute()` patterns were removed and user values remain parameterized.
+
+Remaining ship debt:
+
+- Capture README screenshots/GIFs.
+- Expand retrieval eval dataset from 10 to 30-40 questions.
+- Add local data purge/export UI.
+- Add chapter-wise summaries for long textbooks.
+- Add optional local bug-report bundle export.
+- Add hosted auth only if a future version becomes a public multi-user SaaS.
+
+Commit:
+
+- Pending in this work unit: EOD ship readiness hardening.

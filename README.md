@@ -2,6 +2,10 @@
 
 > Upload. Understand. Verify. Learn.
 
+[![NIRMIQ CI](https://github.com/SheeshDarth/NirmiqResearchOS/actions/workflows/ci.yml/badge.svg?branch=v3-foundation)](https://github.com/SheeshDarth/NirmiqResearchOS/actions/workflows/ci.yml)
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+![Local first](https://img.shields.io/badge/local--first-yes-64d8bd.svg)
+
 ![NIRMIQ ResearchOS mark](apps/web/public/brand/nirmiq-ais-mark.svg)
 
 **NIRMIQ ResearchOS** is an offline-first academic document intelligence system built for students, researchers, and builders who need reliable answers from their own material.
@@ -128,6 +132,10 @@ Implemented in the current repository:
 - Generate Exam Lab custom PDFs from grounded responses.
 - Run local smoke checks, backend tests, and frontend production build.
 - Evaluate retrieval on a bundled 10-question demo dataset.
+- Run GitHub CI for backend tests, API compile, frontend build, and Docker Compose validation.
+- Run optional Docker dev containers with checked-in API and web Dockerfiles.
+- Use `/api/v1/*` routes while preserving the original local API route paths.
+- Enforce local request body limits, response compression, and scanner-clean SQLite migrations.
 
 ## Planned Next
 
@@ -282,6 +290,15 @@ cd C:\Nirmiq-researchOS
 .\scripts\bootstrap.ps1
 ```
 
+Root command hub:
+
+```powershell
+cd C:\Nirmiq-researchOS
+npm.cmd run start
+npm.cmd run start:golden
+npm.cmd run ship:check
+```
+
 Run local preview:
 
 ```powershell
@@ -346,7 +363,7 @@ Then open:
 
 Notes:
 
-- The compose file installs Python and Node dependencies inside dev containers.
+- The compose file builds checked-in API and web Dockerfiles.
 - Ollama is disabled by default in Docker compose so the demo works without GPU passthrough.
 - For best local model performance on Windows, use `scripts/start_local.ps1` instead of Docker.
 
@@ -416,6 +433,18 @@ Expected:
 - Readiness reports `cloud_api_required=false`.
 - Web shell includes NIRMIQ branding.
 
+## Ship Readiness
+
+Current public-release posture:
+
+- Intended release type: local-first portfolio/demo MVP.
+- Not intended yet: hosted multi-user SaaS.
+- CI: `.github/workflows/ci.yml` verifies backend tests, compile, web build, and Docker Compose config.
+- Ownership: `.github/CODEOWNERS` routes project ownership to `@SheeshDarth`.
+- License: MIT.
+- Security: request body limits, baseline security headers, optional production HSTS/CSP toggles, CORS allowlist, upload sniffing, and local-path ingestion restrictions.
+- API stability: existing routes are preserved, with `/api/v1` aliases available for future clients.
+
 ## Golden Demo
 
 The fastest way to review NIRMIQ is the bundled offline golden demo.
@@ -459,11 +488,9 @@ Primary demo docs:
 
 ```powershell
 cd C:\Nirmiq-researchOS
-$env:PYTHONPATH='apps/api'
-python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q
-python -m compileall apps/api/app
-cd apps/web
-npm run build
+.\scripts\test_api.ps1
+npm.cmd run compile:api
+npm.cmd run build
 ```
 
 ## Demo Flow
@@ -507,6 +534,7 @@ Offline access over cloud dependency
 ## Important Docs
 
 - [Publish checklist](docs/publish_checklist.md)
+- [Ship readiness notes](docs/ship_readiness.md)
 - [Demo dataset](docs/demo_dataset.md)
 - [Retrieval evaluation results](docs/retrieval_eval_results.md)
 - [Demo assets guide](docs/demo_assets.md)
@@ -532,4 +560,4 @@ Built by Siddharth as part of the NIRMIQ ecosystem.
 
 ## License
 
-To be decided.
+MIT. See [LICENSE](LICENSE).

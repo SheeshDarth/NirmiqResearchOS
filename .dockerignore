@@ -1,0 +1,19 @@
+.git
+.github
+.pytest_cache
+**/__pycache__
+**/*.pyc
+**/.next
+**/node_modules
+temp
+tools/gh
+data/sqlite
+data/cache
+data/indexes/chroma
+data/processed/diagrams
+data/raw/uploads
+*.log
+Finale AI*.pdf
+flyrank-internship-confirmation*.pdf
+WhatsApp Image *.jpeg
+logo multiple.png

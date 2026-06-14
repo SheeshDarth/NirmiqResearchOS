@@ -1,0 +1,21 @@
+{
+  "name": "nirmiq-researchos",
+  "version": "0.4.0-demo",
+  "private": true,
+  "description": "Offline-first academic document intelligence workspace with local RAG, citations, Paper Lab, and Exam Lab.",
+  "scripts": {
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_local.ps1",
+    "start:golden": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_local.ps1 -GoldenDemo",
+    "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop_local.ps1",
+    "build": "npm --prefix apps/web run build",
+    "build:web": "npm --prefix apps/web run build",
+    "test:api": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_api.ps1",
+    "compile:api": "python -m compileall apps/api/app",
+    "eval:demo": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/eval_demo_dataset.ps1",
+    "ship:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ship_check.ps1"
+  },
+  "engines": {
+    "node": ">=22",
+    "python": ">=3.11"
+  }
+}

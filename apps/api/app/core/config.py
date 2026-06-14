@@ -10,6 +10,9 @@ class Settings(BaseModel):
     api_port: int
     web_allowed_origins: list[str]
     log_level: str
+    max_request_body_bytes: int
+    enable_hsts: bool
+    enable_content_security_policy: bool
     workspace_root: Path
     sqlite_path: Path
     chroma_path: Path
@@ -72,6 +75,11 @@ class Settings(BaseModel):
                 if part.strip()
             ],
             log_level=os.getenv("LOG_LEVEL", "INFO"),
+            max_request_body_bytes=int(os.getenv("MAX_REQUEST_BODY_BYTES", str(75 * 1024 * 1024))),
+            enable_hsts=os.getenv("ENABLE_HSTS", "false").lower() == "true",
+            enable_content_security_policy=(
+                os.getenv("ENABLE_CONTENT_SECURITY_POLICY", "false").lower() == "true"
+            ),
             workspace_root=workspace_root,
             sqlite_path=Path(os.getenv("SQLITE_PATH", str(sqlite_default))),
             chroma_path=Path(os.getenv("CHROMA_PATH", str(chroma_default))),

@@ -60,17 +60,18 @@ cd C:\Nirmiq-researchOS
 
 ## Latest Local Result
 
-Verified on 2026-06-11 with `scripts/ship_check.ps1`:
+Verified on 2026-06-14 with `scripts/ship_check.ps1`:
 
-- Implementation commit: `928906b`.
-- Backend tests: 31 passed, 1 warning.
+- Implementation commit: pending EOD ship sprint commit.
+- Backend tests: 37 passed, 1 warning.
 - API compile: passed.
 - Web production build: passed.
 - Publish smoke: passed with `cloud_api_required=false`.
-- Research query: passed with citations.
-- Summary-style research query: passed with citations.
-- Exam Lab query: passed with citations.
-- Paper Lab query: passed with citations.
+- Readiness: `ready`, `indexed_documents=9`, `active_chunks=1880`.
+- Research query: passed with 2 citations.
+- Summary-style research query: passed with 2 citations.
+- Exam Lab query: passed with 2 citations.
+- Paper Lab query: passed with 2 citations.
 - Unsupported Chat query: passed with `grounded=false` and zero citations.
 
 ## Tradeoff

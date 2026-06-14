@@ -1,6 +1,6 @@
 # NIRMIQ Backend Architecture
 
-Last updated: 2026-06-06
+Last updated: 2026-06-14
 
 ## Overview
 
@@ -26,6 +26,19 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - `MemoryService`: session snapshots and continuity.
 - `DocumentsService`: library and chunk drilldown.
 - `ExamService`: exam profiles, question banks, and exam-specific artifacts.
+
+## API Surface
+
+The backend preserves the original local MVP routes while also exposing `/api/v1` aliases for future clients.
+
+Examples:
+
+- Legacy: `GET /health`
+- Versioned: `GET /api/v1/health`
+- Legacy: `POST /query`
+- Versioned: `POST /api/v1/query`
+
+This keeps the current frontend stable while addressing API-versioning readiness.
 
 ## Data Lifecycle
 
@@ -64,6 +77,7 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - Exam profiles and question banks.
 - Diagram/image metadata as the project expands.
 - Document summary cache keyed by document id, content hash, and summary profile.
+- Schema migrations use allowlisted identifiers rather than user-controlled dynamic SQL.
 
 ## Chroma Responsibilities
 
@@ -97,6 +111,9 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - Citation coverage metadata and compact UI trust badge.
 - Paper Lab deterministic related-work matrix, citation clusters, outline metadata, and Markdown export.
 - Low-memory local model profile exposed through readiness metadata.
+- Request body size enforcement before large local uploads are processed.
+- Response compression for larger local API payloads.
+- Production-only HSTS/CSP toggles that remain disabled on localhost by default.
 
 ## Next Backend Upgrades
 
@@ -104,6 +121,7 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - Multi-document source diversity controls for Paper Lab.
 - Local data purge/export endpoints.
 - Optional local agent orchestrator with explicit tool allowlists and approval gates.
+- Optional local bug-report bundle export instead of cloud error tracking.
 
 ## 2026-06-11 Accuracy Rescue Architecture Update
 

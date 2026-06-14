@@ -1,0 +1,61 @@
+name: NIRMIQ CI
+
+on:
+  push:
+    branches:
+      - main
+      - v3-foundation
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Backend tests and web build
+    runs-on: windows-latest
+    env:
+      PYTHONPATH: apps/api
+      USE_OLLAMA_GENERATION: "false"
+      USE_OLLAMA_EMBEDDINGS: "false"
+      USE_OLLAMA_RERANKER: "false"
+      LOW_MEMORY_MODE: "true"
+      SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e apps/api
+
+      - name: Backend tests
+        shell: pwsh
+        run: ./scripts/test_api.ps1
+
+      - name: Compile backend
+        run: python -m compileall apps/api/app
+
+      - name: Install frontend
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://127.0.0.1:8000
+        run: npm run build
+
+      - name: Validate Docker Compose config
+        run: docker compose -f docker-compose.local.yml config
