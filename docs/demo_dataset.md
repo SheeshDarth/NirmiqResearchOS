@@ -12,8 +12,9 @@ Both PDFs are original synthetic demo documents created for this repository. The
 ## Labels
 
 - `data/processed/eval/demo_academic_qa.jsonl`
-- 10 questions total.
+- 30 questions total.
 - Covers hybrid retrieval, citation behavior, hallucination control, retrieval metrics, exam answer formats, study guides, diagram handling, and offline privacy.
+- Includes local trust controls such as delete, export, and clear indexed material.
 
 Each row includes:
 

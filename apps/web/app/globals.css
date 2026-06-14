@@ -642,6 +642,44 @@ summary:focus-visible {
   background: transparent;
 }
 
+.privacy-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(109, 139, 116, 0.22);
+  border-radius: 18px;
+  padding: 13px;
+  background:
+    linear-gradient(135deg, rgba(109, 139, 116, 0.12), transparent 58%),
+    rgba(9, 12, 13, 0.62);
+}
+
+.privacy-card strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--nirmiq-text);
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+}
+
+.privacy-card span {
+  display: block;
+  margin-top: 4px;
+  color: var(--nirmiq-text-subtle);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.privacy-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.privacy-actions .button {
+  width: 100%;
+  justify-content: center;
+}
+
 .chip,
 .tab,
 .citation-chip {

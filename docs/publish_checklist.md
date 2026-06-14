@@ -137,7 +137,7 @@ Expected:
 7. Click `Export` to create a local Markdown answer with citations.
 8. Switch to `Paper Lab` and run the locked related-work prompt.
 9. Switch to `Exam Lab` and run the locked 10-mark answer prompt.
-10. Open `Knowledge Base` and show `Remove material` as the privacy/purge moment.
+10. Open `Knowledge Base` and show Local Data controls: export thread, clear thread, and clear indexed material.
 
 ## Locked Demo Prompts
 

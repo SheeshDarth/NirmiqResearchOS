@@ -6,6 +6,7 @@ from app.api.schemas.documents import (
     DocumentDetailResponse,
     DocumentItem,
     DocumentListResponse,
+    DocumentPurgeResponse,
 )
 
 
@@ -65,6 +66,20 @@ class DocumentsService:
             raise ValueError(f"Document not found: {document_id}")
         await self._chroma_repo.delete_document(document_id)
         return DocumentDeleteResponse(document_id=document_id, deleted=True)
+
+    async def purge_documents(self) -> DocumentPurgeResponse:
+        deleted_document_ids = self._sqlite_repo.delete_all_documents()
+        vector_store_cleared = await self._chroma_repo.clear_all_documents()
+        return DocumentPurgeResponse(
+            deleted_count=len(deleted_document_ids),
+            deleted_document_ids=deleted_document_ids,
+            vector_store_cleared=vector_store_cleared,
+            source_files_deleted=False,
+            note=(
+                "Cleared NIRMIQ document metadata, chunks, jobs, summaries, exam artifacts, "
+                "and vector entries. Source files on disk were not deleted."
+            ),
+        )
 
     @staticmethod
     def _display_status(status: str, active_chunk_count: int) -> str:

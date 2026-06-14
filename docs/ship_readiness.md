@@ -88,8 +88,8 @@ Recommended proof assets:
 ## Remaining Ship Debt
 
 - Capture README screenshots/GIFs.
-- Expand the retrieval eval set from 10 to 30-40 questions.
-- Add local data purge/export UI.
+- Add real engineering/textbook labels beyond the current 30-question synthetic demo set.
+- Add optional uploaded-source-file purge after safe file ownership checks.
 - Add chapter-wise summaries for long textbooks.
 - Add optional local log bundle export instead of cloud error tracking.
 - Add hosted-auth design only if public multi-user deployment becomes a goal.

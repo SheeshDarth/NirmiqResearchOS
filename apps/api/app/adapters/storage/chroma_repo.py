@@ -33,6 +33,12 @@ class ChromaRepo:
                 return
             raise
 
+    async def clear_all_documents(self) -> bool:
+        if not self.is_available():
+            return False
+        self._reset_collection()
+        return True
+
     async def upsert_chunks(self, chunks: list[dict[str, object]], embeddings: list[list[float]]) -> None:
         if not chunks or not embeddings or len(chunks) != len(embeddings):
             return

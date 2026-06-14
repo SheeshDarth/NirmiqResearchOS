@@ -12,6 +12,13 @@ class SessionSummaryResponse(BaseModel):
     message_count: int
 
 
+class SessionDeleteResponse(BaseModel):
+    session_id: str
+    deleted: bool
+    deleted_messages: int
+    deleted_snapshots: int
+
+
 class SessionTimelineMessage(BaseModel):
     id: str
     role: Literal["user", "assistant", "system"]

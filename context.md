@@ -1708,8 +1708,8 @@ Tradeoffs:
 Remaining ship debt:
 
 - Capture README screenshots/GIFs.
-- Expand retrieval eval dataset from 10 to 30-40 questions.
-- Add local data purge/export UI.
+- Add real-world retrieval eval labels beyond the synthetic demo set.
+- Add uploaded-source-file purge after safe ownership checks.
 - Add chapter-wise summaries for long textbooks.
 - Add optional local bug-report bundle export.
 - Add hosted auth only if a future version becomes a public multi-user SaaS.
@@ -1717,3 +1717,90 @@ Remaining ship debt:
 Commit:
 
 - `c15b0fb` - Add EOD ship readiness hardening.
+
+### Latest Update: Privacy Controls And 30-Sample Retrieval Eval Sprint
+
+Date: 2026-06-14
+
+Purpose:
+
+- Continue the post-ship polish sprint without complicating the UI.
+- Add reviewer-visible local privacy/reset controls.
+- Strengthen the retrieval benchmark from a tiny 10-question demo to a broader 30-question phrase-labeled dataset.
+
+Implemented:
+
+- Added backend local data controls:
+  - `GET /memory/{session_id}/export` returns a local Markdown thread export.
+  - `DELETE /memory/{session_id}` clears local session messages and snapshots.
+  - `DELETE /documents` clears all indexed document metadata, chunks, jobs, summaries, exam artifacts, and vector entries.
+- Added storage/service support:
+  - `SQLiteRepo.delete_session`
+  - `SQLiteRepo.delete_all_documents`
+  - `ChromaRepo.clear_all_documents`
+  - `MemoryService.export_markdown`
+  - `MemoryService.delete_session`
+  - `DocumentsService.purge_documents`
+- Added typed frontend API client methods:
+  - `exportSessionMarkdown`
+  - `deleteSession`
+  - `purgeDocuments`
+- Added a compact `Local Data` card in the Knowledge Base rail:
+  - Export thread.
+  - Clear thread.
+  - Clear indexed material.
+- Kept purge behavior safe:
+  - NIRMIQ clears local database/vector/index state.
+  - Source files on disk are not deleted yet because arbitrary filesystem deletion is risky.
+- Expanded `data/processed/eval/demo_academic_qa.jsonl` from 10 to 30 phrase-labeled questions.
+- Regenerated `data/processed/eval/demo_retrieval_metrics.json`.
+- Updated docs:
+  - `README.md`
+  - `docs/demo_dataset.md`
+  - `docs/retrieval_eval_results.md`
+  - `docs/benchmark_report.md`
+  - `docs/security.md`
+  - `docs/publish_checklist.md`
+  - `docs/ship_readiness.md`
+  - `backend_architecture.md`
+  - `trd.md`
+
+Latest expanded demo retrieval metrics:
+
+- Hybrid: samples `30`, MRR `0.967`, Recall@3/5/8 `1.00`, nDCG@3 `0.847`, citation expected coverage `1.00`.
+- BM25: samples `30`, MRR `0.839`, Recall@3/5/8 `1.00`, nDCG@3 `0.749`, citation expected coverage `1.00`.
+
+Validation:
+
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/eval_demo_dataset.ps1`: passed and wrote expanded metrics.
+- `npm.cmd run test:api`: `37 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed; frontend route `/` size `15.3 kB`, first load JS `115 kB`.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ship_check.ps1`: passed.
+  - Backend tests: passed.
+  - API compile: passed.
+  - Web build: passed.
+  - Publish smoke: passed.
+  - Golden demo Research: passed with 2 citations.
+  - Golden demo Summary-style Research: passed with 2 citations.
+  - Golden demo Exam Lab: passed with 2 citations.
+  - Golden demo Paper Lab: passed with 2 citations.
+  - Golden demo unsupported Chat query: passed with `grounded=false`, `citations=0`.
+- `docker compose -f docker-compose.local.yml config`: passed; same user-level Docker config permission warning remains.
+
+Tradeoffs:
+
+- The clear-indexed-material control does not delete raw source files yet. This is safer for local-path ingestion because the app can point at files outside its ownership.
+- The 30-question dataset is still synthetic and compact. The next quality sprint should add labels from real textbooks, notes, and papers.
+- The browser visual smoke could not be run from the current tool set, but the frontend production build and full ship check passed.
+
+Remaining next sprint candidates:
+
+- Capture README screenshots/GIFs.
+- Add real-world eval labels beyond the synthetic demo PDFs.
+- Add uploaded-file-only source purge with explicit ownership checks.
+- Add local bug-report bundle export.
+
+Commit:
+
+- Pending in this work unit: privacy controls and 30-sample retrieval eval.

@@ -4,7 +4,9 @@ import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useS
 
 import {
   deleteDocument,
+  deleteSession,
   diagramAssetUrl,
+  exportSessionMarkdown,
   getDocument,
   getIngestJobs,
   getIngestStatus,
@@ -17,6 +19,7 @@ import {
   listDiagrams,
   listQuestionBank,
   listDocuments,
+  purgeDocuments,
   runQuery,
   upsertExamProfile,
   uploadDocument,
@@ -46,7 +49,16 @@ type StudyMode =
   | "important_questions"
   | "compare_concepts"
   | "study_guide";
-type BusyState = "" | "health" | "ingest" | "query" | "status" | "documents" | "delete" | "demo";
+type BusyState =
+  | ""
+  | "health"
+  | "ingest"
+  | "query"
+  | "status"
+  | "documents"
+  | "delete"
+  | "demo"
+  | "privacy";
 type DeepView = "evidence" | "context" | "compare" | "eval";
 type Chunk = DocumentDetailResponse["chunks"][number];
 
@@ -1175,6 +1187,73 @@ export default function Home() {
     setError("Answer exported locally as Markdown with citations.");
   }
 
+  async function onExportThread() {
+    if (!sessionId.trim()) return;
+    setBusy("privacy");
+    setError("");
+    try {
+      const markdown = await exportSessionMarkdown(sessionId.trim());
+      const filename = `nirmiq-thread-${sessionId.trim().replace(/[^a-z0-9_-]+/gi, "-").slice(0, 48)}.md`;
+      downloadTextFile(filename, markdown);
+      setError("Thread exported locally as Markdown.");
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onClearSession() {
+    if (!sessionId.trim() || busy !== "") return;
+    const confirmed = window.confirm(
+      "Clear this NIRMIQ thread from local memory? Indexed documents remain available.",
+    );
+    if (!confirmed) return;
+    setBusy("privacy");
+    setError("");
+    try {
+      const response = await deleteSession(sessionId.trim());
+      setQueryHistory([]);
+      setQueryResult(null);
+      setMemory(null);
+      setTimeline(null);
+      setError(`Cleared ${response.deleted_messages} local thread messages.`);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onPurgeDocuments() {
+    if (busy !== "") return;
+    const confirmed = window.confirm(
+      "Clear all indexed material from NIRMIQ? This removes local chunks, summaries, jobs, exam artifacts, and vector entries. Source files on disk are not deleted.",
+    );
+    if (!confirmed) return;
+    setBusy("privacy");
+    setError("");
+    try {
+      const response = await purgeDocuments();
+      setDocuments([]);
+      setDocumentId("");
+      setSelectedDocumentDetail(null);
+      setSelectedChunkId("");
+      setIngestStatus(null);
+      setIngestJobs(null);
+      setQuestionBankItems([]);
+      setDiagramAssets([]);
+      setExamProfile(null);
+      setQueryResult(null);
+      setDeepView("evidence");
+      setError(`Cleared ${response.deleted_count} indexed material item(s). Source files were not deleted.`);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
   function selectDocument(item: DocumentItem) {
     setDocumentId(item.id);
     setSelectedChunkId("");
@@ -1525,6 +1604,29 @@ export default function Home() {
               {busy === "delete" ? "Removing..." : "Remove material"}
             </button>
           ) : null}
+          <div className="privacy-card">
+            <div>
+              <p className="eyebrow">Local Data</p>
+              <strong>Private by default</strong>
+              <span>Export or reset local workspace state without cloud sync.</span>
+            </div>
+            <div className="privacy-actions">
+              <button className="button ghost" disabled={busy !== ""} onClick={onExportThread} type="button">
+                Export thread
+              </button>
+              <button className="button ghost" disabled={busy !== ""} onClick={onClearSession} type="button">
+                Clear thread
+              </button>
+              <button
+                className="button danger"
+                disabled={busy !== "" || documents.length === 0}
+                onClick={onPurgeDocuments}
+                type="button"
+              >
+                Clear indexed material
+              </button>
+            </div>
+          </div>
           <div className="material-list">
             {documents.length ? (
               documents.map((item) => (

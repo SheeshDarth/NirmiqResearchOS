@@ -25,6 +25,10 @@ NIRMIQ currently runs as a local single-user application. The login screen is a 
 - Uploads are content-sniffed for common spoofing cases before indexing.
 - Runtime/generated database and vector files ignored by Git.
 - SQLite migration identifiers are allowlisted to avoid dynamic user-controlled SQL identifiers.
+- Local Data controls in the UI:
+  - Export current thread as Markdown.
+  - Clear current thread memory and snapshots.
+  - Clear indexed document metadata, chunks, summaries, jobs, exam artifacts, and vector entries.
 
 ## V3 Local Data Protection Protocol
 
@@ -48,6 +52,7 @@ NIRMIQ is designed to protect the user from accidental data leakage while preser
 - Local documents and extracted diagrams remain on disk.
 - If optional cloud/API providers are added later, explicit consent, redaction controls, and visible mode labels are required.
 - SQLite and raw document files are not encrypted at rest yet.
+- `Clear indexed material` does not delete arbitrary source files from disk. This is intentional to avoid unsafe filesystem deletion.
 - No external error-tracking service is enabled because default telemetry would conflict with the local-first privacy contract.
 - HSTS is disabled by default because local HTTP development should not set HTTPS-only browser policy.
 
@@ -55,7 +60,7 @@ NIRMIQ is designed to protect the user from accidental data leakage while preser
 
 1. Add real authentication only if hosted or multi-user deployment is introduced.
 2. Add encrypted local vault support for SQLite and extracted assets.
-3. Add document deletion and secure purge flows.
+3. Add optional secure source-file purge for uploaded files only, with explicit confirmation.
 4. Add provider consent screens before sending content to external APIs.
 5. Add audit log export for document operations.
 6. Add optional local encryption for SQLite, raw uploads, extracted diagrams, and parse cache.

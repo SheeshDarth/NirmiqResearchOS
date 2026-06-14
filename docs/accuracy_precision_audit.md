@@ -197,7 +197,7 @@ Implemented support around the accuracy system:
 
 Accuracy debt that remains:
 
-- Expand the phrase-labeled demo QA set from 10 to 30-40 samples.
+- Add real textbook, notes, and paper labels beyond the current 30-sample synthetic demo set.
 - Add unanswerable/abstention labels to the eval report.
 - Add latency and cache-hit timing to retrieval benchmark output.
 - Capture public demo assets showing citations, trust badges, and source chunks.

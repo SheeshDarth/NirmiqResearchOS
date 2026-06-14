@@ -104,6 +104,7 @@ Implemented in the current repository:
 - Locked reviewer prompts for Research, Summary, Paper Lab, Exam Lab, and abstention behavior.
 - Golden demo smoke script that fails if unsupported chat prompts return grounded answers.
 - Local answer export as Markdown with citations.
+- Whole-thread Markdown export from local session memory.
 - Upload PDFs, text, Markdown, and images.
 - Ingest local-path documents from trusted corpus roots.
 - Summarize selected PDFs with citations.
@@ -120,6 +121,7 @@ Implemented in the current repository:
 - Use Exam Lab for marks-oriented answers, study guides, question-bank support, and printable custom PDFs.
 - Check local publish readiness through `/health/readiness` and `scripts/publish_smoke.ps1`.
 - Run with a low-memory local model profile: bounded Ollama context, bounded prediction length, short keep-alive, and batched embeddings.
+- Use Local Data controls to clear current thread memory or clear indexed material while leaving source files on disk.
 
 ## What Works Now
 
@@ -129,9 +131,11 @@ Implemented in the current repository:
 - Inspect evidence chunks in the Deep Research panel.
 - Run Research, Chat, Paper Lab, and Exam Lab modes from one workspace.
 - Export grounded answers/drafts as local Markdown.
+- Export the current thread as local Markdown.
 - Generate Exam Lab custom PDFs from grounded responses.
+- Clear thread memory and indexed material from the UI for privacy/reset demos.
 - Run local smoke checks, backend tests, and frontend production build.
-- Evaluate retrieval on a bundled 10-question demo dataset.
+- Evaluate retrieval on a bundled 30-question demo dataset.
 - Run GitHub CI for backend tests, API compile, frontend build, and Docker Compose validation.
 - Run optional Docker dev containers with checked-in API and web Dockerfiles.
 - Use `/api/v1/*` routes while preserving the original local API route paths.
@@ -384,12 +388,12 @@ cd C:\Nirmiq-researchOS
 .\scripts\eval_demo_dataset.ps1
 ```
 
-Latest local retrieval results on 10 labeled questions:
+Latest local retrieval results on 30 labeled questions:
 
 | Mode | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 0.95 | 1.00 | 1.00 | 1.00 | 0.708 | 1.00 |
-| BM25 | 0.90 | 1.00 | 1.00 | 1.00 | 0.642 | 1.00 |
+| Hybrid | 0.967 | 1.00 | 1.00 | 1.00 | 0.847 | 1.00 |
+| BM25 | 0.839 | 1.00 | 1.00 | 1.00 | 0.749 | 1.00 |
 
 Details:
 

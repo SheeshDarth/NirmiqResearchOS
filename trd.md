@@ -72,6 +72,9 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - `POST /query` debug metadata may include cache hit, detected intent, intent route, and citation coverage fields.
 - `POST /query` debug metadata may include `paper_lab` only for paper-draft intent.
 - `GET /memory/{session_id}`: session memory snapshot.
+- `GET /memory/{session_id}/export`: local Markdown export of the session.
+- `DELETE /memory/{session_id}`: clear local session messages and snapshots.
+- `DELETE /documents`: clear all indexed material, metadata, summaries, jobs, exam artifacts, and vector entries without deleting source files from disk.
 - Exam routes for profiles, question banks, and study/exam artifacts.
 - `/api/v1/*` aliases must remain available for all current API groups while legacy local routes remain stable for the existing frontend.
 

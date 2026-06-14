@@ -80,16 +80,16 @@ This benchmark favors demo reliability over statistical breadth. A larger retrie
 
 ## Demo Academic Retrieval Results
 
-Updated on 2026-06-13 with the lightweight PDF demo dataset:
+Updated on 2026-06-14 with the lightweight PDF demo dataset:
 
 - Dataset: `data/processed/eval/demo_academic_qa.jsonl`
 - Sources: `data/raw/demo_pdfs/nirmiq_rag_reference.pdf`, `data/raw/demo_pdfs/nirmiq_exam_reference.pdf`
-- Samples: 10 phrase-labeled QA items
+- Samples: 30 phrase-labeled QA items
 
 | Mode | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 0.95 | 1.00 | 1.00 | 1.00 | 0.708 | 1.00 |
-| BM25 | 0.90 | 1.00 | 1.00 | 1.00 | 0.642 | 1.00 |
+| Hybrid | 0.967 | 1.00 | 1.00 | 1.00 | 0.847 | 1.00 |
+| BM25 | 0.839 | 1.00 | 1.00 | 1.00 | 0.749 | 1.00 |
 
 Command:
 

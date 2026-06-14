@@ -215,6 +215,19 @@ class SQLiteRepo:
             conn.execute("DELETE FROM documents WHERE id = ?", (document_id,))
         return True
 
+    def delete_all_documents(self) -> list[str]:
+        with self._connect() as conn:
+            rows = conn.execute("SELECT id FROM documents ORDER BY updated_at DESC").fetchall()
+            document_ids = [str(row["id"]) for row in rows]
+            conn.execute("DELETE FROM diagram_assets")
+            conn.execute("DELETE FROM document_summaries")
+            conn.execute("DELETE FROM question_bank_items")
+            conn.execute("DELETE FROM exam_profiles")
+            conn.execute("DELETE FROM ingestion_jobs")
+            conn.execute("DELETE FROM document_chunks")
+            conn.execute("DELETE FROM documents")
+        return document_ids
+
     def list_documents(self) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
@@ -608,6 +621,28 @@ class SQLiteRepo:
         ordered = [dict(row) for row in rows]
         ordered.reverse()
         return ordered
+
+    def delete_session(self, session_id: str) -> dict[str, int | bool]:
+        with self._connect() as conn:
+            message_row = conn.execute(
+                "SELECT COUNT(*) AS count FROM messages WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+            snapshot_row = conn.execute(
+                "SELECT COUNT(*) AS count FROM memory_snapshots WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+            session_row = conn.execute("SELECT id FROM sessions WHERE id = ?", (session_id,)).fetchone()
+            deleted_messages = int(message_row["count"]) if message_row else 0
+            deleted_snapshots = int(snapshot_row["count"]) if snapshot_row else 0
+            conn.execute("DELETE FROM memory_snapshots WHERE session_id = ?", (session_id,))
+            conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+            conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+        return {
+            "deleted": bool(session_row or deleted_messages or deleted_snapshots),
+            "deleted_messages": deleted_messages,
+            "deleted_snapshots": deleted_snapshots,
+        }
 
     def get_latest_memory_snapshot(self, session_id: str) -> dict[str, Any] | None:
         with self._connect() as conn:

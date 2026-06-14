@@ -25,6 +25,7 @@ The backend is a single FastAPI service with modular internals. This keeps the M
 - `QueryService`: end-to-end query orchestration, intent routing, summary cache orchestration, mode/profile handling, memory writes.
 - `MemoryService`: session snapshots and continuity.
 - `DocumentsService`: library and chunk drilldown.
+- `Local Data Controls`: thread export/delete and document-index purge through existing memory/document services.
 - `ExamService`: exam profiles, question banks, and exam-specific artifacts.
 
 ## API Surface
@@ -114,6 +115,7 @@ This keeps the current frontend stable while addressing API-versioning readiness
 - Request body size enforcement before large local uploads are processed.
 - Response compression for larger local API payloads.
 - Production-only HSTS/CSP toggles that remain disabled on localhost by default.
+- Thread Markdown export, session memory deletion, and indexed-material purge for local privacy/reviewer demos.
 
 ## Next Backend Upgrades
 

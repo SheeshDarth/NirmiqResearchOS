@@ -200,6 +200,22 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert timeline_body["messages"][-1]["role"] == "assistant"
         assert timeline_body["messages"][-1]["retrieval_meta"]["requested_retrieval_mode"] == "bm25"
 
+        export_response = client.get("/memory/integration-session/export")
+        assert export_response.status_code == 200
+        assert "NIRMIQ Thread Export" in export_response.text
+        assert "What is NIRMIQ focused on?" in export_response.text
+        assert "Citations:" in export_response.text
+
+        clear_session_response = client.delete("/memory/integration-session")
+        assert clear_session_response.status_code == 200
+        clear_session_body = clear_session_response.json()
+        assert clear_session_body["deleted"] is True
+        assert clear_session_body["deleted_messages"] >= 2
+
+        cleared_timeline_response = client.get("/memory/integration-session/timeline")
+        assert cleared_timeline_response.status_code == 200
+        assert cleared_timeline_response.json()["message_count"] == 0
+
         delete_response = client.delete(f"/documents/{document_id}")
         assert delete_response.status_code == 200
         assert delete_response.json() == {"document_id": document_id, "deleted": True}
@@ -232,3 +248,13 @@ def test_upload_ingest_roundtrip() -> None:
         assert detail["title"] == "Uploaded Notes"
         assert detail["active_chunk_count"] >= 1
         assert "uploaded-notes" in detail["source_path"]
+
+        purge_response = client.delete("/documents")
+        assert purge_response.status_code == 200
+        purge_body = purge_response.json()
+        assert purge_body["deleted_count"] >= 1
+        assert document_id in purge_body["deleted_document_ids"]
+        assert purge_body["source_files_deleted"] is False
+
+        missing_detail = client.get(f"/documents/{document_id}")
+        assert missing_detail.status_code == 404

@@ -87,6 +87,13 @@ export type SessionTimelineResponse = {
   }>;
 };
 
+export type SessionDeleteResponse = {
+  session_id: string;
+  deleted: boolean;
+  deleted_messages: number;
+  deleted_snapshots: number;
+};
+
 export type DocumentItem = {
   id: string;
   title?: string | null;
@@ -103,6 +110,14 @@ export type DocumentListResponse = {
 export type DocumentDeleteResponse = {
   document_id: string;
   deleted: boolean;
+};
+
+export type DocumentPurgeResponse = {
+  deleted_count: number;
+  deleted_document_ids: string[];
+  vector_store_cleared: boolean;
+  source_files_deleted: boolean;
+  note: string;
 };
 
 export type DocumentDetailResponse = DocumentItem & {
@@ -253,6 +268,22 @@ export async function getSessionTimeline(sessionId: string): Promise<SessionTime
   return parseJson<SessionTimelineResponse>(response);
 }
 
+export async function exportSessionMarkdown(sessionId: string): Promise<string> {
+  const response = await fetch(`${API_BASE}/memory/${encodeURIComponent(sessionId)}/export`);
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`HTTP ${response.status}: ${body}`);
+  }
+  return response.text();
+}
+
+export async function deleteSession(sessionId: string): Promise<SessionDeleteResponse> {
+  const response = await fetch(`${API_BASE}/memory/${encodeURIComponent(sessionId)}`, {
+    method: "DELETE",
+  });
+  return parseJson<SessionDeleteResponse>(response);
+}
+
 export async function listDocuments(): Promise<DocumentListResponse> {
   const response = await fetch(`${API_BASE}/documents`);
   return parseJson<DocumentListResponse>(response);
@@ -268,6 +299,13 @@ export async function deleteDocument(documentId: string): Promise<DocumentDelete
     method: "DELETE",
   });
   return parseJson<DocumentDeleteResponse>(response);
+}
+
+export async function purgeDocuments(): Promise<DocumentPurgeResponse> {
+  const response = await fetch(`${API_BASE}/documents`, {
+    method: "DELETE",
+  });
+  return parseJson<DocumentPurgeResponse>(response);
 }
 
 export async function upsertExamProfile(payload: {

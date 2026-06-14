@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.schemas.documents import DocumentDeleteResponse, DocumentDetailResponse, DocumentListResponse
+from app.api.schemas.documents import (
+    DocumentDeleteResponse,
+    DocumentDetailResponse,
+    DocumentListResponse,
+    DocumentPurgeResponse,
+)
 from app.core.deps import get_documents_service
 from app.services.documents_service import DocumentsService
 
@@ -12,6 +17,13 @@ async def list_documents(
     service: DocumentsService = Depends(get_documents_service),
 ) -> DocumentListResponse:
     return await service.list_documents()
+
+
+@router.delete("", response_model=DocumentPurgeResponse)
+async def purge_documents(
+    service: DocumentsService = Depends(get_documents_service),
+) -> DocumentPurgeResponse:
+    return await service.purge_documents()
 
 
 @router.get("/{document_id}", response_model=DocumentDetailResponse)
