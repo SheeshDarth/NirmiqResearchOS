@@ -1716,4 +1716,4 @@ Remaining ship debt:
 
 Commit:
 
-- Pending in this work unit: EOD ship readiness hardening.
+- `c15b0fb` - Add EOD ship readiness hardening.
