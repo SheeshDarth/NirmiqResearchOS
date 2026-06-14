@@ -1803,4 +1803,4 @@ Remaining next sprint candidates:
 
 Commit:
 
-- Pending in this work unit: privacy controls and 30-sample retrieval eval.
+- `d6e8c99` - Add local privacy controls and expanded eval.

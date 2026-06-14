@@ -62,7 +62,7 @@ cd C:\Nirmiq-researchOS
 
 Verified on 2026-06-14 with `scripts/ship_check.ps1`:
 
-- Implementation commit: `c15b0fb`.
+- Implementation commit: `d6e8c99`.
 - Backend tests: 37 passed, 1 warning.
 - API compile: passed.
 - Web production build: passed.
