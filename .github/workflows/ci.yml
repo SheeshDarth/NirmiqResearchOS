@@ -49,13 +49,13 @@ jobs:
 
       - name: Install frontend
         working-directory: apps/web
-        run: npm ci
+        run: npm.cmd ci
 
       - name: Build frontend
         working-directory: apps/web
         env:
           NEXT_PUBLIC_API_BASE: http://127.0.0.1:8000
-        run: npm run build
+        run: npm.cmd run build
 
       - name: Validate Docker Compose config
         run: docker compose -f docker-compose.local.yml config

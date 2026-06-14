@@ -1804,3 +1804,44 @@ Remaining next sprint candidates:
 Commit:
 
 - `d6e8c99` - Add local privacy controls and expanded eval.
+
+### Latest Update: CI Backend Install Fix
+
+Date: 2026-06-14
+
+Purpose:
+
+- Fix the GitHub Actions `Backend tests and web build` failure after the EOD/privacy sprint pushes.
+
+Root cause:
+
+- CI failed during `python -m pip install -e apps/api` before backend tests or the frontend build ran.
+- Setuptools discovered two top-level packages in `apps/api`: `app` and `alembic`.
+- Because `pyproject.toml` relied on automatic package discovery, editable install failed with:
+  - `Multiple top-level packages discovered in a flat-layout: ['app', 'alembic']`.
+
+Implemented:
+
+- Updated `apps/api/pyproject.toml` with explicit setuptools package discovery:
+  - include `app*`
+  - exclude `alembic*`
+- Pinned Pydantic to `>=2.10.0,<2.11.0` because NIRMIQ works on that range and it avoids unnecessarily upgrading the user's local Python environment in a way that conflicts with unrelated packages such as `f5-tts`.
+- Updated GitHub Actions frontend steps to use `npm.cmd ci` and `npm.cmd run build` so Windows CI never resolves to PowerShell's `npm.ps1` shim.
+- Added `*.egg-info/` to `.gitignore` because editable installs generate local packaging metadata.
+
+Validation:
+
+- `python -m pip install -e apps/api`: passed.
+- `npm.cmd run test:api`: `37 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+
+Notes:
+
+- Local `npm.cmd ci` hit a Windows `EPERM` lock on `apps/web/node_modules\.package-lock.json`; this is local node_modules state, not the GitHub failure, because CI runners start from a clean checkout.
+- The actual failed GitHub run `27505994245` stopped at backend install, so the web build was marked failed by the job outcome rather than by a frontend compile error.
+
+Commit:
+
+- Pending in this work unit: CI backend install/package discovery fix.
