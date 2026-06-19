@@ -5,6 +5,14 @@ const net = require("node:net");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch("in-process-gpu");
+app.commandLine.appendSwitch("disable-gpu-sandbox");
+app.commandLine.appendSwitch("disable-gpu-compositing");
+app.commandLine.appendSwitch("disable-gpu-rasterization");
+app.commandLine.appendSwitch("disable-accelerated-2d-canvas");
+app.commandLine.appendSwitch("disable-features", "UseSkiaRenderer,Vulkan,CanvasOopRasterization");
+
 function looksLikeProjectRoot(candidate) {
   if (!candidate) return false;
   return (
@@ -49,6 +57,9 @@ const TEMP_DIR = path.join(ROOT_DIR, "temp", "desktop");
 const API_URL = "http://127.0.0.1:8000";
 const WEB_URL = "http://127.0.0.1:3002";
 const API_HEALTH_URL = `${API_URL}/health`;
+const USER_DATA_DIR = path.join(TEMP_DIR, "electron-user-data");
+
+app.setPath("userData", USER_DATA_DIR);
 
 const isWindows = process.platform === "win32";
 const npmCommand = isWindows ? "npm.cmd" : "npm";
@@ -72,6 +83,51 @@ function appendLog(name, line) {
   fs.appendFileSync(logPath(name), line);
 }
 
+function buildProcessEnv(extra = {}) {
+  const env = {};
+  const seen = new Set();
+
+  for (const [key, value] of Object.entries(process.env)) {
+    const normalized = isWindows ? key.toLowerCase() : key;
+    if (normalized === "path") continue;
+    if (isWindows && seen.has(normalized)) continue;
+    seen.add(normalized);
+    env[key] = value;
+  }
+
+  const pathValue = process.env.Path || process.env.PATH || "";
+  if (isWindows) {
+    env.Path = pathValue;
+  } else {
+    env.PATH = pathValue;
+  }
+
+  for (const [key, value] of Object.entries(extra)) {
+    if ((isWindows ? key.toLowerCase() : key) === "path") {
+      if (isWindows) {
+        env.Path = value;
+      } else {
+        env.PATH = value;
+      }
+    } else {
+      env[key] = value;
+    }
+  }
+
+  return env;
+}
+
+function commandForPlatform(command, args) {
+  if (!isWindows) {
+    return { command, args };
+  }
+
+  return {
+    command: "cmd.exe",
+    args: ["/d", "/s", "/c", command, ...args],
+  };
+}
+
 function isPortOpen(port) {
   return new Promise((resolve) => {
     const socket = new net.Socket();
@@ -89,10 +145,19 @@ function isPortOpen(port) {
   });
 }
 
-function waitForUrl(url, timeoutMs) {
+function waitForUrl(url, timeoutMs, child, label) {
   const startedAt = Date.now();
   return new Promise((resolve, reject) => {
     const attempt = () => {
+      if (child?.spawnError) {
+        reject(new Error(`${label || "Process"} failed to start: ${child.spawnError.message}`));
+        return;
+      }
+      if (child?.exitInfo) {
+        reject(new Error(`${label || "Process"} exited before ${url} was ready. Check ${logPath(label?.toLowerCase() || "runtime")}.`));
+        return;
+      }
+
       const request = http.get(url, (response) => {
         response.resume();
         if (response.statusCode && response.statusCode < 500) {
@@ -119,25 +184,42 @@ function waitForUrl(url, timeoutMs) {
 }
 
 function spawnLoggedProcess(name, command, args, cwd, env = {}) {
-  appendLog(name, `\n\n[${new Date().toISOString()}] starting: ${command} ${args.join(" ")}\n`);
-  const child = spawn(command, args, {
+  const platformCommand = commandForPlatform(command, args);
+  appendLog(name, `\n\n[${new Date().toISOString()}] starting: ${platformCommand.command} ${platformCommand.args.join(" ")}\n`);
+  appendLog(name, `[${new Date().toISOString()}] cwd: ${cwd}\n`);
+  const child = spawn(platformCommand.command, platformCommand.args, {
     cwd,
-    env: { ...process.env, ...env },
+    env: buildProcessEnv(env),
     windowsHide: true,
     shell: false,
   });
   child.stdout.on("data", (chunk) => appendLog(name, chunk.toString()));
   child.stderr.on("data", (chunk) => appendLog(name, chunk.toString()));
+  child.on("error", (error) => {
+    child.spawnError = error;
+    appendLog(name, `\n[${new Date().toISOString()}] spawn error: ${error.message}\n`);
+  });
   child.on("exit", (code, signal) => {
+    child.exitInfo = { code, signal };
     appendLog(name, `\n[${new Date().toISOString()}] exited code=${code} signal=${signal}\n`);
   });
   return child;
+}
+
+function stopChild(child) {
+  if (!child || child.killed || !child.pid) return;
+  if (isWindows) {
+    spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], { windowsHide: true });
+  } else {
+    child.kill();
+  }
 }
 
 async function startRuntime() {
   if (runtimeStarting) return;
   runtimeStarting = true;
   ensureRuntimeDir();
+  let webScript = null;
   try {
     if (!(await isPortOpen(8000))) {
       apiProcess = spawnLoggedProcess(
@@ -153,12 +235,28 @@ async function startRuntime() {
     }
 
     if (!(await isPortOpen(3002))) {
-      const hasBuild = fs.existsSync(path.join(WEB_DIR, ".next"));
-      webProcess = spawnLoggedProcess("web", npmCommand, ["run", hasBuild ? "start" : "dev"], WEB_DIR);
+      const hasBuild = fs.existsSync(path.join(WEB_DIR, ".next", "BUILD_ID"));
+      webScript = hasBuild ? "start" : "dev";
+      webProcess = spawnLoggedProcess("web", npmCommand, ["run", webScript], WEB_DIR, {
+        NEXT_TELEMETRY_DISABLED: "1",
+      });
     }
 
-    await waitForUrl(API_HEALTH_URL, 60000);
-    await waitForUrl(WEB_URL, 90000);
+    await waitForUrl(API_HEALTH_URL, 60000, apiProcess, "api");
+    try {
+      await waitForUrl(WEB_URL, 60000, webProcess, "web");
+    } catch (error) {
+      if (webProcess && webScript === "start") {
+        appendLog("web", `\n[${new Date().toISOString()}] production start failed, falling back to dev: ${error.message}\n`);
+        stopChild(webProcess);
+        webProcess = spawnLoggedProcess("web", npmCommand, ["run", "dev"], WEB_DIR, {
+          NEXT_TELEMETRY_DISABLED: "1",
+        });
+        await waitForUrl(WEB_URL, 90000, webProcess, "web");
+      } else {
+        throw error;
+      }
+    }
   } finally {
     runtimeStarting = false;
   }
@@ -166,13 +264,7 @@ async function startRuntime() {
 
 function stopRuntime() {
   for (const child of [webProcess, apiProcess]) {
-    if (child && !child.killed) {
-      if (isWindows) {
-        spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], { windowsHide: true });
-      } else {
-        child.kill();
-      }
-    }
+    stopChild(child);
   }
   webProcess = null;
   apiProcess = null;

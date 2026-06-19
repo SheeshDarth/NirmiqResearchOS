@@ -1912,3 +1912,46 @@ Follow-up correction after packaging validation:
 - The shell now searches `NIRMIQ_ROOT`, development paths, current working directory, packaged resources, and executable location for `apps/api` plus `apps/web`.
 - Documented `NIRMIQ_ROOT='C:\Nirmiq-researchOS'` as the fallback when launching unpacked/portable builds from unusual locations.
 - Revalidated `node --check`, desktop unpacked packaging, desktop portable packaging, and web build after the fix.
+
+### Latest Update: Desktop Startup Failure Fix
+
+Date: 2026-06-19
+
+Issue:
+
+- The Windows desktop shell showed `NIRMIQ startup failed` for the user.
+- Reproduction showed FastAPI and Next were able to start, but Electron/Chromium crashed with:
+  - `GPU process isn't usable. Goodbye.`
+- A secondary Windows reliability issue was found around duplicate `Path`/`PATH` environment keys when launching child processes.
+
+Implemented:
+
+- Added GPU-safe Electron startup flags in both `apps/desktop/src/main.js` and `apps/desktop/package.json`:
+  - `--in-process-gpu`
+  - `--disable-gpu-sandbox`
+  - `--disable-gpu-compositing`
+  - `--disable-gpu-rasterization`
+  - `--disable-accelerated-2d-canvas`
+  - disabled Skia/Vulkan/canvas OOP rasterization features.
+- Set Electron user data to `temp/desktop/electron-user-data` to avoid Windows profile/crypto state issues.
+- Added Windows child-process environment sanitization to remove duplicate `Path`/`PATH` keys.
+- Route spawned Python/npm commands through `cmd.exe /d /s /c` on Windows for more reliable command resolution.
+- Added explicit spawn-error and early-exit logging.
+- Added fallback from `next start` to `next dev` if the production web process exits before readiness.
+- Updated desktop/debugging docs with startup failure notes and expected health checks.
+
+Validation:
+
+- Desktop startup probe: while `npm.cmd run desktop` was running, `http://127.0.0.1:8000/health` returned `200` and `http://127.0.0.1:3002` returned `200`.
+- `node --check apps/desktop/src/main.js`: passed.
+- `node --check apps/desktop/src/preload.js`: passed.
+- `npm.cmd --prefix apps/desktop audit --omit=dev`: passed with `0 vulnerabilities`.
+- `npm.cmd run desktop:pack`: passed.
+- `npm.cmd run desktop:package`: passed and regenerated `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- `npm.cmd run test:api`: `37 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+
+Commit:
+
+- Pending in this work unit: Fix Windows desktop startup.

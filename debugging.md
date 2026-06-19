@@ -214,6 +214,39 @@ powershell -ExecutionPolicy Bypass -File .\scripts\publish_smoke.ps1
 
 If the web TypeError persists, stop the web listener, delete generated `apps\web\.next`, and restart `.\scripts\run_web.ps1`.
 
+### Desktop Startup Failed
+
+Most likely causes:
+
+- Electron/Chromium GPU process failure on the current Windows graphics driver.
+- Duplicate `Path`/`PATH` environment keys causing Windows child process spawn failures.
+- Next production start failed and needs the dev-mode fallback.
+
+Current mitigation:
+
+- Desktop launch uses GPU-safe Electron flags:
+  - `--in-process-gpu`
+  - `--disable-gpu-sandbox`
+  - `--disable-gpu-compositing`
+  - `--disable-gpu-rasterization`
+  - `--disable-accelerated-2d-canvas`
+- Desktop launch sanitizes duplicate Windows path environment keys before spawning Python/npm.
+- Desktop launch falls back from `next start` to `next dev` if the production web process exits before readiness.
+
+Check:
+
+```powershell
+cd C:\Nirmiq-researchOS
+npm.cmd run desktop
+Get-Content .\temp\desktop\api.log -Tail 120
+Get-Content .\temp\desktop\web.log -Tail 160
+```
+
+Expected startup proof:
+
+- `http://127.0.0.1:8000/health` returns `200`.
+- `http://127.0.0.1:3002` returns `200`.
+
 ### Upload Returns 413 Request Body Too Large
 
 Cause: the API rejected the request before ingestion because `Content-Length` exceeded `MAX_REQUEST_BODY_BYTES`.

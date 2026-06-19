@@ -376,3 +376,31 @@ Follow-up correction after packaging validation:
 - Added robust desktop project-root detection for packaged Electron runs.
 - Documented `NIRMIQ_ROOT` fallback for unpacked/portable builds.
 - Revalidated desktop syntax, unpacked packaging, portable packaging, and web build.
+
+## 2026-06-19 Implementation Log - Desktop Startup Fix
+
+Work completed:
+
+- Reproduced the desktop startup failure.
+- Found Electron/Chromium GPU process crash as the primary blocker.
+- Found Windows `Path`/`PATH` child-process environment duplication as a secondary reliability risk.
+- Added GPU-safe Electron launch flags.
+- Added workspace-local Electron user data path.
+- Sanitized spawned child process environments.
+- Routed spawned Windows commands through `cmd.exe` for stable npm/python resolution.
+- Added early spawn/exit logging and Next production-to-dev fallback.
+- Updated desktop/debugging docs.
+
+Validation:
+
+- Live desktop startup probe returned HTTP 200 for both API and web while the desktop app was running.
+- Desktop syntax checks passed.
+- Desktop production dependency audit passed.
+- Desktop unpacked and portable packaging passed.
+- Backend tests passed: 37 passed, 1 warning.
+- API compile passed.
+- Web build passed.
+
+Commit:
+
+- Pending in this work unit: Fix Windows desktop startup.

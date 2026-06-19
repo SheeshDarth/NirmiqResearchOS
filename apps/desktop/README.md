@@ -65,3 +65,14 @@ Packaging requires desktop dependencies to be installed first. This sprint keeps
 The root packaging scripts redirect Electron Builder cache to `temp/electron-builder-cache` so Windows AppData permissions do not block local builds.
 
 The packaged desktop artifact is still a local runtime shell. It expects access to this repository or an explicitly configured `NIRMIQ_ROOT`; it is not yet a fully self-contained installer.
+
+## Startup Hardening
+
+The desktop shell uses Windows-safe Chromium flags because some laptops/drivers crash Electron during GPU process startup. If the app shows `startup failed`, inspect:
+
+```text
+C:\Nirmiq-researchOS\temp\desktop\api.log
+C:\Nirmiq-researchOS\temp\desktop\web.log
+```
+
+The launcher also sanitizes duplicate `Path`/`PATH` environment variables before spawning Python or npm, which avoids a common Windows process startup failure.

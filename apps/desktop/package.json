@@ -6,8 +6,8 @@
   "description": "Windows desktop shell for the local-first NIRMIQ ResearchOS runtime.",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev",
+    "start": "electron --in-process-gpu --disable-gpu-sandbox --disable-gpu-compositing --disable-gpu-rasterization --disable-accelerated-2d-canvas --disable-features=UseSkiaRenderer,Vulkan,CanvasOopRasterization .",
+    "dev": "electron --in-process-gpu --disable-gpu-sandbox --disable-gpu-compositing --disable-gpu-rasterization --disable-accelerated-2d-canvas --disable-features=UseSkiaRenderer,Vulkan,CanvasOopRasterization . --dev",
     "pack": "electron-builder --dir",
     "package": "electron-builder --win portable"
   },
