@@ -369,4 +369,4 @@ Files updated:
 
 Commit:
 
-- Pending in this work unit: Windows desktop shell.
+- `ca2a83c` - Add Windows desktop shell.
