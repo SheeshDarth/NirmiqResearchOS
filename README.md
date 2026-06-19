@@ -101,6 +101,8 @@ The focus is answering with evidence.
 Implemented in the current repository:
 
 - Bundled `Load Golden Demo` flow with four local academic Markdown sources.
+- Electron desktop shell that starts the local runtime and opens NIRMIQ in a Windows app window.
+- Desktop diagnostics menu for runtime status, logs, VS Code, project docs, and data folder access.
 - Locked reviewer prompts for Research, Summary, Paper Lab, Exam Lab, and abstention behavior.
 - Golden demo smoke script that fails if unsupported chat prompts return grounded answers.
 - Local answer export as Markdown with citations.
@@ -300,8 +302,25 @@ Root command hub:
 cd C:\Nirmiq-researchOS
 npm.cmd run start
 npm.cmd run start:golden
+npm.cmd run desktop
 npm.cmd run ship:check
 ```
+
+Run the desktop app:
+
+```powershell
+cd C:\Nirmiq-researchOS
+npm.cmd run desktop:install
+npm.cmd run desktop
+```
+
+Or double-click:
+
+```text
+NIRMIQ Desktop.cmd
+```
+
+The desktop shell starts the same local FastAPI and Next.js runtime, then opens NIRMIQ in an app window. It also includes menu shortcuts for runtime status, logs, VS Code, project files, `context.md`, the README, and debugging docs.
 
 Run local preview:
 

@@ -31,6 +31,7 @@ data/processed/diagrams/*
 data/indexes/chroma/*
 !data/indexes/chroma/.gitkeep
 temp/
+dist/
 tools/gh/
 *.log
 

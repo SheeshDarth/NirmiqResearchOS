@@ -1,10 +1,18 @@
 # NIRMIQ Backend Architecture
 
-Last updated: 2026-06-14
+Last updated: 2026-06-19
 
 ## Overview
 
 The backend is a single FastAPI service with modular internals. This keeps the MVP simple for a solo developer while preserving clean boundaries for retrieval, ingestion, memory, exams, and synthesis.
+
+## Runtime Surfaces
+
+- `apps/web`: primary Next.js interface for Research, Chat, Paper Lab, Exam Lab, uploads, citations, and local data controls.
+- `apps/api`: local FastAPI runtime for ingestion, retrieval, synthesis, memory, and exports.
+- `apps/desktop`: lightweight Electron shell that starts the same local API/web runtime, opens NIRMIQ in a Windows app window, and exposes developer-friendly shortcuts for logs, VS Code, project docs, runtime status, and local data.
+
+The desktop shell is intentionally not a second application layer. It preserves the offline-first architecture and keeps all product logic in the existing API/web stack.
 
 ## Layering
 
@@ -116,6 +124,7 @@ This keeps the current frontend stable while addressing API-versioning readiness
 - Response compression for larger local API payloads.
 - Production-only HSTS/CSP toggles that remain disabled on localhost by default.
 - Thread Markdown export, session memory deletion, and indexed-material purge for local privacy/reviewer demos.
+- Electron desktop shell with local runtime startup, diagnostics menu, log access, and portable Windows packaging path.
 
 ## Next Backend Upgrades
 

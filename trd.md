@@ -1,6 +1,6 @@
 # NIRMIQ Technical Requirements Document
 
-Last updated: 2026-06-10
+Last updated: 2026-06-19
 
 ## Project
 
@@ -12,6 +12,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 
 - Frontend: Next.js PWA at `apps/web`.
 - Backend: FastAPI at `apps/api`.
+- Desktop shell: Electron app at `apps/desktop` for Windows local review, runtime diagnostics, and app-style launch.
 - Storage: SQLite for metadata, memory, sessions, exam artifacts, and document chunks.
 - Vector storage: ChromaDB optional path for semantic retrieval.
 - Retrieval: BM25, optional vector retrieval, Reciprocal Rank Fusion, reranking hooks, citation packing.
@@ -23,6 +24,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 ## Functional Requirements
 
 - Upload PDFs, text, Markdown, and images through a ChatGPT-like composer.
+- Launch through either browser preview or the Electron desktop shell without changing API behavior.
 - Load a bundled golden demo corpus from trusted local raw files.
 - Ingest uploaded or local-path documents into raw storage, parsed pages, chunks, indexes, and document metadata.
 - Ask grounded questions against selected documents.

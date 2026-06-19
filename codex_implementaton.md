@@ -320,3 +320,53 @@ Verification:
 - Backend tests: `34 passed, 1 warning`.
 - Compileall: passed.
 - Web build: passed.
+
+## 2026-06-19 Implementation Log - Windows Desktop Shell
+
+Work completed:
+
+- Added a lightweight Electron desktop wrapper under `apps/desktop`.
+- Preserved the existing FastAPI + Next.js architecture and avoided duplicating product logic.
+- Added desktop launch, install, pack, and portable packaging commands.
+- Added menu-based developer affordances for runtime status, restart, logs, VS Code, project docs, and local data access.
+- Added a secure preload bridge with no broad Node exposure.
+- Added Windows `.cmd` launcher and shortcut support.
+- Documented desktop usage, packaging, and debugging flows.
+
+Validation:
+
+- Desktop JS syntax checks passed.
+- Electron production dependency audit passed with 0 vulnerabilities.
+- Unpacked Windows app packaging passed.
+- Portable Windows EXE packaging passed after redirecting Electron Builder cache to the workspace.
+- Backend tests passed: 37 passed, 1 warning.
+- API compile passed.
+- Web production build passed.
+
+Files introduced:
+
+- `apps/desktop/package.json`
+- `apps/desktop/package-lock.json`
+- `apps/desktop/src/main.js`
+- `apps/desktop/src/preload.js`
+- `apps/desktop/README.md`
+- `NIRMIQ Desktop.cmd`
+- `scripts/start_desktop.ps1`
+- `scripts/package_desktop.ps1`
+
+Files updated:
+
+- `package.json`
+- `.gitignore`
+- `README.md`
+- `debugging.md`
+- `backend_architecture.md`
+- `trd.md`
+- `docs/windows_app_packaging.md`
+- `scripts/create_windows_shortcut.ps1`
+- `context.md`
+- `codex_implementaton.md`
+
+Commit:
+
+- Pending in this work unit: Windows desktop shell.

@@ -1845,3 +1845,63 @@ Notes:
 Commit:
 
 - Pending in this work unit: CI backend install/package discovery fix.
+
+### Latest Update: Windows Desktop Shell
+
+Date: 2026-06-19
+
+Purpose:
+
+- Provide a desktop-app workflow so NIRMIQ can be launched, reviewed, debugged, and edited without manually juggling localhost browser tabs and terminal windows.
+- Keep the implementation lightweight and safe by wrapping the existing local FastAPI + Next.js runtime instead of duplicating product logic.
+
+Implemented:
+
+- Added `apps/desktop`, a lightweight Electron shell for Windows.
+- The shell starts the local FastAPI runtime at `127.0.0.1:8000` and the Next.js app at `127.0.0.1:3002` when ports are not already active.
+- Added a secure Electron preload bridge with only two exposed actions:
+  - runtime status
+  - runtime restart
+- Added a desktop menu for fast development/debugging:
+  - Runtime Status
+  - Restart Local Runtime
+  - Open Project Folder
+  - Open In VS Code
+  - Open `context.md`
+  - Open README
+  - Open Debugging Guide
+  - Open Backend Architecture
+  - Open API/Web logs
+- Added `NIRMIQ Desktop.cmd` for double-click desktop launch.
+- Added root scripts:
+  - `npm run desktop`
+  - `npm run desktop:install`
+  - `npm run desktop:dev`
+  - `npm run desktop:pack`
+  - `npm run desktop:package`
+- Added `scripts/start_desktop.ps1` for safe startup and one-time dependency install guidance.
+- Added `scripts/package_desktop.ps1` to keep Electron Builder cache inside `temp/electron-builder-cache` instead of relying on Windows AppData permissions.
+- Updated shortcut generation so `NIRMIQ Desktop.lnk` is created alongside browser preview and stop shortcuts.
+- Added `apps/desktop/README.md` and updated README, debugging guide, TRD, backend architecture, and Windows packaging docs.
+
+Validation:
+
+- `node --check apps/desktop/src/main.js`: passed.
+- `node --check apps/desktop/src/preload.js`: passed.
+- `npm.cmd --prefix apps/desktop audit --omit=dev`: passed with `0 vulnerabilities` for production dependencies.
+- `npm.cmd --prefix apps/desktop run pack`: passed and created `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
+- `npm.cmd --prefix apps/desktop run package`: passed after redirecting Electron Builder cache and allowing the NSIS download; created `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- `npm.cmd run test:api`: `37 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+
+Tradeoffs:
+
+- This is a desktop shell, not a fully self-contained installer. Python, Node dependencies, Ollama, SQLite, and Chroma remain visible and debuggable in the repository/runtime.
+- The full installer should remain a later packaging sprint after repeated local runtime stability.
+- The portable EXE is generated under ignored `dist/desktop`; it is not committed to Git because it is a binary release artifact.
+- Electron dev dependencies reported audit advisories during install, but production dependency audit with `--omit=dev` is clean. Do not blindly force-update Electron Builder without re-validating packaging.
+
+Commit:
+
+- Pending in this work unit: Windows desktop shell.

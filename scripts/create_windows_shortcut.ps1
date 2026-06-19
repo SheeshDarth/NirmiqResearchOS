@@ -11,11 +11,16 @@ if (-not $Desktop -and -not $StartMenu) {
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $launcher = Join-Path $root "NIRMIQ ResearchOS.cmd"
+$desktopLauncher = Join-Path $root "NIRMIQ Desktop.cmd"
 $stopper = Join-Path $root "NIRMIQ Stop.cmd"
 $icon = Join-Path $env:SystemRoot "System32\shell32.dll"
 
 if (-not (Test-Path $launcher)) {
     throw "Launcher not found: $launcher"
+}
+
+if (-not (Test-Path $desktopLauncher)) {
+    throw "Desktop launcher not found: $desktopLauncher"
 }
 
 function New-NirmiqShortcut {
@@ -38,9 +43,14 @@ function New-NirmiqShortcut {
 if ($Desktop) {
     $desktopPath = [Environment]::GetFolderPath("Desktop")
     New-NirmiqShortcut `
-        -ShortcutPath (Join-Path $desktopPath "NIRMIQ ResearchOS.lnk") `
+        -ShortcutPath (Join-Path $desktopPath "NIRMIQ Desktop.lnk") `
+        -TargetPath $desktopLauncher `
+        -Description "Launch NIRMIQ ResearchOS desktop app" `
+        -IconIndex 13
+    New-NirmiqShortcut `
+        -ShortcutPath (Join-Path $desktopPath "NIRMIQ Browser Preview.lnk") `
         -TargetPath $launcher `
-        -Description "Launch NIRMIQ ResearchOS local academic intelligence workspace" `
+        -Description "Launch NIRMIQ ResearchOS browser preview" `
         -IconIndex 13
     New-NirmiqShortcut `
         -ShortcutPath (Join-Path $desktopPath "Stop NIRMIQ ResearchOS.lnk") `
@@ -53,9 +63,14 @@ if ($StartMenu) {
     $startMenuPath = Join-Path ([Environment]::GetFolderPath("Programs")) "NIRMIQ"
     New-Item -ItemType Directory -Force -Path $startMenuPath | Out-Null
     New-NirmiqShortcut `
-        -ShortcutPath (Join-Path $startMenuPath "NIRMIQ ResearchOS.lnk") `
+        -ShortcutPath (Join-Path $startMenuPath "NIRMIQ Desktop.lnk") `
+        -TargetPath $desktopLauncher `
+        -Description "Launch NIRMIQ ResearchOS desktop app" `
+        -IconIndex 13
+    New-NirmiqShortcut `
+        -ShortcutPath (Join-Path $startMenuPath "NIRMIQ Browser Preview.lnk") `
         -TargetPath $launcher `
-        -Description "Launch NIRMIQ ResearchOS local academic intelligence workspace" `
+        -Description "Launch NIRMIQ ResearchOS browser preview" `
         -IconIndex 13
     New-NirmiqShortcut `
         -ShortcutPath (Join-Path $startMenuPath "Stop NIRMIQ ResearchOS.lnk") `

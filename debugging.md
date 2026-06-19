@@ -1,6 +1,6 @@
 # NIRMIQ Debugging Guide
 
-Last updated: 2026-06-11
+Last updated: 2026-06-19
 
 ## Local URLs
 
@@ -9,14 +9,44 @@ Last updated: 2026-06-11
 
 ## Start Backend
 
-Preferred one-command preview:
+Preferred desktop app:
+
+```powershell
+cd C:\Nirmiq-researchOS
+npm.cmd run desktop:install
+npm.cmd run desktop
+```
+
+Windows double-click desktop app:
+
+```text
+NIRMIQ Desktop.cmd
+```
+
+The desktop menu includes:
+
+- `NIRMIQ -> Runtime Status`
+- `NIRMIQ -> Restart Local Runtime`
+- `NIRMIQ -> Open In VS Code`
+- `NIRMIQ -> Open context.md`
+- `NIRMIQ -> Open Debugging Guide`
+- `Logs -> Open API Log`
+- `Logs -> Open Web Log`
+
+Desktop logs are written under:
+
+```text
+C:\Nirmiq-researchOS\temp\desktop
+```
+
+Browser fallback preview:
 
 ```powershell
 cd C:\Nirmiq-researchOS
 .\scripts\run_local.ps1 -OpenBrowser
 ```
 
-Windows double-click preview:
+Windows double-click browser preview:
 
 ```text
 NIRMIQ ResearchOS.cmd
