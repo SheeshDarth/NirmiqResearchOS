@@ -403,4 +403,4 @@ Validation:
 
 Commit:
 
-- Pending in this work unit: Fix Windows desktop startup.
+- `690196c` - Fix Windows desktop startup.
