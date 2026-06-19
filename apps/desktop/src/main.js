@@ -5,7 +5,44 @@ const net = require("node:net");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 
-const ROOT_DIR = path.resolve(__dirname, "..", "..", "..");
+function looksLikeProjectRoot(candidate) {
+  if (!candidate) return false;
+  return (
+    fs.existsSync(path.join(candidate, "apps", "api", "app", "main.py")) &&
+    fs.existsSync(path.join(candidate, "apps", "web", "package.json"))
+  );
+}
+
+function walkUpForProjectRoot(startPath) {
+  if (!startPath) return null;
+  let current = path.resolve(startPath);
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (looksLikeProjectRoot(current)) return current;
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return null;
+}
+
+function resolveProjectRoot() {
+  const candidates = [
+    process.env.NIRMIQ_ROOT,
+    path.resolve(__dirname, "..", "..", ".."),
+    process.cwd(),
+    process.resourcesPath,
+    process.execPath ? path.dirname(process.execPath) : null,
+  ];
+
+  for (const candidate of candidates) {
+    const root = walkUpForProjectRoot(candidate);
+    if (root) return root;
+  }
+
+  return path.resolve(__dirname, "..", "..", "..");
+}
+
+const ROOT_DIR = resolveProjectRoot();
 const API_DIR = path.join(ROOT_DIR, "apps", "api");
 const WEB_DIR = path.join(ROOT_DIR, "apps", "web");
 const TEMP_DIR = path.join(ROOT_DIR, "temp", "desktop");

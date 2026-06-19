@@ -1905,3 +1905,10 @@ Tradeoffs:
 Commit:
 
 - `ca2a83c` - Add Windows desktop shell.
+
+Follow-up correction after packaging validation:
+
+- Added robust desktop project-root detection for packaged Electron runs.
+- The shell now searches `NIRMIQ_ROOT`, development paths, current working directory, packaged resources, and executable location for `apps/api` plus `apps/web`.
+- Documented `NIRMIQ_ROOT='C:\Nirmiq-researchOS'` as the fallback when launching unpacked/portable builds from unusual locations.
+- Revalidated `node --check`, desktop unpacked packaging, desktop portable packaging, and web build after the fix.

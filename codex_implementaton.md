@@ -370,3 +370,9 @@ Files updated:
 Commit:
 
 - `ca2a83c` - Add Windows desktop shell.
+
+Follow-up correction after packaging validation:
+
+- Added robust desktop project-root detection for packaged Electron runs.
+- Documented `NIRMIQ_ROOT` fallback for unpacked/portable builds.
+- Revalidated desktop syntax, unpacked packaging, portable packaging, and web build.

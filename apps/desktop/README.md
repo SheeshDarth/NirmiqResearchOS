@@ -31,6 +31,12 @@ Or double-click:
 NIRMIQ Desktop.cmd
 ```
 
+If you launch an unpacked or portable build from outside the repository and it cannot find the backend/frontend, set:
+
+```powershell
+$env:NIRMIQ_ROOT='C:\Nirmiq-researchOS'
+```
+
 ## Desktop Menu
 
 - `NIRMIQ -> Runtime Status`: check API and web runtime health.
@@ -57,3 +63,5 @@ npm run desktop:package
 Packaging requires desktop dependencies to be installed first. This sprint keeps the shell lightweight instead of bundling Python, Ollama, model files, SQLite, and Chroma into a fragile installer.
 
 The root packaging scripts redirect Electron Builder cache to `temp/electron-builder-cache` so Windows AppData permissions do not block local builds.
+
+The packaged desktop artifact is still a local runtime shell. It expects access to this repository or an explicitly configured `NIRMIQ_ROOT`; it is not yet a fully self-contained installer.

@@ -41,6 +41,12 @@ The desktop app starts:
 - Next.js at `http://127.0.0.1:3002`.
 - A NIRMIQ desktop window pointed at the local app.
 
+If an unpacked or portable build is launched from outside the repository and cannot find `apps/api` or `apps/web`, set:
+
+```powershell
+$env:NIRMIQ_ROOT='C:\Nirmiq-researchOS'
+```
+
 The menu includes:
 
 - Runtime Status.
