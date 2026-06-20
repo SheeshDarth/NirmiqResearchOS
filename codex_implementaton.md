@@ -523,3 +523,7 @@ Remaining debt:
 - Real-world eval needs 60+ labels and failure analysis.
 - Live UI screenshots/GIFs still need capture.
 - Linux scripts need validation on a real Linux distro.
+
+Commit:
+
+- `a980cdc` - Polish UI structure eval purge and Linux docs.

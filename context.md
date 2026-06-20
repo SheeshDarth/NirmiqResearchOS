@@ -2081,3 +2081,7 @@ Remaining debt:
 - Capture actual live UI screenshots/GIFs for README after final visual QA.
 - Grow real-world eval set from 16 to 60+ labels and tune retrieval against failures.
 - Validate Linux scripts on an actual Linux distro and package Linux desktop only if worth it.
+
+Commit:
+
+- `a980cdc` - Polish UI structure eval purge and Linux docs.
