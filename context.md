@@ -2085,3 +2085,26 @@ Remaining debt:
 Commit:
 
 - `a980cdc` - Polish UI structure eval purge and Linux docs.
+
+### Latest Update: Windows App Package Refresh And Shortcuts
+
+Date: 2026-06-20
+
+Purpose:
+
+- Refresh the current Windows desktop app package after the UI/eval/purge/Linux polish sprint.
+- Create user-facing shortcuts so the app can be launched without terminal commands.
+
+Completed:
+
+- `npm.cmd run build`: passed.
+- `npm.cmd run desktop:pack`: passed.
+- `npm.cmd run desktop:package`: passed.
+- Refreshed portable Windows app: `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- Refreshed unpacked desktop app: `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
+- Created Desktop shortcuts for NIRMIQ Desktop, Browser Preview, Golden Demo, and Stop.
+- Created Start Menu shortcuts under `NIRMIQ` for Desktop, Browser Preview, Golden Demo, and Stop.
+
+Note:
+
+- This was a Windows desktop app package refresh, not an Android APK build. Android APK generation remains a separate mobile packaging sprint if needed.

@@ -527,3 +527,25 @@ Remaining debt:
 Commit:
 
 - `a980cdc` - Polish UI structure eval purge and Linux docs.
+
+### Windows App Package Refresh And Shortcuts
+
+Date: 2026-06-20
+
+Implementation:
+
+- Rebuilt the web app with `npm.cmd run build`.
+- Repacked the Electron desktop target with `npm.cmd run desktop:pack`.
+- Rebuilt the portable desktop package with `npm.cmd run desktop:package`.
+- Refreshed `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe` and `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
+- Ran `scripts/create_windows_shortcut.ps1 -Desktop -StartMenu` to create Desktop and Start Menu shortcuts.
+
+Validation:
+
+- Web build passed.
+- Desktop pack passed.
+- Portable desktop package passed.
+
+Tradeoff:
+
+- The current package target is Windows desktop. Android APK support is intentionally not added yet because it needs separate mobile packaging decisions and would distract from the local-first Windows demo path.
