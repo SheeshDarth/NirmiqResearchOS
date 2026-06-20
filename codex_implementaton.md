@@ -474,3 +474,7 @@ Known remaining debt:
 - UI success/error messaging still shares the same state in several paths.
 - Full local purge does not yet delete parse cache, extracted diagrams, or app-owned uploaded raw copies.
 - Real-world retrieval labels and screenshot/GIF demo assets are still needed before a polished public launch.
+
+Commit:
+
+- `5e21194` - Harden retrieval and ship checks.

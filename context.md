@@ -2024,3 +2024,7 @@ Remaining next sprint candidates:
 - Add a source-preview drawer and mobile QA pass.
 - Add a strict local-only model endpoint guard before allowing non-loopback Ollama/external providers.
 - Add a local bug-report bundle export.
+
+Commit:
+
+- `5e21194` - Harden retrieval and ship checks.
