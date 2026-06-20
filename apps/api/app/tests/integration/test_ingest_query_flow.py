@@ -258,3 +258,61 @@ def test_upload_ingest_roundtrip() -> None:
 
         missing_detail = client.get(f"/documents/{document_id}")
         assert missing_detail.status_code == 404
+
+
+def test_unreadable_reindex_preserves_existing_chunks(tmp_path: Path) -> None:
+    sample = tmp_path / "reindex-source.txt"
+    sample.write_text(
+        "NIRMIQ should preserve existing active chunks when a later reindex extracts no readable text.",
+        encoding="utf-8",
+    )
+
+    with TestClient(app) as client:
+        first_response = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Reindex Source",
+                "mime_type": "text/plain",
+            },
+        )
+        assert first_response.status_code == 200
+        document_id = first_response.json()["document_id"]
+        first_detail = client.get(f"/documents/{document_id}").json()
+        assert first_detail["active_chunk_count"] >= 1
+
+        sample.write_text("    \n\t   ", encoding="utf-8")
+        failed_reindex = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Reindex Source",
+                "mime_type": "text/plain",
+                "force_reindex": True,
+            },
+        )
+
+        assert failed_reindex.status_code == 400
+        detail_after_failure = client.get(f"/documents/{document_id}")
+        assert detail_after_failure.status_code == 200
+        body = detail_after_failure.json()
+        assert body["status"] == "failed"
+        assert body["active_chunk_count"] == first_detail["active_chunk_count"]
+
+
+def test_direct_ingest_rejects_unsupported_local_file(tmp_path: Path) -> None:
+    sample = tmp_path / "not-a-document.exe"
+    sample.write_bytes(b"MZfake executable bytes")
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Bad File",
+                "mime_type": "application/octet-stream",
+            },
+        )
+
+        assert response.status_code == 400
+        assert "Unsupported file type" in response.json()["detail"]

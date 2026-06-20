@@ -72,10 +72,16 @@ class RetrievalService:
 
         bm25_ranked_ids = [hit.chunk_id for hit in bm25_hits]
         vector_ranked_ids = [str(hit["id"]) for hit in vector_hits if hit.get("id")]
+        vector_score_map = {str(hit["id"]): float(hit.get("score", 0.0)) for hit in vector_hits if hit.get("id")}
+        bm25_score_map = {hit.chunk_id: hit.score for hit in bm25_hits}
         if normalized_mode == "bm25":
-            fused = [(chunk_id, float(profile_config["bm25_k"] - idx)) for idx, chunk_id in enumerate(bm25_ranked_ids)]
+            top_bm25_score = max((hit.score for hit in bm25_hits), default=1.0)
+            fused = [
+                (chunk_id, min(1.0, bm25_score_map.get(chunk_id, 0.0) / max(top_bm25_score, 1e-9)))
+                for chunk_id in bm25_ranked_ids
+            ]
         elif normalized_mode == "vector":
-            fused = [(chunk_id, float(profile_config["vector_k"] - idx)) for idx, chunk_id in enumerate(vector_ranked_ids)]
+            fused = [(chunk_id, vector_score_map.get(chunk_id, 0.0)) for chunk_id in vector_ranked_ids]
         else:
             fused = fuse_ranked_lists_with_scores(
                 [bm25_ranked_ids, vector_ranked_ids],
@@ -88,24 +94,9 @@ class RetrievalService:
             candidate_ids = [str(chunk["id"]) for chunk in active_chunks[: profile_config["fused_k"]]]
             document_scope_fallback = True
         chunks_by_id = self._sqlite_repo.get_chunks_by_ids(candidate_ids)
-
-        # Include vector-only chunks that may not be in active SQLite set.
-        for hit in vector_hits:
-            chunk_id = str(hit["id"])
-            if chunk_id in chunks_by_id:
-                continue
-            chunks_by_id[chunk_id] = {
-                "id": chunk_id,
-                "document_id": hit.get("document_id") or "unknown",
-                "page_start": hit.get("page_start"),
-                "page_end": hit.get("page_end"),
-                "text": hit.get("text") or "",
-                "token_count": len(str(hit.get("text") or "").split()),
-                "quality_score": hit.get("quality_score", 1.0),
-            }
-
-        if not candidate_ids and vector_ranked_ids and normalized_mode in {"hybrid", "vector"}:
-            candidate_ids = vector_ranked_ids[: profile_config["fused_k"]]
+        active_chunk_ids = {str(chunk["id"]) for chunk in active_chunks}
+        orphan_vector_hit_count = len([chunk_id for chunk_id in vector_ranked_ids if chunk_id not in active_chunk_ids])
+        candidate_ids = [chunk_id for chunk_id in candidate_ids if chunk_id in chunks_by_id]
 
         candidate_texts = [str(chunks_by_id[cid]["text"]) for cid in candidate_ids if cid in chunks_by_id]
         reranked_order = await self._reranker.rerank(query=query, texts=candidate_texts)
@@ -130,8 +121,6 @@ class RetrievalService:
                 break
 
         fused_score_map = {chunk_id: score for chunk_id, score in fused}
-        vector_score_map = {str(hit["id"]): float(hit.get("score", 0.0)) for hit in vector_hits if hit.get("id")}
-        bm25_score_map = {hit.chunk_id: hit.score for hit in bm25_hits}
 
         chunks: list[RetrievedChunk] = []
         for chunk_id in top_ids:
@@ -182,6 +171,7 @@ class RetrievalService:
                 "retrieved_count": len(chunks),
                 "bm25_hits": len(bm25_hits),
                 "vector_hits": len(vector_hits),
+                "orphan_vector_hits_dropped": orphan_vector_hit_count,
                 "vector_enabled": vector_enabled,
                 "embed_backend": embed_backend,
                 "rerank_backend": rerank_backend,

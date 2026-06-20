@@ -75,6 +75,7 @@ function Start-NirmiqProcess {
 }
 
 Repair-PathEnvironment
+$npm = (Get-Command npm.cmd -ErrorAction Stop).Source
 
 $apiUrl = "http://127.0.0.1:8000"
 $webUrl = "http://127.0.0.1:3002"
@@ -97,8 +98,8 @@ if (Test-LocalPort 3002) {
 } else {
     Start-NirmiqProcess `
         -Name "web" `
-        -FilePath "cmd.exe" `
-        -Arguments @("/c", "npm run dev") `
+        -FilePath $npm `
+        -Arguments @("run", "dev") `
         -WorkingDirectory (Join-Path $root "apps\web")
 }
 

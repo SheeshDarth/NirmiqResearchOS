@@ -1,6 +1,6 @@
 # NIRMIQ Product Requirements Document
 
-Last updated: 2026-06-10
+Last updated: 2026-06-20
 
 ## Product Name
 
@@ -47,6 +47,8 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 - V3.1 summary cache for repeated selected-document summaries.
 - Deterministic intent routing for summary, factual lookup, compare, paper, exam, and chat prompts.
 - Compact trust badge for citation verification and citation coverage.
+- Safer selected-source behavior: when a document is selected, default questions remain scoped to that source.
+- Honest evidence behavior: stale vector hits, zero-text reindex failures, and unsupported cited claims must not produce trusted answers.
 
 ## V4 Golden Demo Scope
 
@@ -111,6 +113,7 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 - The app abstains on unrelated questions instead of hallucinating.
 - Composer minimization increases visible reading area.
 - Local build and backend tests stay green.
+- Full ship gate passes before public/demo pushes.
 - Demo flow can be completed without internet.
 - Golden demo can be warm-started from bundled files without internet.
 - Reviewer can inspect a citation and focus the exact source chunk.
@@ -121,6 +124,7 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 - Users can see a simple answer trust signal without opening debug metadata.
 - Paper Lab can produce a grounded Markdown draft package instead of only a chat answer.
 - Local model runtime remains bounded through low-memory Ollama settings and embedding batches.
+- Direct local-path ingestion and Docker dev defaults respect the local-first privacy contract.
 
 ## Why Users Choose NIRMIQ
 
@@ -151,3 +155,24 @@ Validated source:
 - `Hands-On Machine Learning with Scikit-Learn, Keras and TensorFlow`
 - Clean document id: `e9b7b4ff-b679-44db-a2cf-bbb945caee22`
 - Active chunks: `1833`
+
+## 2026-06-20 Hardening Acceptance Update
+
+Added acceptance criteria for ship reliability:
+
+- Empty/unreadable reindex attempts fail safely and preserve previous active chunks.
+- Direct local-path ingestion validates file type, file size, and lightweight signatures before indexing.
+- Retrieval ignores orphaned vector-store hits when SQLite no longer marks the chunk active.
+- Summary/factual seed chunks improve context selection without inflating grounding scores.
+- Exam Lab study guides use imported question-bank text to judge relevance.
+- Frontend requests time out gracefully and avoid duplicate busy submissions.
+- Normal preview and golden-demo preview are separate so users can work without accidental demo preload.
+- Release scripts and desktop packaging scripts must fail non-zero on command errors.
+
+Validated on 2026-06-20:
+
+- Backend tests: `41 passed, 1 warning`.
+- API compile: passed.
+- Web build: passed.
+- Desktop unpacked package: passed.
+- Full `scripts/ship_check.ps1`: passed.

@@ -67,6 +67,9 @@ type ChatRun = {
   query: string;
   mode: StudyMode;
   profile: RetrievalProfile;
+  document_id?: string;
+  source_title?: string;
+  source_path?: string;
   response: QueryResponse;
   timestamp: string;
 };
@@ -719,7 +722,7 @@ export default function Home() {
   const [busy, setBusy] = useState<BusyState>("");
   const [error, setError] = useState("");
   const [sourcePath, setSourcePath] = useState(DEFAULT_SOURCE_PATH);
-  const [title, setTitle] = useState("Attention Is All You Need");
+  const [title, setTitle] = useState("");
   const [documentId, setDocumentId] = useState("");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [selectedDocumentDetail, setSelectedDocumentDetail] = useState<DocumentDetailResponse | null>(null);
@@ -951,7 +954,7 @@ export default function Home() {
       const fallbackTitle = file.name.replace(/\.[^.]+$/, "");
       const response = await uploadDocument({
         file,
-        title: title.trim() || fallbackTitle,
+        title: fallbackTitle,
         force_reindex: true,
       });
       setDocumentId(response.document_id);
@@ -1045,17 +1048,23 @@ export default function Home() {
 
   async function onQuery(event: FormEvent) {
     event.preventDefault();
-    if (!canQuery) return;
+    if (!canQuery || busy !== "") return;
     await executeQuery(query.trim());
   }
 
   async function executeQuery(submittedQuery: string, modeOverride: StudyMode = currentMode.value) {
-    if (!submittedQuery || !sessionId.trim()) return;
+    if (!submittedQuery || !sessionId.trim() || busy !== "") return;
     setBusy("query");
     setError("");
     try {
-      const scopedDocumentId =
-        workspaceSection === "general" && modeOverride !== "summary" ? undefined : documentId || undefined;
+      const scopedDocumentId = documentId || undefined;
+      const sourceSnapshot = scopedDocumentId
+        ? {
+            document_id: scopedDocumentId,
+            source_title: activeMaterialName,
+            source_path: selectedDocumentDetail?.source_path || selectedDocument?.source_path,
+          }
+        : {};
       const response = await runQuery({
         session_id: sessionId.trim(),
         query: submittedQuery,
@@ -1086,13 +1095,18 @@ export default function Home() {
             query: submittedQuery,
             mode: modeOverride,
             profile: retrievalProfile,
+            ...sourceSnapshot,
             response,
             timestamp: new Date().toISOString(),
           },
         ].slice(-12),
       );
       setQuery("");
-      await loadSessionState(response.session_id);
+      try {
+        await loadSessionState(response.session_id);
+      } catch (err) {
+        setError(`Answer generated, but local memory refresh failed: ${String(err)}`);
+      }
       setDeepView("evidence");
     } catch (err) {
       setError(String(err));
@@ -1141,6 +1155,7 @@ export default function Home() {
     const citationList = run.response.citations
       .map((citation, index) => `<li>Evidence ${index + 1}${citation.page_start ? `, page ${citation.page_start}` : ""}</li>`)
       .join("");
+    const runSourceLabel = run.source_title || activeMaterialName;
     printable.document.write(`
       <html>
         <head>
@@ -1155,7 +1170,7 @@ export default function Home() {
         </head>
         <body>
           <h1>NIRMIQ Custom Exam PDF</h1>
-          <div class="meta">${activeMaterialName} / ${modeLabel(run.mode)} / ${formatDate(run.timestamp)}</div>
+          <div class="meta">${escapeHtml(runSourceLabel)} / ${escapeHtml(modeLabel(run.mode))} / ${escapeHtml(formatDate(run.timestamp))}</div>
           <pre>${escapeHtml(run.response.answer)}</pre>
           <h2>Citations</h2>
           <ol>${citationList || "<li>No citations returned.</li>"}</ol>
@@ -1168,7 +1183,7 @@ export default function Home() {
 
   async function onCopyPaperMarkdown() {
     if (!currentRun || workspaceSection !== "paper") return;
-    const markdown = buildPaperLabMarkdown(currentRun, paperLabArtifact, activeMaterialName);
+    const markdown = buildPaperLabMarkdown(currentRun, paperLabArtifact, currentRun.source_title || activeMaterialName);
     try {
       await navigator.clipboard.writeText(markdown);
       setError("Paper Lab Markdown copied with outline, matrix, answer, and citations.");
@@ -1183,7 +1198,7 @@ export default function Home() {
       return;
     }
     const filename = `nirmiq-answer-${new Date().toISOString().slice(0, 10)}.md`;
-    downloadTextFile(filename, buildRunExportMarkdown(currentRun, activeMaterialName));
+    downloadTextFile(filename, buildRunExportMarkdown(currentRun, currentRun.source_title || activeMaterialName));
     setError("Answer exported locally as Markdown with citations.");
   }
 
@@ -1363,6 +1378,7 @@ export default function Home() {
   }
 
   function clearThread() {
+    setSessionId(`nirmiq-thread-${Date.now().toString(36)}`);
     setQueryHistory([]);
     setQueryResult(null);
     setTimeline(null);
@@ -1389,6 +1405,7 @@ export default function Home() {
   function onQueryKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
+      if (busy !== "" || !canQuery) return;
       queryFormRef.current?.requestSubmit();
     }
   }

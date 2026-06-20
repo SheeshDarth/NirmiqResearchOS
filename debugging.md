@@ -411,3 +411,83 @@ Updated local runtime defaults:
 $env:OLLAMA_TIMEOUT_SECONDS='120'
 $env:OLLAMA_NUM_PREDICT='512'
 ```
+
+## 2026-06-20 Hardening Debug Notes
+
+### Reindex Fails But Old Answers Should Still Work
+
+If a reindex attempt extracts zero readable chunks, the job should fail with a readable error and prior active chunks should remain available.
+
+Check:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/documents
+```
+
+Expected:
+
+- Existing active chunk counts remain non-zero for previously indexed documents.
+- The failed job is visible under `/ingest/{document_id}/jobs`.
+
+### Vector Hits Look Stale Or Wrong
+
+The retrieval layer now drops vector hits unless SQLite still marks the chunk active.
+
+Debug metadata to inspect:
+
+- `orphan_vector_hits_dropped`
+- `vector_hits`
+- `retrieved_count`
+- `document_scope`
+
+If `orphan_vector_hits_dropped` is high, rebuild or clear the vector store after large corpus churn.
+
+### Exam Lab Study Guide Abstains Unexpectedly
+
+Study-guide relevance should include imported question-bank text.
+
+Checklist:
+
+- Confirm question bank items exist for the selected document.
+- Confirm debug metadata includes `detected_intent=exam`.
+- Confirm `exam_context.question_count` is greater than zero.
+- If there are no imported questions, ask a specific exam question or import the bank again.
+
+### Publish Gate Must Fail Honestly
+
+Use the full ship gate instead of manual spot checks:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1
+```
+
+Latest known-good result:
+
+- Backend tests: `41 passed, 1 warning`.
+- API compile: passed.
+- Web build: passed.
+- Publish smoke: passed.
+- Golden demo smoke: passed.
+
+If the gate exits early, inspect:
+
+```powershell
+Get-Content .\temp\runtime\api.ship.err.log -Tail 120
+Get-Content .\temp\runtime\web.ship.err.log -Tail 120
+```
+
+### Browser Preview Versus Golden Demo Preview
+
+Normal preview:
+
+```text
+NIRMIQ ResearchOS.cmd
+```
+
+Golden-demo warm start:
+
+```text
+NIRMIQ Golden Demo.cmd
+```
+
+This split avoids preloading demo material during normal local work.

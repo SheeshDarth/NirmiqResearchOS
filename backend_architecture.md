@@ -1,6 +1,6 @@
 # NIRMIQ Backend Architecture
 
-Last updated: 2026-06-19
+Last updated: 2026-06-20
 
 ## Overview
 
@@ -148,12 +148,13 @@ Updated query lifecycle:
 3. Resolve retrieval profile and mode.
 4. Return cached selected-document summary only when the summary profile and content hash match.
 5. Run hybrid retrieval.
-6. Add summary/factual seed chunks when applicable.
-7. Synthesize with the best installed local generation model.
-8. Anchor uncited generated sentences to source chunks.
-9. Verify cited claims conservatively.
-10. Rewrite to source-only fallback when unsupported specific claims are detected.
-11. Return trust metadata and citations.
+6. Drop vector hits that are no longer active in SQLite.
+7. Add summary/factual seed chunks when applicable, using low seed scores so they expand context without inflating grounding confidence.
+8. Synthesize with the best installed local generation model.
+9. Anchor uncited generated sentences only when source support is strong enough.
+10. Verify cited claims conservatively.
+11. Rewrite to source-only fallback when unsupported specific claims are detected.
+12. Return trust metadata and citations.
 
 Model routing:
 
@@ -166,9 +167,35 @@ Retrieval changes:
 - BM25 and lexical reranker now apply light stemming for common English morphology.
 - Summary prompts seed context with early outline-like chunks.
 - Factual selected-document prompts seed context with chunks that contain focus terms plus definition/solution cues.
+- Exam Lab study-guide relevance checks use imported question-bank text instead of generic UI command words.
+- Vector-only retrieval no longer rehydrates chunks from Chroma metadata unless SQLite confirms the chunk is active.
+- Vector and BM25-only scores are normalized to avoid rank-derived score inflation.
 
 Trust behavior:
 
 - Generated answers are not trusted just because they have citations.
 - Unsupported specific claims trigger source-only rewrite.
 - Stale `indexed` documents with no active chunks are surfaced as `needs_reindex` in the library API.
+
+## 2026-06-20 Hardening Audit Update
+
+Additional reliability fixes implemented after multi-agent review:
+
+- `IndexingService` fails early when parsing returns zero readable chunks, preserving prior active chunks during failed reindex attempts.
+- `IngestionService` validates direct local paths with the same file suffix, size, and lightweight signature/readability checks used for uploads.
+- `RetrievalService` filters fused candidates to active SQLite chunks and records `orphan_vector_hits_dropped`.
+- `QueryService` summary/factual seed chunks now use low expansion scores rather than artificial high scores.
+- `SynthesisService` requires relevance for non-overview modes, rewrites on any unsupported cited claim, and avoids fabricating fallback anchors.
+- Study-guide synthesis relevance now includes imported question-bank text for Exam Lab flows.
+- Frontend query calls are scoped to the selected document when one is active, use timeouts, prevent Enter double-submit while busy, and snapshot source metadata per answer/export.
+- Windows runtime scripts now check native exit codes, use `npm.cmd`, separate normal preview from golden-demo preview, and stop desktop-launched child processes more reliably.
+- Docker Compose local ports bind to loopback only.
+
+Latest validation:
+
+- `npm.cmd run test:api`: `41 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run desktop:pack`: passed.
+- `docker compose -f docker-compose.local.yml config`: passed with expected user-level Docker config permission warning.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1`: passed.

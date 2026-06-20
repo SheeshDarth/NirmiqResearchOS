@@ -24,6 +24,9 @@ $electronBin = Join-Path $desktopDir "node_modules\.bin\electron.cmd"
 if ($Install -and -not (Test-Path $electronBin)) {
     Write-Output "Installing NIRMIQ desktop dependencies..."
     & $npm install --prefix $desktopDir
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
 if (-not (Test-Path $electronBin)) {
@@ -39,3 +42,6 @@ if (-not (Test-Path $electronBin)) {
 
 Write-Output "Starting NIRMIQ desktop app..."
 & $npm --prefix $desktopDir run start
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}

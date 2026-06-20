@@ -21,17 +21,28 @@ _QUERY_STOPWORDS = {
     "citation",
     "citations",
     "corpus",
+    "create",
+    "deep",
     "does",
+    "draft",
     "for",
     "from",
+    "generate",
     "give",
+    "guide",
     "how",
+    "imported",
     "in",
     "is",
     "it",
     "me",
     "of",
     "on",
+    "notes",
+    "produce",
+    "question",
+    "research",
+    "study",
     "the",
     "this",
     "to",
@@ -42,6 +53,7 @@ _QUERY_STOPWORDS = {
     "where",
     "which",
     "who",
+    "write",
     "with",
 }
 
@@ -103,12 +115,17 @@ class SynthesisService:
         exam_profile: dict[str, object] | None = None,
         exam_context: dict[str, object] | None = None,
     ) -> tuple[str, bool, dict[str, object]]:
-        top_grounding_score = float(bundle.chunks[0].score if bundle.chunks else 0.0)
+        top_grounding_score = max((float(chunk.score) for chunk in bundle.chunks), default=0.0)
         citation_count = len(bundle.chunks)
         grounding_state = self._grounding_state(top_grounding_score, citation_count)
         overview_query = self._is_document_overview_query(query, response_mode)
-        context_relevance = self._context_relevance(query=query, bundle=bundle)
-        strict_relevance_required = response_mode.strip().lower() == "general_chat"
+        relevance_query = self._relevance_query(
+            query=query,
+            response_mode=response_mode,
+            exam_context=exam_context,
+        )
+        context_relevance = self._context_relevance(query=relevance_query, bundle=bundle)
+        strict_relevance_required = response_mode.strip().lower() == "general_chat" or not overview_query
         low_score_overview = grounding_state == "weak" and overview_query and citation_count >= 2
         if low_score_overview:
             grounding_state = "moderate"
@@ -766,9 +783,10 @@ class SynthesisService:
 
     @staticmethod
     def _split_sentences(text: str) -> list[str]:
+        normalized = re.sub(r"\n+", " ", text)
         return [
             sentence.strip(" -")
-            for sentence in re.split(r"(?<=[.!?])\s+", text)
+            for sentence in re.split(r"(?<=[.!?])\s+", normalized)
             if sentence.strip(" -")
         ]
 
@@ -779,6 +797,26 @@ class SynthesisService:
             for token in re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", query.lower())
             if token not in _QUERY_STOPWORDS
         }
+
+    @staticmethod
+    def _relevance_query(
+        *,
+        query: str,
+        response_mode: str,
+        exam_context: dict[str, object] | None,
+    ) -> str:
+        mode = response_mode.strip().lower()
+        if mode in {"study_guide", "important_questions"} and exam_context:
+            questions = exam_context.get("questions") or []
+            if isinstance(questions, list) and questions:
+                question_text = " ".join(
+                    str(item.get("question", ""))
+                    for item in questions[:8]
+                    if isinstance(item, dict) and item.get("question")
+                )
+                if question_text.strip():
+                    return f"{query}\n{question_text}"
+        return query
 
     @staticmethod
     def _sentence_score(sentence: str, query_terms: set[str]) -> float:
@@ -872,8 +910,6 @@ class SynthesisService:
                 anchored_sentences.append(sentence)
             lines.append(" ".join(anchored_sentences))
         anchored = "\n".join(lines).strip()
-        if not any_anchor and context_by_anchor:
-            return anchored.rstrip() + " [1]"
         return anchored
 
     @staticmethod
@@ -882,7 +918,7 @@ class SynthesisService:
             idx: SynthesisService._context_text(block).lower()
             for idx, block in context_chunks
         }
-        normalized_answer = re.sub(r"([.!?])\s+((?:\[\d+\]\s*)+)", r" \2\1", answer)
+        normalized_answer = re.sub(r"([.!?])[ \t]+((?:\[\d+\][ \t]*)+)", r" \2\1", answer)
         checked = 0
         unsupported: list[dict[str, object]] = []
         for sentence in SynthesisService._split_sentences(normalized_answer):
@@ -928,11 +964,12 @@ class SynthesisService:
     def _should_rewrite_for_faithfulness(verification: dict[str, object]) -> bool:
         unsupported = verification.get("unsupported_claims")
         checked = int(verification.get("cited_claims_checked") or 0)
+        state = str(verification.get("state") or "")
+        if state == "unchecked" and checked == 0:
+            return True
         if not isinstance(unsupported, list) or checked <= 0:
             return False
-        if len(unsupported) >= 2:
-            return True
-        return len(unsupported) == 1 and checked <= 2
+        return len(unsupported) >= 1
 
     @staticmethod
     def _claim_terms(sentence: str) -> set[str]:

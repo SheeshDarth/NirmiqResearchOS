@@ -124,6 +124,13 @@ Implemented in the current repository:
 - Check local publish readiness through `/health/readiness` and `scripts/publish_smoke.ps1`.
 - Run with a low-memory local model profile: bounded Ollama context, bounded prediction length, short keep-alive, and batched embeddings.
 - Use Local Data controls to clear current thread memory or clear indexed material while leaving source files on disk.
+- Hardened retrieval/runtime path from the latest audit:
+  - empty-text reindex attempts fail safely without wiping prior active chunks.
+  - vector-only stale chunks are dropped unless they still exist as active SQLite chunks.
+  - summary/factual seed chunks no longer inflate grounding confidence.
+  - Exam Lab study guides judge relevance against imported question-bank text, not generic UI command words.
+  - Docker Compose publishes only on `127.0.0.1` for local-first safety.
+  - release scripts now fail on native command errors instead of producing false-green checks.
 
 ## What Works Now
 
@@ -142,6 +149,7 @@ Implemented in the current repository:
 - Run optional Docker dev containers with checked-in API and web Dockerfiles.
 - Use `/api/v1/*` routes while preserving the original local API route paths.
 - Enforce local request body limits, response compression, and scanner-clean SQLite migrations.
+- Run the full publish gate with `scripts/ship_check.ps1`, including tests, compile, web build, smoke, and golden-demo abstention checks.
 
 ## Planned Next
 
@@ -340,6 +348,12 @@ Run local preview and warm-start the bundled golden demo:
 ```powershell
 cd C:\Nirmiq-researchOS
 .\scripts\start_local.ps1 -GoldenDemo -OpenBrowser
+```
+
+Or double-click:
+
+```text
+NIRMIQ Golden Demo.cmd
 ```
 
 Stop processes started by the launcher:

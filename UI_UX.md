@@ -1,6 +1,6 @@
 # NIRMIQ UI/UX Specification
 
-Last updated: 2026-06-10
+Last updated: 2026-06-20
 
 Note: the requested filename `UI/UX.md` is represented as `UI_UX.md` because Windows treats `/` as a path separator.
 
@@ -46,6 +46,7 @@ Implementation rules:
 - Hide complexity until needed.
 - Keep citations available, not constantly overwhelming.
 - Make selected source obvious at the point of asking.
+- Keep selected-source behavior consistent: if a source is active, normal questions should stay scoped to it unless the user explicitly changes scope.
 - Let the user reclaim reading space by minimizing the composer.
 - Avoid exam-only framing; Research and Chat are general document-intelligence lanes.
 - Golden demo first: reviewers should be able to load a local corpus and run the proof path without understanding backend internals.
@@ -88,6 +89,8 @@ Implementation rules:
 - Must adapt placeholder and action label to the selected workspace.
 - Minimized composer should become a quiet command pill, not a blank collapsed area.
 - Golden demo prompts should be visible but not dominate normal usage.
+- Send/Enter should be disabled while a request is busy to prevent duplicate answers.
+- Uploads should derive their default title from the selected filename to avoid stale-source confusion.
 
 ## Citations UX
 
@@ -97,6 +100,8 @@ Implementation rules:
 - For casual Chat, citations can be hidden unless document context is used.
 - For Paper Lab and Exam Lab, citations should be more prominent.
 - Deep Research can show a compact proof strip with intent, citation coverage, cache state, and source type.
+- Error messages should prefer actionable local runtime language over raw API/stack text.
+- Success notices should eventually use a separate visual state instead of sharing the error state.
 
 ## Accessibility Requirements
 
@@ -112,6 +117,23 @@ Implementation rules:
 - The Deep Research panel should not be open by default for new users.
 - Research answers can become long; the minimized composer is necessary.
 - Paper Lab and Exam Lab need stronger guided flows in V4.
+- `apps/web/app/page.tsx` still needs a component split before larger visual iteration.
+- Mobile scroll and touch-target QA remains required after this hardening pass.
+
+## 2026-06-20 UX Reliability Update
+
+Implemented:
+
+- Active source is attached to submitted queries and exported answer metadata.
+- New Study Thread now creates a fresh local session id.
+- API requests time out with a local-runtime troubleshooting message.
+- Golden-demo preview has a dedicated launcher so normal preview remains clean.
+
+Still to polish:
+
+- Split page components into sidebar, chat thread, composer, Deep Research panel, Paper Lab, and Exam Lab.
+- Replace shared `setError` success/error state with separate notices.
+- Add source preview drawer and stronger mobile QA.
 
 ## V4 UX Direction
 

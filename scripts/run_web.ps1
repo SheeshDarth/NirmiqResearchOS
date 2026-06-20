@@ -8,4 +8,8 @@ if (-not $pathValue) {
 [System.Environment]::SetEnvironmentVariable("Path", $pathValue, "Process")
 
 Set-Location (Join-Path $PSScriptRoot "..\\apps\\web")
-npm run dev
+$npm = (Get-Command npm.cmd -ErrorAction Stop).Source
+& $npm run dev
+if ($LASTEXITCODE -ne 0) {
+    throw "Next.js dev server failed with exit code $LASTEXITCODE."
+}

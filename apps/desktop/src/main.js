@@ -36,6 +36,8 @@ function walkUpForProjectRoot(startPath) {
 function resolveProjectRoot() {
   const candidates = [
     process.env.NIRMIQ_ROOT,
+    process.env.PORTABLE_EXECUTABLE_DIR,
+    process.env.PORTABLE_EXECUTABLE_FILE ? path.dirname(process.env.PORTABLE_EXECUTABLE_FILE) : null,
     path.resolve(__dirname, "..", "..", ".."),
     process.cwd(),
     process.resourcesPath,
@@ -54,11 +56,13 @@ const ROOT_DIR = resolveProjectRoot();
 const API_DIR = path.join(ROOT_DIR, "apps", "api");
 const WEB_DIR = path.join(ROOT_DIR, "apps", "web");
 const TEMP_DIR = path.join(ROOT_DIR, "temp", "desktop");
+const RUNTIME_DIR = path.join(ROOT_DIR, "temp", "runtime");
 const API_URL = "http://127.0.0.1:8000";
 const WEB_URL = "http://127.0.0.1:3002";
 const API_HEALTH_URL = `${API_URL}/health`;
 const USER_DATA_DIR = path.join(TEMP_DIR, "electron-user-data");
 
+fs.mkdirSync(USER_DATA_DIR, { recursive: true });
 app.setPath("userData", USER_DATA_DIR);
 
 const isWindows = process.platform === "win32";
@@ -72,6 +76,7 @@ let runtimeStarting = false;
 
 function ensureRuntimeDir() {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
+  fs.mkdirSync(RUNTIME_DIR, { recursive: true });
 }
 
 function logPath(name) {
@@ -195,12 +200,23 @@ function spawnLoggedProcess(name, command, args, cwd, env = {}) {
   });
   child.stdout.on("data", (chunk) => appendLog(name, chunk.toString()));
   child.stderr.on("data", (chunk) => appendLog(name, chunk.toString()));
+  if (child.pid) {
+    fs.writeFileSync(path.join(TEMP_DIR, `${name}.pid`), String(child.pid));
+    fs.writeFileSync(path.join(RUNTIME_DIR, `${name}.desktop.pid`), String(child.pid));
+  }
   child.on("error", (error) => {
     child.spawnError = error;
     appendLog(name, `\n[${new Date().toISOString()}] spawn error: ${error.message}\n`);
   });
   child.on("exit", (code, signal) => {
     child.exitInfo = { code, signal };
+    for (const pidPath of [path.join(TEMP_DIR, `${name}.pid`), path.join(RUNTIME_DIR, `${name}.desktop.pid`)]) {
+      try {
+        fs.rmSync(pidPath, { force: true });
+      } catch {
+        // Best-effort cleanup only.
+      }
+    }
     appendLog(name, `\n[${new Date().toISOString()}] exited code=${code} signal=${signal}\n`);
   });
   return child;

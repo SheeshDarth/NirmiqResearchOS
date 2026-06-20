@@ -15,7 +15,7 @@ services:
       USE_OLLAMA_RERANKER: "false"
       LOW_MEMORY_MODE: "true"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   web:
     build:
@@ -28,7 +28,7 @@ services:
     environment:
       NEXT_PUBLIC_API_BASE: http://127.0.0.1:8000
     ports:
-      - "3002:3002"
+      - "127.0.0.1:3002:3002"
     depends_on:
       - api
 

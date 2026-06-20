@@ -404,3 +404,73 @@ Validation:
 Commit:
 
 - `690196c` - Fix Windows desktop startup.
+
+## 2026-06-20 Implementation Log - Fault Audit And Ship Hardening
+
+Work completed:
+
+- Used the multi-agent review output to prioritize correctness faults over cosmetic changes.
+- Hardened ingestion, indexing, retrieval scoring, faithfulness checks, frontend query behavior, desktop cleanup, Docker exposure, and release scripts.
+- Kept the implementation low-complexity and local-first; no graph database, cloud provider, or local agent was added in this sprint.
+
+Backend files changed:
+
+- `apps/api/app/core/deps.py`
+- `apps/api/app/services/indexing_service.py`
+- `apps/api/app/services/ingestion_service.py`
+- `apps/api/app/services/query_service.py`
+- `apps/api/app/services/retrieval_service.py`
+- `apps/api/app/services/synthesis_service.py`
+- `apps/api/app/tests/integration/test_ingest_query_flow.py`
+- `apps/api/app/tests/unit/test_synthesis_faithfulness.py`
+
+Frontend files changed:
+
+- `apps/web/app/page.tsx`
+- `apps/web/lib/api-client.ts`
+
+Runtime/release files changed:
+
+- `apps/desktop/src/main.js`
+- `NIRMIQ ResearchOS.cmd`
+- `NIRMIQ Golden Demo.cmd`
+- `docker-compose.local.yml`
+- `scripts/bootstrap.ps1`
+- `scripts/create_windows_shortcut.ps1`
+- `scripts/package_desktop.ps1`
+- `scripts/run_local.ps1`
+- `scripts/run_web.ps1`
+- `scripts/ship_check.ps1`
+- `scripts/start_desktop.ps1`
+- `scripts/stop_local.ps1`
+
+Docs updated:
+
+- `README.md`
+- `backend_architecture.md`
+- `trd.md`
+- `debugging.md`
+- `docs/accuracy_precision_audit.md`
+- `docs/publish_checklist.md`
+- `docs/security.md`
+- `docs/windows_app_packaging.md`
+- `context.md`
+- `codex_implementaton.md`
+
+Validation:
+
+- `npm.cmd run test:api`: `41 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run desktop:pack`: passed.
+- `docker compose -f docker-compose.local.yml config`: passed with non-blocking user Docker config warning.
+- `node --check apps\desktop\src\main.js`: passed.
+- `node --check apps\desktop\src\preload.js`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1`: passed.
+
+Known remaining debt:
+
+- `apps/web/app/page.tsx` still needs a component split.
+- UI success/error messaging still shares the same state in several paths.
+- Full local purge does not yet delete parse cache, extracted diagrams, or app-owned uploaded raw copies.
+- Real-world retrieval labels and screenshot/GIF demo assets are still needed before a polished public launch.

@@ -244,3 +244,35 @@ Remaining accuracy debt:
 - Track Recall@K, MRR, citation coverage, rewrite rate, abstention correctness, and latency.
 - Add chapter-wise summary profiles instead of relying only on generic selected-document summaries.
 - Consider a local entailment verifier only if it stays fast enough on RTX 4050 hardware.
+
+## 2026-06-20 Multi-Agent Hardening Pass
+
+Faults addressed:
+
+- Zero-chunk indexing could mark a document indexed and deactivate prior chunks. It now fails before deactivation when no readable text is extracted.
+- Vector mode could use rank-derived high scores and accept orphaned Chroma chunks. Vector scores now use the adapter score, and candidates are filtered to active SQLite chunk IDs.
+- Summary/factual seed chunks used artificial high scores. They now use low expansion scores so they widen context without creating fake grounding confidence.
+- Generated answers could pass when one cited claim was unsupported. Any unsupported cited claim now triggers a source-only rewrite.
+- Citation anchoring could fabricate `[1]` for unsupported uncited model output. Anchors are now added only when lexical support is strong enough.
+- Exam Lab study-guide relevance previously checked generic UI command words. It now checks imported question-bank text when available.
+- Frontend selected-document queries now remain scoped to the active source, preventing accidental corpus-wide answers when a user expects document-grounded behavior.
+
+Accuracy tradeoffs:
+
+- The verifier remains lexical and conservative. It may rewrite some acceptable paraphrases into more extractive wording, but this is preferable for the current "do not hallucinate" demo target.
+- Seed chunks can still help broad summaries and factual queries, but they no longer make weak evidence appear strong by themselves.
+- Vector orphan dropping protects correctness at the cost of requiring vector-store rebuild/clear when Chroma and SQLite drift heavily.
+
+Latest validation:
+
+- `npm.cmd run test:api`: `41 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1`: passed with grounded golden-demo checks and unsupported-chat abstention.
+
+Remaining accuracy work:
+
+- Add real textbook/note/paper labels beyond the compact 30-question demo set.
+- Track abstention correctness and citation precision separately from retrieval Recall@K.
+- Add latency/cache-hit metrics to the evaluation report.
+- Consider a small local entailment/rerank verifier only if measured latency stays acceptable on RTX 4050-class hardware.

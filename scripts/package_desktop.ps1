@@ -18,3 +18,7 @@ if ($Portable) {
 } else {
     & $npm --prefix $desktopDir run pack
 }
+
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}

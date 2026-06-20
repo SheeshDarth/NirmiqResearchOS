@@ -83,7 +83,19 @@ function Invoke-CheckedScript {
     }
 }
 
+function Invoke-NativeChecked {
+    param(
+        [string]$Description,
+        [scriptblock]$Command
+    )
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Description failed with exit code $LASTEXITCODE."
+    }
+}
+
 Repair-PathEnvironment
+$npm = (Get-Command npm.cmd -ErrorAction Stop).Source
 
 $started = @()
 $apiBase = "http://127.0.0.1:8000"
@@ -98,20 +110,37 @@ try {
 
     if (-not $SkipTests) {
         Push-Location $root
-        $env:PYTHONPATH = "apps/api"
-        $env:TEMP = Join-Path $root "temp\pytest"
-        $env:TMP = $env:TEMP
-        $env:TMPDIR = $env:TEMP
-        New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
-        python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q -o "cache_dir=$root\temp\pytest-cache"
-        python -m compileall apps/api/app
-        Pop-Location
+        try {
+            $env:PYTHONPATH = "apps/api"
+            $env:TEMP = Join-Path $root "temp\pytest"
+            $env:TMP = $env:TEMP
+            $env:TMPDIR = $env:TEMP
+            $env:USE_OLLAMA_GENERATION = "false"
+            $env:USE_OLLAMA_EMBEDDINGS = "false"
+            $env:USE_OLLAMA_RERANKER = "false"
+            $env:LOW_MEMORY_MODE = "true"
+            $env:SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS = "true"
+            New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
+            Invoke-NativeChecked "Backend tests" {
+                python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q -o "cache_dir=$root\temp\pytest-cache"
+            }
+            Invoke-NativeChecked "API compile" {
+                python -m compileall apps/api/app
+            }
+        } finally {
+            Pop-Location
+        }
     }
 
     if (-not $SkipBuild) {
         Push-Location (Join-Path $root "apps\web")
-        npm run build
-        Pop-Location
+        try {
+            Invoke-NativeChecked "Web build" {
+                & $npm run build
+            }
+        } finally {
+            Pop-Location
+        }
     }
 
     if (-not (Test-LocalPort 8000)) {
@@ -125,8 +154,8 @@ try {
     if (-not (Test-LocalPort 3002)) {
         $started += Start-ScopedProcess `
             -Name "web" `
-            -FilePath "cmd.exe" `
-            -Arguments @("/c", "npm run dev") `
+            -FilePath $npm `
+            -Arguments @("run", "dev") `
             -WorkingDirectory (Join-Path $root "apps\web")
     }
 
@@ -145,5 +174,8 @@ try {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
             Write-Output "Stopped scoped process PID $($process.Id)."
         }
+    }
+    if ($started.Count -gt 0) {
+        powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "stop_local.ps1") | Out-Null
     }
 }

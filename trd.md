@@ -1,6 +1,6 @@
 # NIRMIQ Technical Requirements Document
 
-Last updated: 2026-06-19
+Last updated: 2026-06-20
 
 ## Project
 
@@ -37,6 +37,8 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Keep session continuity through SQLite-backed message history and memory snapshots.
 - Restrict direct local-path ingestion to configured corpus roots by default.
 - Validate uploaded file signatures/readability before indexing.
+- Apply the same suffix, size, and lightweight signature/readability checks to direct local-path ingestion.
+- Preserve existing active chunks when a reindex attempt extracts no readable text.
 - Use adaptive generation temperature with conservative grounded defaults and higher long-context drafting settings.
 - Use bounded local model runtime settings for Ollama context, generation length, keep-alive, optional GPU/thread controls, and embedding batches.
 - Cache selected-document summaries by document id, content hash, and summary profile.
@@ -55,6 +57,8 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Grounded: response generation must cite retrieved chunks or abstain when context is weak.
 - Relevant: General Chat must abstain when retrieved chunks do not overlap the actual subject of the user query.
 - Faithful: cited generated claims must pass deterministic verification or be rewritten to extractive fallback.
+- Active-source safe: retrieved vector hits must be ignored when the chunk is no longer active in SQLite.
+- Honest scoring: summary/factual seed chunks may expand context but must not inflate grounding confidence.
 - Fast enough for demos: repeated PDF parsing should use content-hash page cache.
 - Efficient: repeated selected-document summaries should reuse SQLite cache until source content changes.
 - Memory efficient: default runtime profile should remain stable on RTX 4050-class hardware without requiring cloud APIs.
@@ -90,6 +94,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Include debug metadata for evaluation and development.
 - Use deterministic intent routing to expand retrieval hints for summaries, comparisons, deep research, paper drafting, and exam workflows.
 - Apply a lightweight query/context relevance gate before General Chat synthesis so old corpus chunks do not create false grounded answers.
+- Apply Exam Lab relevance against imported question-bank text for study-guide/important-question flows.
 - Paper drafting responses should expose deterministic paper-structure metadata without adding another generation pass.
 - Avoid graph databases in V3 unless the measured baseline proves SQLite concept graph expansion is insufficient.
 
@@ -119,9 +124,38 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Exam Lab exposes custom PDF generation from the current grounded answer.
 - Web build passes.
 - Backend unit/integration tests pass.
+- Desktop unpacked packaging passes.
+- Full `scripts/ship_check.ps1` passes.
 - `context.md` and handoff docs are updated after the work.
 - V3.1 summary cache, intent routing, and trust metadata tests pass.
 - V4 golden demo script indexes bundled sources and returns citations for locked proof queries.
+- Unsupported golden-demo Chat prompt returns `grounded=false` and no citations.
+
+## 2026-06-20 Hardening Acceptance Update
+
+New validated requirements:
+
+- Empty or unreadable reindex attempts must fail the job without deleting prior active chunks.
+- Direct local-path ingest must reject unsupported files before creating document/index records.
+- Vector retrieval must not return orphaned Chroma chunks that SQLite no longer marks active.
+- Broad summary/factual seed expansion must not create artificial high grounding scores.
+- Exam Lab study-guide generation must use imported question-bank text for relevance checks.
+- Frontend submit actions must avoid duplicate Enter submissions while a request is busy.
+- Query/export metadata must snapshot the selected source at answer time.
+- Startup, bootstrap, build, and packaging scripts must return non-zero on failed native commands.
+- Docker Compose dev ports must remain bound to `127.0.0.1` unless a future hosted mode explicitly changes that.
+
+Latest ship validation:
+
+```powershell
+npm.cmd run test:api
+npm.cmd run compile:api
+npm.cmd run build
+npm.cmd run desktop:pack
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1
+```
+
+All commands passed on 2026-06-20.
 
 ## 2026-06-11 Accuracy Rescue Technical Update
 

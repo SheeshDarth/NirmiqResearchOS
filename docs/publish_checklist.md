@@ -1,6 +1,6 @@
 # NIRMIQ Publish Checklist
 
-Last updated: 2026-06-14
+Last updated: 2026-06-20
 
 ## Target
 
@@ -66,6 +66,12 @@ Preferred golden-demo preview:
 ```powershell
 cd C:\Nirmiq-researchOS
 .\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
+```
+
+Windows double-click golden demo:
+
+```text
+NIRMIQ Golden Demo.cmd
 ```
 
 Optional desktop shortcut:
@@ -171,3 +177,26 @@ python scripts/eval_retrieval.py --dataset data/processed/eval/qa_labels.jsonl -
 - If linking publicly, call it a local-first portfolio/demo MVP, not a hosted SaaS.
 - Use `/api/v1/*` in future clients, but keep existing local routes working for current UI stability.
 - Keep HSTS/CSP disabled on local HTTP unless running behind HTTPS/proxy.
+
+## Latest Ship Gate Result
+
+Validated on 2026-06-20:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1
+```
+
+Result:
+
+- Backend unit/integration tests: `41 passed, 1 warning`.
+- API compile: passed.
+- Web production build: passed, `/` first-load JS about `115 kB`.
+- Publish smoke: passed.
+- Golden demo: Research, summary-style Research, Exam Lab, and Paper Lab returned grounded citations.
+- Golden demo unsupported Chat query: passed with `grounded=false` and `citations=0`.
+
+Current known release debt:
+
+- README screenshots/GIFs are still needed for public polish.
+- Retrieval labels need real textbooks/notes beyond the compact demo corpus.
+- Full local purge should eventually remove parse cache and app-owned uploaded copies with explicit confirmation.

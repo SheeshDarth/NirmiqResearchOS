@@ -12,6 +12,7 @@ if (-not $Desktop -and -not $StartMenu) {
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $launcher = Join-Path $root "NIRMIQ ResearchOS.cmd"
 $desktopLauncher = Join-Path $root "NIRMIQ Desktop.cmd"
+$goldenLauncher = Join-Path $root "NIRMIQ Golden Demo.cmd"
 $stopper = Join-Path $root "NIRMIQ Stop.cmd"
 $icon = Join-Path $env:SystemRoot "System32\shell32.dll"
 
@@ -21,6 +22,10 @@ if (-not (Test-Path $launcher)) {
 
 if (-not (Test-Path $desktopLauncher)) {
     throw "Desktop launcher not found: $desktopLauncher"
+}
+
+if (-not (Test-Path $goldenLauncher)) {
+    throw "Golden demo launcher not found: $goldenLauncher"
 }
 
 function New-NirmiqShortcut {
@@ -53,6 +58,11 @@ if ($Desktop) {
         -Description "Launch NIRMIQ ResearchOS browser preview" `
         -IconIndex 13
     New-NirmiqShortcut `
+        -ShortcutPath (Join-Path $desktopPath "NIRMIQ Golden Demo.lnk") `
+        -TargetPath $goldenLauncher `
+        -Description "Launch NIRMIQ ResearchOS with the golden demo corpus" `
+        -IconIndex 13
+    New-NirmiqShortcut `
         -ShortcutPath (Join-Path $desktopPath "Stop NIRMIQ ResearchOS.lnk") `
         -TargetPath $stopper `
         -Description "Stop NIRMIQ ResearchOS local preview services" `
@@ -71,6 +81,11 @@ if ($StartMenu) {
         -ShortcutPath (Join-Path $startMenuPath "NIRMIQ Browser Preview.lnk") `
         -TargetPath $launcher `
         -Description "Launch NIRMIQ ResearchOS browser preview" `
+        -IconIndex 13
+    New-NirmiqShortcut `
+        -ShortcutPath (Join-Path $startMenuPath "NIRMIQ Golden Demo.lnk") `
+        -TargetPath $goldenLauncher `
+        -Description "Launch NIRMIQ ResearchOS with the golden demo corpus" `
         -IconIndex 13
     New-NirmiqShortcut `
         -ShortcutPath (Join-Path $startMenuPath "Stop NIRMIQ ResearchOS.lnk") `

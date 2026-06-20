@@ -99,6 +99,7 @@ class AppContainer:
             upload_root=settings.upload_path,
             allowed_roots=[*settings.local_ingest_allowed_roots, settings.upload_path],
             allow_arbitrary_local_paths=settings.security_allow_arbitrary_local_paths,
+            max_upload_bytes=settings.max_request_body_bytes,
         )
         documents_service = DocumentsService(sqlite_repo=sqlite_repo, chroma_repo=chroma_repo)
         exam_service = ExamService(sqlite_repo=sqlite_repo, workspace_root=settings.workspace_root)

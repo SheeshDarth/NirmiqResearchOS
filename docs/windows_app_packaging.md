@@ -1,6 +1,6 @@
 # NIRMIQ Windows App Packaging
 
-Last updated: 2026-06-19
+Last updated: 2026-06-20
 
 ## Current Recommendation
 
@@ -70,6 +70,18 @@ NIRMIQ ResearchOS.cmd
 This runs:
 
 ```powershell
+.\scripts\run_local.ps1 -OpenBrowser
+```
+
+Golden-demo preview is intentionally separate:
+
+```text
+NIRMIQ Golden Demo.cmd
+```
+
+This runs:
+
+```powershell
 .\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
 ```
 
@@ -92,6 +104,24 @@ Optional Start Menu shortcuts:
 cd C:\Nirmiq-researchOS
 .\scripts\create_windows_shortcut.ps1 -Desktop -StartMenu
 ```
+
+The shortcut script creates separate entries for normal browser preview, golden-demo preview, desktop app launch, and stop.
+
+## Latest Packaging Validation
+
+Validated on 2026-06-20:
+
+- `npm.cmd run desktop:pack`: passed and generated `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
+- `node --check apps\desktop\src\main.js`: passed.
+- `node --check apps\desktop\src\preload.js`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1`: passed.
+
+Hardening notes:
+
+- Electron now creates its workspace-local `userData` directory before calling `app.setPath`.
+- Portable builds also inspect `PORTABLE_EXECUTABLE_DIR` and `PORTABLE_EXECUTABLE_FILE` to find the repository root.
+- Desktop-launched child process IDs are mirrored under `temp\runtime` so `scripts\stop_local.ps1` can clean them up reliably.
+- Packaging and startup scripts now exit non-zero when npm/native commands fail.
 
 ## Full Windows Installer Later
 

@@ -1955,3 +1955,72 @@ Validation:
 Commit:
 
 - `690196c` - Fix Windows desktop startup.
+
+### Latest Update: Multi-Agent Fault Audit And Ship Hardening
+
+Date: 2026-06-20
+
+Purpose:
+
+- Resolve the highest-risk backend, frontend, desktop/runtime, security, and release-gate faults found during the multi-agent review.
+- Keep the project shippable for an EOD demo without adding heavy new architecture or confusing UI controls.
+
+Implemented:
+
+- Retrieval and grounding:
+  - zero-readable-chunk reindex attempts now fail before old active chunks are deactivated.
+  - direct local-path ingestion now validates suffix, size, and lightweight signature/readability checks.
+  - vector hits are filtered to active SQLite chunks so stale Chroma metadata cannot become answer evidence.
+  - vector and BM25-only scores are normalized from actual scores instead of rank-derived inflation.
+  - summary/factual seed chunks use low expansion scores instead of artificial high grounding scores.
+  - Exam Lab study-guide relevance uses imported question-bank text, not generic UI command words.
+  - cited claim verification now rewrites on any unsupported cited claim.
+  - citation anchoring no longer fabricates `[1]` when support is weak.
+- Frontend reliability:
+  - selected-document queries remain scoped to the active source.
+  - Enter submit is blocked while a request is busy.
+  - uploads derive title from the selected filename instead of stale form state.
+  - New Study Thread creates a fresh session id.
+  - API calls use timeout/cancellation and cleaner backend error messages.
+  - answer/Paper Lab exports snapshot the source attached to the answer.
+- Desktop/runtime and release:
+  - Electron creates its workspace-local user data directory before setting `userData`.
+  - packaged root detection checks portable executable environment paths.
+  - desktop child PIDs are mirrored under `temp\runtime` for cleanup.
+  - normal browser preview and golden-demo preview are separate launchers:
+    - `NIRMIQ ResearchOS.cmd`
+    - `NIRMIQ Golden Demo.cmd`
+  - bootstrap/start/build/package/ship scripts use `npm.cmd` and return non-zero on native command failure.
+  - `ship_check.ps1` now uses the same offline/low-memory test env as `test_api.ps1`, restores locations safely, and runs the full smoke/golden gate.
+  - Docker Compose local dev ports bind to `127.0.0.1`.
+
+Validation:
+
+- `npm.cmd run test:api`: `41 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run desktop:pack`: passed.
+- `docker compose -f docker-compose.local.yml config`: passed; Windows user Docker config permission warning remains non-blocking.
+- `node --check apps\desktop\src\main.js`: passed.
+- `node --check apps\desktop\src\preload.js`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1`: passed.
+  - backend tests passed.
+  - API compile passed.
+  - web build passed.
+  - publish smoke passed.
+  - golden demo Research, summary-style Research, Exam Lab, and Paper Lab returned grounded citations.
+  - unsupported Chat prompt returned `grounded=false` and `citations=0`.
+
+Tradeoffs:
+
+- The faithfulness verifier is intentionally conservative and lexical. It may rewrite acceptable paraphrases to more extractive prose, but this supports the current no-hallucination demo target.
+- Clear indexed material still does not fully purge parse cache, diagrams, or arbitrary source files. Full app-owned purge remains a privacy sprint item.
+- No local agent or graph database was added; the baseline RAG path needed correctness and release stability first.
+
+Remaining next sprint candidates:
+
+- Capture README screenshots/GIFs.
+- Add real textbook/note/paper retrieval labels and citation-precision metrics.
+- Add a source-preview drawer and mobile QA pass.
+- Add a strict local-only model endpoint guard before allowing non-loopback Ollama/external providers.
+- Add a local bug-report bundle export.

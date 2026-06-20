@@ -43,6 +43,11 @@ class IndexingService:
         pages = await self._parser.parse_pages(source_path)
         pages = await self._apply_ocr_fallback(source_path=source_path, pages=pages)
         chunks = self._chunk_pages(pages)
+        if not chunks:
+            raise ValueError(
+                "No readable text could be extracted from this file. "
+                "If this is a scanned PDF or image, install OCR support or upload a clearer source."
+            )
         index_version = self._sqlite_repo.get_next_index_version(document_id)
         self._sqlite_repo.deactivate_document_chunks(document_id)
 

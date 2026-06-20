@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 echo Starting NIRMIQ ResearchOS local preview...
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\run_local.ps1" -GoldenDemo -OpenBrowser
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\run_local.ps1" -OpenBrowser
 if errorlevel 1 (
   echo.
   echo NIRMIQ failed to start. Check temp\runtime logs for details.
