@@ -197,6 +197,7 @@ Result:
 
 Current known release debt:
 
-- README screenshots/GIFs are still needed for public polish.
-- Retrieval labels need real textbooks/notes beyond the compact demo corpus.
-- Full local purge should eventually remove parse cache and app-owned uploaded copies with explicit confirmation.
+- README live UI screenshots/GIFs are still needed for public polish.
+- Retrieval labels need to grow beyond the current 16-sample real-world seed.
+- Full local purge now removes app-owned uploads, parse cache, and extracted diagrams; UI should show those counts more explicitly.
+- Linux browser-preview path exists, but native Linux packaging is not validated yet.

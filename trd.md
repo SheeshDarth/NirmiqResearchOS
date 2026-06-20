@@ -126,6 +126,22 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Backend unit/integration tests pass.
 - Desktop unpacked packaging passes.
 - Full `scripts/ship_check.ps1` passes.
+
+## 2026-06-20 Polish Technical Update
+
+New requirements now partially satisfied:
+
+- Frontend code should continue moving from one large `page.tsx` into smaller client components and shared model helpers.
+- Retrieval eval labels may specify `source_file` and use `--auto-ingest-sources` so real-world evals do not depend on manually copied local document IDs.
+- Local purge must remove app-owned uploaded sources, parse-cache files, and extracted diagram directories while preserving arbitrary external local-path files.
+- Linux browser-preview support should remain lightweight and avoid Electron as the default low-end path.
+- Low-end mode should keep BM25/extractive fallback usable without Ollama, vector embeddings, or reranker models.
+
+Validated:
+
+- First frontend split passed `npm.cmd run build`.
+- Real-world seed eval produced phrase-level metrics over 16 samples.
+- Purge hardening passed backend tests.
 - `context.md` and handoff docs are updated after the work.
 - V3.1 summary cache, intent routing, and trust metadata tests pass.
 - V4 golden demo script indexes bundled sources and returns citations for locked proof queries.

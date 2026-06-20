@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="420" viewBox="0 0 1180 420" role="img" aria-labelledby="title desc">
+  <title id="title">NIRMIQ ResearchOS demo flow</title>
+  <desc id="desc">A local-first academic document intelligence flow: upload, retrieve, answer, verify, export.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#050807"/>
+      <stop offset="55%" stop-color="#07110f"/>
+      <stop offset="100%" stop-color="#0f1f1b"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0d1715"/>
+      <stop offset="100%" stop-color="#111613"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+  <rect width="1180" height="420" rx="32" fill="url(#bg)"/>
+  <circle cx="90" cy="78" r="38" fill="#0a302c" stroke="#65d9bd" stroke-opacity="0.6"/>
+  <path d="M72 80h36M90 62v36M76 66l28 28M104 66 76 94" stroke="#a7f7dc" stroke-width="3" stroke-linecap="round"/>
+  <text x="144" y="74" fill="#f5f2e8" font-family="Georgia, serif" font-size="34" font-weight="700">NIRMIQ ResearchOS</text>
+  <text x="145" y="105" fill="#88a197" font-family="Verdana, sans-serif" font-size="14" letter-spacing="4">LOCAL ACADEMIC INTELLIGENCE</text>
+  <g filter="url(#shadow)">
+    <rect x="70" y="165" width="175" height="125" rx="22" fill="url(#card)" stroke="#25443d"/>
+    <rect x="290" y="165" width="175" height="125" rx="22" fill="url(#card)" stroke="#25443d"/>
+    <rect x="510" y="165" width="175" height="125" rx="22" fill="url(#card)" stroke="#25443d"/>
+    <rect x="730" y="165" width="175" height="125" rx="22" fill="url(#card)" stroke="#25443d"/>
+    <rect x="950" y="165" width="175" height="125" rx="22" fill="url(#card)" stroke="#25443d"/>
+  </g>
+  <g fill="#f5f2e8" font-family="Georgia, serif" font-size="23" font-weight="700">
+    <text x="96" y="214">Upload</text>
+    <text x="315" y="214">Retrieve</text>
+    <text x="538" y="214">Answer</text>
+    <text x="760" y="214">Verify</text>
+    <text x="982" y="214">Export</text>
+  </g>
+  <g fill="#8ca69d" font-family="Verdana, sans-serif" font-size="13">
+    <text x="96" y="244">PDFs, notes,</text>
+    <text x="96" y="263">papers, images</text>
+    <text x="315" y="244">BM25 + optional</text>
+    <text x="315" y="263">semantic search</text>
+    <text x="538" y="244">grounded local</text>
+    <text x="538" y="263">synthesis</text>
+    <text x="760" y="244">citations +</text>
+    <text x="760" y="263">trust state</text>
+    <text x="982" y="244">Markdown, PDF,</text>
+    <text x="982" y="263">study outputs</text>
+  </g>
+  <g stroke="#65d9bd" stroke-width="3" stroke-linecap="round" opacity="0.9">
+    <path d="M250 228h33"/>
+    <path d="M470 228h33"/>
+    <path d="M690 228h33"/>
+    <path d="M910 228h33"/>
+  </g>
+  <g fill="#65d9bd" opacity="0.9">
+    <path d="M282 228l-10-7v14z"/>
+    <path d="M502 228l-10-7v14z"/>
+    <path d="M722 228l-10-7v14z"/>
+    <path d="M942 228l-10-7v14z"/>
+  </g>
+  <rect x="70" y="330" width="1040" height="42" rx="21" fill="#0c1513" stroke="#21453d"/>
+  <text x="95" y="357" fill="#b8ffe2" font-family="Verdana, sans-serif" font-size="15" font-weight="700">Offline-first core</text>
+  <text x="270" y="357" fill="#8ca69d" font-family="Verdana, sans-serif" font-size="15">documents remain local by default</text>
+  <text x="560" y="357" fill="#b8ffe2" font-family="Verdana, sans-serif" font-size="15" font-weight="700">Golden demo ready</text>
+  <text x="745" y="357" fill="#8ca69d" font-family="Verdana, sans-serif" font-size="15">research, paper, exam, abstention proof</text>
+</svg>

@@ -478,3 +478,48 @@ Known remaining debt:
 Commit:
 
 - `5e21194` - Harden retrieval and ship checks.
+
+## 2026-06-20 Implementation Log - Polish Sprint
+
+Work completed:
+
+- Reduced frontend monolith risk by extracting shared page model/helpers and two client components.
+- Added a real-world phrase-level retrieval seed benchmark using local academic PDFs/notes without committing copyrighted source files.
+- Extended purge behavior to remove app-owned uploaded source copies, parse-cache files, and extracted diagram directories.
+- Added README visual polish through a committed SVG demo flow and updated demo asset guidance.
+- Added Linux/low-end browser-preview scripts and feasibility documentation.
+
+Files introduced:
+
+- `apps/web/app/page-model.ts`
+- `apps/web/components/local-login.tsx`
+- `apps/web/components/study-guide-answer.tsx`
+- `data/processed/eval/real_world_academic_seed.jsonl`
+- `data/processed/eval/real_world_retrieval_metrics.json`
+- `docs/assets/nirmiq-demo-flow.svg`
+- `docs/linux_low_end_feasibility.md`
+- `scripts/eval_real_world.ps1`
+- `scripts/start_local.sh`
+- `scripts/stop_local.sh`
+
+Key behavior changes:
+
+- `scripts/eval_retrieval.py` supports `source_file` labels and `--auto-ingest-sources`.
+- `DocumentsService.purge_documents` deletes app-owned uploads, parse cache, and diagrams while preserving arbitrary external local-path source files.
+- Purge response includes source/derived deletion counts.
+- Root `package.json` includes `start:linux` and `stop:linux`.
+
+Validation:
+
+- `npm.cmd run build`: passed.
+- `npm.cmd run test:api`: `41 passed, 1 warning`.
+- `python -m compileall scripts apps/api/app`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\eval_real_world.ps1`: passed.
+- Bash validation could not run because WSL has no installed Linux distribution.
+
+Remaining debt:
+
+- More frontend components should be extracted.
+- Real-world eval needs 60+ labels and failure analysis.
+- Live UI screenshots/GIFs still need capture.
+- Linux scripts need validation on a real Linux distro.

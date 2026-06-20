@@ -33,7 +33,7 @@ NIRMIQ currently runs as a local single-user application. The login screen is a 
 - Local Data controls in the UI:
   - Export current thread as Markdown.
   - Clear current thread memory and snapshots.
-  - Clear indexed document metadata, chunks, summaries, jobs, exam artifacts, and vector entries.
+  - Clear indexed document metadata, chunks, summaries, jobs, exam artifacts, vector entries, parse-cache files, extracted diagrams, and app-owned uploaded source copies.
 
 ## V3 Local Data Protection Protocol
 
@@ -54,11 +54,12 @@ NIRMIQ is designed to protect the user from accidental data leakage while preser
 - No production authentication yet.
 - No role-based access control.
 - Local SQLite database is not encrypted by default.
-- Local documents and extracted diagrams remain on disk.
-- Parse cache, extracted diagrams, and uploaded raw copies are not fully purged by the UI yet.
+- External local-path source files remain on disk unless the user deletes them outside NIRMIQ.
+- Uploaded source copies owned by NIRMIQ are deleted by the indexed-material purge path.
+- Parse cache and extracted diagrams owned by NIRMIQ are deleted by the indexed-material purge path.
 - If optional cloud/API providers are added later, explicit consent, redaction controls, and visible mode labels are required.
 - SQLite and raw document files are not encrypted at rest yet.
-- `Clear indexed material` does not delete arbitrary source files from disk. This is intentional to avoid unsafe filesystem deletion.
+- `Clear indexed material` does not delete arbitrary source files outside the app upload directory. This is intentional to avoid unsafe filesystem deletion.
 - No external error-tracking service is enabled because default telemetry would conflict with the local-first privacy contract.
 - HSTS is disabled by default because local HTTP development should not set HTTPS-only browser policy.
 
@@ -66,7 +67,7 @@ NIRMIQ is designed to protect the user from accidental data leakage while preser
 
 1. Add real authentication only if hosted or multi-user deployment is introduced.
 2. Add encrypted local vault support for SQLite and extracted assets.
-3. Add optional secure source-file purge for uploaded files only, with explicit confirmation.
+3. Add optional secure source-file purge confirmations and visible counts in the UI.
 4. Add provider consent screens before sending content to external APIs.
 5. Add audit log export for document operations.
 6. Add optional local encryption for SQLite, raw uploads, extracted diagrams, and parse cache.

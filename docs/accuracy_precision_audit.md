@@ -276,3 +276,36 @@ Remaining accuracy work:
 - Track abstention correctness and citation precision separately from retrieval Recall@K.
 - Add latency/cache-hit metrics to the evaluation report.
 - Consider a small local entailment/rerank verifier only if measured latency stays acceptable on RTX 4050-class hardware.
+
+## 2026-06-20 Real-World Seed Evaluation
+
+Implemented:
+
+- `data/processed/eval/real_world_academic_seed.jsonl`
+- `scripts/eval_real_world.ps1`
+- `scripts/eval_retrieval.py --auto-ingest-sources`
+
+Sources:
+
+- Transformer paper: `data/raw/attention_is_all_you_need.pdf`
+- ML textbook: `data/raw/uploads/Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-5b287bd745.pdf`
+- GenAI notes: `data/raw/uploads/mod-5-gen-ai-708567b729.pdf`
+
+Latest phrase-level retrieval metrics:
+
+| Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 16 | 0.490 | 0.563 | 0.688 | 0.750 | 0.750 |
+| BM25 | 16 | 0.578 | 0.625 | 0.688 | 0.750 | 0.750 |
+
+Interpretation:
+
+- This is the honest baseline for real local academic material.
+- The project is demo-ready, but not yet production-perfect for arbitrary documents.
+- BM25 currently wins on this seed because exact academic phrase labels dominate and Ollama embeddings remain off in the low-memory profile.
+
+Next accuracy sprint:
+
+- Add at least 40 more real labels.
+- Separate parsing failures from retrieval-ranking failures.
+- Tune hybrid retrieval only against this harder dataset, not only the golden demo.

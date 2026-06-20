@@ -42,7 +42,53 @@ Limitations:
 
 - This is a compact recruiter/demo dataset, not a full benchmark.
 - The PDFs are synthetic and intentionally compact so reviewers can index them quickly.
-- Next evaluation step: add labels from real engineering notes, research papers, and exam-style PDFs.
+- A real-world seed set now exists, but it is still small and should grow before claims are made about broad academic accuracy.
+
+## Real-World Academic Seed Results
+
+Date: 2026-06-20
+
+Dataset: `data/processed/eval/real_world_academic_seed.jsonl`
+
+Sources:
+
+- `data/raw/attention_is_all_you_need.pdf`
+- `data/raw/uploads/Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-5b287bd745.pdf`
+- `data/raw/uploads/mod-5-gen-ai-708567b729.pdf`
+
+Note: these source PDFs are intentionally local/untracked because public repositories should not commit private or copyright-sensitive academic material. The labels and metrics are committed; replace the `source_file` paths with local documents to reproduce or expand the benchmark.
+
+Scope:
+
+- 16 phrase-labeled questions.
+- Covers a real research paper, a full ML textbook PDF, and local GenAI notes.
+- Uses `source_file` labels plus `--auto-ingest-sources`, so document IDs do not need to be manually copied.
+
+Command:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\eval_real_world.ps1
+```
+
+Results:
+
+| Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | nDCG@5 | nDCG@8 | Citation Expected Coverage |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 16 | 0.490 | 0.563 | 0.688 | 0.750 | 0.285 | 0.343 | 0.366 | 0.750 |
+| BM25 | 16 | 0.578 | 0.625 | 0.688 | 0.750 | 0.352 | 0.395 | 0.417 | 0.750 |
+
+Interpretation:
+
+- This result is intentionally more realistic and less polished than the golden demo score.
+- BM25 slightly beats hybrid on this seed set because Ollama embeddings are disabled in the low-memory/offline profile and exact academic terms dominate these labels.
+- Recall@8 and citation expected coverage at `0.75` show the current system is useful, but not yet "production perfect" for arbitrary academic material.
+
+Next tuning targets:
+
+- Add 40-80 more labels across textbooks, lecture notes, scanned PDFs, and research papers.
+- Track which questions fail because of parsing noise versus retrieval ranking.
+- Tune summary/factual expansion and source diversity using this harder set instead of only the golden demo.
 
 ## Metrics Definitions
 

@@ -100,3 +100,34 @@ cd C:\Nirmiq-researchOS
 ```
 
 Detailed report: `docs/retrieval_eval_results.md`.
+
+## Real-World Seed Benchmark
+
+Updated on 2026-06-20 with actual local academic material:
+
+- Dataset: `data/processed/eval/real_world_academic_seed.jsonl`
+- Sources:
+  - `data/raw/attention_is_all_you_need.pdf`
+  - `data/raw/uploads/Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-5b287bd745.pdf`
+  - `data/raw/uploads/mod-5-gen-ai-708567b729.pdf`
+- Samples: 16 phrase-labeled QA items
+
+The source PDFs are local/untracked by design. Keep copyright-sensitive textbooks and personal notes out of Git; commit labels and metrics only.
+
+| Mode | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 0.490 | 0.563 | 0.688 | 0.750 | 0.750 |
+| BM25 | 0.578 | 0.625 | 0.688 | 0.750 | 0.750 |
+
+Command:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\eval_real_world.ps1
+```
+
+Interpretation:
+
+- The golden demo remains the reviewer proof path.
+- The real-world seed is the accuracy-improvement benchmark.
+- These numbers are not yet launch-marketing quality; they are useful because they expose where the next retrieval tuning sprint should focus.

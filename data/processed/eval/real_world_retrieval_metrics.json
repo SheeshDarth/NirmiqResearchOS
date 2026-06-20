@@ -1,0 +1,38 @@
+{
+  "dataset": "data\\processed\\eval\\real_world_academic_seed.jsonl",
+  "evaluation_mode": "retrieval",
+  "modes": [
+    "hybrid",
+    "bm25"
+  ],
+  "results": {
+    "hybrid": {
+      "mode": "hybrid",
+      "samples": 16,
+      "target_level": "phrase",
+      "mrr": 0.4895833333333333,
+      "recall@3": 0.5625,
+      "recall@5": 0.6875,
+      "recall@8": 0.75,
+      "ndcg@3": 0.285205558504557,
+      "ndcg@5": 0.34345195809301193,
+      "ndcg@8": 0.36571490728726336,
+      "citation_presence_rate": 1.0,
+      "citation_expected_coverage": 0.75
+    },
+    "bm25": {
+      "mode": "bm25",
+      "samples": 16,
+      "target_level": "phrase",
+      "mrr": 0.578125,
+      "recall@3": 0.625,
+      "recall@5": 0.6875,
+      "recall@8": 0.75,
+      "ndcg@3": 0.3516115991324203,
+      "ndcg@5": 0.39503314167279435,
+      "ndcg@8": 0.4172960908670457,
+      "citation_presence_rate": 1.0,
+      "citation_expected_coverage": 0.75
+    }
+  }
+}

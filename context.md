@@ -2028,3 +2028,56 @@ Remaining next sprint candidates:
 Commit:
 
 - `5e21194` - Harden retrieval and ship checks.
+
+### Latest Update: Polish Sprint - Components, Real Eval, Purge, Linux Feasibility
+
+Date: 2026-06-20
+
+Purpose:
+
+- Address the remaining non-perfect areas: large frontend page, real-world eval data, app-owned data purge, README polish assets, and Linux/low-end feasibility.
+
+Implemented:
+
+- Frontend maintainability:
+  - Split stable types/constants/helpers out of `apps/web/app/page.tsx` into `apps/web/app/page-model.ts`.
+  - Moved local login UI into `apps/web/components/local-login.tsx`.
+  - Moved study-guide answer rendering into `apps/web/components/study-guide-answer.tsx`.
+  - Reduced `page.tsx` from roughly 2,400+ lines to roughly 1,800 lines while preserving behavior.
+- Real-world retrieval evaluation:
+  - Added `source_file` and `--auto-ingest-sources` support to `scripts/eval_retrieval.py`.
+  - Added `scripts/eval_real_world.ps1`.
+  - Added `data/processed/eval/real_world_academic_seed.jsonl` with 16 phrase-labeled questions from local academic material.
+  - Wrote `data/processed/eval/real_world_retrieval_metrics.json`.
+  - Current real-world seed metrics:
+    - Hybrid: MRR `0.490`, Recall@3 `0.563`, Recall@8 `0.750`, citation expected coverage `0.750`.
+    - BM25: MRR `0.578`, Recall@3 `0.625`, Recall@8 `0.750`, citation expected coverage `0.750`.
+  - Important caveat: source PDFs are intentionally local/untracked; labels and metrics are committed, not copyright-sensitive PDFs.
+- Local data purge:
+  - `Clear indexed material` now removes SQLite/vector metadata plus app-owned uploaded source copies, parse-cache files, and extracted diagram folders.
+  - External local-path source files outside the upload directory are preserved for safety.
+  - Backend purge response now reports `source_file_delete_count` and `derived_files_deleted`.
+  - Integration test verifies uploaded source and parse cache cleanup.
+- README/public polish:
+  - Added `docs/assets/nirmiq-demo-flow.svg`.
+  - README now shows the demo flow SVG and explains screenshot/GIF capture requirements.
+- Linux/low-end feasibility:
+  - Added `scripts/start_local.sh` and `scripts/stop_local.sh` for browser-preview Linux runs.
+  - Added `docs/linux_low_end_feasibility.md`.
+  - Added root scripts `start:linux` and `stop:linux`.
+  - Linux runtime is feasible as browser-first, BM25/extractive-first; native Linux desktop packaging is not validated yet.
+
+Validation:
+
+- `npm.cmd run build`: passed after the component split.
+- `npm.cmd run test:api`: `41 passed, 1 warning`.
+- `python -m compileall scripts apps/api/app`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\eval_real_world.ps1`: passed and wrote metrics.
+- Bash syntax/runtime validation could not run locally because WSL has no installed Linux distribution.
+
+Remaining debt:
+
+- Continue splitting `page.tsx` into sidebar, chat thread, composer, Deep Research, Paper Lab, and Exam Lab components.
+- Capture actual live UI screenshots/GIFs for README after final visual QA.
+- Grow real-world eval set from 16 to 60+ labels and tune retrieval against failures.
+- Validate Linux scripts on an actual Linux distro and package Linux desktop only if worth it.

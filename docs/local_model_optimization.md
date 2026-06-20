@@ -1,6 +1,6 @@
 # NIRMIQ Local Model Optimization
 
-Last updated: 2026-06-06
+Last updated: 2026-06-20
 
 ## Goal
 
@@ -36,6 +36,27 @@ Why this helps:
 - Bounded prediction caps long generations before they become runaway memory/latency events.
 - Batched embeddings avoid sending every chunk to Ollama in one large request.
 - Reranking stays lexical by default, so generation and reranking do not compete for VRAM.
+
+## No-GPU / Low-End Linux Mode
+
+NIRMIQ should remain useful without a GPU by leaning on retrieval and extractive fallback:
+
+```bash
+export USE_OLLAMA_GENERATION=false
+export USE_OLLAMA_EMBEDDINGS=false
+export USE_OLLAMA_RERANKER=false
+export LOW_MEMORY_MODE=true
+bash scripts/start_local.sh
+```
+
+This mode is best for:
+
+- low-end Linux laptops
+- CPU-only devices
+- quick demos where reliability matters more than fluent generation
+- reviewing retrieval/citation behavior without model variability
+
+Tradeoff: answers become more extractive and less conversational, but they stay local and cited.
 
 ## Recommended Local Models
 
@@ -91,6 +112,12 @@ $env:PYTHONPATH='apps/api'
 python scripts/eval_retrieval.py --dataset data/processed/eval/qa_labels.jsonl --k 3 5 8 --modes hybrid bm25
 ```
 
+Run the current real-world seed benchmark:
+
+```powershell
+.\scripts\eval_real_world.ps1
+```
+
 Track:
 
 - summary latency first run versus cache hit
@@ -99,4 +126,3 @@ Track:
 - citation coverage
 - abstention correctness
 - Ollama backend availability
-

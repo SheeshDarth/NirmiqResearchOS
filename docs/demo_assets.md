@@ -4,6 +4,7 @@ NIRMIQ ResearchOS is screenshot-ready, but screenshots should be regenerated aft
 
 Recommended GitHub assets:
 
+0. `docs/assets/nirmiq-demo-flow.svg` - committed visual flow diagram for README polish.
 1. `docs/assets/01-upload-pdf.png` - Upload or load the sample PDF.
 2. `docs/assets/02-ask-grounded-question.png` - Ask a document-grounded question.
 3. `docs/assets/03-citation-trail.png` - Open Deep Research and show source chunks/citations.
@@ -28,5 +29,6 @@ Then in the app:
 
 Current note:
 
-- Actual screenshots are not committed in this pass because no local screenshot-capable browser tool was available in the current Codex session.
+- `docs/assets/nirmiq-demo-flow.svg` is committed as a lightweight visual proof path.
+- Actual UI screenshots/GIFs still need to be captured from a live browser after final visual QA.
 - The README links this checklist so contributors know exactly which assets to capture before publishing.

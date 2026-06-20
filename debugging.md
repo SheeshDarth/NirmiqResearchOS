@@ -491,3 +491,30 @@ NIRMIQ Golden Demo.cmd
 ```
 
 This split avoids preloading demo material during normal local work.
+
+### Real-World Retrieval Eval
+
+Run the harder local seed benchmark:
+
+```powershell
+.\scripts\eval_real_world.ps1
+```
+
+Expected current baseline:
+
+- 16 phrase-labeled samples.
+- Hybrid Recall@8 around `0.750`.
+- BM25 Recall@8 around `0.750`.
+
+If this fails because source files are missing, replace `source_file` paths in `data/processed/eval/real_world_academic_seed.jsonl` with local PDFs/notes. The referenced source PDFs are intentionally not committed.
+
+### Linux Browser Preview
+
+Linux path:
+
+```bash
+bash scripts/start_local.sh
+bash scripts/stop_local.sh
+```
+
+Current Windows workspace note: Bash validation could not run because WSL has no installed distribution. Validate on an actual Linux distro before promising Linux release support.

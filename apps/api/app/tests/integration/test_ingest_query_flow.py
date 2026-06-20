@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -248,13 +249,27 @@ def test_upload_ingest_roundtrip() -> None:
         assert detail["title"] == "Uploaded Notes"
         assert detail["active_chunk_count"] >= 1
         assert "uploaded-notes" in detail["source_path"]
+        uploaded_source = Path(detail["source_path"])
+        assert uploaded_source.exists()
+
+        document_row = app.state.container.sqlite_repo.get_document_by_id(document_id)
+        assert document_row is not None
+        cache_root = Path(os.environ["PARSE_CACHE_PATH"])
+        cache_file = cache_root / f"{document_row['content_hash']}.v1.json"
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.write_text('{"version": 1, "pages": []}', encoding="utf-8")
+        assert cache_file.exists()
 
         purge_response = client.delete("/documents")
         assert purge_response.status_code == 200
         purge_body = purge_response.json()
         assert purge_body["deleted_count"] >= 1
         assert document_id in purge_body["deleted_document_ids"]
-        assert purge_body["source_files_deleted"] is False
+        assert purge_body["source_files_deleted"] is True
+        assert purge_body["source_file_delete_count"] >= 1
+        assert purge_body["derived_files_deleted"] >= 1
+        assert not uploaded_source.exists()
+        assert not cache_file.exists()
 
         missing_detail = client.get(f"/documents/{document_id}")
         assert missing_detail.status_code == 404

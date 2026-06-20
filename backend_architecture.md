@@ -124,6 +124,7 @@ This keeps the current frontend stable while addressing API-versioning readiness
 - Response compression for larger local API payloads.
 - Production-only HSTS/CSP toggles that remain disabled on localhost by default.
 - Thread Markdown export, session memory deletion, and indexed-material purge for local privacy/reviewer demos.
+- Indexed-material purge removes app-owned uploaded files, parse-cache files, and extracted diagram directories while preserving arbitrary external local-path sources.
 - Electron desktop shell with local runtime startup, diagnostics menu, log access, and portable Windows packaging path.
 
 ## Next Backend Upgrades
@@ -199,3 +200,24 @@ Latest validation:
 - `npm.cmd run desktop:pack`: passed.
 - `docker compose -f docker-compose.local.yml config`: passed with expected user-level Docker config permission warning.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1`: passed.
+
+## 2026-06-20 Polish Sprint Update
+
+Frontend maintainability:
+
+- `apps/web/app/page.tsx` was split into:
+  - `apps/web/app/page-model.ts` for shared types, constants, helpers, export builders, diffing, trust labels, and guide parsing.
+  - `apps/web/components/local-login.tsx` for first-run local profile UI.
+  - `apps/web/components/study-guide-answer.tsx` for Exam Lab study-guide rendering.
+- The main page still owns orchestration/state and should be split further into sidebar, thread, composer, and Deep Research components later.
+
+Evaluation:
+
+- `scripts/eval_retrieval.py` now supports `source_file` labels and `--auto-ingest-sources`.
+- `scripts/eval_real_world.ps1` evaluates real local academic material without manual document-id copying.
+- `data/processed/eval/real_world_academic_seed.jsonl` adds 16 phrase-labeled questions from the Transformer paper, an ML textbook PDF, and local GenAI notes.
+
+Linux/low-end:
+
+- `scripts/start_local.sh` and `scripts/stop_local.sh` provide a browser-preview path for Linux.
+- Low-end mode keeps Ollama generation/embeddings/reranker disabled by default, preserving BM25 plus extractive fallback behavior.

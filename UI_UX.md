@@ -131,7 +131,7 @@ Implemented:
 
 Still to polish:
 
-- Split page components into sidebar, chat thread, composer, Deep Research panel, Paper Lab, and Exam Lab.
+- Continue the component split into sidebar, chat thread, composer, Deep Research panel, Paper Lab, and Exam Lab. First split completed into `page-model.ts`, `local-login.tsx`, and `study-guide-answer.tsx`.
 - Replace shared `setError` success/error state with separate notices.
 - Add source preview drawer and stronger mobile QA.
 

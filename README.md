@@ -8,6 +8,8 @@
 
 ![NIRMIQ ResearchOS mark](apps/web/public/brand/nirmiq-ais-mark.svg)
 
+![NIRMIQ local academic intelligence flow](docs/assets/nirmiq-demo-flow.svg)
+
 **NIRMIQ ResearchOS** is an offline-first academic document intelligence system built for students, researchers, and builders who need reliable answers from their own material.
 
 It is not just a PDF chatbot.
@@ -404,6 +406,26 @@ Notes:
 - Ollama is disabled by default in Docker compose so the demo works without GPU passthrough.
 - For best local model performance on Windows, use `scripts/start_local.ps1` instead of Docker.
 
+## Linux And Low-End Devices
+
+Linux is feasible through browser-preview mode. On low-end devices, keep the app BM25/extractive-first and leave Ollama optional.
+
+```bash
+python -m pip install -e apps/api
+npm --prefix apps/web install
+bash scripts/start_local.sh
+```
+
+Open `http://127.0.0.1:3002`.
+
+Stop:
+
+```bash
+bash scripts/stop_local.sh
+```
+
+Details: [Linux and low-end feasibility](docs/linux_low_end_feasibility.md).
+
 ## Demo Dataset And Retrieval Results
 
 NIRMIQ includes a small, original PDF demo dataset for recruiters and reviewers:
@@ -433,8 +455,37 @@ Details:
 - [Demo dataset](docs/demo_dataset.md)
 - [Retrieval evaluation results](docs/retrieval_eval_results.md)
 - [Benchmark report](docs/benchmark_report.md)
+- [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
+
+Real-world seed eval now also exists for actual local academic material:
+
+- `data/raw/attention_is_all_you_need.pdf`
+- `data/raw/uploads/Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-5b287bd745.pdf`
+- `data/raw/uploads/mod-5-gen-ai-708567b729.pdf`
+- `data/processed/eval/real_world_academic_seed.jsonl`
+
+Note: the real-world source PDFs are local/private or copyright-sensitive and are intentionally not committed. The labels and metrics are committed so the evaluation method is visible; replace `source_file` paths with your own local academic PDFs to reproduce or expand it.
+
+Latest phrase-level real-world retrieval result:
+
+| Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 16 | 0.490 | 0.563 | 0.688 | 0.750 | 0.750 |
+| BM25 | 16 | 0.578 | 0.625 | 0.688 | 0.750 | 0.750 |
+
+Run:
+
+```powershell
+.\scripts\eval_real_world.ps1
+```
+
+This seed set is intentionally harder than the golden demo and shows where retrieval tuning still needs work.
 
 ## Screenshots And GIFs
+
+Committed visual asset:
+
+- `docs/assets/nirmiq-demo-flow.svg`
 
 Recommended public README assets:
 

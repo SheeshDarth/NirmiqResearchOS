@@ -1,6 +1,6 @@
 # NIRMIQ ResearchOS Privacy Policy
 
-Last updated: 2026-05-29
+Last updated: 2026-06-20
 
 ## Local-first privacy position
 
@@ -15,6 +15,8 @@ NIRMIQ may store:
 - SQLite session messages and memory summaries.
 - Exam profiles, imported question banks, and diagram metadata.
 - Extracted source diagram image files under `data/processed/diagrams`.
+- Parsed-page cache files under `data/cache/parsed_pages`.
+- Uploaded source copies under the configured upload directory.
 - Local browser profile name for the client-side login gate.
 
 ## Data not intentionally collected by this MVP
@@ -37,4 +39,10 @@ Users should not ingest confidential, regulated, or third-party restricted docum
 
 ## Deleting local data
 
-Local runtime data can be removed by deleting local database and index files under `data/sqlite`, `data/indexes`, and `data/processed`, subject to the app being stopped first.
+In the current local MVP:
+
+- `Clear thread` removes the current local conversation memory.
+- `Clear indexed material` removes document metadata, chunks, summaries, jobs, exam artifacts, vector entries, parse-cache files, extracted diagrams, and app-owned uploaded source copies.
+- NIRMIQ does not delete arbitrary external local-path source files outside the upload directory because doing so would be unsafe.
+
+Manual fallback: stop the app, then remove local database/index/runtime folders under `data/sqlite`, `data/indexes`, `data/cache`, and `data/processed` if a full reset is needed.

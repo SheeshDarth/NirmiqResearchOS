@@ -101,7 +101,13 @@ class AppContainer:
             allow_arbitrary_local_paths=settings.security_allow_arbitrary_local_paths,
             max_upload_bytes=settings.max_request_body_bytes,
         )
-        documents_service = DocumentsService(sqlite_repo=sqlite_repo, chroma_repo=chroma_repo)
+        documents_service = DocumentsService(
+            sqlite_repo=sqlite_repo,
+            chroma_repo=chroma_repo,
+            workspace_root=settings.workspace_root,
+            parse_cache_path=settings.parse_cache_path,
+            upload_root=settings.upload_path,
+        )
         exam_service = ExamService(sqlite_repo=sqlite_repo, workspace_root=settings.workspace_root)
         memory_service = MemoryService(
             sqlite_repo=sqlite_repo,
