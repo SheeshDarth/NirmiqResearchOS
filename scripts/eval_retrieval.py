@@ -15,6 +15,7 @@ if str(API_ROOT) not in sys.path:
 
 from app.core.config import get_settings
 from app.core.deps import AppContainer
+from app.api.schemas.ingest import IngestRequest
 from app.api.schemas.query import QueryRequest
 
 
@@ -23,6 +24,9 @@ class EvalSample:
     query: str
     expected_document_ids: list[str]
     expected_chunk_ids: list[str]
+    expected_phrases: list[str]
+    source_file: str | None = None
+    document_id: str | None = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -57,6 +61,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Run the full query pipeline and include grounding/synthesis metrics.",
     )
+    parser.add_argument(
+        "--auto-ingest-sources",
+        action="store_true",
+        help="Index source_file entries before evaluation and scope each query to that document.",
+    )
     return parser.parse_args()
 
 
@@ -66,27 +75,65 @@ def load_samples(path: Path) -> list[EvalSample]:
             f"Dataset not found: {path}. Create labels under data/processed/eval/qa_labels.jsonl."
         )
     samples: list[EvalSample] = []
-    for line_no, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for line_no, raw in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), start=1):
         if not raw.strip():
             continue
         payload = json.loads(raw)
         query = str(payload.get("query", "")).strip()
         expected_doc_ids = [str(value) for value in payload.get("expected_document_ids", [])]
         expected_chunk_ids = [str(value) for value in payload.get("expected_chunk_ids", [])]
+        expected_phrases = [
+            str(value).strip().lower()
+            for value in payload.get("expected_phrases", [])
+            if str(value).strip()
+        ]
+        source_file = str(payload.get("source_file") or "").strip() or None
         if not query:
             raise ValueError(f"Line {line_no} missing query.")
-        if not expected_doc_ids and not expected_chunk_ids:
+        if not expected_doc_ids and not expected_chunk_ids and not expected_phrases and not source_file:
             raise ValueError(
-                f"Line {line_no} must include expected_document_ids or expected_chunk_ids."
+                f"Line {line_no} must include source_file, expected_document_ids, expected_chunk_ids, or expected_phrases."
             )
         samples.append(
             EvalSample(
                 query=query,
                 expected_document_ids=expected_doc_ids,
                 expected_chunk_ids=expected_chunk_ids,
+                expected_phrases=expected_phrases,
+                source_file=source_file,
             )
         )
     return samples
+
+
+async def resolve_sample_sources(
+    samples: list[EvalSample],
+    container: AppContainer,
+    *,
+    auto_ingest_sources: bool,
+) -> None:
+    for sample in samples:
+        if not sample.source_file:
+            continue
+        source_path = Path(sample.source_file)
+        if not source_path.is_absolute():
+            source_path = (WORKSPACE_ROOT / source_path).resolve()
+        else:
+            source_path = source_path.resolve()
+        row = container.sqlite_repo.get_document_by_source_path(str(source_path))
+        if not row and auto_ingest_sources:
+            response = await container.ingestion_service.ingest(
+                IngestRequest(
+                    source_path=str(source_path),
+                    title=source_path.stem.replace("-", " ").replace("_", " ")[:120],
+                    force_reindex=False,
+                )
+            )
+            row = container.sqlite_repo.get_document_by_id(response.document_id)
+        if row:
+            sample.document_id = str(row["id"])
+            if not sample.expected_document_ids:
+                sample.expected_document_ids = [sample.document_id]
 
 
 def reciprocal_rank(retrieved: list[str], expected: set[str]) -> float:
@@ -100,14 +147,63 @@ def has_hit_at_k(retrieved: list[str], expected: set[str], k: int) -> bool:
     return any(item in expected for item in retrieved[:k])
 
 
+def phrase_hit(text: str, expected_phrases: list[str]) -> bool:
+    lowered = text.lower()
+    return any(phrase in lowered for phrase in expected_phrases)
+
+
+def phrase_reciprocal_rank(retrieved_texts: list[str], expected_phrases: list[str]) -> float:
+    for rank, text in enumerate(retrieved_texts, start=1):
+        if phrase_hit(text, expected_phrases):
+            return 1.0 / rank
+    return 0.0
+
+
+def phrase_hit_at_k(retrieved_texts: list[str], expected_phrases: list[str], k: int) -> bool:
+    return any(phrase_hit(text, expected_phrases) for text in retrieved_texts[:k])
+
+
+def binary_ndcg_at_k(retrieved: list[str], expected: set[str], k: int) -> float:
+    dcg = 0.0
+    matched: set[str] = set()
+    for rank, item in enumerate(retrieved[:k], start=1):
+        if item in expected and item not in matched:
+            matched.add(item)
+            dcg += 1.0 / math_log2(rank + 1)
+    ideal_hits = min(len(expected), k)
+    idcg = sum(1.0 / math_log2(rank + 1) for rank in range(1, ideal_hits + 1))
+    return dcg / idcg if idcg else 0.0
+
+
+def phrase_ndcg_at_k(retrieved_texts: list[str], expected_phrases: list[str], k: int) -> float:
+    dcg = 0.0
+    matched: set[str] = set()
+    for rank, text in enumerate(retrieved_texts[:k], start=1):
+        lowered = text.lower()
+        hit = next((phrase for phrase in expected_phrases if phrase in lowered and phrase not in matched), None)
+        if hit:
+            matched.add(hit)
+            dcg += 1.0 / math_log2(rank + 1)
+    ideal_hits = min(len(set(expected_phrases)), k)
+    idcg = sum(1.0 / math_log2(rank + 1) for rank in range(1, ideal_hits + 1))
+    return dcg / idcg if idcg else 0.0
+
+
+def math_log2(value: int) -> float:
+    import math
+
+    return math.log2(value)
+
+
 async def run_eval_for_mode(
     samples: list[EvalSample], ks: list[int], mode: str, container: AppContainer, full_query: bool
 ) -> dict[str, Any]:
     recall_hits = {k: 0 for k in ks}
+    ndcg_sums = {k: 0.0 for k in ks}
     mrr_sum = 0.0
     citation_presence_hits = 0
     citation_expected_hits = 0
-    level_counts = {"chunk": 0, "document": 0}
+    level_counts = {"chunk": 0, "document": 0, "phrase": 0}
     grounding_state_counts = {"strong": 0, "moderate": 0, "weak": 0, "unknown": 0}
     grounding_score_sum = 0.0
     citation_count_sum = 0
@@ -122,6 +218,7 @@ async def run_eval_for_mode(
                 QueryRequest(
                     session_id=f"eval-{mode}-{index}",
                     query=sample.query,
+                    document_id=sample.document_id,
                     retrieval_mode=mode,  # type: ignore[arg-type]
                     debug=True,
                 )
@@ -139,42 +236,70 @@ async def run_eval_for_mode(
             generation_backend_counts[backend] = generation_backend_counts.get(backend, 0) + 1
             retrieved_chunk_ids = [citation.chunk_id for citation in citations]
             retrieved_doc_ids = [citation.document_id for citation in citations]
+            retrieved_texts = [str(citation.excerpt or "") for citation in citations]
             citation_presence_hits += 1 if citations else 0
         else:
-            bundle = await container.retrieval_service.retrieve_with_mode(sample.query, mode=mode)
+            bundle = await container.retrieval_service.retrieve_with_mode(
+                sample.query,
+                mode=mode,
+                document_id=sample.document_id,
+            )
             retrieved_chunk_ids = [chunk.chunk_id for chunk in bundle.chunks]
             retrieved_doc_ids = [chunk.document_id for chunk in bundle.chunks]
+            retrieved_texts = [chunk.text for chunk in bundle.chunks]
             citation_presence_hits += 1 if bundle.chunks else 0
 
         if sample.expected_chunk_ids:
             expected = set(sample.expected_chunk_ids)
             retrieved = retrieved_chunk_ids
             level_counts["chunk"] += 1
-        else:
+            mrr_sum += reciprocal_rank(retrieved, expected)
+            for k in ks:
+                if has_hit_at_k(retrieved, expected, k):
+                    recall_hits[k] += 1
+                ndcg_sums[k] += binary_ndcg_at_k(retrieved, expected, k)
+            if any(item in expected for item in retrieved):
+                citation_expected_hits += 1
+        elif sample.expected_phrases:
+            level_counts["phrase"] += 1
+            mrr_sum += phrase_reciprocal_rank(retrieved_texts, sample.expected_phrases)
+            for k in ks:
+                if phrase_hit_at_k(retrieved_texts, sample.expected_phrases, k):
+                    recall_hits[k] += 1
+                ndcg_sums[k] += phrase_ndcg_at_k(retrieved_texts, sample.expected_phrases, k)
+            if any(phrase_hit(text, sample.expected_phrases) for text in retrieved_texts):
+                citation_expected_hits += 1
+        elif sample.expected_document_ids:
             expected = set(sample.expected_document_ids)
             retrieved = retrieved_doc_ids
             level_counts["document"] += 1
-
-        mrr_sum += reciprocal_rank(retrieved, expected)
-        for k in ks:
-            if has_hit_at_k(retrieved, expected, k):
-                recall_hits[k] += 1
-        if any(item in expected for item in retrieved):
-            citation_expected_hits += 1
+            mrr_sum += reciprocal_rank(retrieved, expected)
+            for k in ks:
+                if has_hit_at_k(retrieved, expected, k):
+                    recall_hits[k] += 1
+                ndcg_sums[k] += binary_ndcg_at_k(retrieved, expected, k)
+            if any(item in expected for item in retrieved):
+                citation_expected_hits += 1
+        else:
+            raise ValueError(f"Eval sample missing expectation target: {sample.query}")
 
     target_level = "mixed"
     if level_counts["chunk"] and not level_counts["document"]:
         target_level = "chunk"
     if level_counts["document"] and not level_counts["chunk"]:
         target_level = "document"
+    if level_counts["phrase"] and not level_counts["chunk"] and not level_counts["document"]:
+        target_level = "phrase"
 
     recall_at_k = {f"recall@{k}": (recall_hits[k] / total if total else 0.0) for k in ks}
+    ndcg_at_k = {f"ndcg@{k}": (ndcg_sums[k] / total if total else 0.0) for k in ks}
     metrics = {
         "mode": mode,
         "samples": total,
         "target_level": target_level if total else "unknown",
         "mrr": (mrr_sum / total if total else 0.0),
         **recall_at_k,
+        **ndcg_at_k,
         "citation_presence_rate": (citation_presence_hits / total if total else 0.0),
         "citation_expected_coverage": (citation_expected_hits / total if total else 0.0),
     }
@@ -214,6 +339,11 @@ async def main_async() -> int:
     settings = get_settings()
     container = AppContainer.from_settings(settings)
     container.sqlite_repo.init_db()
+    await resolve_sample_sources(
+        samples=samples,
+        container=container,
+        auto_ingest_sources=bool(args.auto_ingest_sources),
+    )
 
     per_mode: dict[str, Any] = {}
     for mode in valid_modes:

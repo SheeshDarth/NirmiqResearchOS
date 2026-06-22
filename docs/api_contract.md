@@ -6,6 +6,28 @@
 - Response:
   - `{"status":"ok"}`
 
+### `GET /health/readiness`
+- Response:
+  - `status: "ready"|"needs_documents"`
+  - `database: "ok"`
+  - `documents: number`
+  - `indexed_documents: number`
+  - `active_chunks: number`
+  - `vector_store_available: boolean`
+  - `ollama_available: boolean`
+  - `local_first: true`
+  - `local_backend: true`
+  - `cloud_api_required: false`
+  - `external_provider_enabled: false`
+  - `primary_inference: "local_offline"`
+  - `low_memory_mode: boolean`
+  - `ollama_runtime: object`
+  - `notes: string`
+- Behavior:
+  - Indicates whether the local backend is alive and whether there is enough indexed local corpus state for a grounded demo.
+  - Confirms that cloud/ChatGPT/OpenAI API access is not required for core operation.
+  - Reports bounded local model settings such as keep-alive, context window, prediction cap, optional GPU/thread controls, and embedding batch size.
+
 ### `POST /ingest`
 - Request:
   - `source_path: string`
@@ -56,11 +78,21 @@
   - `diverse_documents`
   - `strategy` (`phase1_hybrid|phase1_bm25|phase1_vector`)
   - `requested_retrieval_mode`
+  - `cache_hit`
+  - `detected_intent`
+  - `intent_confidence`
+  - `intent_route`
+  - `citation_coverage`
+  - `citation_sentence_count`
+  - `citation_anchor_count`
+  - `paper_lab` for paper-draft intent, including outline, citation clusters, and related-work matrix.
 
 ### Retrieval Tuning
 - `RETRIEVAL_MAX_CONTEXT_TOKENS` bounds synthesis context size.
 - `RETRIEVAL_MIN_GROUNDING_SCORE` determines abstention threshold.
 - `RETRIEVAL_MAX_CHUNKS_PER_DOCUMENT` limits repeated chunks from the same source during final rerank.
+- `LOW_MEMORY_MODE=true` keeps the local runtime optimized for consumer GPUs.
+- `OLLAMA_KEEP_ALIVE`, `OLLAMA_NUM_CTX`, `OLLAMA_NUM_PREDICT`, `OLLAMA_NUM_GPU`, `OLLAMA_NUM_THREAD`, and `OLLAMA_EMBED_BATCH_SIZE` tune Ollama memory pressure without changing public APIs.
 
 ### `GET /ingest/{document_id}`
 - Response:

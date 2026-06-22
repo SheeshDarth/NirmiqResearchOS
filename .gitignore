@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+*.egg-info/
 
 # Node
 node_modules/
@@ -21,11 +22,16 @@ data/cache/*
 !data/cache/.gitkeep
 data/raw/*
 !data/raw/.gitkeep
+!data/raw/golden_demo/
+!data/raw/golden_demo/*.md
+!data/raw/demo_pdfs/
+!data/raw/demo_pdfs/*.pdf
 data/processed/diagrams/*
 !data/processed/.gitkeep
 data/indexes/chroma/*
 !data/indexes/chroma/.gitkeep
 temp/
+dist/
 tools/gh/
 *.log
 

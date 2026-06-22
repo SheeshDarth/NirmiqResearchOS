@@ -1,0 +1,35 @@
+{
+  "name": "nirmiq-researchos-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "author": "Siddharth P",
+  "description": "Windows desktop shell for the local-first NIRMIQ ResearchOS runtime.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron --in-process-gpu --disable-gpu-sandbox --disable-gpu-compositing --disable-gpu-rasterization --disable-accelerated-2d-canvas --disable-features=UseSkiaRenderer,Vulkan,CanvasOopRasterization .",
+    "dev": "electron --in-process-gpu --disable-gpu-sandbox --disable-gpu-compositing --disable-gpu-rasterization --disable-accelerated-2d-canvas --disable-features=UseSkiaRenderer,Vulkan,CanvasOopRasterization . --dev",
+    "pack": "electron-builder --dir",
+    "package": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "ai.nirmiq.researchos",
+    "productName": "NIRMIQ ResearchOS",
+    "directories": {
+      "output": "../../dist/desktop"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "signAndEditExecutable": false
+    }
+  }
+}

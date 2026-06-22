@@ -20,19 +20,40 @@ _QUERY_STOPWORDS = {
     "cited",
     "citation",
     "citations",
+    "corpus",
+    "create",
+    "deep",
+    "does",
+    "draft",
     "for",
     "from",
+    "generate",
     "give",
+    "guide",
+    "how",
+    "imported",
     "in",
     "is",
     "it",
     "me",
     "of",
     "on",
+    "notes",
+    "produce",
+    "question",
+    "research",
+    "study",
     "the",
     "this",
     "to",
+    "say",
+    "says",
     "what",
+    "when",
+    "where",
+    "which",
+    "who",
+    "write",
     "with",
 }
 
@@ -94,13 +115,39 @@ class SynthesisService:
         exam_profile: dict[str, object] | None = None,
         exam_context: dict[str, object] | None = None,
     ) -> tuple[str, bool, dict[str, object]]:
-        top_grounding_score = float(bundle.chunks[0].score if bundle.chunks else 0.0)
+        top_grounding_score = max((float(chunk.score) for chunk in bundle.chunks), default=0.0)
         citation_count = len(bundle.chunks)
         grounding_state = self._grounding_state(top_grounding_score, citation_count)
         overview_query = self._is_document_overview_query(query, response_mode)
+        relevance_query = self._relevance_query(
+            query=query,
+            response_mode=response_mode,
+            exam_context=exam_context,
+        )
+        context_relevance = self._context_relevance(query=relevance_query, bundle=bundle)
+        strict_relevance_required = response_mode.strip().lower() == "general_chat" or not overview_query
         low_score_overview = grounding_state == "weak" and overview_query and citation_count >= 2
         if low_score_overview:
             grounding_state = "moderate"
+        if strict_relevance_required and context_relevance["context_relevance_state"] == "unrelated":
+            return (
+                (
+                    "I do not have enough relevant uploaded context to answer that safely. "
+                    "Upload source material for this question, select the right document, or use an external/internet model "
+                    "later when that optional mode is available."
+                ),
+                False,
+                {
+                    "generation_backend": "none",
+                    "grounding_score": top_grounding_score,
+                    "citation_count": citation_count,
+                    "grounding_state": "weak",
+                    "grounding_summary": "retrieved evidence was unrelated to the query",
+                    "document_overview_request": overview_query,
+                    "low_score_overview_allowed": low_score_overview,
+                    **context_relevance,
+                },
+            )
         grounded = grounding_state != "weak"
         if not grounded:
             return (
@@ -113,6 +160,8 @@ class SynthesisService:
                     "grounding_state": grounding_state,
                     "grounding_summary": "weak evidence - no answer generated",
                     "document_overview_request": overview_query,
+                    "low_score_overview_allowed": low_score_overview,
+                    **context_relevance,
                 },
             )
 
@@ -141,8 +190,8 @@ class SynthesisService:
                 response_mode=response_mode,
                 exam_context=exam_context,
             )
-        elif not self._contains_citation_anchor(generated):
-            generated = generated.rstrip() + "\n\nSources: [1]"
+        else:
+            generated = self._anchor_uncited_sentences(generated, selected)
 
         verification = self._verify_cited_claims(generated, selected)
         answer_rewritten = False
@@ -163,6 +212,10 @@ class SynthesisService:
 
         meta = {
             "generation_backend": self._generator.last_backend,
+            "generation_model_requested": getattr(self._generator, "last_model_requested", None),
+            "generation_model_used": getattr(self._generator, "last_model_used", None),
+            "generation_model_fallback": getattr(self._generator, "last_model_fallback", False),
+            "generation_error": getattr(self._generator, "last_error", None),
             "grounding_score": top_grounding_score,
             "citation_count": citation_count,
             "context_chunks_used": len(selected),
@@ -170,6 +223,7 @@ class SynthesisService:
             "grounding_summary": self._grounding_summary(grounding_state, top_grounding_score, citation_count),
             "document_overview_request": overview_query,
             "low_score_overview_allowed": low_score_overview,
+            **context_relevance,
             "exam_profile_used": bool(exam_profile),
             "exam_context_used": bool(
                 exam_context and (exam_context.get("questions") or exam_context.get("diagrams"))
@@ -182,6 +236,11 @@ class SynthesisService:
             "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
             "original_unsupported_claims": verification.get("original_unsupported_claims", []),
             "answer_rewritten_for_faithfulness": answer_rewritten,
+            **self._citation_context_meta(
+                answer=generated,
+                bundle=bundle,
+                selected_context=selected,
+            ),
         }
         return (generated, True, meta)
 
@@ -218,6 +277,58 @@ class SynthesisService:
         return selected
 
     @staticmethod
+    def _citation_context_meta(
+        *,
+        answer: str,
+        bundle: RetrievalBundle,
+        selected_context: list[tuple[int, str]],
+    ) -> dict[str, object]:
+        selected_anchors = [anchor for anchor, _ in selected_context]
+        chunks_by_anchor = {
+            anchor: chunk
+            for anchor, chunk in enumerate(bundle.chunks[:8], start=1)
+            if anchor in set(selected_anchors)
+        }
+        cited_anchors = SynthesisService._answer_citation_anchors(answer, allowed_anchors=set(selected_anchors))
+        cited_chunks = [
+            chunks_by_anchor[anchor]
+            for anchor in cited_anchors
+            if anchor in chunks_by_anchor
+        ]
+        return {
+            "selected_context_chunk_ids": [
+                chunks_by_anchor[anchor].chunk_id
+                for anchor in selected_anchors
+                if anchor in chunks_by_anchor
+            ],
+            "cited_context_chunk_ids": [chunk.chunk_id for chunk in cited_chunks],
+            "citation_anchor_chunk_map": [
+                {
+                    "anchor": anchor,
+                    "chunk_id": chunks_by_anchor[anchor].chunk_id,
+                    "document_id": chunks_by_anchor[anchor].document_id,
+                    "page_start": chunks_by_anchor[anchor].page_start,
+                    "page_end": chunks_by_anchor[anchor].page_end,
+                }
+                for anchor in cited_anchors
+                if anchor in chunks_by_anchor
+            ],
+            "citation_source": "answer_used_context_chunks",
+        }
+
+    @staticmethod
+    def _answer_citation_anchors(answer: str, *, allowed_anchors: set[int]) -> list[int]:
+        anchors: list[int] = []
+        seen: set[int] = set()
+        for raw_anchor in re.findall(r"\[(\d+)\]", answer):
+            anchor = int(raw_anchor)
+            if anchor not in allowed_anchors or anchor in seen:
+                continue
+            anchors.append(anchor)
+            seen.add(anchor)
+        return anchors
+
+    @staticmethod
     def _build_grounded_prompt(
         query: str,
         context_blocks: list[tuple[int, str]],
@@ -235,7 +346,9 @@ class SynthesisService:
             "If evidence is insufficient, say so plainly.\n"
             "Cite claims with [n] where n is the context block number.\n"
             "Prefer higher-scoring context blocks when multiple sources support the same claim.\n"
-            "Keep the answer concise and factual.\n"
+            "Answer the user's exact question, not a generic document summary.\n"
+            "Use readable sections: Short answer, Key points, and Where this came from when appropriate.\n"
+            "Keep paragraphs short and avoid dense textbook dumps.\n"
             f"{mode_instruction}\n\n"
             f"{exam_instruction}\n"
             f"{artifact_instruction}\n"
@@ -253,11 +366,19 @@ class SynthesisService:
     ) -> str:
         mode = response_mode.strip().lower()
         if SynthesisService._is_document_overview_query(query, response_mode):
-            return SynthesisService._fallback_document_summary(context_chunks=context_chunks)
+            return SynthesisService._fallback_document_summary(
+                query=query,
+                context_chunks=context_chunks,
+            )
         if mode == "research_paper":
             return SynthesisService._fallback_research_paper(query=query, context_chunks=context_chunks)
         if mode == "study_guide" and exam_context and exam_context.get("questions"):
             return SynthesisService._fallback_study_guide(context_chunks=context_chunks, exam_context=exam_context)
+        if SynthesisService._is_definition_solution_query(query):
+            return SynthesisService._fallback_definition_solution_answer(
+                query=query,
+                context_chunks=context_chunks,
+            )
 
         query_terms = SynthesisService._query_terms(query)
         candidates: list[tuple[float, int, str]] = []
@@ -291,9 +412,12 @@ class SynthesisService:
         if not selected:
             return "I found citations, but there was not enough readable text to synthesize a grounded answer."
 
-        bullets = "\n".join(f"- {sentence} [{idx}]" for idx, sentence in selected)
         heading = SynthesisService._fallback_heading(response_mode)
-        return f"{heading}\n{bullets}"
+        return SynthesisService._format_extract_answer(
+            heading=heading,
+            selected=selected,
+            response_mode=response_mode,
+        )
 
     @staticmethod
     def _mode_instruction(response_mode: str) -> str:
@@ -326,7 +450,10 @@ class SynthesisService:
                 "related work, methodology or design considerations, limitations, and multiple citations from the context. "
                 "Do not fabricate papers, authors, results, or references not present in the retrieved source text."
             )
-        return "Explain clearly for a student using short sections and citations."
+        return (
+            "Explain clearly for a student. Start with a direct answer in 2-4 sentences, "
+            "then give 3-5 short cited bullets. If the user asks for a list or algorithms, answer as a list."
+        )
 
     @staticmethod
     def _exam_instruction(exam_profile: dict[str, object] | None) -> str:
@@ -457,47 +584,134 @@ class SynthesisService:
         return "\n".join(sections)
 
     @staticmethod
+    def _fallback_definition_solution_answer(query: str, context_chunks: list[tuple[int, str]]) -> str:
+        query_terms = SynthesisService._query_terms(query)
+        definitions: list[tuple[float, int, str]] = []
+        solutions: list[tuple[float, int, str]] = []
+        definition_cues = ("means", "called", "occurs", "refers", "generalize", "training data")
+        solution_cues = (
+            "possible solutions",
+            "simplify",
+            "fewer parameters",
+            "reduce",
+            "regularization",
+            "constrain",
+            "more training data",
+            "noise",
+            "outliers",
+            "early stopping",
+        )
+        for idx, block in context_chunks[:10]:
+            for sentence_index, sentence in enumerate(SynthesisService._split_sentences(SynthesisService._context_text(block))[:12]):
+                if len(sentence.split()) < 7:
+                    continue
+                lowered = sentence.lower()
+                base = SynthesisService._sentence_score(sentence, query_terms)
+                rank_bonus = max(0, 10 - idx) * 0.03 + max(0, 12 - sentence_index) * 0.01
+                definition_score = base + rank_bonus + sum(0.9 for cue in definition_cues if cue in lowered)
+                solution_score = base + rank_bonus + sum(0.9 for cue in solution_cues if cue in lowered)
+                if definition_score > 0:
+                    definitions.append((definition_score, idx, sentence))
+                if solution_score > 0:
+                    solutions.append((solution_score, idx, sentence))
+
+        selected_definitions = SynthesisService._dedupe_scored_sentences(definitions, limit=2)
+        selected_solutions = SynthesisService._dedupe_scored_sentences(solutions, limit=4)
+        if not selected_definitions and not selected_solutions:
+            return "I found matching passages, but not enough clear definition or solution text to answer safely."
+
+        sections = ["Based on the retrieved textbook passages:"]
+        if selected_definitions:
+            sections.append("\nWhat it is")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in selected_definitions)
+        if selected_solutions:
+            sections.append("\nHow to reduce it")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in selected_solutions)
+        sections.append("\nTrust note: this answer was rewritten into source-only form because the local model added unsupported details.")
+        return "\n".join(sections)
+
+    @staticmethod
+    def _dedupe_scored_sentences(
+        scored: list[tuple[float, int, str]],
+        *,
+        limit: int,
+    ) -> list[tuple[int, str]]:
+        selected: list[tuple[int, str]] = []
+        seen: set[str] = set()
+        for _, idx, sentence in sorted(scored, key=lambda item: item[0], reverse=True):
+            normalized = re.sub(r"\W+", "", sentence.lower())[:120]
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            selected.append((idx, sentence))
+            if len(selected) >= limit:
+                break
+        return selected
+
+    @staticmethod
     def _fallback_heading(response_mode: str) -> str:
         mode = response_mode.strip().lower()
         if mode == "exam_answer":
-            return "Exam-ready answer from the retrieved passages:"
+            return "Exam-ready answer"
         if mode == "revision_notes":
-            return "Revision notes from the retrieved passages:"
+            return "Revision notes"
         if mode == "study_guide":
-            return "Study guide from the retrieved passages:"
+            return "Study guide"
         if mode == "important_questions":
-            return "Important question leads from the retrieved passages:"
+            return "Important question leads"
         if mode == "compare_concepts":
-            return "Grounded comparison from the retrieved passages:"
+            return "Grounded comparison"
         if mode == "general_chat":
-            return "I can answer this from the relevant uploaded material:"
+            return "I can answer this from your material"
         if mode == "deep_research":
-            return "Deep research synthesis from the retrieved passages:"
+            return "Deep research synthesis"
         if mode == "research_paper":
-            return "Research paper draft from the retrieved passages:"
+            return "Research paper draft"
         if mode == "summary":
             return "Document summary from the retrieved passages:"
-        return "Based on the retrieved passages:"
+        return "Short answer"
 
     @staticmethod
-    def _fallback_document_summary(context_chunks: list[tuple[int, str]]) -> str:
-        evidence = SynthesisService._best_evidence_sentences(
+    def _is_definition_solution_query(query: str) -> bool:
+        normalized = query.lower()
+        asks_definition = any(phrase in normalized for phrase in ("what is", "define", "meaning of"))
+        asks_solution = any(term in normalized for term in ("reduce", "reduced", "prevent", "avoid", "fix"))
+        return asks_definition and asks_solution
+
+    @staticmethod
+    def _fallback_document_summary(query: str, context_chunks: list[tuple[int, str]]) -> str:
+        query_terms = SynthesisService._query_terms(query)
+        summary_terms = query_terms | {
+            "abstract",
+            "introduction",
+            "overview",
+            "chapter",
+            "learning",
+            "data",
+            "model",
+            "training",
+            "algorithm",
+            "method",
+            "approach",
+            "example",
+            "result",
+            "limitation",
+            "conclusion",
+            "summary",
+        }
+        evidence = SynthesisService._best_summary_sentences(
             context_chunks=context_chunks,
-            query_terms={
-                "abstract",
-                "architecture",
-                "attention",
-                "model",
-                "method",
-                "result",
-                "training",
-                "task",
-                "system",
-                "approach",
-                "contribution",
-            },
+            query_terms=summary_terms,
             limit=8,
         )
+        if len(evidence) < 4:
+            evidence.extend(
+                SynthesisService._first_readable_sentences(
+                    context_chunks=context_chunks,
+                    limit=8 - len(evidence),
+                    existing={sentence for _, sentence in evidence},
+                )
+            )
         if not evidence:
             evidence = [
                 (idx, preview)
@@ -527,6 +741,108 @@ class SynthesisService:
         return "\n".join(sections)
 
     @staticmethod
+    def _best_summary_sentences(
+        context_chunks: list[tuple[int, str]],
+        query_terms: set[str],
+        limit: int,
+    ) -> list[tuple[int, str]]:
+        candidates: list[tuple[float, int, str]] = []
+        for idx, block in context_chunks[:10]:
+            text = SynthesisService._context_text(block)
+            for sentence_index, sentence in enumerate(SynthesisService._split_sentences(text)[:12]):
+                if len(sentence.split()) < 8 or SynthesisService._is_low_value_summary_sentence(sentence):
+                    continue
+                term_score = SynthesisService._sentence_score(sentence, query_terms)
+                outline_bonus = 0.0
+                lowered = sentence.lower()
+                if any(cue in lowered for cue in ("covers the following topics", "part i", "part ii", "chapter")):
+                    outline_bonus += 3.0
+                if any(cue in lowered for cue in ("scikit-learn", "tensorflow", "keras", "main algorithms")):
+                    outline_bonus += 1.4
+                if any(cue in lowered for cue in ("overfitting", "underfitting", "limitations", "caveats")):
+                    outline_bonus += 1.0
+                rank_bonus = max(0, 10 - idx) * 0.15 + max(0, 12 - sentence_index) * 0.02
+                candidates.append((term_score + outline_bonus + rank_bonus, idx, sentence))
+        return SynthesisService._dedupe_scored_sentences(candidates, limit=limit)
+
+    @staticmethod
+    def _is_low_value_summary_sentence(sentence: str) -> bool:
+        lowered = sentence.lower()
+        low_value_patterns = (
+            "other resources",
+            "great introduction",
+            "publishing",
+            "edition",
+            "pearson",
+            "packt",
+            "chapman",
+            "oreilly",
+            "self-published",
+            "available to learn",
+            "andrew ng",
+            "jeremy howard",
+            "sylvain gugger",
+            "stewart russell",
+            "stuwart russell",
+            "peter norvig",
+            "hundred-page",
+            "learning from data",
+        )
+        return any(pattern in lowered for pattern in low_value_patterns)
+
+    @staticmethod
+    def _format_extract_answer(
+        *,
+        heading: str,
+        selected: list[tuple[int, str]],
+        response_mode: str,
+    ) -> str:
+        mode = response_mode.strip().lower()
+        if mode == "compare_concepts":
+            bullets = "\n".join(f"- {sentence} [{idx}]" for idx, sentence in selected[:5])
+            return f"{heading}\n\nKey differences\n{bullets}\n\nWhere this came from\nOpen Sources to inspect the cited passages."
+        if mode in {"exam_answer", "revision_notes"}:
+            bullets = "\n".join(f"- {sentence} [{idx}]" for idx, sentence in selected[:5])
+            return f"{heading}\n\nKey points\n{bullets}\n\nStudy takeaway\nUse these cited points as the answer skeleton."
+        if mode == "deep_research":
+            core = selected[:3]
+            details = selected[3:6]
+            sections = [heading, "\nCore finding"]
+            sections.extend(f"- {sentence} [{idx}]" for idx, sentence in core)
+            if details:
+                sections.append("\nSupporting details")
+                sections.extend(f"- {sentence} [{idx}]" for idx, sentence in details)
+            sections.append("\nWhere this came from\nOpen Sources to inspect the cited passages.")
+            return "\n".join(sections)
+        bullets = "\n".join(f"- {sentence} [{idx}]" for idx, sentence in selected[:5])
+        lead = selected[0][1]
+        return (
+            f"{heading}\n{lead} [{selected[0][0]}]\n\n"
+            f"Key points\n{bullets}\n\n"
+            "Study takeaway\nAsk a follow-up like \"give examples\", \"compare these\", or \"make exam questions\" if you want the next layer."
+        )
+
+    @staticmethod
+    def _first_readable_sentences(
+        context_chunks: list[tuple[int, str]],
+        *,
+        limit: int,
+        existing: set[str] | None = None,
+    ) -> list[tuple[int, str]]:
+        selected: list[tuple[int, str]] = []
+        seen = set(existing or set())
+        for idx, block in context_chunks[:8]:
+            for sentence in SynthesisService._split_sentences(SynthesisService._context_text(block))[:6]:
+                cleaned = sentence.strip()
+                if len(cleaned.split()) < 8 or cleaned in seen:
+                    continue
+                seen.add(cleaned)
+                selected.append((idx, cleaned))
+                if len(selected) >= limit:
+                    return selected
+        return selected
+
+    @staticmethod
     def _context_text(block: str) -> str:
         lines = block.splitlines()
         text = " ".join(lines[1:] if len(lines) > 1 else lines)
@@ -534,9 +850,10 @@ class SynthesisService:
 
     @staticmethod
     def _split_sentences(text: str) -> list[str]:
+        normalized = re.sub(r"\n+", " ", text)
         return [
             sentence.strip(" -")
-            for sentence in re.split(r"(?<=[.!?])\s+", text)
+            for sentence in re.split(r"(?<=[.!?])\s+", normalized)
             if sentence.strip(" -")
         ]
 
@@ -547,6 +864,26 @@ class SynthesisService:
             for token in re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", query.lower())
             if token not in _QUERY_STOPWORDS
         }
+
+    @staticmethod
+    def _relevance_query(
+        *,
+        query: str,
+        response_mode: str,
+        exam_context: dict[str, object] | None,
+    ) -> str:
+        mode = response_mode.strip().lower()
+        if mode in {"study_guide", "important_questions"} and exam_context:
+            questions = exam_context.get("questions") or []
+            if isinstance(questions, list) and questions:
+                question_text = " ".join(
+                    str(item.get("question", ""))
+                    for item in questions[:8]
+                    if isinstance(item, dict) and item.get("question")
+                )
+                if question_text.strip():
+                    return f"{query}\n{question_text}"
+        return query
 
     @staticmethod
     def _sentence_score(sentence: str, query_terms: set[str]) -> float:
@@ -562,8 +899,85 @@ class SynthesisService:
         )
 
     @staticmethod
+    def _context_relevance(query: str, bundle: RetrievalBundle) -> dict[str, object]:
+        query_terms = SynthesisService._query_terms(query)
+        context_terms: set[str] = set()
+        for chunk in bundle.chunks[:5]:
+            context_terms.update(re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", chunk.text.lower()))
+
+        matched_terms = sorted(
+            term
+            for term in query_terms
+            if term in context_terms
+            or any(len(term) >= 5 and candidate.startswith(term[:6]) for candidate in context_terms)
+        )
+        score = len(matched_terms) / max(len(query_terms), 1)
+        if not query_terms:
+            state = "unknown"
+        elif len(matched_terms) >= 2 or score >= 0.34 or (
+            len(matched_terms) == 1 and len(query_terms) <= 2
+        ):
+            state = "related"
+        else:
+            state = "unrelated"
+        return {
+            "context_relevance_score": round(score, 3),
+            "context_relevance_state": state,
+            "context_relevance_terms": sorted(query_terms),
+            "context_relevance_matched_terms": matched_terms,
+        }
+
+    @staticmethod
     def _contains_citation_anchor(text: str) -> bool:
         return bool(re.search(r"\[\d+\]", text))
+
+    @staticmethod
+    def _anchor_uncited_sentences(answer: str, context_chunks: list[tuple[int, str]]) -> str:
+        if not answer.strip() or not context_chunks:
+            return answer
+        context_by_anchor = {
+            idx: SynthesisService._context_text(block).lower()
+            for idx, block in context_chunks
+        }
+        lines: list[str] = []
+        any_anchor = False
+        for raw_line in answer.splitlines():
+            line = raw_line.strip()
+            if not line:
+                lines.append(raw_line)
+                continue
+            if re.match(r"^(sources?|references?)\s*:", line, re.I):
+                continue
+            if SynthesisService._contains_citation_anchor(line):
+                lines.append(raw_line)
+                any_anchor = True
+                continue
+            anchored_sentences: list[str] = []
+            for sentence in SynthesisService._split_sentences(line):
+                if SynthesisService._contains_citation_anchor(sentence):
+                    anchored_sentences.append(sentence)
+                    any_anchor = True
+                    continue
+                claim_terms = SynthesisService._claim_terms(sentence)
+                if len(claim_terms) < 3:
+                    anchored_sentences.append(sentence)
+                    continue
+                best_anchor = None
+                best_score = 0.0
+                for anchor, context_text in context_by_anchor.items():
+                    support_score = SynthesisService._claim_support_score(claim_terms, context_text)
+                    if support_score > best_score:
+                        best_score = support_score
+                        best_anchor = anchor
+                matched_terms = int(round(best_score * len(claim_terms)))
+                if best_anchor is not None and (best_score >= 0.28 or matched_terms >= 3):
+                    sentence = sentence.rstrip()
+                    sentence = f"{sentence} [{best_anchor}]"
+                    any_anchor = True
+                anchored_sentences.append(sentence)
+            lines.append(" ".join(anchored_sentences))
+        anchored = "\n".join(lines).strip()
+        return anchored
 
     @staticmethod
     def _verify_cited_claims(answer: str, context_chunks: list[tuple[int, str]]) -> dict[str, object]:
@@ -571,7 +985,7 @@ class SynthesisService:
             idx: SynthesisService._context_text(block).lower()
             for idx, block in context_chunks
         }
-        normalized_answer = re.sub(r"([.!?])\s+((?:\[\d+\]\s*)+)", r" \2\1", answer)
+        normalized_answer = re.sub(r"([.!?])[ \t]+((?:\[\d+\][ \t]*)+)", r" \2\1", answer)
         checked = 0
         unsupported: list[dict[str, object]] = []
         for sentence in SynthesisService._split_sentences(normalized_answer):
@@ -592,7 +1006,8 @@ class SynthesisService:
             ]
             best_score = max(support_scores) if support_scores else 0.0
             matched_terms = int(round(best_score * len(claim_terms)))
-            if best_score < 0.35 and matched_terms < 3:
+            required_matches = max(3, int(len(claim_terms) * 0.5))
+            if best_score < 0.55 or matched_terms < required_matches:
                 unsupported.append(
                     {
                         "claim": re.sub(r"\s+", " ", sentence).strip()[:220],
@@ -616,26 +1031,33 @@ class SynthesisService:
     def _should_rewrite_for_faithfulness(verification: dict[str, object]) -> bool:
         unsupported = verification.get("unsupported_claims")
         checked = int(verification.get("cited_claims_checked") or 0)
+        state = str(verification.get("state") or "")
+        if state == "unchecked" and checked == 0:
+            return True
         if not isinstance(unsupported, list) or checked <= 0:
             return False
-        if len(unsupported) >= 2:
-            return True
-        return len(unsupported) == 1 and checked <= 2
+        return len(unsupported) >= 1
 
     @staticmethod
     def _claim_terms(sentence: str) -> set[str]:
         cleaned = re.sub(r"\[\d+\]", " ", sentence.lower())
+        raw_tokens = re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{1,}", cleaned)
         return {
             token
-            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9]{3,}", cleaned)
+            for token in raw_tokens
             if token not in _CLAIM_STOPWORDS
+            and (
+                len(token) >= 4
+                or any(char.isdigit() for char in token)
+                or token in {"ai", "ml", "nlp", "pca", "svm", "cnn", "rnn", "l1", "l2"}
+            )
         }
 
     @staticmethod
     def _claim_support_score(claim_terms: set[str], context_text: str) -> float:
         if not claim_terms:
             return 1.0
-        context_terms = set(re.findall(r"[a-zA-Z][a-zA-Z0-9]{3,}", context_text.lower()))
+        context_terms = set(re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{1,}", context_text.lower()))
         matches = 0
         for term in claim_terms:
             if term in context_terms:
@@ -654,6 +1076,21 @@ class SynthesisService:
         normalized = query.strip().lower()
         if not normalized:
             return False
+        explicit_overview_phrases = (
+            "summarize this",
+            "summary of",
+            "overview of",
+            "what is this about",
+            "what is it about",
+            "explain this pdf",
+            "explain the pdf",
+            "explain this document",
+            "explain the document",
+            "explain this material",
+            "explain the material",
+        )
+        if any(phrase in normalized for phrase in explicit_overview_phrases):
+            return True
         overview_verbs = {
             "summarize",
             "summary",
@@ -676,6 +1113,22 @@ class SynthesisService:
             "it",
         }
         tokens = set(re.findall(r"[a-zA-Z][a-zA-Z0-9]{1,}", normalized))
+        specific_question_terms = {
+            "algorithm",
+            "algorithms",
+            "compare",
+            "contrast",
+            "define",
+            "difference",
+            "differences",
+            "example",
+            "examples",
+            "how",
+            "list",
+            "why",
+        }
+        if tokens & specific_question_terms:
+            return False
         if tokens & overview_verbs and tokens & document_terms:
             return True
         return normalized in {

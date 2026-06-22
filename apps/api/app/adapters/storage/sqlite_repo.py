@@ -5,6 +5,12 @@ from typing import Any
 
 
 class SQLiteRepo:
+    _MIGRATION_COLUMNS = {
+        "document_chunks": {
+            "quality_score": "REAL NOT NULL DEFAULT 1.0",
+        },
+    }
+
     def __init__(self, sqlite_path: Path) -> None:
         self._sqlite_path = sqlite_path
         self._sqlite_path.parent.mkdir(parents=True, exist_ok=True)
@@ -209,6 +215,19 @@ class SQLiteRepo:
             conn.execute("DELETE FROM documents WHERE id = ?", (document_id,))
         return True
 
+    def delete_all_documents(self) -> list[str]:
+        with self._connect() as conn:
+            rows = conn.execute("SELECT id FROM documents ORDER BY updated_at DESC").fetchall()
+            document_ids = [str(row["id"]) for row in rows]
+            conn.execute("DELETE FROM diagram_assets")
+            conn.execute("DELETE FROM document_summaries")
+            conn.execute("DELETE FROM question_bank_items")
+            conn.execute("DELETE FROM exam_profiles")
+            conn.execute("DELETE FROM ingestion_jobs")
+            conn.execute("DELETE FROM document_chunks")
+            conn.execute("DELETE FROM documents")
+        return document_ids
+
     def list_documents(self) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
@@ -224,18 +243,17 @@ class SQLiteRepo:
         return [dict(row) for row in rows]
 
     def get_document_chunks(self, document_id: str, active_only: bool = True) -> list[dict[str, Any]]:
-        active_filter = "AND is_active = 1" if active_only else ""
+        query = """
+            SELECT id, document_id, index_version, chunk_index, page_start, page_end,
+                   text, token_count, chunk_hash, quality_score, is_active, created_at
+            FROM document_chunks
+            WHERE document_id = ?
+        """
+        if active_only:
+            query += " AND is_active = 1"
+        query += " ORDER BY chunk_index ASC, created_at ASC"
         with self._connect() as conn:
-            rows = conn.execute(
-                f"""
-                SELECT id, document_id, index_version, chunk_index, page_start, page_end,
-                       text, token_count, chunk_hash, quality_score, is_active, created_at
-                FROM document_chunks
-                WHERE document_id = ? {active_filter}
-                ORDER BY chunk_index ASC, created_at ASC
-                """,
-                (document_id,),
-            ).fetchall()
+            rows = conn.execute(query, (document_id,)).fetchall()
         return [dict(row) for row in rows]
 
     def mark_document_status(self, document_id: str, status: str) -> None:
@@ -399,33 +417,35 @@ class SQLiteRepo:
         return [item for _, item in scored[:limit]]
 
     def list_active_chunks(self, document_id: str | None = None) -> list[dict[str, Any]]:
-        document_filter = "AND document_id = ?" if document_id else ""
+        query = """
+            SELECT id, document_id, page_start, page_end, text, token_count, quality_score
+            FROM document_chunks
+            WHERE is_active = 1
+        """
         params: tuple[str, ...] = (document_id,) if document_id else ()
+        if document_id:
+            query += " AND document_id = ?"
+        query += " ORDER BY created_at DESC"
         with self._connect() as conn:
-            rows = conn.execute(
-                f"""
-                SELECT id, document_id, page_start, page_end, text, token_count, quality_score
-                FROM document_chunks
-                WHERE is_active = 1 {document_filter}
-                ORDER BY created_at DESC
-                """,
-                params,
-            ).fetchall()
+            rows = conn.execute(query, params).fetchall()
         return [dict(row) for row in rows]
 
     def get_chunks_by_ids(self, chunk_ids: list[str]) -> dict[str, dict[str, Any]]:
         if not chunk_ids:
             return {}
         placeholders = ",".join("?" for _ in chunk_ids)
+        query = (
+            """
+            SELECT id, document_id, page_start, page_end, text, token_count, quality_score
+            FROM document_chunks
+            WHERE id IN (
+            """
+            + placeholders
+            + """) AND is_active = 1
+            """
+        )
         with self._connect() as conn:
-            rows = conn.execute(
-                f"""
-                SELECT id, document_id, page_start, page_end, text, token_count, quality_score
-                FROM document_chunks
-                WHERE id IN ({placeholders}) AND is_active = 1
-                """,
-                chunk_ids,
-            ).fetchall()
+            rows = conn.execute(query, chunk_ids).fetchall()
         return {str(row["id"]): dict(row) for row in rows}
 
     def get_active_chunk_count(self, document_id: str) -> int:
@@ -602,6 +622,28 @@ class SQLiteRepo:
         ordered.reverse()
         return ordered
 
+    def delete_session(self, session_id: str) -> dict[str, int | bool]:
+        with self._connect() as conn:
+            message_row = conn.execute(
+                "SELECT COUNT(*) AS count FROM messages WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+            snapshot_row = conn.execute(
+                "SELECT COUNT(*) AS count FROM memory_snapshots WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+            session_row = conn.execute("SELECT id FROM sessions WHERE id = ?", (session_id,)).fetchone()
+            deleted_messages = int(message_row["count"]) if message_row else 0
+            deleted_snapshots = int(snapshot_row["count"]) if snapshot_row else 0
+            conn.execute("DELETE FROM memory_snapshots WHERE session_id = ?", (session_id,))
+            conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+            conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+        return {
+            "deleted": bool(session_row or deleted_messages or deleted_snapshots),
+            "deleted_messages": deleted_messages,
+            "deleted_snapshots": deleted_snapshots,
+        }
+
     def get_latest_memory_snapshot(self, session_id: str) -> dict[str, Any] | None:
         with self._connect() as conn:
             row = conn.execute(
@@ -689,19 +731,17 @@ class SQLiteRepo:
         return dict(row)
 
     def list_exam_profiles(self, session_id: str | None = None) -> list[dict[str, Any]]:
-        where = "WHERE session_id = ?" if session_id else ""
+        query = """
+            SELECT id, session_id, document_id, title, marks, answer_style,
+                   content_type, instructions, created_at, updated_at
+            FROM exam_profiles
+        """
         params: tuple[str, ...] = (session_id,) if session_id else ()
+        if session_id:
+            query += " WHERE session_id = ?"
+        query += " ORDER BY updated_at DESC"
         with self._connect() as conn:
-            rows = conn.execute(
-                f"""
-                SELECT id, session_id, document_id, title, marks, answer_style,
-                       content_type, instructions, created_at, updated_at
-                FROM exam_profiles
-                {where}
-                ORDER BY updated_at DESC
-                """,
-                params,
-            ).fetchall()
+            rows = conn.execute(query, params).fetchall()
         return [dict(row) for row in rows]
 
     def replace_question_bank_items(self, document_id: str, items: list[dict[str, Any]]) -> None:
@@ -829,12 +869,23 @@ class SQLiteRepo:
 
     @staticmethod
     def _ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+        expected_definition = SQLiteRepo._MIGRATION_COLUMNS.get(table, {}).get(column)
+        if expected_definition != definition:
+            raise ValueError("Refusing unsafe SQLite migration column definition.")
+        table_sql = SQLiteRepo._quote_identifier(table)
+        column_sql = SQLiteRepo._quote_identifier(column)
         existing = {
             str(row["name"])
-            for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            for row in conn.execute("PRAGMA table_info(" + table_sql + ")").fetchall()
         }
         if column not in existing:
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+            conn.execute("ALTER TABLE " + table_sql + " ADD COLUMN " + column_sql + " " + definition)
+
+    @staticmethod
+    def _quote_identifier(identifier: str) -> str:
+        if not identifier.replace("_", "").isalnum():
+            raise ValueError("Unsafe SQLite identifier.")
+        return '"' + identifier.replace('"', '""') + '"'
 
     @staticmethod
     def _tokenize(text: str) -> list[str]:

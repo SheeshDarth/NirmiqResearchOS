@@ -1,10 +1,10 @@
-# NIRMIQ Academic Intelligence System Terms and Conditions
+# NIRMIQ ResearchOS Terms and Conditions
 
 Last updated: 2026-05-29
 
 ## MVP status
 
-NIRMIQ Academic Intelligence System is currently a local-first MVP/prototype. It is provided for research, study, and development use.
+NIRMIQ ResearchOS is currently a local-first MVP/prototype. It is provided for research, study, and development use.
 
 ## No academic misconduct
 

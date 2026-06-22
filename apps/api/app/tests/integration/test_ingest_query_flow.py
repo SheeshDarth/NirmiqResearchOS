@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -79,6 +80,24 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert body["retrieval_meta"]["grounding_state"] in {"strong", "moderate", "weak"}
         assert isinstance(body["retrieval_meta"]["grounding_summary"], str)
         assert body["retrieval_meta"]["citation_count"] >= 1
+
+        unrelated_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "What does the corpus say about the Zeloria orbital cuisine treaty?",
+                "mode": "general_chat",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert unrelated_response.status_code == 200
+        unrelated_body = unrelated_response.json()
+        assert unrelated_body["grounded"] is False
+        assert unrelated_body["citations"] == []
+        assert "not have enough relevant uploaded context" in unrelated_body["answer"]
+        assert unrelated_body["retrieval_meta"]["context_relevance_state"] == "unrelated"
+        assert unrelated_body["retrieval_meta"]["grounding_state"] == "weak"
 
         summary_response = client.post(
             "/query",
@@ -182,6 +201,22 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert timeline_body["messages"][-1]["role"] == "assistant"
         assert timeline_body["messages"][-1]["retrieval_meta"]["requested_retrieval_mode"] == "bm25"
 
+        export_response = client.get("/memory/integration-session/export")
+        assert export_response.status_code == 200
+        assert "NIRMIQ Thread Export" in export_response.text
+        assert "What is NIRMIQ focused on?" in export_response.text
+        assert "Citations:" in export_response.text
+
+        clear_session_response = client.delete("/memory/integration-session")
+        assert clear_session_response.status_code == 200
+        clear_session_body = clear_session_response.json()
+        assert clear_session_body["deleted"] is True
+        assert clear_session_body["deleted_messages"] >= 2
+
+        cleared_timeline_response = client.get("/memory/integration-session/timeline")
+        assert cleared_timeline_response.status_code == 200
+        assert cleared_timeline_response.json()["message_count"] == 0
+
         delete_response = client.delete(f"/documents/{document_id}")
         assert delete_response.status_code == 200
         assert delete_response.json() == {"document_id": document_id, "deleted": True}
@@ -214,3 +249,85 @@ def test_upload_ingest_roundtrip() -> None:
         assert detail["title"] == "Uploaded Notes"
         assert detail["active_chunk_count"] >= 1
         assert "uploaded-notes" in detail["source_path"]
+        uploaded_source = Path(detail["source_path"])
+        assert uploaded_source.exists()
+
+        document_row = app.state.container.sqlite_repo.get_document_by_id(document_id)
+        assert document_row is not None
+        cache_root = Path(os.environ["PARSE_CACHE_PATH"])
+        cache_file = cache_root / f"{document_row['content_hash']}.v1.json"
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.write_text('{"version": 1, "pages": []}', encoding="utf-8")
+        assert cache_file.exists()
+
+        purge_response = client.delete("/documents")
+        assert purge_response.status_code == 200
+        purge_body = purge_response.json()
+        assert purge_body["deleted_count"] >= 1
+        assert document_id in purge_body["deleted_document_ids"]
+        assert purge_body["source_files_deleted"] is True
+        assert purge_body["source_file_delete_count"] >= 1
+        assert purge_body["derived_files_deleted"] >= 1
+        assert not uploaded_source.exists()
+        assert not cache_file.exists()
+
+        missing_detail = client.get(f"/documents/{document_id}")
+        assert missing_detail.status_code == 404
+
+
+def test_unreadable_reindex_preserves_existing_chunks(tmp_path: Path) -> None:
+    sample = tmp_path / "reindex-source.txt"
+    sample.write_text(
+        "NIRMIQ should preserve existing active chunks when a later reindex extracts no readable text.",
+        encoding="utf-8",
+    )
+
+    with TestClient(app) as client:
+        first_response = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Reindex Source",
+                "mime_type": "text/plain",
+            },
+        )
+        assert first_response.status_code == 200
+        document_id = first_response.json()["document_id"]
+        first_detail = client.get(f"/documents/{document_id}").json()
+        assert first_detail["active_chunk_count"] >= 1
+
+        sample.write_text("    \n\t   ", encoding="utf-8")
+        failed_reindex = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Reindex Source",
+                "mime_type": "text/plain",
+                "force_reindex": True,
+            },
+        )
+
+        assert failed_reindex.status_code == 400
+        detail_after_failure = client.get(f"/documents/{document_id}")
+        assert detail_after_failure.status_code == 200
+        body = detail_after_failure.json()
+        assert body["status"] == "failed"
+        assert body["active_chunk_count"] == first_detail["active_chunk_count"]
+
+
+def test_direct_ingest_rejects_unsupported_local_file(tmp_path: Path) -> None:
+    sample = tmp_path / "not-a-document.exe"
+    sample.write_bytes(b"MZfake executable bytes")
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Bad File",
+                "mime_type": "application/octet-stream",
+            },
+        )
+
+        assert response.status_code == 400
+        assert "Unsupported file type" in response.json()["detail"]

@@ -1,16 +1,167 @@
-# NIRMIQ Academic Intelligence System Context
+# NIRMIQ ResearchOS Context
 
-Last updated: 2026-05-30
+Last updated: 2026-06-22
 Current branch: `v3-foundation`
-Repository target: `https://github.com/SheeshDarth/NirmiqAcademicIntelligenceSystem`
-Current git remote may still point to the previous URL until the GitHub repository itself is renamed.
+Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
+## Latest Session Update - 2026-06-22 UI Cleanup Pass
+
+Objective: remove harmful or unnecessary product-surface clutter before the larger ChatGPT-style component rebuild.
+
+Implemented:
+
+- Removed untracked root-level PDFs that should not ship with the repository:
+  - `Finale AI — Dashboard.pdf`
+  - `flyrank-internship-confirmation-siddharth-p-july-2026-16-weeks.pdf`
+- Removed the in-app retrieval evaluation panel from the normal UI. Evaluation remains a backend/script/docs concern, not a user-facing chat control.
+- Removed related dead CSS for eval cards, eval input, meter bars, and proof-grid metadata.
+- Hid full local filesystem paths from the library, source inspector, and diagram cards.
+- Replaced raw source-path display with safer local/privacy copy.
+- Renamed the right inspector from Deep Research metadata language to a simpler Sources/check-answer drawer.
+- Removed visible intent/cache/citation-coverage percentages and retrieval scores from normal source cards.
+- Simplified exported Markdown citations by removing internal retrieval scores and citation coverage metadata.
+- Softened the composer advanced summary so normal users see `Advanced / optional` instead of retrieval mode/session internals.
+
+Verification:
+
+- `npm.cmd run build`: passed.
+- `npm.cmd run test:api`: passed, 44 tests.
+- `python -m compileall apps/api/app`: passed.
+
+Tradeoff:
+
+- The source-path fields still exist in API types and internal UI logic because local ingestion and golden-demo matching depend on them. They are no longer displayed in normal UI surfaces.
+
+## Latest Session Update - 2026-06-22 Citation Trust Fix
+
+Objective: start resolving the architecture-review P1 findings by tightening the citation trust contract before doing the larger ChatGPT-style UI rebuild.
+
+Implemented:
+
+- Changed `SynthesisService` to report the exact selected context chunk ids and final answer-cited chunk ids.
+- Changed `QueryService` so public `citations` are built only from answer-used context chunks, not the full retrieved bundle.
+- Added `citation_anchor_chunk_map` metadata for debug/source inspection when debug metadata is explicitly requested.
+- Bumped selected-document summary cache profile from `v4` to `v5` so older cached summaries with broad citations are naturally bypassed and regenerated.
+- Updated normal frontend query calls to stop forcing `debug: true`; debug metadata is now requested only when the source inspector is already open or Paper/Exam tool artifacts need it.
+- Added regression tests proving synthesis reports only answer-cited chunks and query citations filter out retrieved-but-unused chunks.
+
+Verification:
+
+- `python -m pytest apps/api/app/tests/unit/test_synthesis_faithfulness.py -q`: passed, 8 tests.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run test:api`: passed, 44 tests.
+- `npm.cmd run build`: passed.
+
+Tradeoff:
+
+- This is a surgical trust-layer fix, not the full UI simplification. Source-path redaction, backend-owned routing cleanup, score normalization, and the component split remain next.
+
+## Latest Session Update - 2026-06-11 EOD Launch Sprint
+
+Objective: respond to the shipped Folio reference, simplify running NIRMIQ, and make the project demo-shippable by end of day.
+
+External reference checked:
+
+- LinkedIn short link resolved to `https://github.com/kartikdubey17/FOLIO/releases/tag/v0.1.0`.
+- Folio v0.1.0 positions itself as a personal offline AI document assistant for PDF upload, local Q&A, privacy, lightweight Tauri desktop runtime, and offline usage.
+- NIRMIQ differentiation should remain academic intelligence rather than generic PDF chat: citations, abstention, Deep Research, Paper Lab, Exam Lab, benchmarked golden demo, and local-first proof.
+
+Implemented in this session:
+
+- Added `scripts/run_local.ps1` for one-command local preview.
+- Added `scripts/stop_local.ps1` to stop only launcher-created local preview PIDs.
+- Added root double-click launchers `NIRMIQ ResearchOS.cmd` and `NIRMIQ Stop.cmd`.
+- Added `scripts/create_windows_shortcut.ps1` for Desktop/Start Menu shortcuts.
+- Added `docs/windows_app_packaging.md` explaining why one-click launcher is the right EOD Windows-app layer and why a full installer should be a separate sprint.
+- Added `scripts/ship_check.ps1` for full EOD verification: backend tests, API compile, web build, publish smoke, golden demo, and scoped process cleanup.
+- Hardened `scripts/publish_smoke.ps1` timeouts for local startup/readiness probes.
+- Hardened `scripts/stop_local.ps1` to stop the full Next.js child process tree, preventing stale `.next` cache errors after restart.
+- Added `docs/folio_competitive_review.md`.
+- Updated README and publish checklist with one-command run/ship-check instructions.
+- Updated landing screen proof chips to communicate offline core, citation trail, abstention, and Paper/Exam labs.
+- Created Windows Desktop shortcuts: `NIRMIQ ResearchOS.lnk` and `Stop NIRMIQ ResearchOS.lnk`.
+
+Verification completed:
+
+- `scripts/ship_check.ps1`: passed.
+- Backend tests inside ship check: 31 passed, 1 warning.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed, first-load JS about 115 kB.
+- Publish smoke: backend health OK, readiness ready, `cloud_api_required=false`, web shell returned NIRMIQ.
+- Golden demo: four grounded checks passed with citations; unsupported chat prompt abstained with zero citations.
+- Persistent preview after ship check: API `ok`, web `200`, NIRMIQ shell present at `http://127.0.0.1:3002`.
+
+Run command for review:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
+```
+
+Windows double-click preview:
+
+```text
+NIRMIQ ResearchOS.cmd
+```
+
+Pre-publish command:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\ship_check.ps1
+```
+
+## Previous Session Update - 2026-06-10 Golden Demo Sprint
+
+Objective: convert the broad polish backlog into a publishable golden demo path for reviewers.
+
+Implemented so far in this session:
+
+- Installed Codex skills `llm-council` and `graphify` under `C:\Users\Siddharth\.codex\skills`.
+- Ran an LLM Council war-room on the polish backlog.
+- Council verdict: use the strategic spine `messy academic docs -> trustworthy inspectable offline research`, and execute with a frozen-backend golden demo sprint.
+- Added bundled offline demo corpus under `data/raw/golden_demo`.
+- Added expected-source manifest at `data/processed/eval/golden_demo_expected_sources.json`.
+- Added `scripts/golden_demo.ps1` to index bundled sources and run citation-bearing smoke queries.
+- Added UI `Load Golden Demo` action, locked demo prompts, compact Deep Research proof strip, and local Markdown answer export.
+- Added `docs/demo_script.md` and `docs/benchmark_report.md`.
+- Added a strict local relevance gate for General Chat so retrieved chunks must match the actual subject of the query before NIRMIQ answers.
+- Updated the golden demo abstention check to fail if an unsupported chat prompt returns grounded output or citations.
+- Updated README, PRD, TRD, UI/UX spec, and publish checklist for the golden demo path.
+
+Golden demo acceptance bar:
+
+- Reviewer can load local corpus without internet.
+- Reviewer can ask a locked research question and get citations.
+- Evidence chips open Deep Research and focus source chunks.
+- Proof strip shows intent, citation coverage, cache state, and source type.
+- Reviewer can export an answer with citations as Markdown.
+- Reviewer can remove selected local material as the privacy/purge moment.
+- Unsupported chat prompts abstain with zero citations instead of answering from unrelated material.
+
+Verification completed:
+
+- `python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q`: 31 passed, 1 warning.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build` from `apps/web`: passed.
+- `scripts/golden_demo.ps1` against local API port `8012`: four grounded queries passed, abstention passed.
+
+Commit recorded:
+
+- `928906b` - Added the golden demo sprint implementation, sample corpus, UI proof path, smoke script, docs, and General Chat relevance gate.
+
+Implementation tradeoff:
+
+- No broad frontend component split in this sprint.
+- Backend retrieval/model/schema stayed frozen except for the trust-blocking General Chat relevance gate.
+- No GraphRAG, cloud/API, auth, or agent feature expansion.
+
 ## Project Metadata
 
-Project name: NIRMIQ Academic Intelligence System
+Project name: NIRMIQ ResearchOS
 Project type: Offline-first adaptive academic intelligence system
 Owner/developer: Siddharth / SheeshDarth
 Target user: Solo local-first researcher/student/developer
@@ -20,7 +171,7 @@ Stable baseline branch: `main`
 
 ## Product Direction
 
-NIRMIQ Academic Intelligence System is a local-first document intelligence workspace for:
+NIRMIQ ResearchOS is the academic document intelligence workspace inside the broader NIRMIQ ecosystem. It is a local-first document intelligence system for:
 
 - Research over uploaded documents.
 - General local-first chatbot behavior with abstention when no evidence exists.
@@ -28,7 +179,7 @@ NIRMIQ Academic Intelligence System is a local-first document intelligence works
 - Grounded answers with citations and source inspection.
 - Low-VRAM, offline-friendly operation.
 
-The system should avoid cloud-first, enterprise, and multi-user complexity until the local MVP is strong.
+The system should avoid cloud-first, enterprise, and multi-user complexity until the local MVP is strong. The local FastAPI backend is part of the offline app runtime and must not be confused with a cloud API dependency.
 
 ## Core Technical Stack
 
@@ -245,18 +396,18 @@ Latest verified commands before this context file:
 
 ## Run Instructions
 
-Start API:
+Fast local preview:
 
 ```powershell
-cd C:\Nirmiq-researchOS\apps\api
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -OpenBrowser
 ```
 
-Start web:
+Fast local preview with bundled demo corpus:
 
 ```powershell
-cd C:\Nirmiq-researchOS\apps\web
-npm run dev
+cd C:\Nirmiq-researchOS
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
 ```
 
 Open app:
@@ -271,6 +422,13 @@ Run backend tests:
 cd C:\Nirmiq-researchOS
 $env:PYTHONPATH='apps/api'
 python -m pytest apps/api/app/tests/unit/test_health_contract.py apps/api/app/tests/integration -q
+```
+
+Run complete EOD ship check:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\ship_check.ps1
 ```
 
 Run frontend build:
@@ -1161,3 +1319,844 @@ Verification:
 Commit:
 
 - `52bcbe5` - Add V4 Paper Lab citation workspace.
+
+### Latest Update: V4 Publish Readiness Sprint
+
+Date: 2026-06-06
+
+This update targeted a working publish/demo pass for June 7, 2026.
+
+Implemented:
+
+- Added `GET /health/readiness` to report API/database readiness, indexed document count, active chunk count, Chroma availability, Ollama availability, and local-first status.
+- Added backend contract coverage for readiness.
+- Added `scripts/publish_smoke.ps1` to verify API health, readiness, and web shell branding after local servers are running.
+- Rewrote `README.md` around the current V4 product state and demo flow.
+- Added `docs/publish_checklist.md` with pre-publish commands, local startup, smoke check, demo script, and eval label workflow.
+- Updated `docs/api_contract.md` for readiness and V4 query metadata.
+
+Tradeoffs:
+
+- Readiness is intentionally simple and local; it does not require Ollama or Chroma to be online because deterministic fallback paths are valid.
+- Eval labels are not hardcoded because document IDs are local database state. The checklist explains how to create real labels after ingest.
+
+Verification:
+
+- Backend unit/integration suite: `27 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+
+Commit:
+
+- `15a2787` - Prepare V4 publish readiness.
+
+### Latest Update: Preview Hotfix For Failed Fetch / Chroma Dimension Mismatch
+
+Date: 2026-06-06
+
+Problem observed:
+
+- The browser showed `Failed to fetch` / `TypeError`.
+- FastAPI was alive, but `POST /query` and some uploads returned `500`.
+- The root cause was a Chroma collection created with `768`-dimension embeddings while offline fallback hash embeddings used `256` dimensions.
+
+Implemented:
+
+- `ChromaRepo` now detects embedding dimension mismatch errors.
+- On upsert mismatch, it resets only the affected Chroma collection and retries once.
+- On query mismatch, it returns no vector hits so retrieval can continue through BM25/lexical fallback instead of crashing.
+- Added unit tests for the Chroma resilience path.
+
+Preview recovery performed:
+
+- Restarted FastAPI.
+- Cleared generated Next.js `.next` cache and restarted the web preview.
+- Smoke check passed.
+- Direct summary query returned `grounded=True` with 8 citations.
+
+Verification:
+
+- Backend unit/integration suite: `29 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+- `scripts/publish_smoke.ps1`: passed with one indexed demo document and 35 active chunks.
+
+Commit:
+
+- `fa85a78` - Fix Chroma dimension mismatch preview failures.
+
+### Latest Update: Offline-First Runtime Clarification
+
+Date: 2026-06-06
+
+Clarification:
+
+- The word API caused confusion because NIRMIQ has a local FastAPI backend, but the product must not depend on a cloud API.
+- Core NIRMIQ operation is local/offline first.
+- ChatGPT/OpenAI-linked account usage is only a future optional enhancement path, not the primary goal or required runtime.
+
+Implemented:
+
+- Readiness now reports `local_backend=true`, `cloud_api_required=false`, `external_provider_enabled=false`, and `primary_inference=local_offline`.
+- Publish smoke check now validates that cloud API is not required.
+- README, publish checklist, API contract, security docs, and TRD now use clearer local-backend/offline-first language.
+
+Verification:
+
+- Backend unit/integration suite: `29 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+
+Commit:
+
+- `2802deb` - Clarify offline-first local backend contract.
+
+### Latest Update: GitHub README ResearchOS Positioning
+
+Date: 2026-06-06
+
+Purpose:
+
+- The GitHub-facing README needed to reflect the user's NIRMIQ ResearchOS positioning: "Upload. Understand. Verify. Learn."
+- The update merges the user's stronger public narrative with the real V4 implementation state, avoiding claims that are not currently supported.
+
+Implemented:
+
+- Rewrote `README.md` as a polished public project overview for NIRMIQ ResearchOS.
+- Clarified that ResearchOS is an offline-first academic document intelligence system, not just a PDF chatbot.
+- Added the offline-first contract: local FastAPI backend is part of the app runtime, not a cloud API dependency.
+- Documented current V4 capabilities: upload, summary, grounded Q&A, source inspection, Research/Chat/Paper Lab/Exam Lab, summary cache, intent routing, trust badges, Paper Lab metadata, Exam Lab PDFs, readiness checks, and smoke script.
+- Updated project memory and handoff docs to treat NIRMIQ ResearchOS as the GitHub-facing academic document product name.
+- Preserved the broader NIRMIQ ecosystem framing without forcing a risky runtime folder/app rename during this docs-only pass.
+
+Tradeoffs:
+
+- Historical context entries still mention the earlier Academic Intelligence System naming so the implementation history remains traceable.
+- Runtime UI/browser metadata was not renamed in this pass because the user asked specifically for GitHub README/context updates and the current app preview should remain stable.
+
+Verification:
+
+- `git diff --check`: passed.
+- README/context spot check: passed.
+- Code tests/build were not rerun because this was a documentation-only positioning update.
+
+Commit:
+
+- `3110de0` - Update ResearchOS GitHub positioning.
+
+### Latest Update: Low-Memory Local Runtime Hardening
+
+Date: 2026-06-06
+
+Purpose:
+
+- The project needed an end-to-end stability pass focused on lower memory usage without weakening grounded answer quality.
+- The user asked to quantize/tune the model path, check loopholes, and make the system more efficient for local/offline use.
+
+Implemented:
+
+- Added bounded Ollama runtime controls:
+  - `LOW_MEMORY_MODE=true`
+  - `OLLAMA_KEEP_ALIVE=45s`
+  - `OLLAMA_NUM_CTX=3072`
+  - `OLLAMA_NUM_PREDICT=768`
+  - optional `OLLAMA_NUM_GPU`
+  - optional `OLLAMA_NUM_THREAD`
+- Added batched Ollama embedding calls through `OLLAMA_EMBED_BATCH_SIZE=8` so indexing does not send every chunk in one large model request.
+- Readiness now exposes `low_memory_mode` and `ollama_runtime` metadata so the active local profile is visible.
+- Added `apps/api/.env.example` with the RTX 4050-friendly local backend profile.
+- Added `docs/local_model_optimization.md` explaining quantized/small Ollama model usage, Q4 GGUF guidance, memory tradeoffs, and benchmark targets.
+- Updated README, API contract, backend architecture, PRD, TRD, debugging guide, and accuracy audit with the low-memory/quantized model strategy.
+- Added tests for bounded Ollama generation payloads, embedding batching, and readiness runtime metadata.
+
+Architecture decision:
+
+- NIRMIQ does not fake runtime quantization inside FastAPI. Actual quantization belongs to Ollama/GGUF model artifacts. The backend now makes those models safer to use by bounding context, output length, keep-alive, and embedding batch size.
+
+Verification:
+
+- Backend unit/integration suite: `31 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build`: passed.
+- `git diff --check`: passed after normalizing the accuracy audit doc.
+
+Commit:
+
+- `6e53767` - Add low-memory local model runtime profile.
+
+### Latest Update: Minimal ChatGPT-Style UI Transformation
+
+Date: 2026-06-09
+
+Purpose:
+
+- Transform NIRMIQ ResearchOS toward a ChatGPT-like local academic document interface without changing backend APIs or removing Paper Lab/Exam Lab capabilities.
+
+Implemented:
+
+- Made Chat the default primary route while preserving Research, Paper Lab, and Exam Lab.
+- Opened the left rail by default and reshaped it into a study sidebar:
+  - New Study Thread
+  - Recent Study Threads
+  - Study Material upload
+  - Knowledge Base
+  - Local runtime status
+- Kept upload accessible from the composer and the sidebar.
+- Moved local-path ingestion into an advanced disclosure so normal users feel like they are attaching study material, not managing a database.
+- Replaced the old `Sources` toggle with a collapsible `Deep Research` panel.
+- Added evidence/trust copy under assistant answers:
+  - grounded answer copy
+  - citation coverage warning copy
+  - insufficient evidence copy
+  - `View Deep Research` action
+- Added an `Evidence Trail` label above citation chips under answers.
+- Moved detailed mode routing into compact composer tuning with a `Route` selector.
+- Simplified the local login/landing page into a single focused message: "Chat with your study material."
+- Retuned visible UI colors toward graphite, research ivory, oxide copper, deep teal, and sage.
+- Cleaned safe ResearchOS naming traces in frontend metadata and private package metadata.
+- Cleaned safe ResearchOS naming traces in public privacy, terms, and security markdown.
+- Updated README demo wording and UI/UX handoff notes.
+
+Preserved:
+
+- Existing backend APIs.
+- Existing upload/query/document/exam/paper capabilities.
+- Paper Lab metadata/export panel.
+- Exam Lab profile/question-bank/diagram/custom-PDF tooling.
+- Citation chips, trust badges, and evidence drilldown.
+
+Verification:
+
+- `npm run build`: passed after frontend and public markdown changes.
+- Active frontend/legal naming scan: no `Academic Intelligence System`, `Sources` toggle, `Source Intake`, `Source Vault`, or `nirmiq-ais-web` traces outside historical context.
+- Browser visual QA was not run because the browser skill path was unavailable and no callable browser inspection tool was exposed in this session.
+
+Remaining UI debt:
+
+- `apps/web/app/page.tsx` is still a large single component and should eventually be split into sidebar, chat thread, composer, Deep Research, Paper Lab, and Exam Lab components.
+- Some older historical naming remains in archived context entries and public/legal markdown files.
+- The Knowledge Base sidebar is always visible on desktop; mobile behavior should be manually reviewed.
+- Deep Research is cleaner but still dense because it contains evidence, context, compare, eval, Paper Lab, and Exam Lab panels in one rail.
+- Chat routing is compact, but automatic intent-driven UI hints can be improved after more real usage.
+
+Commit:
+
+- `d19de62` - Transform UI into ChatGPT-style study shell.
+
+### Latest Update: Accuracy Rescue And Textbook Grounding Pass
+
+Date: 2026-06-11
+
+Purpose:
+
+- The working demo was failing on answer quality: the app appeared to retrieve sources, but answers were weak, sometimes stale, and sometimes plausible rather than strictly grounded.
+- The validation source for this pass was `Hands-On Machine Learning with Scikit-Learn, Keras and TensorFlow`, indexed from `data/raw/uploads/Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-5b287bd745.pdf`.
+
+Root causes found:
+
+- The default generation model was `phi3:mini`, but this machine did not have that model installed.
+- `qwen3.5:4b` was installed but returned most content in Ollama's `thinking` field and an empty `response`, so it was unsafe as the first generation model for the demo.
+- The Ollama timeout was too short for cold local generation.
+- Long-textbook summary retrieval could pull bibliography/resource chunks instead of the document outline.
+- Factual queries such as `What is overfitting and how can it be reduced?` over-focused on one wording path and missed the textbook definition page.
+- Generated answers could include plausible ML techniques not present in the retrieved source chunks.
+- Stale document rows with `indexed` plus `0` chunks made the library look healthier than it was.
+
+Implemented:
+
+- Added cached Ollama model discovery through `/api/tags`.
+- Added generator model routing: prefer installed instruct models for answer text, with `mistral:7b-instruct-q4_K_M` preferred over `qwen3.5:4b` on this machine.
+- Added generation metadata: requested model, used model, fallback flag, and error string.
+- Raised default Ollama timeout to `120s` and reduced default prediction cap to `512` for local stability.
+- Added light stemming to BM25 and lexical reranking for variants such as `reduce`, `reduced`, `reducing`, `overfit`, and `overfitting`.
+- Added selected-document summary seeding from early outline chunks.
+- Added selected-document factual seeding for definition/solution questions.
+- Tightened cited-claim verification so unsupported specific techniques trigger source-only rewrite.
+- Added citation anchoring for uncited generated sentences instead of appending a weak `Sources: [1]` footer.
+- Added structured source-only fallback for definition-plus-solution questions.
+- Filtered low-value resource/bibliography sentences from summary fallback.
+- Marked stale library rows as `needs_reindex` when they are not actually usable.
+- Added tests for model routing, BM25 morphology matching, citation anchoring, and faithfulness preservation.
+
+Validation:
+
+- Clean textbook index created: `e9b7b4ff-b679-44db-a2cf-bbb945caee22`, `1833` active chunks.
+- Live query tested: `What is overfitting and how can it be reduced?`
+- Result used `mistral:7b-instruct-q4_K_M`, retrieved page 58 definition and page 59 solutions, rewrote unsupported model additions into source-only form, and returned cited textbook evidence.
+- Full backend suite: `34 passed, 1 warning`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build` from `apps/web`: passed.
+
+Tradeoffs:
+
+- Some answers are now more conservative and extractive when the local model adds unsupported claims. This is intentional for demo reliability and hallucination reduction.
+- First uncached summaries on large textbooks can still take around a minute on local models; repeated selected-document summaries use cache.
+- The textbook summary is cleaner than before but remains extractive. A later V4 upgrade should add chapter-aware summary profiles and a proper retrieval eval set.
+
+Commit:
+
+- Pending in this work unit: accuracy rescue, model routing, focused retrieval seeding, and faithfulness hardening.
+
+### Latest Update: Recruiter-Facing Demo Dataset And README Polish
+
+Date: 2026-06-13
+
+Purpose:
+
+- Position NIRMIQ ResearchOS as the strongest GenAI/RAG/document-AI internship project.
+- Make the GitHub README easier for recruiters to evaluate quickly.
+- Add real demo data, sample questions, measurable retrieval metrics, one-command startup, and working Docker dev instructions.
+
+Implemented:
+
+- Added two original sample PDFs under `data/raw/demo_pdfs/`:
+  - `nirmiq_rag_reference.pdf`
+  - `nirmiq_exam_reference.pdf`
+- Added 10 sample QA labels with expected answers and phrase-level evidence targets:
+  - `data/processed/eval/demo_academic_qa.jsonl`
+- Extended `scripts/eval_retrieval.py` to support `expected_phrases` labels and nDCG metrics.
+- Added generated retrieval metrics output:
+  - `data/processed/eval/demo_retrieval_metrics.json`
+- Added scripts:
+  - `scripts/start_local.ps1`
+  - `scripts/load_demo_dataset.ps1`
+  - `scripts/eval_demo_dataset.ps1`
+- Updated `scripts/eval_retrieval.ps1` to run the demo dataset by default.
+- Updated `docker-compose.local.yml` with API and web services that install dependencies in dev containers.
+- Updated README with:
+  - `What Works Now`
+  - `Planned Next`
+  - one-command startup via `scripts/start_local.ps1`
+  - Docker dev instructions
+  - demo dataset and retrieval metrics
+  - screenshot/GIF capture checklist links
+- Added docs:
+  - `docs/demo_dataset.md`
+  - `docs/retrieval_eval_results.md`
+  - `docs/demo_assets.md`
+- Updated `docs/benchmark_report.md` with the measured demo retrieval table.
+- Added `.gitignore` exceptions so only curated demo PDFs are tracked, not user uploads.
+
+Latest demo retrieval metrics:
+
+- Hybrid: MRR `0.95`, Recall@3/5/8 `1.00`, nDCG@3 `0.708`, citation expected coverage `1.00`.
+- BM25: MRR `0.90`, Recall@3/5/8 `1.00`, nDCG@3 `0.642`, citation expected coverage `1.00`.
+
+Validation:
+
+- `scripts/load_demo_dataset.ps1 -ForceReindex`: indexed both demo PDFs successfully.
+- `scripts/eval_demo_dataset.ps1`: produced metrics successfully.
+- `python -m py_compile scripts/eval_retrieval.py`: passed.
+- Focused backend tests: `4 passed`.
+- `docker compose -f docker-compose.local.yml config`: valid config; Docker emitted only a user-level config permission warning.
+- `npm run build`: passed.
+
+Tradeoffs:
+
+- Actual README screenshots/GIFs were not captured in this session because no screenshot-capable browser tool was available. The repo now includes an explicit capture checklist in `docs/demo_assets.md`.
+- Docker compose is a dev/demo path and installs dependencies at startup. The Windows PowerShell launcher remains the best local path for performance.
+
+Commit:
+
+- Pending in this work unit: recruiter polish, demo dataset, retrieval eval metrics, Docker dev setup, README cleanup.
+
+### Latest Update: EOD Ship Readiness Hardening
+
+Date: 2026-06-14
+
+Purpose:
+
+- Convert the working local demo into a more publish-ready GitHub project.
+- Address Finale AI dashboard findings without breaking the local-first/offline-first product direction.
+- Improve deployment credibility, repo hygiene, security posture, and reviewer onboarding.
+
+Finale AI findings used:
+
+- Overall score: `72.9`.
+- Security: `80`.
+- Reliability: `91`.
+- Deployment: `58`.
+- Architecture: `88`.
+- Cost Risk: `0`.
+- Highest-impact gaps: no CI/CD, no CODEOWNERS, no root package manifest, no Dockerfile, no license, API versioning, request size limit, response compression, SQL f-string scanner finding, and unclear production security header posture.
+
+Implemented:
+
+- Added GitHub Actions CI:
+  - `.github/workflows/ci.yml`
+  - Runs backend tests, backend compile, frontend build, and Docker Compose config validation.
+- Added ownership and licensing:
+  - `.github/CODEOWNERS`
+  - MIT `LICENSE`
+- Added root command hub:
+  - `package.json`
+  - `npm.cmd run start`
+  - `npm.cmd run start:golden`
+  - `npm.cmd run test:api`
+  - `npm.cmd run compile:api`
+  - `npm.cmd run build`
+  - `npm.cmd run ship:check`
+- Added stable Windows API test runner:
+  - `scripts/test_api.ps1`
+  - Uses project-local temp and pytest cache paths to avoid user temp permission failures.
+- Added Docker build assets:
+  - `.dockerignore`
+  - `apps/api/Dockerfile`
+  - `apps/web/Dockerfile`
+  - Updated `docker-compose.local.yml` to build checked-in containers instead of installing dependencies on every startup.
+- Added backend hardening:
+  - Request body size guard through `MAX_REQUEST_BODY_BYTES`.
+  - GZip response compression.
+  - Production opt-in `ENABLE_HSTS` and `ENABLE_CONTENT_SECURITY_POLICY`.
+  - `/api/v1/*` route aliases while preserving existing legacy local routes.
+  - Updated API title/version to `NIRMIQ ResearchOS API` / `0.4.0`.
+- Cleaned SQLite scanner findings:
+  - Removed f-string `execute()` patterns from `sqlite_repo.py`.
+  - Added allowlisted migration identifiers for schema column additions.
+- Added tests:
+  - `test_api_hardening.py` covers `/api/v1/health`, baseline security headers, and oversized request rejection.
+- Updated docs:
+  - `README.md`
+  - `docs/ship_readiness.md`
+  - `docs/security.md`
+  - `docs/publish_checklist.md`
+  - `docs/benchmark_report.md`
+  - `docs/accuracy_precision_audit.md`
+  - `backend_architecture.md`
+  - `debugging.md`
+  - `trd.md`
+  - `.env.example`
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q -o cache_dir=C:\Nirmiq-researchOS\temp\pytest-cache`: `37 passed, 1 warning`.
+- `npm.cmd run test:api`: `37 passed, 1 warning`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build` from `apps/web`: passed.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+- `docker compose -f docker-compose.local.yml config`: passed, with only an existing user-level Docker config permission warning.
+- `rg` scanner check for f-string `execute()` patterns: no matches in `sqlite_repo.py`.
+- `scripts/ship_check.ps1`: passed full EOD gate.
+  - Backend tests: passed.
+  - API compile: passed.
+  - Web build: passed.
+  - Publish smoke: passed.
+  - Readiness: `ready`, `indexed_documents=9`, `active_chunks=1880`.
+  - Golden demo Research: passed with 2 citations.
+  - Golden demo Summary-style Research: passed with 2 citations.
+  - Golden demo Exam Lab: passed with 2 citations.
+  - Golden demo Paper Lab: passed with 2 citations.
+  - Golden demo unsupported Chat query: passed with `grounded=false`, `citations=0`.
+
+Tradeoffs:
+
+- HSTS and CSP are opt-in rather than default because localhost HTTP should stay easy to run and HSTS only makes sense behind HTTPS.
+- Authentication was intentionally not added because NIRMIQ is still a local single-user system, not a hosted SaaS.
+- Cloud error tracking was intentionally not added because default telemetry conflicts with the privacy/offline-first contract.
+- Docker is now better for reviewer verification, but Windows PowerShell launch remains the preferred RTX 4050/Ollama path.
+- SQLite dynamic placeholder SQL remains where needed for `IN (...)`, but scanner-triggering f-string `execute()` patterns were removed and user values remain parameterized.
+
+Remaining ship debt:
+
+- Capture README screenshots/GIFs.
+- Add real-world retrieval eval labels beyond the synthetic demo set.
+- Add uploaded-source-file purge after safe ownership checks.
+- Add chapter-wise summaries for long textbooks.
+- Add optional local bug-report bundle export.
+- Add hosted auth only if a future version becomes a public multi-user SaaS.
+
+Commit:
+
+- `c15b0fb` - Add EOD ship readiness hardening.
+
+### Latest Update: Privacy Controls And 30-Sample Retrieval Eval Sprint
+
+Date: 2026-06-14
+
+Purpose:
+
+- Continue the post-ship polish sprint without complicating the UI.
+- Add reviewer-visible local privacy/reset controls.
+- Strengthen the retrieval benchmark from a tiny 10-question demo to a broader 30-question phrase-labeled dataset.
+
+Implemented:
+
+- Added backend local data controls:
+  - `GET /memory/{session_id}/export` returns a local Markdown thread export.
+  - `DELETE /memory/{session_id}` clears local session messages and snapshots.
+  - `DELETE /documents` clears all indexed document metadata, chunks, jobs, summaries, exam artifacts, and vector entries.
+- Added storage/service support:
+  - `SQLiteRepo.delete_session`
+  - `SQLiteRepo.delete_all_documents`
+  - `ChromaRepo.clear_all_documents`
+  - `MemoryService.export_markdown`
+  - `MemoryService.delete_session`
+  - `DocumentsService.purge_documents`
+- Added typed frontend API client methods:
+  - `exportSessionMarkdown`
+  - `deleteSession`
+  - `purgeDocuments`
+- Added a compact `Local Data` card in the Knowledge Base rail:
+  - Export thread.
+  - Clear thread.
+  - Clear indexed material.
+- Kept purge behavior safe:
+  - NIRMIQ clears local database/vector/index state.
+  - Source files on disk are not deleted yet because arbitrary filesystem deletion is risky.
+- Expanded `data/processed/eval/demo_academic_qa.jsonl` from 10 to 30 phrase-labeled questions.
+- Regenerated `data/processed/eval/demo_retrieval_metrics.json`.
+- Updated docs:
+  - `README.md`
+  - `docs/demo_dataset.md`
+  - `docs/retrieval_eval_results.md`
+  - `docs/benchmark_report.md`
+  - `docs/security.md`
+  - `docs/publish_checklist.md`
+  - `docs/ship_readiness.md`
+  - `backend_architecture.md`
+  - `trd.md`
+
+Latest expanded demo retrieval metrics:
+
+- Hybrid: samples `30`, MRR `0.967`, Recall@3/5/8 `1.00`, nDCG@3 `0.847`, citation expected coverage `1.00`.
+- BM25: samples `30`, MRR `0.839`, Recall@3/5/8 `1.00`, nDCG@3 `0.749`, citation expected coverage `1.00`.
+
+Validation:
+
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/eval_demo_dataset.ps1`: passed and wrote expanded metrics.
+- `npm.cmd run test:api`: `37 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed; frontend route `/` size `15.3 kB`, first load JS `115 kB`.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ship_check.ps1`: passed.
+  - Backend tests: passed.
+  - API compile: passed.
+  - Web build: passed.
+  - Publish smoke: passed.
+  - Golden demo Research: passed with 2 citations.
+  - Golden demo Summary-style Research: passed with 2 citations.
+  - Golden demo Exam Lab: passed with 2 citations.
+  - Golden demo Paper Lab: passed with 2 citations.
+  - Golden demo unsupported Chat query: passed with `grounded=false`, `citations=0`.
+- `docker compose -f docker-compose.local.yml config`: passed; same user-level Docker config permission warning remains.
+
+Tradeoffs:
+
+- The clear-indexed-material control does not delete raw source files yet. This is safer for local-path ingestion because the app can point at files outside its ownership.
+- The 30-question dataset is still synthetic and compact. The next quality sprint should add labels from real textbooks, notes, and papers.
+- The browser visual smoke could not be run from the current tool set, but the frontend production build and full ship check passed.
+
+Remaining next sprint candidates:
+
+- Capture README screenshots/GIFs.
+- Add real-world eval labels beyond the synthetic demo PDFs.
+- Add uploaded-file-only source purge with explicit ownership checks.
+- Add local bug-report bundle export.
+
+Commit:
+
+- `d6e8c99` - Add local privacy controls and expanded eval.
+
+### Latest Update: CI Backend Install Fix
+
+Date: 2026-06-14
+
+Purpose:
+
+- Fix the GitHub Actions `Backend tests and web build` failure after the EOD/privacy sprint pushes.
+
+Root cause:
+
+- CI failed during `python -m pip install -e apps/api` before backend tests or the frontend build ran.
+- Setuptools discovered two top-level packages in `apps/api`: `app` and `alembic`.
+- Because `pyproject.toml` relied on automatic package discovery, editable install failed with:
+  - `Multiple top-level packages discovered in a flat-layout: ['app', 'alembic']`.
+
+Implemented:
+
+- Updated `apps/api/pyproject.toml` with explicit setuptools package discovery:
+  - include `app*`
+  - exclude `alembic*`
+- Pinned Pydantic to `>=2.10.0,<2.11.0` because NIRMIQ works on that range and it avoids unnecessarily upgrading the user's local Python environment in a way that conflicts with unrelated packages such as `f5-tts`.
+- Updated GitHub Actions frontend steps to use `npm.cmd ci` and `npm.cmd run build` so Windows CI never resolves to PowerShell's `npm.ps1` shim.
+- Added `*.egg-info/` to `.gitignore` because editable installs generate local packaging metadata.
+
+Validation:
+
+- `python -m pip install -e apps/api`: passed.
+- `npm.cmd run test:api`: `37 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+
+Notes:
+
+- Local `npm.cmd ci` hit a Windows `EPERM` lock on `apps/web/node_modules\.package-lock.json`; this is local node_modules state, not the GitHub failure, because CI runners start from a clean checkout.
+- The actual failed GitHub run `27505994245` stopped at backend install, so the web build was marked failed by the job outcome rather than by a frontend compile error.
+
+Commit:
+
+- Pending in this work unit: CI backend install/package discovery fix.
+
+### Latest Update: Windows Desktop Shell
+
+Date: 2026-06-19
+
+Purpose:
+
+- Provide a desktop-app workflow so NIRMIQ can be launched, reviewed, debugged, and edited without manually juggling localhost browser tabs and terminal windows.
+- Keep the implementation lightweight and safe by wrapping the existing local FastAPI + Next.js runtime instead of duplicating product logic.
+
+Implemented:
+
+- Added `apps/desktop`, a lightweight Electron shell for Windows.
+- The shell starts the local FastAPI runtime at `127.0.0.1:8000` and the Next.js app at `127.0.0.1:3002` when ports are not already active.
+- Added a secure Electron preload bridge with only two exposed actions:
+  - runtime status
+  - runtime restart
+- Added a desktop menu for fast development/debugging:
+  - Runtime Status
+  - Restart Local Runtime
+  - Open Project Folder
+  - Open In VS Code
+  - Open `context.md`
+  - Open README
+  - Open Debugging Guide
+  - Open Backend Architecture
+  - Open API/Web logs
+- Added `NIRMIQ Desktop.cmd` for double-click desktop launch.
+- Added root scripts:
+  - `npm run desktop`
+  - `npm run desktop:install`
+  - `npm run desktop:dev`
+  - `npm run desktop:pack`
+  - `npm run desktop:package`
+- Added `scripts/start_desktop.ps1` for safe startup and one-time dependency install guidance.
+- Added `scripts/package_desktop.ps1` to keep Electron Builder cache inside `temp/electron-builder-cache` instead of relying on Windows AppData permissions.
+- Updated shortcut generation so `NIRMIQ Desktop.lnk` is created alongside browser preview and stop shortcuts.
+- Added `apps/desktop/README.md` and updated README, debugging guide, TRD, backend architecture, and Windows packaging docs.
+
+Validation:
+
+- `node --check apps/desktop/src/main.js`: passed.
+- `node --check apps/desktop/src/preload.js`: passed.
+- `npm.cmd --prefix apps/desktop audit --omit=dev`: passed with `0 vulnerabilities` for production dependencies.
+- `npm.cmd --prefix apps/desktop run pack`: passed and created `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
+- `npm.cmd --prefix apps/desktop run package`: passed after redirecting Electron Builder cache and allowing the NSIS download; created `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- `npm.cmd run test:api`: `37 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+
+Tradeoffs:
+
+- This is a desktop shell, not a fully self-contained installer. Python, Node dependencies, Ollama, SQLite, and Chroma remain visible and debuggable in the repository/runtime.
+- The full installer should remain a later packaging sprint after repeated local runtime stability.
+- The portable EXE is generated under ignored `dist/desktop`; it is not committed to Git because it is a binary release artifact.
+- Electron dev dependencies reported audit advisories during install, but production dependency audit with `--omit=dev` is clean. Do not blindly force-update Electron Builder without re-validating packaging.
+
+Commit:
+
+- `ca2a83c` - Add Windows desktop shell.
+
+Follow-up correction after packaging validation:
+
+- Added robust desktop project-root detection for packaged Electron runs.
+- The shell now searches `NIRMIQ_ROOT`, development paths, current working directory, packaged resources, and executable location for `apps/api` plus `apps/web`.
+- Documented `NIRMIQ_ROOT='C:\Nirmiq-researchOS'` as the fallback when launching unpacked/portable builds from unusual locations.
+- Revalidated `node --check`, desktop unpacked packaging, desktop portable packaging, and web build after the fix.
+
+### Latest Update: Desktop Startup Failure Fix
+
+Date: 2026-06-19
+
+Issue:
+
+- The Windows desktop shell showed `NIRMIQ startup failed` for the user.
+- Reproduction showed FastAPI and Next were able to start, but Electron/Chromium crashed with:
+  - `GPU process isn't usable. Goodbye.`
+- A secondary Windows reliability issue was found around duplicate `Path`/`PATH` environment keys when launching child processes.
+
+Implemented:
+
+- Added GPU-safe Electron startup flags in both `apps/desktop/src/main.js` and `apps/desktop/package.json`:
+  - `--in-process-gpu`
+  - `--disable-gpu-sandbox`
+  - `--disable-gpu-compositing`
+  - `--disable-gpu-rasterization`
+  - `--disable-accelerated-2d-canvas`
+  - disabled Skia/Vulkan/canvas OOP rasterization features.
+- Set Electron user data to `temp/desktop/electron-user-data` to avoid Windows profile/crypto state issues.
+- Added Windows child-process environment sanitization to remove duplicate `Path`/`PATH` keys.
+- Route spawned Python/npm commands through `cmd.exe /d /s /c` on Windows for more reliable command resolution.
+- Added explicit spawn-error and early-exit logging.
+- Added fallback from `next start` to `next dev` if the production web process exits before readiness.
+- Updated desktop/debugging docs with startup failure notes and expected health checks.
+
+Validation:
+
+- Desktop startup probe: while `npm.cmd run desktop` was running, `http://127.0.0.1:8000/health` returned `200` and `http://127.0.0.1:3002` returned `200`.
+- `node --check apps/desktop/src/main.js`: passed.
+- `node --check apps/desktop/src/preload.js`: passed.
+- `npm.cmd --prefix apps/desktop audit --omit=dev`: passed with `0 vulnerabilities`.
+- `npm.cmd run desktop:pack`: passed.
+- `npm.cmd run desktop:package`: passed and regenerated `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- `npm.cmd run test:api`: `37 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+
+Commit:
+
+- `690196c` - Fix Windows desktop startup.
+
+### Latest Update: Multi-Agent Fault Audit And Ship Hardening
+
+Date: 2026-06-20
+
+Purpose:
+
+- Resolve the highest-risk backend, frontend, desktop/runtime, security, and release-gate faults found during the multi-agent review.
+- Keep the project shippable for an EOD demo without adding heavy new architecture or confusing UI controls.
+
+Implemented:
+
+- Retrieval and grounding:
+  - zero-readable-chunk reindex attempts now fail before old active chunks are deactivated.
+  - direct local-path ingestion now validates suffix, size, and lightweight signature/readability checks.
+  - vector hits are filtered to active SQLite chunks so stale Chroma metadata cannot become answer evidence.
+  - vector and BM25-only scores are normalized from actual scores instead of rank-derived inflation.
+  - summary/factual seed chunks use low expansion scores instead of artificial high grounding scores.
+  - Exam Lab study-guide relevance uses imported question-bank text, not generic UI command words.
+  - cited claim verification now rewrites on any unsupported cited claim.
+  - citation anchoring no longer fabricates `[1]` when support is weak.
+- Frontend reliability:
+  - selected-document queries remain scoped to the active source.
+  - Enter submit is blocked while a request is busy.
+  - uploads derive title from the selected filename instead of stale form state.
+  - New Study Thread creates a fresh session id.
+  - API calls use timeout/cancellation and cleaner backend error messages.
+  - answer/Paper Lab exports snapshot the source attached to the answer.
+- Desktop/runtime and release:
+  - Electron creates its workspace-local user data directory before setting `userData`.
+  - packaged root detection checks portable executable environment paths.
+  - desktop child PIDs are mirrored under `temp\runtime` for cleanup.
+  - normal browser preview and golden-demo preview are separate launchers:
+    - `NIRMIQ ResearchOS.cmd`
+    - `NIRMIQ Golden Demo.cmd`
+  - bootstrap/start/build/package/ship scripts use `npm.cmd` and return non-zero on native command failure.
+  - `ship_check.ps1` now uses the same offline/low-memory test env as `test_api.ps1`, restores locations safely, and runs the full smoke/golden gate.
+  - Docker Compose local dev ports bind to `127.0.0.1`.
+
+Validation:
+
+- `npm.cmd run test:api`: `41 passed, 1 warning`.
+- `npm.cmd run compile:api`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run desktop:pack`: passed.
+- `docker compose -f docker-compose.local.yml config`: passed; Windows user Docker config permission warning remains non-blocking.
+- `node --check apps\desktop\src\main.js`: passed.
+- `node --check apps\desktop\src\preload.js`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1`: passed.
+  - backend tests passed.
+  - API compile passed.
+  - web build passed.
+  - publish smoke passed.
+  - golden demo Research, summary-style Research, Exam Lab, and Paper Lab returned grounded citations.
+  - unsupported Chat prompt returned `grounded=false` and `citations=0`.
+
+Tradeoffs:
+
+- The faithfulness verifier is intentionally conservative and lexical. It may rewrite acceptable paraphrases to more extractive prose, but this supports the current no-hallucination demo target.
+- Clear indexed material still does not fully purge parse cache, diagrams, or arbitrary source files. Full app-owned purge remains a privacy sprint item.
+- No local agent or graph database was added; the baseline RAG path needed correctness and release stability first.
+
+Remaining next sprint candidates:
+
+- Capture README screenshots/GIFs.
+- Add real textbook/note/paper retrieval labels and citation-precision metrics.
+- Add a source-preview drawer and mobile QA pass.
+- Add a strict local-only model endpoint guard before allowing non-loopback Ollama/external providers.
+- Add a local bug-report bundle export.
+
+Commit:
+
+- `5e21194` - Harden retrieval and ship checks.
+
+### Latest Update: Polish Sprint - Components, Real Eval, Purge, Linux Feasibility
+
+Date: 2026-06-20
+
+Purpose:
+
+- Address the remaining non-perfect areas: large frontend page, real-world eval data, app-owned data purge, README polish assets, and Linux/low-end feasibility.
+
+Implemented:
+
+- Frontend maintainability:
+  - Split stable types/constants/helpers out of `apps/web/app/page.tsx` into `apps/web/app/page-model.ts`.
+  - Moved local login UI into `apps/web/components/local-login.tsx`.
+  - Moved study-guide answer rendering into `apps/web/components/study-guide-answer.tsx`.
+  - Reduced `page.tsx` from roughly 2,400+ lines to roughly 1,800 lines while preserving behavior.
+- Real-world retrieval evaluation:
+  - Added `source_file` and `--auto-ingest-sources` support to `scripts/eval_retrieval.py`.
+  - Added `scripts/eval_real_world.ps1`.
+  - Added `data/processed/eval/real_world_academic_seed.jsonl` with 16 phrase-labeled questions from local academic material.
+  - Wrote `data/processed/eval/real_world_retrieval_metrics.json`.
+  - Current real-world seed metrics:
+    - Hybrid: MRR `0.490`, Recall@3 `0.563`, Recall@8 `0.750`, citation expected coverage `0.750`.
+    - BM25: MRR `0.578`, Recall@3 `0.625`, Recall@8 `0.750`, citation expected coverage `0.750`.
+  - Important caveat: source PDFs are intentionally local/untracked; labels and metrics are committed, not copyright-sensitive PDFs.
+- Local data purge:
+  - `Clear indexed material` now removes SQLite/vector metadata plus app-owned uploaded source copies, parse-cache files, and extracted diagram folders.
+  - External local-path source files outside the upload directory are preserved for safety.
+  - Backend purge response now reports `source_file_delete_count` and `derived_files_deleted`.
+  - Integration test verifies uploaded source and parse cache cleanup.
+- README/public polish:
+  - Added `docs/assets/nirmiq-demo-flow.svg`.
+  - README now shows the demo flow SVG and explains screenshot/GIF capture requirements.
+- Linux/low-end feasibility:
+  - Added `scripts/start_local.sh` and `scripts/stop_local.sh` for browser-preview Linux runs.
+  - Added `docs/linux_low_end_feasibility.md`.
+  - Added root scripts `start:linux` and `stop:linux`.
+  - Linux runtime is feasible as browser-first, BM25/extractive-first; native Linux desktop packaging is not validated yet.
+
+Validation:
+
+- `npm.cmd run build`: passed after the component split.
+- `npm.cmd run test:api`: `41 passed, 1 warning`.
+- `python -m compileall scripts apps/api/app`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\eval_real_world.ps1`: passed and wrote metrics.
+- Bash syntax/runtime validation could not run locally because WSL has no installed Linux distribution.
+
+Remaining debt:
+
+- Continue splitting `page.tsx` into sidebar, chat thread, composer, Deep Research, Paper Lab, and Exam Lab components.
+- Capture actual live UI screenshots/GIFs for README after final visual QA.
+- Grow real-world eval set from 16 to 60+ labels and tune retrieval against failures.
+- Validate Linux scripts on an actual Linux distro and package Linux desktop only if worth it.
+
+Commit:
+
+- `a980cdc` - Polish UI structure eval purge and Linux docs.
+
+### Latest Update: Windows App Package Refresh And Shortcuts
+
+Date: 2026-06-20
+
+Purpose:
+
+- Refresh the current Windows desktop app package after the UI/eval/purge/Linux polish sprint.
+- Create user-facing shortcuts so the app can be launched without terminal commands.
+
+Completed:
+
+- `npm.cmd run build`: passed.
+- `npm.cmd run desktop:pack`: passed.
+- `npm.cmd run desktop:package`: passed.
+- Refreshed portable Windows app: `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- Refreshed unpacked desktop app: `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
+- Created Desktop shortcuts for NIRMIQ Desktop, Browser Preview, Golden Demo, and Stop.
+- Created Start Menu shortcuts under `NIRMIQ` for Desktop, Browser Preview, Golden Demo, and Stop.
+
+Note:
+
+- This was a Windows desktop app package refresh, not an Android APK build. Android APK generation remains a separate mobile packaging sprint if needed.

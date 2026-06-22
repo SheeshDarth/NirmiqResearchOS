@@ -28,7 +28,6 @@ class IngestionService:
         ".bmp",
         ".webp",
     }
-    _max_upload_bytes = 75 * 1024 * 1024
 
     def __init__(
         self,
@@ -37,18 +36,21 @@ class IngestionService:
         upload_root: Path,
         allowed_roots: list[Path] | None = None,
         allow_arbitrary_local_paths: bool = False,
+        max_upload_bytes: int = 75 * 1024 * 1024,
     ) -> None:
         self._sqlite_repo = sqlite_repo
         self._indexing_service = indexing_service
         self._upload_root = upload_root.resolve()
         self._allowed_roots = [root.resolve() for root in (allowed_roots or [self._upload_root])]
         self._allow_arbitrary_local_paths = allow_arbitrary_local_paths
+        self._max_upload_bytes = max_upload_bytes
 
     async def ingest(self, payload: IngestRequest) -> IngestResponse:
         source = Path(payload.source_path).resolve()
         if not source.exists() or not source.is_file():
             raise FileNotFoundError(f"Source file not found: {source}")
         self._assert_source_allowed(source)
+        self._validate_source_file(source)
 
         existing = self._sqlite_repo.get_document_by_source_path(str(source))
         current_hash = self._hash_file(source)
@@ -180,9 +182,7 @@ class IngestionService:
     def _write_upload(self, *, filename: str, content: bytes) -> Path:
         original = Path(filename or "upload").name
         suffix = Path(original).suffix.lower()
-        if suffix not in self._allowed_upload_extensions:
-            allowed = ", ".join(sorted(self._allowed_upload_extensions))
-            raise ValueError(f"Unsupported upload type '{suffix or 'unknown'}'. Allowed: {allowed}")
+        self._assert_supported_suffix(suffix)
         self._validate_upload_content(suffix=suffix, content=content)
 
         safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(original).stem).strip(".-")
@@ -204,6 +204,24 @@ class IngestionService:
             "Local path ingestion is restricted for privacy. "
             f"Upload the file through the app or place it under one of: {allowed}"
         )
+
+    def _validate_source_file(self, source: Path) -> None:
+        suffix = source.suffix.lower()
+        self._assert_supported_suffix(suffix)
+        size = source.stat().st_size
+        if size <= 0:
+            raise ValueError("Source file is empty.")
+        if size > self._max_upload_bytes:
+            max_mb = max(1, self._max_upload_bytes // (1024 * 1024))
+            raise ValueError(f"Source file is too large. Maximum supported size is {max_mb} MB.")
+        with source.open("rb") as handle:
+            sample = handle.read(8192)
+        self._validate_upload_content(suffix=suffix, content=sample)
+
+    def _assert_supported_suffix(self, suffix: str) -> None:
+        if suffix not in self._allowed_upload_extensions:
+            allowed = ", ".join(sorted(self._allowed_upload_extensions))
+            raise ValueError(f"Unsupported file type '{suffix or 'unknown'}'. Allowed: {allowed}")
 
     @staticmethod
     def _validate_upload_content(*, suffix: str, content: bytes) -> None:

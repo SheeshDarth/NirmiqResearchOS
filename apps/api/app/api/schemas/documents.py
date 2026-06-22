@@ -19,6 +19,16 @@ class DocumentDeleteResponse(BaseModel):
     deleted: bool
 
 
+class DocumentPurgeResponse(BaseModel):
+    deleted_count: int
+    deleted_document_ids: list[str]
+    vector_store_cleared: bool
+    source_files_deleted: bool = False
+    source_file_delete_count: int = 0
+    derived_files_deleted: int = 0
+    note: str
+
+
 class DocumentChunkItem(BaseModel):
     id: str
     document_id: str

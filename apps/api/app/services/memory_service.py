@@ -5,6 +5,7 @@ from app.adapters.llm.generator import Generator
 from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.api.schemas.common import Citation
 from app.api.schemas.memory import (
+    SessionDeleteResponse,
     SessionSummaryResponse,
     SessionTimelineMessage,
     SessionTimelineResponse,
@@ -58,6 +59,55 @@ class MemoryService:
             message_count=count,
             latest_snapshot_created_at=snapshot["created_at"] if snapshot else None,
             messages=messages,
+        )
+
+    async def export_markdown(self, session_id: str) -> str:
+        summary, count = self._sqlite_repo.get_session_summary(session_id)
+        messages = self._sqlite_repo.get_session_messages(session_id)
+        lines = [
+            "# NIRMIQ Thread Export",
+            "",
+            f"- Session: `{session_id}`",
+            f"- Messages: `{count}`",
+            "",
+            "## Memory Summary",
+            "",
+            summary,
+            "",
+            "## Conversation",
+            "",
+        ]
+        if not messages:
+            lines.append("_No messages recorded for this session yet._")
+        for row in messages:
+            role = str(row["role"]).title()
+            created_at = str(row["created_at"])
+            content = str(row["content"]).strip()
+            citations = self._decode_citations(row.get("citations_json"))
+            lines.extend([f"### {role} / {created_at}", "", content or "_empty_", ""])
+            if citations:
+                lines.extend(["Citations:", ""])
+                for index, citation in enumerate(citations, start=1):
+                    page = f", page {citation.page_start}" if citation.page_start else ""
+                    excerpt = f" - {citation.excerpt}" if citation.excerpt else ""
+                    lines.append(f"- [{index}] document `{citation.document_id}` chunk `{citation.chunk_id}`{page}{excerpt}")
+                lines.append("")
+        lines.extend(
+            [
+                "## Privacy Note",
+                "",
+                "This export was generated locally by NIRMIQ. It may contain user prompts, answers, and source excerpts.",
+            ]
+        )
+        return "\n".join(lines).rstrip() + "\n"
+
+    async def delete_session(self, session_id: str) -> SessionDeleteResponse:
+        result = self._sqlite_repo.delete_session(session_id)
+        return SessionDeleteResponse(
+            session_id=session_id,
+            deleted=bool(result["deleted"]),
+            deleted_messages=int(result["deleted_messages"]),
+            deleted_snapshots=int(result["deleted_snapshots"]),
         )
 
     async def maybe_refresh_snapshot(self, session_id: str) -> None:

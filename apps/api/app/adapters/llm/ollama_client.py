@@ -8,12 +8,29 @@ import httpx
 class OllamaClient:
     """Local Ollama API adapter with lightweight health caching."""
 
-    def __init__(self, base_url: str, timeout_seconds: float = 4.0) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        timeout_seconds: float = 4.0,
+        keep_alive: str = "45s",
+        num_ctx: int = 3072,
+        num_predict: int = 768,
+        num_gpu: int | None = None,
+        num_thread: int | None = None,
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
+        self._keep_alive = keep_alive
+        self._num_ctx = num_ctx
+        self._num_predict = num_predict
+        self._num_gpu = num_gpu
+        self._num_thread = num_thread
         self._health_cache_ttl = timedelta(seconds=10)
         self._last_health_check: datetime | None = None
         self._last_health_result = False
+        self._model_cache_ttl = timedelta(seconds=30)
+        self._last_model_check: datetime | None = None
+        self._last_model_result: list[str] = []
 
     async def is_available(self) -> bool:
         now = datetime.now(timezone.utc)
@@ -31,12 +48,39 @@ class OllamaClient:
         self._last_health_check = now
         return self._last_health_result
 
+    async def list_models(self) -> list[str]:
+        now = datetime.now(timezone.utc)
+        if (
+            self._last_model_check is not None
+            and now - self._last_model_check < self._model_cache_ttl
+        ):
+            return self._last_model_result
+        try:
+            async with httpx.AsyncClient(timeout=1.0) as client:
+                response = await client.get(f"{self._base_url}/api/tags")
+                response.raise_for_status()
+                data = response.json()
+                models = data.get("models", []) if isinstance(data, dict) else []
+                self._last_model_result = [
+                    str(item.get("name"))
+                    for item in models
+                    if isinstance(item, dict) and item.get("name")
+                ]
+                self._last_health_result = True
+        except Exception:
+            self._last_model_result = []
+            self._last_health_result = False
+        self._last_model_check = now
+        self._last_health_check = now
+        return self._last_model_result
+
     async def generate(self, prompt: str, model: str, temperature: float = 0.0) -> str:
         payload = {
             "model": model,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": temperature},
+            "keep_alive": self._keep_alive,
+            "options": self._generation_options(temperature=temperature),
         }
         response = await self._post_json("/api/generate", payload)
         return str(response.get("response", ""))
@@ -45,7 +89,7 @@ class OllamaClient:
         if not texts:
             return []
         # Prefer batch embed endpoint when available.
-        payload = {"model": model, "input": texts}
+        payload = {"model": model, "input": texts, "keep_alive": self._keep_alive}
         try:
             response = await self._post_json("/api/embed", payload)
             embeddings = response.get("embeddings")
@@ -57,7 +101,7 @@ class OllamaClient:
 
         vectors: list[list[float]] = []
         for text in texts:
-            legacy_payload = {"model": model, "prompt": text}
+            legacy_payload = {"model": model, "prompt": text, "keep_alive": self._keep_alive}
             response = await self._post_json("/api/embeddings", legacy_payload)
             vector = response.get("embedding", [])
             vectors.append([float(value) for value in vector])
@@ -79,6 +123,18 @@ class OllamaClient:
             if not isinstance(data, dict):
                 raise ValueError("Unexpected non-object response from Ollama")
             return data
+
+    def _generation_options(self, temperature: float) -> dict[str, int | float]:
+        options: dict[str, int | float] = {
+            "temperature": temperature,
+            "num_ctx": self._num_ctx,
+            "num_predict": self._num_predict,
+        }
+        if self._num_gpu is not None:
+            options["num_gpu"] = self._num_gpu
+        if self._num_thread is not None:
+            options["num_thread"] = self._num_thread
+        return options
 
     @staticmethod
     def _rerank_prompt(query: str, text: str) -> str:

@@ -1,10 +1,12 @@
 import json
+import re
 from uuid import uuid4
 
 from app.api.schemas.common import Citation
 from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.api.schemas.query import QueryRequest, QueryResponse
 from app.domain.citations import to_citations
+from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.paper_lab import build_paper_lab_artifact
 from app.domain.query_intent import QueryIntent, detect_query_intent
 from app.services.memory_service import MemoryService
@@ -34,6 +36,7 @@ class QueryService:
     async def _execute(self, payload: QueryRequest, persist: bool) -> QueryResponse:
         _ = await self._memory_service.get_summary(payload.session_id)
         intent = detect_query_intent(payload.query, payload.mode)
+        response_mode = self._resolve_response_mode(payload.mode, intent)
         retrieval_mode = self._resolve_retrieval_mode(payload.mode, payload.retrieval_mode)
         retrieval_profile = self._resolve_retrieval_profile(payload.retrieval_profile, intent)
         cached_response = self._cached_summary_response(
@@ -57,21 +60,23 @@ class QueryService:
             return cached_response
 
         exam_context = self._build_exam_context(payload)
-        retrieval_query = self._retrieval_query(payload.query, payload.mode, exam_context, intent)
+        retrieval_query = self._retrieval_query(payload.query, response_mode, exam_context, intent)
         bundle = await self._retrieval_service.retrieve_with_mode(
             retrieval_query,
             mode=retrieval_mode,
             document_id=payload.document_id,
             profile=retrieval_profile,
         )
+        bundle = self._augment_selected_summary_bundle(payload=payload, intent=intent, bundle=bundle)
+        bundle = self._augment_selected_factual_bundle(payload=payload, intent=intent, bundle=bundle)
         answer, grounded, synthesis_meta = await self._synthesis_service.synthesize(
             payload.query,
             bundle,
-            response_mode=payload.mode,
+            response_mode=response_mode,
             exam_profile=payload.exam_profile.model_dump() if payload.exam_profile else None,
             exam_context=exam_context,
         )
-        citations = to_citations(bundle.chunks)
+        citations = self._citations_from_synthesis_context(bundle, synthesis_meta, grounded)
         combined_meta = {
             **bundle.meta,
             **synthesis_meta,
@@ -79,7 +84,8 @@ class QueryService:
             "retrieval_query_expanded": retrieval_query != payload.query,
             "requested_retrieval_profile": payload.retrieval_profile,
             "effective_retrieval_profile": retrieval_profile,
-            "response_mode": payload.mode,
+            "requested_response_mode": payload.mode,
+            "response_mode": response_mode,
             "cache_hit": False,
             "detected_intent": intent.intent,
             "intent_confidence": intent.confidence,
@@ -226,7 +232,36 @@ class QueryService:
 
     @staticmethod
     def _summary_profile(*, retrieval_mode: str, retrieval_profile: str) -> str:
-        return f"{retrieval_mode}:{retrieval_profile}:v1"
+        return f"{retrieval_mode}:{retrieval_profile}:v5"
+
+    @staticmethod
+    def _citations_from_synthesis_context(
+        bundle: RetrievalBundle,
+        synthesis_meta: dict[str, object],
+        grounded: bool,
+    ) -> list[Citation]:
+        if not grounded:
+            return []
+        raw_chunk_ids = synthesis_meta.get("cited_context_chunk_ids")
+        if not isinstance(raw_chunk_ids, list) or not raw_chunk_ids:
+            return []
+
+        cited_chunk_ids: list[str] = []
+        seen: set[str] = set()
+        for raw_chunk_id in raw_chunk_ids:
+            chunk_id = str(raw_chunk_id)
+            if not chunk_id or chunk_id in seen:
+                continue
+            cited_chunk_ids.append(chunk_id)
+            seen.add(chunk_id)
+
+        chunks_by_id = {chunk.chunk_id: chunk for chunk in bundle.chunks}
+        cited_chunks = [
+            chunks_by_id[chunk_id]
+            for chunk_id in cited_chunk_ids
+            if chunk_id in chunks_by_id
+        ]
+        return to_citations(cited_chunks)
 
     def _build_exam_context(self, payload: QueryRequest) -> dict[str, object]:
         if not payload.document_id or not self._uses_exam_context(payload.mode):
@@ -261,11 +296,10 @@ class QueryService:
         exam_context: dict[str, object],
         intent: QueryIntent,
     ) -> str:
-        normalized_mode = mode.strip().lower()
         normalized_query = query.strip().lower()
-        if intent.intent == "summary" or normalized_mode == "summary" or (
-            any(term in normalized_query for term in ("summarize", "summary", "overview", "explain"))
-            and any(term in normalized_query for term in ("pdf", "document", "paper", "material", "file", "this"))
+        if intent.intent == "summary" or (
+            any(term in normalized_query for term in ("summarize", "summary", "overview"))
+            and any(term in normalized_query for term in ("pdf", "document", "paper", "material", "file", "textbook"))
         ):
             return (
                 f"{query}\n\n"
@@ -314,6 +348,35 @@ class QueryService:
         return normalized
 
     @staticmethod
+    def _resolve_response_mode(requested_mode: str, intent: QueryIntent) -> str:
+        normalized = requested_mode.strip().lower()
+        if intent.intent == "summary":
+            return "summary"
+        if intent.intent == "compare":
+            return "compare_concepts"
+        if intent.intent == "paper_draft":
+            return "research_paper"
+        if intent.intent == "deep_research":
+            return "deep_research"
+        if intent.intent == "exam":
+            return normalized if normalized in QueryService._exam_modes() else "exam_answer"
+        if intent.intent == "general_chat":
+            return "general_chat"
+        if normalized == "summary":
+            return "research"
+        return normalized if normalized else "research"
+
+    @staticmethod
+    def _exam_modes() -> set[str]:
+        return {
+            "exam_answer",
+            "revision_notes",
+            "important_questions",
+            "compare_concepts",
+            "study_guide",
+        }
+
+    @staticmethod
     def _uses_exam_context(mode: str) -> bool:
         return mode.strip().lower() in {
             "exam_answer",
@@ -321,3 +384,234 @@ class QueryService:
             "important_questions",
             "study_guide",
         }
+
+    def _augment_selected_summary_bundle(
+        self,
+        *,
+        payload: QueryRequest,
+        intent: QueryIntent,
+        bundle: RetrievalBundle,
+    ) -> RetrievalBundle:
+        if not payload.document_id or intent.intent != "summary":
+            return bundle
+        rows = self._sqlite_repo.get_document_chunks(str(payload.document_id), active_only=True)
+        if not rows:
+            return bundle
+
+        existing_ids = {chunk.chunk_id for chunk in bundle.chunks}
+        seed_rows = sorted(
+            rows[:120],
+            key=lambda row: self._summary_seed_score(row),
+            reverse=True,
+        )[:6]
+        seed_chunks: list[RetrievedChunk] = []
+        for rank, row in enumerate(seed_rows):
+            chunk_id = str(row["id"])
+            if chunk_id in existing_ids:
+                continue
+            seed_chunks.append(
+                RetrievedChunk(
+                    chunk_id=chunk_id,
+                    document_id=str(row["document_id"]),
+                    text=str(row["text"]),
+                    score=max(0.01, 0.12 - (rank * 0.005)),
+                    page_start=row.get("page_start"),
+                    page_end=row.get("page_end"),
+                    source="summary_seed",
+                    quality_score=float(row.get("quality_score") or 1.0),
+                )
+            )
+            existing_ids.add(chunk_id)
+
+        if not seed_chunks:
+            return bundle
+        return RetrievalBundle(
+            chunks=[*seed_chunks, *bundle.chunks],
+            meta={
+                **bundle.meta,
+                "summary_seed_chunks": len(seed_chunks),
+                "summary_seed_strategy": "early_outline_chunks",
+            },
+        )
+
+    @staticmethod
+    def _summary_seed_score(row: dict[str, object]) -> float:
+        text = str(row.get("text") or "").lower()
+        page = int(row.get("page_start") or 9999)
+        quality = float(row.get("quality_score") or 1.0)
+        positive_terms = {
+            "this book",
+            "chapter",
+            "part i",
+            "part ii",
+            "fundamentals",
+            "covers",
+            "overview",
+            "introduction",
+            "machine learning",
+            "deep learning",
+            "training",
+            "model",
+            "algorithm",
+            "project",
+            "data",
+            "classification",
+            "regression",
+        }
+        negative_terms = {
+            "other resources",
+            "bibliography",
+            "references",
+            "index",
+            "copyright",
+            "trademark",
+            "isbn",
+        }
+        score = quality * 2.0
+        score += max(0.0, 3.0 - (page / 18.0))
+        score += sum(0.7 for term in positive_terms if term in text)
+        score -= sum(1.2 for term in negative_terms if term in text)
+        if 80 <= len(text.split()) <= 220:
+            score += 0.5
+        return score
+
+    def _augment_selected_factual_bundle(
+        self,
+        *,
+        payload: QueryRequest,
+        intent: QueryIntent,
+        bundle: RetrievalBundle,
+    ) -> RetrievalBundle:
+        if not payload.document_id or intent.intent not in {"factual_lookup", "deep_research", "exam"}:
+            return bundle
+        focus_terms = self._query_focus_terms(payload.query)
+        if not focus_terms:
+            return bundle
+        rows = self._sqlite_repo.get_document_chunks(str(payload.document_id), active_only=True)
+        if not rows:
+            return bundle
+
+        scored_rows = [
+            (self._factual_seed_score(row, payload.query, focus_terms), row)
+            for row in rows
+        ]
+        seed_rows = [row for score, row in sorted(scored_rows, key=lambda item: item[0], reverse=True) if score > 0][:5]
+        existing_ids = {chunk.chunk_id for chunk in bundle.chunks}
+        seed_chunks: list[RetrievedChunk] = []
+        for rank, row in enumerate(seed_rows):
+            chunk_id = str(row["id"])
+            if chunk_id in existing_ids:
+                continue
+            seed_chunks.append(
+                RetrievedChunk(
+                    chunk_id=chunk_id,
+                    document_id=str(row["document_id"]),
+                    text=str(row["text"]),
+                    score=max(0.01, 0.12 - (rank * 0.005)),
+                    page_start=row.get("page_start"),
+                    page_end=row.get("page_end"),
+                    source="focused_seed",
+                    quality_score=float(row.get("quality_score") or 1.0),
+                )
+            )
+            existing_ids.add(chunk_id)
+        if not seed_chunks:
+            return bundle
+        return RetrievalBundle(
+            chunks=[*seed_chunks, *bundle.chunks],
+            meta={
+                **bundle.meta,
+                "focused_seed_chunks": len(seed_chunks),
+                "focused_seed_strategy": "definition_solution_terms",
+            },
+        )
+
+    @staticmethod
+    def _query_focus_terms(query: str) -> set[str]:
+        stopwords = {
+            "about",
+            "answer",
+            "briefly",
+            "could",
+            "does",
+            "explain",
+            "from",
+            "give",
+            "into",
+            "this",
+            "that",
+            "what",
+            "when",
+            "where",
+            "which",
+            "with",
+            "reduced",
+        }
+        terms: set[str] = set()
+        for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", query.lower()):
+            if token in stopwords:
+                continue
+            terms.add(token)
+            stem = QueryService._light_stem(token)
+            if stem != token:
+                terms.add(stem)
+        return terms
+
+    @staticmethod
+    def _factual_seed_score(row: dict[str, object], query: str, focus_terms: set[str]) -> float:
+        text = str(row.get("text") or "").lower()
+        if not text:
+            return 0.0
+        text_terms = set(re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", text))
+        text_terms.update(QueryService._light_stem(term) for term in list(text_terms))
+        overlap = focus_terms.intersection(text_terms)
+        if not overlap:
+            return 0.0
+
+        normalized_query = query.lower()
+        quality = float(row.get("quality_score") or 1.0)
+        score = quality + (len(overlap) * 1.4)
+        if any(phrase in normalized_query for phrase in ("what is", "define", "meaning")):
+            definition_cues = {
+                "means",
+                "called",
+                "occurs",
+                "refers",
+                "generalize",
+                "training data",
+                "new instances",
+                "new data",
+            }
+            score += sum(0.9 for cue in definition_cues if cue in text)
+        if any(term in normalized_query for term in ("reduce", "reduced", "prevent", "avoid", "fix")):
+            solution_cues = {
+                "possible solutions",
+                "simplify",
+                "fewer parameters",
+                "reduce",
+                "regularization",
+                "constrain",
+                "training data",
+                "noise",
+                "outliers",
+                "early stopping",
+            }
+            score += sum(0.8 for cue in solution_cues if cue in text)
+        if "references" in text or "bibliography" in text or "index" in text:
+            score -= 3.0
+        return score
+
+    @staticmethod
+    def _light_stem(token: str) -> str:
+        if len(token) > 5 and token.endswith("ing"):
+            stem = token[:-3]
+            if len(stem) > 3 and stem[-1] == stem[-2]:
+                stem = stem[:-1]
+            return stem
+        if len(token) > 4 and token.endswith("ed"):
+            return token[:-1] if token.endswith("eed") else token[:-2]
+        if len(token) > 4 and token.endswith("e"):
+            return token[:-1]
+        if len(token) > 4 and token.endswith("s"):
+            return token[:-1]
+        return token

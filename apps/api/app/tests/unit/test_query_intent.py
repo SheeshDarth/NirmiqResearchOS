@@ -7,6 +7,12 @@ def test_intent_router_detects_summary() -> None:
     assert intent.route == "document_summary"
 
 
+def test_intent_router_does_not_let_stale_summary_mode_hijack_specific_question() -> None:
+    intent = detect_query_intent("Explain a few unsupervised algorithms from this textbook", "summary")
+    assert intent.intent == "factual_lookup"
+    assert intent.route == "default_grounded_retrieval"
+
+
 def test_intent_router_detects_compare() -> None:
     intent = detect_query_intent("Compare transformer attention and CNNs", "research")
     assert intent.intent == "compare"

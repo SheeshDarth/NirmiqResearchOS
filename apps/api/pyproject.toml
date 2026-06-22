@@ -1,12 +1,12 @@
 [project]
 name = "nirmiq-api"
 version = "0.1.0"
-description = "NIRMIQ Academic Intelligence System FastAPI backend"
+description = "NIRMIQ ResearchOS FastAPI backend"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.116.0",
   "uvicorn[standard]>=0.35.0",
-  "pydantic>=2.11.0",
+  "pydantic>=2.10.0,<2.11.0",
   "pytest>=8.4.0",
   "httpx>=0.28.0",
   "PyMuPDF>=1.26.0",
@@ -16,6 +16,10 @@ dependencies = [
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["alembic*"]
 
 [project.optional-dependencies]
 vector = [

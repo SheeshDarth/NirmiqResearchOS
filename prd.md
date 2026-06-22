@@ -1,14 +1,14 @@
 # NIRMIQ Product Requirements Document
 
-Last updated: 2026-06-06
+Last updated: 2026-06-20
 
 ## Product Name
 
-NIRMIQ Academic Intelligence System
+NIRMIQ ResearchOS
 
 ## Ecosystem Context
 
-NIRMIQ Academic Intelligence System is one standalone product under the broader NIRMIQ umbrella. The wider ecosystem may include NIRMIQ OS, NIRMIQ Mirror, NIRMIQ Intelligence Engine, NIRMIQ Agent System, NIRMIQ Research Assistant, and NIRMIQ Echo. This product must still work independently for users who only want academic document intelligence.
+NIRMIQ ResearchOS is the academic document intelligence workspace under the broader NIRMIQ umbrella. The wider ecosystem may include NIRMIQ OS, NIRMIQ Mirror, NIRMIQ Intelligence Engine, NIRMIQ Agent System, NIRMIQ Research Assistant, and NIRMIQ Echo. This product must still work independently for users who only want academic document intelligence.
 
 ## One-Line Promise
 
@@ -47,6 +47,18 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 - V3.1 summary cache for repeated selected-document summaries.
 - Deterministic intent routing for summary, factual lookup, compare, paper, exam, and chat prompts.
 - Compact trust badge for citation verification and citation coverage.
+- Safer selected-source behavior: when a document is selected, default questions remain scoped to that source.
+- Honest evidence behavior: stale vector hits, zero-text reindex failures, and unsupported cited claims must not produce trusted answers.
+
+## V4 Golden Demo Scope
+
+- Bundled offline demo corpus under `data/raw/golden_demo`.
+- One-click `Load Golden Demo` action in the app.
+- Locked reviewer prompts for Research, Summary, Paper Lab, Exam Lab, and abstention.
+- Compact Deep Research proof strip showing intent, citation coverage, cache state, and source type.
+- Local Markdown answer export with citations.
+- Publish script `scripts/golden_demo.ps1` for repeatable corpus indexing and smoke queries.
+- General Chat abstention proof: unsupported prompts should return no grounded answer and no citations.
 
 ## V3 Non-Goals
 
@@ -61,7 +73,7 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 
 ### First Run
 
-1. User sees NIRMIQ Academic Intelligence System landing screen.
+1. User sees NIRMIQ ResearchOS landing screen.
 2. User enters name plus email or phone.
 3. User chooses a workspace: Research, Chat, Paper Lab, or Exam Lab.
 4. User uploads or selects a document.
@@ -101,12 +113,18 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 - The app abstains on unrelated questions instead of hallucinating.
 - Composer minimization increases visible reading area.
 - Local build and backend tests stay green.
+- Full ship gate passes before public/demo pushes.
 - Demo flow can be completed without internet.
+- Golden demo can be warm-started from bundled files without internet.
+- Reviewer can inspect a citation and focus the exact source chunk.
+- Reviewer can export a grounded answer with citations as a local Markdown artifact.
 - Direct filesystem ingestion cannot accidentally index private files outside trusted corpus roots.
 - Longer research drafts feel useful without sacrificing citation verification.
 - Repeated selected-document summaries return faster from cache.
 - Users can see a simple answer trust signal without opening debug metadata.
 - Paper Lab can produce a grounded Markdown draft package instead of only a chat answer.
+- Local model runtime remains bounded through low-memory Ollama settings and embedding batches.
+- Direct local-path ingestion and Docker dev defaults respect the local-first privacy contract.
 
 ## Why Users Choose NIRMIQ
 
@@ -121,3 +139,40 @@ NIRMIQ is not a generic upload-and-chat clone. It is a local academic intelligen
 - Local data purge/export controls.
 - Retrieval evaluation dataset for NIRMIQ academic use cases.
 - Streaming answers after synthesis reliability is stable.
+
+## 2026-06-11 Accuracy Rescue Acceptance Update
+
+Added acceptance criteria for demo reliability:
+
+- A selected textbook with active chunks must answer a factual definition/solution question using relevant textbook pages.
+- Missing configured local models must not silently degrade answer quality when another answer-capable local model is installed.
+- Generated answers must be citation-anchored sentence by sentence where possible.
+- Unsupported specific claims must be rewritten to source-only fallback instead of being shown as verified.
+- Stale library rows must not appear as healthy indexed material.
+
+Validated source:
+
+- `Hands-On Machine Learning with Scikit-Learn, Keras and TensorFlow`
+- Clean document id: `e9b7b4ff-b679-44db-a2cf-bbb945caee22`
+- Active chunks: `1833`
+
+## 2026-06-20 Hardening Acceptance Update
+
+Added acceptance criteria for ship reliability:
+
+- Empty/unreadable reindex attempts fail safely and preserve previous active chunks.
+- Direct local-path ingestion validates file type, file size, and lightweight signatures before indexing.
+- Retrieval ignores orphaned vector-store hits when SQLite no longer marks the chunk active.
+- Summary/factual seed chunks improve context selection without inflating grounding scores.
+- Exam Lab study guides use imported question-bank text to judge relevance.
+- Frontend requests time out gracefully and avoid duplicate busy submissions.
+- Normal preview and golden-demo preview are separate so users can work without accidental demo preload.
+- Release scripts and desktop packaging scripts must fail non-zero on command errors.
+
+Validated on 2026-06-20:
+
+- Backend tests: `41 passed, 1 warning`.
+- API compile: passed.
+- Web build: passed.
+- Desktop unpacked package: passed.
+- Full `scripts/ship_check.ps1`: passed.

@@ -1,6 +1,6 @@
-# NIRMIQ Academic Intelligence System Security Notes
+# NIRMIQ ResearchOS Security Notes
 
-Last updated: 2026-06-02
+Last updated: 2026-06-20
 
 ## Current security model
 
@@ -15,10 +15,25 @@ NIRMIQ currently runs as a local single-user application. The login screen is a 
   - `X-Frame-Options: DENY`
   - `Referrer-Policy: no-referrer`
   - `Permissions-Policy` denying camera, microphone, and geolocation.
+- Response compression for larger local API responses.
+- Request body size limit through `MAX_REQUEST_BODY_BYTES`.
+- Production-only security header toggles:
+  - `ENABLE_HSTS=true`
+  - `ENABLE_CONTENT_SECURITY_POLICY=true`
 - Diagram asset serving by asset ID with path validation to prevent arbitrary file serving.
 - Local path ingestion is restricted by default to configured corpus roots.
 - Uploads are content-sniffed for common spoofing cases before indexing.
+- Direct local-path ingestion now applies the same suffix, size, and lightweight signature/readability checks as uploaded files.
+- Empty-text indexing failures stop before old active chunks are deactivated, preventing accidental loss of previously usable evidence.
+- Vector hits are accepted only when the chunk still exists as an active SQLite chunk, so stale Chroma metadata cannot silently re-enter answers.
+- Docker Compose local dev ports bind to `127.0.0.1` only.
+- Release/startup scripts now fail on native command errors instead of hiding broken installs/builds.
 - Runtime/generated database and vector files ignored by Git.
+- SQLite migration identifiers are allowlisted to avoid dynamic user-controlled SQL identifiers.
+- Local Data controls in the UI:
+  - Export current thread as Markdown.
+  - Clear current thread memory and snapshots.
+  - Clear indexed document metadata, chunks, summaries, jobs, exam artifacts, vector entries, parse-cache files, extracted diagrams, and app-owned uploaded source copies.
 
 ## V3 Local Data Protection Protocol
 
@@ -31,21 +46,30 @@ NIRMIQ is designed to protect the user from accidental data leakage while preser
 - PDF/image/text uploads are checked against lightweight file signatures or UTF-8 readability.
 - The app does not send document content to cloud APIs in the default local mode.
 - If external provider support is added later, it must be opt-in per provider and must clearly label when content leaves the machine.
+- A ChatGPT/OpenAI-linked account is not required for core NIRMIQ operation.
+- Connected model access, if added later, is an optional enhancement path only and must never replace the local/offline default.
 
 ## Security limitations
 
 - No production authentication yet.
 - No role-based access control.
 - Local SQLite database is not encrypted by default.
-- Local documents and extracted diagrams remain on disk.
+- External local-path source files remain on disk unless the user deletes them outside NIRMIQ.
+- Uploaded source copies owned by NIRMIQ are deleted by the indexed-material purge path.
+- Parse cache and extracted diagrams owned by NIRMIQ are deleted by the indexed-material purge path.
 - If optional cloud/API providers are added later, explicit consent, redaction controls, and visible mode labels are required.
 - SQLite and raw document files are not encrypted at rest yet.
+- `Clear indexed material` does not delete arbitrary source files outside the app upload directory. This is intentional to avoid unsafe filesystem deletion.
+- No external error-tracking service is enabled because default telemetry would conflict with the local-first privacy contract.
+- HSTS is disabled by default because local HTTP development should not set HTTPS-only browser policy.
 
 ## Recommended next security work
 
 1. Add real authentication only if hosted or multi-user deployment is introduced.
 2. Add encrypted local vault support for SQLite and extracted assets.
-3. Add document deletion and secure purge flows.
+3. Add optional secure source-file purge confirmations and visible counts in the UI.
 4. Add provider consent screens before sending content to external APIs.
 5. Add audit log export for document operations.
 6. Add optional local encryption for SQLite, raw uploads, extracted diagrams, and parse cache.
+7. Add local bug-report bundle export for logs without sending telemetry to a third party.
+8. Add a strict "local-only model endpoint" guard before allowing non-loopback Ollama or external model hosts.

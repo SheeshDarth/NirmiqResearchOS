@@ -1,4 +1,4 @@
-# NIRMIQ Academic Intelligence System Security Notes
+# NIRMIQ ResearchOS Security Notes
 
 Last updated: 2026-05-29
 

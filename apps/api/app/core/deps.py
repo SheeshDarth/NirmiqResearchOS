@@ -51,6 +51,11 @@ class AppContainer:
         ollama_client = OllamaClient(
             base_url=settings.ollama_base_url,
             timeout_seconds=settings.ollama_timeout_seconds,
+            keep_alive=settings.ollama_keep_alive,
+            num_ctx=settings.ollama_num_ctx,
+            num_predict=settings.ollama_num_predict,
+            num_gpu=settings.ollama_num_gpu,
+            num_thread=settings.ollama_num_thread,
         )
         generator = Generator(
             ollama_client=ollama_client,
@@ -61,6 +66,7 @@ class AppContainer:
             ollama_client=ollama_client,
             model_name=settings.embed_model,
             use_ollama=settings.use_ollama_embeddings,
+            batch_size=settings.ollama_embed_batch_size,
         )
         reranker = Reranker(
             ollama_client=ollama_client,
@@ -93,8 +99,15 @@ class AppContainer:
             upload_root=settings.upload_path,
             allowed_roots=[*settings.local_ingest_allowed_roots, settings.upload_path],
             allow_arbitrary_local_paths=settings.security_allow_arbitrary_local_paths,
+            max_upload_bytes=settings.max_request_body_bytes,
         )
-        documents_service = DocumentsService(sqlite_repo=sqlite_repo, chroma_repo=chroma_repo)
+        documents_service = DocumentsService(
+            sqlite_repo=sqlite_repo,
+            chroma_repo=chroma_repo,
+            workspace_root=settings.workspace_root,
+            parse_cache_path=settings.parse_cache_path,
+            upload_root=settings.upload_path,
+        )
         exam_service = ExamService(sqlite_repo=sqlite_repo, workspace_root=settings.workspace_root)
         memory_service = MemoryService(
             sqlite_repo=sqlite_repo,
