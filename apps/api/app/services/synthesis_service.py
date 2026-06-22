@@ -236,6 +236,11 @@ class SynthesisService:
             "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
             "original_unsupported_claims": verification.get("original_unsupported_claims", []),
             "answer_rewritten_for_faithfulness": answer_rewritten,
+            **self._citation_context_meta(
+                answer=generated,
+                bundle=bundle,
+                selected_context=selected,
+            ),
         }
         return (generated, True, meta)
 
@@ -272,6 +277,58 @@ class SynthesisService:
         return selected
 
     @staticmethod
+    def _citation_context_meta(
+        *,
+        answer: str,
+        bundle: RetrievalBundle,
+        selected_context: list[tuple[int, str]],
+    ) -> dict[str, object]:
+        selected_anchors = [anchor for anchor, _ in selected_context]
+        chunks_by_anchor = {
+            anchor: chunk
+            for anchor, chunk in enumerate(bundle.chunks[:8], start=1)
+            if anchor in set(selected_anchors)
+        }
+        cited_anchors = SynthesisService._answer_citation_anchors(answer, allowed_anchors=set(selected_anchors))
+        cited_chunks = [
+            chunks_by_anchor[anchor]
+            for anchor in cited_anchors
+            if anchor in chunks_by_anchor
+        ]
+        return {
+            "selected_context_chunk_ids": [
+                chunks_by_anchor[anchor].chunk_id
+                for anchor in selected_anchors
+                if anchor in chunks_by_anchor
+            ],
+            "cited_context_chunk_ids": [chunk.chunk_id for chunk in cited_chunks],
+            "citation_anchor_chunk_map": [
+                {
+                    "anchor": anchor,
+                    "chunk_id": chunks_by_anchor[anchor].chunk_id,
+                    "document_id": chunks_by_anchor[anchor].document_id,
+                    "page_start": chunks_by_anchor[anchor].page_start,
+                    "page_end": chunks_by_anchor[anchor].page_end,
+                }
+                for anchor in cited_anchors
+                if anchor in chunks_by_anchor
+            ],
+            "citation_source": "answer_used_context_chunks",
+        }
+
+    @staticmethod
+    def _answer_citation_anchors(answer: str, *, allowed_anchors: set[int]) -> list[int]:
+        anchors: list[int] = []
+        seen: set[int] = set()
+        for raw_anchor in re.findall(r"\[(\d+)\]", answer):
+            anchor = int(raw_anchor)
+            if anchor not in allowed_anchors or anchor in seen:
+                continue
+            anchors.append(anchor)
+            seen.add(anchor)
+        return anchors
+
+    @staticmethod
     def _build_grounded_prompt(
         query: str,
         context_blocks: list[tuple[int, str]],
@@ -289,7 +346,9 @@ class SynthesisService:
             "If evidence is insufficient, say so plainly.\n"
             "Cite claims with [n] where n is the context block number.\n"
             "Prefer higher-scoring context blocks when multiple sources support the same claim.\n"
-            "Keep the answer concise and factual.\n"
+            "Answer the user's exact question, not a generic document summary.\n"
+            "Use readable sections: Short answer, Key points, and Where this came from when appropriate.\n"
+            "Keep paragraphs short and avoid dense textbook dumps.\n"
             f"{mode_instruction}\n\n"
             f"{exam_instruction}\n"
             f"{artifact_instruction}\n"
@@ -391,7 +450,10 @@ class SynthesisService:
                 "related work, methodology or design considerations, limitations, and multiple citations from the context. "
                 "Do not fabricate papers, authors, results, or references not present in the retrieved source text."
             )
-        return "Explain clearly for a student using short sections and citations."
+        return (
+            "Explain clearly for a student. Start with a direct answer in 2-4 sentences, "
+            "then give 3-5 short cited bullets. If the user asks for a list or algorithms, answer as a list."
+        )
 
     @staticmethod
     def _exam_instruction(exam_profile: dict[str, object] | None) -> str:
@@ -590,24 +652,24 @@ class SynthesisService:
     def _fallback_heading(response_mode: str) -> str:
         mode = response_mode.strip().lower()
         if mode == "exam_answer":
-            return "Exam-ready answer from the retrieved passages:"
+            return "Exam-ready answer"
         if mode == "revision_notes":
-            return "Revision notes from the retrieved passages:"
+            return "Revision notes"
         if mode == "study_guide":
-            return "Study guide from the retrieved passages:"
+            return "Study guide"
         if mode == "important_questions":
-            return "Important question leads from the retrieved passages:"
+            return "Important question leads"
         if mode == "compare_concepts":
-            return "Grounded comparison from the retrieved passages:"
+            return "Grounded comparison"
         if mode == "general_chat":
-            return "I can answer this from the relevant uploaded material:"
+            return "I can answer this from your material"
         if mode == "deep_research":
-            return "Deep research synthesis from the retrieved passages:"
+            return "Deep research synthesis"
         if mode == "research_paper":
-            return "Research paper draft from the retrieved passages:"
+            return "Research paper draft"
         if mode == "summary":
             return "Document summary from the retrieved passages:"
-        return "Based on the retrieved passages:"
+        return "Short answer"
 
     @staticmethod
     def _is_definition_solution_query(query: str) -> bool:
@@ -738,10 +800,10 @@ class SynthesisService:
         mode = response_mode.strip().lower()
         if mode == "compare_concepts":
             bullets = "\n".join(f"- {sentence} [{idx}]" for idx, sentence in selected[:5])
-            return f"{heading}\n\nGrounded comparison points\n{bullets}"
+            return f"{heading}\n\nKey differences\n{bullets}\n\nWhere this came from\nOpen Sources to inspect the cited passages."
         if mode in {"exam_answer", "revision_notes"}:
             bullets = "\n".join(f"- {sentence} [{idx}]" for idx, sentence in selected[:5])
-            return f"{heading}\n\nKey points\n{bullets}\n\nExam note: keep the final answer tied to these cited points."
+            return f"{heading}\n\nKey points\n{bullets}\n\nStudy takeaway\nUse these cited points as the answer skeleton."
         if mode == "deep_research":
             core = selected[:3]
             details = selected[3:6]
@@ -750,10 +812,15 @@ class SynthesisService:
             if details:
                 sections.append("\nSupporting details")
                 sections.extend(f"- {sentence} [{idx}]" for idx, sentence in details)
-            sections.append("\nConfidence: extractive local fallback. Open Evidence Trail to inspect the source chunks.")
+            sections.append("\nWhere this came from\nOpen Sources to inspect the cited passages.")
             return "\n".join(sections)
         bullets = "\n".join(f"- {sentence} [{idx}]" for idx, sentence in selected[:5])
-        return f"{heading}\n\nKey evidence\n{bullets}"
+        lead = selected[0][1]
+        return (
+            f"{heading}\n{lead} [{selected[0][0]}]\n\n"
+            f"Key points\n{bullets}\n\n"
+            "Study takeaway\nAsk a follow-up like \"give examples\", \"compare these\", or \"make exam questions\" if you want the next layer."
+        )
 
     @staticmethod
     def _first_readable_sentences(
@@ -1009,6 +1076,21 @@ class SynthesisService:
         normalized = query.strip().lower()
         if not normalized:
             return False
+        explicit_overview_phrases = (
+            "summarize this",
+            "summary of",
+            "overview of",
+            "what is this about",
+            "what is it about",
+            "explain this pdf",
+            "explain the pdf",
+            "explain this document",
+            "explain the document",
+            "explain this material",
+            "explain the material",
+        )
+        if any(phrase in normalized for phrase in explicit_overview_phrases):
+            return True
         overview_verbs = {
             "summarize",
             "summary",
@@ -1031,6 +1113,22 @@ class SynthesisService:
             "it",
         }
         tokens = set(re.findall(r"[a-zA-Z][a-zA-Z0-9]{1,}", normalized))
+        specific_question_terms = {
+            "algorithm",
+            "algorithms",
+            "compare",
+            "contrast",
+            "define",
+            "difference",
+            "differences",
+            "example",
+            "examples",
+            "how",
+            "list",
+            "why",
+        }
+        if tokens & specific_question_terms:
+            return False
         if tokens & overview_verbs and tokens & document_terms:
             return True
         return normalized in {

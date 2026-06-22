@@ -1,11 +1,63 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-06-11
+Last updated: 2026-06-22
 Current branch: `v3-foundation`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-06-22 UI Cleanup Pass
+
+Objective: remove harmful or unnecessary product-surface clutter before the larger ChatGPT-style component rebuild.
+
+Implemented:
+
+- Removed untracked root-level PDFs that should not ship with the repository:
+  - `Finale AI — Dashboard.pdf`
+  - `flyrank-internship-confirmation-siddharth-p-july-2026-16-weeks.pdf`
+- Removed the in-app retrieval evaluation panel from the normal UI. Evaluation remains a backend/script/docs concern, not a user-facing chat control.
+- Removed related dead CSS for eval cards, eval input, meter bars, and proof-grid metadata.
+- Hid full local filesystem paths from the library, source inspector, and diagram cards.
+- Replaced raw source-path display with safer local/privacy copy.
+- Renamed the right inspector from Deep Research metadata language to a simpler Sources/check-answer drawer.
+- Removed visible intent/cache/citation-coverage percentages and retrieval scores from normal source cards.
+- Simplified exported Markdown citations by removing internal retrieval scores and citation coverage metadata.
+- Softened the composer advanced summary so normal users see `Advanced / optional` instead of retrieval mode/session internals.
+
+Verification:
+
+- `npm.cmd run build`: passed.
+- `npm.cmd run test:api`: passed, 44 tests.
+- `python -m compileall apps/api/app`: passed.
+
+Tradeoff:
+
+- The source-path fields still exist in API types and internal UI logic because local ingestion and golden-demo matching depend on them. They are no longer displayed in normal UI surfaces.
+
+## Latest Session Update - 2026-06-22 Citation Trust Fix
+
+Objective: start resolving the architecture-review P1 findings by tightening the citation trust contract before doing the larger ChatGPT-style UI rebuild.
+
+Implemented:
+
+- Changed `SynthesisService` to report the exact selected context chunk ids and final answer-cited chunk ids.
+- Changed `QueryService` so public `citations` are built only from answer-used context chunks, not the full retrieved bundle.
+- Added `citation_anchor_chunk_map` metadata for debug/source inspection when debug metadata is explicitly requested.
+- Bumped selected-document summary cache profile from `v4` to `v5` so older cached summaries with broad citations are naturally bypassed and regenerated.
+- Updated normal frontend query calls to stop forcing `debug: true`; debug metadata is now requested only when the source inspector is already open or Paper/Exam tool artifacts need it.
+- Added regression tests proving synthesis reports only answer-cited chunks and query citations filter out retrieved-but-unused chunks.
+
+Verification:
+
+- `python -m pytest apps/api/app/tests/unit/test_synthesis_faithfulness.py -q`: passed, 8 tests.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run test:api`: passed, 44 tests.
+- `npm.cmd run build`: passed.
+
+Tradeoff:
+
+- This is a surgical trust-layer fix, not the full UI simplification. Source-path redaction, backend-owned routing cleanup, score normalization, and the component split remain next.
 
 ## Latest Session Update - 2026-06-11 EOD Launch Sprint
 

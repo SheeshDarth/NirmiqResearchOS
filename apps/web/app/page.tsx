@@ -40,7 +40,6 @@ import {
   DEFAULT_SOURCE_PATH,
   GOLDEN_DEMO_QUESTIONS,
   GOLDEN_DEMO_SOURCES,
-  PRODUCT_DESCRIPTION,
   PRODUCT_NAME,
   PRODUCT_TAGLINE,
   RETRIEVAL_PROFILES,
@@ -55,11 +54,11 @@ import {
   escapeHtml,
   formatDate,
   getGroundingLabel,
-  getGroundingScore,
   getPaperLabArtifact,
   getTrustCopy,
   getVerificationBadge,
   getVisibleChunks,
+  inferModeForQuery,
   modeLabel,
   previewText,
   workspaceVerb,
@@ -67,7 +66,6 @@ import {
   type ChatRun,
   type DeepView,
   type DiffLine,
-  type EvalReportPayload,
   type GoldenDemoQuestion,
   type PaperLabArtifact,
   type RetrievalMode,
@@ -89,7 +87,7 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [composerCollapsed, setComposerCollapsed] = useState(false);
-  const [showLibrary, setShowLibrary] = useState(true);
+  const [showLibrary, setShowLibrary] = useState(false);
   const [showInspector, setShowInspector] = useState(false);
   const [health, setHealth] = useState("unknown");
   const [busy, setBusy] = useState<BusyState>("");
@@ -103,8 +101,8 @@ export default function Home() {
   const [ingestStatus, setIngestStatus] = useState<IngestStatusResponse | null>(null);
   const [ingestJobs, setIngestJobs] = useState<IngestJobsResponse | null>(null);
   const [sessionId, setSessionId] = useState("siddharth-study-thread");
-  const [workspaceSection, setWorkspaceSection] = useState<WorkspaceSection>("general");
-  const [studyMode, setStudyMode] = useState<StudyMode>("general_chat");
+  const [workspaceSection, setWorkspaceSection] = useState<WorkspaceSection>("research");
+  const [studyMode, setStudyMode] = useState<StudyMode>("research");
   const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>("hybrid");
   const [retrievalProfile, setRetrievalProfile] = useState<RetrievalProfile>("balanced");
   const [query, setQuery] = useState("");
@@ -122,9 +120,6 @@ export default function Home() {
   const [questionBankInput, setQuestionBankInput] = useState("");
   const [questionBankItems, setQuestionBankItems] = useState<QuestionBankItem[]>([]);
   const [diagramAssets, setDiagramAssets] = useState<DiagramAssetItem[]>([]);
-  const [evalReportInput, setEvalReportInput] = useState("");
-  const [evalReport, setEvalReport] = useState<EvalReportPayload | null>(null);
-  const [evalReportError, setEvalReportError] = useState("");
 
   const canIngest = sourcePath.trim().length > 0;
   const canQuery = query.trim().length > 0 && sessionId.trim().length > 0;
@@ -134,7 +129,6 @@ export default function Home() {
     [documentId, documents],
   );
   const latestCitations = queryResult?.citations ?? [];
-  const groundingScore = getGroundingScore(queryResult);
   const groundingLabel = getGroundingLabel(queryResult);
   const citedChunkIds = useMemo(
     () =>
@@ -159,24 +153,9 @@ export default function Home() {
   const paperLabArtifact = useMemo(() => getPaperLabArtifact(queryResult), [queryResult]);
   const availableModes = STUDY_MODES.filter((mode) => mode.section === workspaceSection);
   const currentMode = availableModes.find((mode) => mode.value === studyMode) ?? availableModes[0] ?? STUDY_MODES[0];
-  const currentSection = WORKSPACE_SECTIONS.find((section) => section.value === workspaceSection) ?? WORKSPACE_SECTIONS[0];
   const activeMaterialName = selectedDocumentDetail?.title || selectedDocument?.title || "No study material selected";
   const activePlaceholder = composerPlaceholder(workspaceSection, currentMode.value, activeMaterialName);
   const activeActionLabel = workspaceVerb(workspaceSection);
-  const isGoldenDemoSource = Boolean(
-    selectedDocument?.source_path?.includes("\\golden_demo\\") ||
-      selectedDocument?.source_path?.includes("/golden_demo/") ||
-      selectedDocumentDetail?.source_path?.includes("\\golden_demo\\") ||
-      selectedDocumentDetail?.source_path?.includes("/golden_demo/"),
-  );
-  const retrievalMeta = queryResult?.retrieval_meta ?? {};
-  const citationCoverage =
-    typeof retrievalMeta.citation_coverage === "number"
-      ? `${Math.round(retrievalMeta.citation_coverage * 100)}%`
-      : "not reported";
-  const detectedIntent =
-    typeof retrievalMeta.detected_intent === "string" ? retrievalMeta.detected_intent : "not routed yet";
-
   useEffect(() => {
     const storedName = window.localStorage.getItem("nirmiq.localProfileName");
     const storedEmail = window.localStorage.getItem("nirmiq.localEmail");
@@ -427,6 +406,11 @@ export default function Home() {
 
   async function executeQuery(submittedQuery: string, modeOverride: StudyMode = currentMode.value) {
     if (!submittedQuery || !sessionId.trim() || busy !== "") return;
+    const effectiveMode = inferModeForQuery(submittedQuery, modeOverride, workspaceSection);
+    const effectiveSection = workspaceSectionForMode(effectiveMode);
+    const examModes = ["exam_answer", "revision_notes", "important_questions", "compare_concepts", "study_guide"];
+    if (effectiveSection !== workspaceSection) setWorkspaceSection(effectiveSection);
+    if (effectiveMode !== studyMode) setStudyMode(effectiveMode);
     setBusy("query");
     setError("");
     try {
@@ -438,18 +422,16 @@ export default function Home() {
             source_path: selectedDocumentDetail?.source_path || selectedDocument?.source_path,
           }
         : {};
+      const shouldRequestDebug = showInspector || effectiveSection === "paper" || effectiveSection === "exam";
       const response = await runQuery({
         session_id: sessionId.trim(),
         query: submittedQuery,
         document_id: scopedDocumentId,
-        mode: modeOverride,
+        mode: effectiveMode,
         retrieval_mode: retrievalMode,
         retrieval_profile: retrievalProfile,
         exam_profile:
-          workspaceSection === "exam" &&
-          ["exam_answer", "revision_notes", "important_questions", "compare_concepts", "study_guide"].includes(
-            modeOverride,
-          )
+          examModes.includes(effectiveMode)
             ? {
                 marks: examMarks,
                 answer_style: examAnswerStyle,
@@ -457,7 +439,7 @@ export default function Home() {
                 instructions: examInstructions.trim() || undefined,
               }
             : undefined,
-        debug: true,
+        debug: shouldRequestDebug,
       });
       setQueryResult(response);
       setQueryHistory((current) =>
@@ -466,7 +448,7 @@ export default function Home() {
           {
             session_id: response.session_id,
             query: submittedQuery,
-            mode: modeOverride,
+            mode: effectiveMode,
             profile: retrievalProfile,
             ...sourceSnapshot,
             response,
@@ -475,6 +457,7 @@ export default function Home() {
         ].slice(-12),
       );
       setQuery("");
+      setComposerCollapsed(true);
       try {
         await loadSessionState(response.session_id);
       } catch (err) {
@@ -665,6 +648,15 @@ export default function Home() {
     }
   }
 
+  function workspaceSectionForMode(mode: StudyMode): WorkspaceSection {
+    if (mode === "general_chat") return "general";
+    if (mode === "research_paper") return "paper";
+    if (["exam_answer", "revision_notes", "important_questions", "compare_concepts", "study_guide"].includes(mode)) {
+      return "exam";
+    }
+    return "research";
+  }
+
   function applyGoldenDemoQuestion(sample: GoldenDemoQuestion) {
     const matchingDocument = sample.sourcePathIncludes
       ? documents.find((item) => item.source_path.includes(sample.sourcePathIncludes ?? ""))
@@ -761,6 +753,7 @@ export default function Home() {
   }
 
   function applySuggestion(value: string) {
+    setComposerCollapsed(false);
     setQuery(value);
     window.requestAnimationFrame(() => queryInputRef.current?.focus());
   }
@@ -781,38 +774,6 @@ export default function Home() {
       if (busy !== "" || !canQuery) return;
       queryFormRef.current?.requestSubmit();
     }
-  }
-
-  function loadEvalReportFromText(rawText: string) {
-    const trimmed = rawText.trim();
-    if (!trimmed) {
-      setEvalReport(null);
-      setEvalReportError("");
-      return;
-    }
-    try {
-      const parsed = JSON.parse(trimmed) as EvalReportPayload;
-      setEvalReport(parsed);
-      setEvalReportError("");
-    } catch (err) {
-      setEvalReport(null);
-      setEvalReportError(String(err));
-    }
-  }
-
-  function onEvalReportFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    void file
-      .text()
-      .then((text) => {
-        setEvalReportInput(text);
-        loadEvalReportFromText(text);
-      })
-      .catch((err) => {
-        setEvalReport(null);
-        setEvalReportError(String(err));
-      });
   }
 
   if (!mounted) {
@@ -855,8 +816,7 @@ export default function Home() {
             </div>
           </div>
           <p className="copy">
-            {displayName}&apos;s local ChatGPT-style workspace for study material, citations, papers,
-            and exam prep.
+            {displayName}&apos;s private workspace for asking documents clear questions and checking sources only when needed.
           </p>
           <div className="chip-row">
             <button className="chip" type="button" onClick={onHealthCheck} disabled={busy !== ""}>
@@ -874,7 +834,11 @@ export default function Home() {
           </button>
         </section>
 
-        <section className="rail-section golden-demo-card">
+        <details className="rail-section golden-demo-card compact-rail-details">
+          <summary className="rail-toggle-summary">
+            Golden Demo
+            <span>offline proof</span>
+          </summary>
           <div className="section-head">
             <div>
               <p className="eyebrow">Publish Proof</p>
@@ -898,9 +862,13 @@ export default function Home() {
               </button>
             ))}
           </div>
-        </section>
+        </details>
 
-        <section className="rail-section">
+        <details className="rail-section compact-rail-details">
+          <summary className="rail-toggle-summary">
+            Recent threads
+            <span>{queryHistory.length}</span>
+          </summary>
           <div className="section-head">
             <h2>Recent Study Threads</h2>
             <span className="chip copper">{queryHistory.length}</span>
@@ -928,7 +896,7 @@ export default function Home() {
               </div>
             )}
           </div>
-        </section>
+        </details>
 
         <section className="rail-section">
           <div className="section-head">
@@ -1028,7 +996,7 @@ export default function Home() {
                 >
                   <span className="material-title">{item.title || "Untitled material"}</span>
                   <span className="tiny">{item.status} / {item.active_chunk_count} evidence chunks</span>
-                  <span className="tiny path">{item.source_path}</span>
+                  <span className="tiny">Stored locally. Full path hidden.</span>
                 </button>
               ))
             ) : (
@@ -1074,20 +1042,17 @@ export default function Home() {
             </div>
             <div className="top-actions">
               <button className="button ghost" type="button" onClick={() => setShowLibrary((current) => !current)}>
-                {showLibrary ? "Hide Knowledge Base" : "Knowledge Base"}
+                {showLibrary ? "Hide Library" : "Library"}
               </button>
               <button className="button ghost" type="button" onClick={() => setShowInspector((current) => !current)}>
-                {showInspector ? "Hide Deep Research" : "Deep Research"}
+                {showInspector ? "Hide Sources" : "Sources"}
               </button>
             </div>
           </div>
           <div className="route-strip">
-            <span className="chip copper">{modeLabel(studyMode)}</span>
-            <span className="chip sage">{selectedDocument ? activeMaterialName : "No active source"}</span>
+            <span className="source-pill">{selectedDocument ? activeMaterialName : "No document selected"}</span>
             <span className="tiny">
-              {workspaceSection === "general"
-                ? "Chat first. NIRMIQ cites local material when evidence is available."
-                : currentSection.hint}
+              Ask normally. NIRMIQ routes summaries, comparisons, papers, and exam answers automatically.
             </span>
           </div>
         </header>
@@ -1099,32 +1064,26 @@ export default function Home() {
                 <article className="turn" key={`${run.timestamp}-${index}`}>
                   <div className="bubble user">
                     <div className="message-meta">
-                      <span className="tiny">You / {modeLabel(run.mode)}</span>
-                      <span className="chip">{run.profile}</span>
+                      <span className="tiny">You</span>
                     </div>
                     <div className="answer">{run.query}</div>
                   </div>
                   <div className="bubble assistant">
                     <div className="message-meta">
                       <span className="tiny">NIRMIQ / {formatDate(run.timestamp)}</span>
-                      <div className="meta-chip-row">
-                        <span className={cx("chip", run.response.grounded ? "sage" : "copper")}>
-                          {run.response.grounded ? "grounded" : "review"} / {run.response.citations.length} citations
+                      {getVerificationBadge(run.response) ? (
+                        <span className={cx("trust-badge", getVerificationBadge(run.response)?.className)}>
+                          {getVerificationBadge(run.response)?.label}
                         </span>
-                        {getVerificationBadge(run.response) ? (
-                          <span className={cx("chip", getVerificationBadge(run.response)?.className)}>
-                            {getVerificationBadge(run.response)?.label}
-                          </span>
-                        ) : null}
-                      </div>
+                      ) : null}
                     </div>
                     {run.mode === "study_guide" ? (
                       <StudyGuideAnswer answer={run.response.answer} />
                     ) : (
-                      <div className="answer">{run.response.answer}</div>
+                      <AnswerBody answer={run.response.answer} />
                     )}
                     <div className="trust-line">
-                      <span className={cx("chip", run.response.grounded ? "sage" : "copper")}>
+                      <span className={cx("trust-copy", run.response.grounded ? "sage" : "copper")}>
                         {getTrustCopy(run.response)}
                       </span>
                       <button
@@ -1136,24 +1095,29 @@ export default function Home() {
                         }}
                         type="button"
                       >
-                        View Deep Research
+                        Open Sources
                       </button>
                     </div>
                     {run.response.citations.length ? (
-                      <div className="citation-row evidence-trail">
-                        <span className="evidence-label">Evidence Trail</span>
-                        {run.response.citations.slice(0, 6).map((citation, citationIndex) => (
-                          <button
-                            className={cx("citation-chip", citation.chunk_id === selectedChunkId && "active")}
-                            key={`${run.timestamp}-${citation.chunk_id}-${citationIndex}`}
-                            onClick={() => selectCitation(citation.document_id, citation.chunk_id)}
-                            type="button"
-                          >
-                            Evidence {citationIndex + 1}
-                            {citation.page_start ? ` / p.${citation.page_start}` : ""}
-                          </button>
-                        ))}
-                      </div>
+                      <details className="source-drawer">
+                        <summary>
+                          Sources used
+                          <span>{run.response.citations.length}</span>
+                        </summary>
+                        <div className="citation-row evidence-trail">
+                          {run.response.citations.slice(0, 6).map((citation, citationIndex) => (
+                            <button
+                              className={cx("citation-chip", citation.chunk_id === selectedChunkId && "active")}
+                              key={`${run.timestamp}-${citation.chunk_id}-${citationIndex}`}
+                              onClick={() => selectCitation(citation.document_id, citation.chunk_id)}
+                              type="button"
+                            >
+                              [{citationIndex + 1}]
+                              {citation.page_start ? ` page ${citation.page_start}` : ""}
+                            </button>
+                          ))}
+                        </div>
+                      </details>
                     ) : null}
                   </div>
                 </article>
@@ -1164,7 +1128,7 @@ export default function Home() {
             <section className="empty-state">
               <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
               <h2>What do you want to understand today?</h2>
-              <p className="copy">Upload study material or ask from your indexed documents.</p>
+              <p className="copy">Upload a PDF, select one document, then ask naturally. The technical trail stays hidden until you open Sources.</p>
               <div className="golden-path-panel">
                 <div>
                   <p className="eyebrow">Reviewer path</p>
@@ -1225,7 +1189,7 @@ export default function Home() {
           )}
         </div>
 
-        <form className="composer-wrap" ref={queryFormRef} onSubmit={onQuery}>
+        <form className={cx("composer-wrap", composerCollapsed && "collapsed")} ref={queryFormRef} onSubmit={onQuery}>
           <div className="composer-card">
             <input
               accept=".pdf,.txt,.md,.markdown,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,image/*,application/pdf,text/*"
@@ -1238,17 +1202,11 @@ export default function Home() {
               <div className="source-status">
                 <span className={cx("source-dot", selectedDocument && "ok")} />
                 <div>
-                  <span className="source-label">Active Sources</span>
+                  <span className="source-label">Current document</span>
                   <strong>{selectedDocument ? activeMaterialName : "No material attached"}</strong>
                 </div>
               </div>
               <div className="source-actions">
-                <span className="mini-stat">
-                  {selectedDocumentDetail?.active_chunk_count ?? selectedDocument?.active_chunk_count ?? 0} chunks
-                </span>
-                <span className={cx("mini-stat", queryResult?.grounded ? "ok" : "")}>
-                  {groundingLabel}
-                </span>
                 {workspaceSection === "exam" ? (
                   <button
                     className="quick-action"
@@ -1265,7 +1223,7 @@ export default function Home() {
                   onClick={onSummarizeSelectedSource}
                   type="button"
                 >
-                  Summarize PDF
+                  Summarize
                 </button>
                 <button
                   className="quick-action ghost"
@@ -1288,13 +1246,13 @@ export default function Home() {
                   onClick={() => setComposerCollapsed((current) => !current)}
                   type="button"
                 >
-                  {composerCollapsed ? "Open Search" : "Minimize"}
+                  {composerCollapsed ? "Ask" : "Collapse"}
                 </button>
               </div>
             </div>
             {composerCollapsed ? (
               <div className="composer-minimized">
-                Search box minimized. Responses have more room. Use Open Search when you need to ask the next question.
+                Composer collapsed. Click Ask when you want the next question.
               </div>
             ) : (
               <>
@@ -1323,8 +1281,8 @@ export default function Home() {
                 </div>
                 <details className="composer-settings">
                   <summary>
-                    Tuning
-                    <span>{retrievalMode.toUpperCase()} / {retrievalProfile} / {sessionId}</span>
+                    Advanced
+                    <span>optional</span>
                   </summary>
                   <div className="composer-meta">
                     <label className="label">
@@ -1394,8 +1352,8 @@ export default function Home() {
       <aside className="deep-rail">
         <div className="deep-panel-head">
           <div>
-            <p className="eyebrow">Deep Research</p>
-            <h2>Evidence and reasoning details</h2>
+            <p className="eyebrow">Sources</p>
+            <h2>Check the answer</h2>
           </div>
           <button className="button ghost" type="button" onClick={() => setShowInspector(false)}>
             Close
@@ -1404,46 +1362,27 @@ export default function Home() {
         <section className="grounding-meter">
           <div className="section-head">
             <div>
-              <p className="eyebrow">Grounding Strength</p>
+              <p className="eyebrow">Answer Support</p>
               <h2>{groundingLabel}</h2>
             </div>
-            <span className="chip copper">{Math.round(Math.min(1, groundingScore) * 100)}%</span>
-          </div>
-          <div className="meter-track">
-            <div className="meter-fill" style={{ width: `${Math.max(4, Math.min(100, groundingScore * 100))}%` }} />
+            <span className={cx("chip", queryResult?.grounded ? "sage" : "copper")}>
+              {queryResult?.grounded ? "sources found" : "needs context"}
+            </span>
           </div>
           <p className="copy">
-            Evidence first. Memory can help the thread, but uploaded material remains the source of truth.
+            {queryResult ? getTrustCopy(queryResult) : "Ask a question to see the sources used for the answer."}
           </p>
-          <div className="proof-grid">
-            <div>
-              <span>Intent</span>
-              <strong>{detectedIntent}</strong>
-            </div>
-            <div>
-              <span>Citation coverage</span>
-              <strong>{citationCoverage}</strong>
-            </div>
-            <div>
-              <span>Cache</span>
-              <strong>{retrievalMeta.cache_hit === true ? "hit" : retrievalMeta.cache_hit === false ? "miss" : "n/a"}</strong>
-            </div>
-            <div>
-              <span>Source</span>
-              <strong>{isGoldenDemoSource ? "golden demo" : selectedDocument ? "local material" : "none"}</strong>
-            </div>
-          </div>
         </section>
 
         <div className="tab-row">
-          {(["evidence", "context", "compare", "eval"] as DeepView[]).map((view) => (
+          {(["evidence", "context", "compare"] as DeepView[]).map((view) => (
             <button
               className={cx("tab", deepView === view && "active")}
               key={view}
               onClick={() => setDeepView(view)}
               type="button"
             >
-              {view === "evidence" ? "Evidence Trail" : view === "context" ? "Study Context" : view}
+              {view === "evidence" ? "Sources" : view === "context" ? "Source Text" : "Compare"}
             </button>
           ))}
         </div>
@@ -1669,7 +1608,7 @@ export default function Home() {
                     >
                       <img alt={asset.caption || `Diagram from page ${asset.page_number}`} src={diagramAssetUrl(asset.id)} />
                     </a>
-                    <p className="tiny path">{asset.image_path}</p>
+                    <p className="tiny">Extracted from the selected document.</p>
                     {asset.caption ? <p className="chunk-text">{asset.caption}</p> : null}
                   </div>
                 ))}
@@ -1687,8 +1626,8 @@ export default function Home() {
                   Refresh
                 </button>
               </div>
-              <p className="tiny path">
-                {selectedDocumentDetail?.source_path || selectedDocument?.source_path || "Select study material."}
+              <p className="tiny">
+                {selectedDocument ? "Stored locally. Full path hidden for privacy." : "Select study material."}
               </p>
               <div className="metric-grid" style={{ marginTop: 12 }}>
                 <div className="metric-card">
@@ -1723,7 +1662,6 @@ export default function Home() {
                       <span className="material-title">Evidence {index + 1}</span>
                       <span className="tiny">
                         {citation.page_start ? `Page ${citation.page_start}` : "Page unknown"}
-                        {typeof citation.score === "number" ? ` / score ${citation.score.toFixed(2)}` : ""}
                       </span>
                       <span className="tiny">{previewText(citation.excerpt, 220)}</span>
                     </button>
@@ -1814,7 +1752,7 @@ export default function Home() {
                 <h2>Answer Delta</h2>
                 <span className="chip">{answerDiff.length} lines</span>
               </div>
-              <p className="copy">Compare the last two grounded responses when tuning mode or retrieval profile.</p>
+              <p className="copy">Compare the last two answers when you want to see what changed.</p>
             </div>
             <div className="diff-list">
               {answerDiff.length ? (
@@ -1834,51 +1772,6 @@ export default function Home() {
           </section>
         ) : null}
 
-        {deepView === "eval" ? (
-          <section className="tool-panel rail-section">
-            <div className="panel">
-              <div className="section-head">
-                <h2>Retrieval Evaluation</h2>
-                <label className="button ghost">
-                  Load JSON
-                  <input accept=".json,application/json" hidden type="file" onChange={onEvalReportFileChange} />
-                </label>
-              </div>
-              <p className="copy">Paste output from the retrieval evaluation script to inspect MRR and hit rates.</p>
-            </div>
-            <textarea
-              className="eval-input"
-              value={evalReportInput}
-              onChange={(event) => {
-                setEvalReportInput(event.target.value);
-                loadEvalReportFromText(event.target.value);
-              }}
-              placeholder="Paste retrieval evaluation JSON..."
-            />
-            {evalReportError ? <div className="toast" style={{ position: "static", transform: "none", width: "100%" }}>{evalReportError}</div> : null}
-            {evalReport ? (
-              <div className="eval-list">
-                <div className="eval-card">
-                  <strong>{evalReport.dataset || "Evaluation report"}</strong>
-                  <p className="tiny">{evalReport.evaluation_mode || "mode unknown"}</p>
-                </div>
-                {Object.entries(evalReport.results ?? {}).map(([mode, result]) => (
-                  <div className="eval-card" key={mode}>
-                    <div className="message-meta">
-                      <strong>{result.mode || mode}</strong>
-                      <span className="chip">{result.samples ?? 0} samples</span>
-                    </div>
-                    <p className="chunk-text">
-                      MRR {typeof result.mrr === "number" ? result.mrr.toFixed(3) : "n/a"} / Hit@3{" "}
-                      {typeof result.hit_rate_at_3 === "number" ? result.hit_rate_at_3.toFixed(3) : "n/a"} / Hit@5{" "}
-                      {typeof result.hit_rate_at_5 === "number" ? result.hit_rate_at_5.toFixed(3) : "n/a"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </section>
-        ) : null}
       </aside>
 
       {error ? (
@@ -1887,6 +1780,40 @@ export default function Home() {
         </div>
       ) : null}
     </main>
+  );
+}
+
+function AnswerBody({ answer }: { answer: string }) {
+  const lines = answer.split("\n");
+  return (
+    <div className="answer structured-answer">
+      {lines.map((rawLine, index) => {
+        const line = rawLine.trim();
+        if (!line) return <div className="answer-gap" key={`gap-${index}`} />;
+        const isBullet = /^[-*]\s+/.test(line);
+        const isHeading =
+          !isBullet &&
+          line.length <= 72 &&
+          !/[.!?]$/.test(line) &&
+          !/^\[\d+\]/.test(line) &&
+          index !== lines.length - 1;
+        if (isHeading) {
+          return (
+            <strong className="answer-heading" key={`${line}-${index}`}>
+              {line.replace(/^#+\s*/, "")}
+            </strong>
+          );
+        }
+        if (isBullet) {
+          return (
+            <p className="answer-bullet" key={`${line}-${index}`}>
+              {line.replace(/^[-*]\s+/, "")}
+            </p>
+          );
+        }
+        return <p key={`${line}-${index}`}>{line}</p>;
+      })}
+    </div>
   );
 }
 

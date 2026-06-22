@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-06-10
+Last updated: 2026-06-22
 
 ## Research Basis
 
@@ -38,6 +38,17 @@ Mitigation added:
 Remaining gap:
 
 - Current verifier is lexical and deterministic. It catches obvious drift but does not perform full semantic entailment.
+
+2026-06-22 trust-contract update:
+
+- `SynthesisService` now records `selected_context_chunk_ids`, `cited_context_chunk_ids`, and `citation_anchor_chunk_map`.
+- `QueryService` now returns public citations only for chunks cited by the final answer, rather than every retrieved chunk.
+- Selected-document summary cache profile was bumped to avoid reusing older cached summaries with broader citation sets.
+- Normal Research/Chat UI requests no longer force debug metadata by default.
+
+Remaining gap:
+
+- Citation mapping is now stricter, but source snippets are still chunk-level rather than exact character-span highlights.
 
 ### 2. Chunk Quality Needs Ongoing Tuning
 

@@ -1,6 +1,6 @@
 # NIRMIQ UI/UX Specification
 
-Last updated: 2026-06-20
+Last updated: 2026-06-22
 
 Note: the requested filename `UI/UX.md` is represented as `UI_UX.md` because Windows treats `/` as a path separator.
 
@@ -45,6 +45,9 @@ Implementation rules:
 - ChatGPT-like first: ask, upload, read, inspect sources.
 - Hide complexity until needed.
 - Keep citations available, not constantly overwhelming.
+- Keep evaluation/debug surfaces out of the normal product shell. Retrieval evaluation belongs in scripts, docs, and developer workflows.
+- Do not show full local filesystem paths, chunk hashes, raw retrieval scores, cache state, or intent routing in normal user-facing UI.
+- Use plain labels: Sources, Check the answer, Analyze a paper, Study for exam, Research deeply.
 - Make selected source obvious at the point of asking.
 - Keep selected-source behavior consistent: if a source is active, normal questions should stay scoped to it unless the user explicitly changes scope.
 - Let the user reclaim reading space by minimizing the composer.

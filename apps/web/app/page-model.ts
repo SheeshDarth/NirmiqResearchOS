@@ -24,7 +24,7 @@ export type BusyState =
   | "delete"
   | "demo"
   | "privacy";
-export type DeepView = "evidence" | "context" | "compare" | "eval";
+export type DeepView = "evidence" | "context" | "compare";
 export type Chunk = DocumentDetailResponse["chunks"][number];
 
 export type ChatRun = {
@@ -37,24 +37,6 @@ export type ChatRun = {
   source_path?: string;
   response: QueryResponse;
   timestamp: string;
-};
-
-export type EvalReportPayload = {
-  dataset?: string;
-  evaluation_mode?: string;
-  modes?: string[];
-  results?: Record<
-    string,
-    {
-      mode?: string;
-      samples?: number;
-      target_level?: string;
-      mrr?: number;
-      hit_rate_at_3?: number;
-      hit_rate_at_5?: number;
-      [key: string]: unknown;
-    }
-  >;
 };
 
 export type DiffLine = {
@@ -398,11 +380,9 @@ export function buildRunExportMarkdown(run: ChatRun, materialName: string): stri
   const citations = run.response.citations
     .map((citation, index) => {
       const page = citation.page_start ? `page ${citation.page_start}` : "page unknown";
-      const score = typeof citation.score === "number" ? `, score ${citation.score.toFixed(2)}` : "";
-      return `- [${index + 1}] ${page}${score}: ${previewText(citation.excerpt, 260)}`;
+      return `- [${index + 1}] ${page}: ${previewText(citation.excerpt, 260)}`;
     })
     .join("\n");
-  const meta = run.response.retrieval_meta ?? {};
   return [
     `# NIRMIQ Answer Export`,
     "",
@@ -411,7 +391,6 @@ export function buildRunExportMarkdown(run: ChatRun, materialName: string): stri
     `- Profile: ${run.profile}`,
     `- Exported: ${new Date().toISOString()}`,
     `- Trust: ${run.response.grounded ? "grounded" : "needs review"}`,
-    `- Citation coverage: ${String(meta.citation_coverage ?? "not reported")}`,
     "",
     "## Question",
     run.query,
@@ -536,6 +515,32 @@ export function composerPlaceholder(section: WorkspaceSection, mode: StudyMode, 
     return "Ask for a deeper cited analysis, assumptions, limitations, or research implications...";
   }
   return `Ask about ${materialName}...`;
+}
+
+export function inferModeForQuery(query: string, currentMode: StudyMode, section: WorkspaceSection): StudyMode {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return currentMode;
+  if (isSummaryLikeQuery(normalized)) return "summary";
+  if (/\b(compare|contrast|difference|differences|versus|vs)\b/.test(normalized)) return "compare_concepts";
+  if (/\b(question bank|quiz|exam|marks?|10-mark|5-mark|important questions?)\b/.test(normalized)) {
+    return normalized.includes("revision") || normalized.includes("notes") ? "revision_notes" : "exam_answer";
+  }
+  if (/\b(research paper|related work|methodology|abstract|paper section|literature review)\b/.test(normalized)) {
+    return "research_paper";
+  }
+  if (/\b(deep research|detailed analysis|limitations|caveats|implications)\b/.test(normalized)) {
+    return "deep_research";
+  }
+  if (currentMode === "summary") return "research";
+  if (section === "general") return "general_chat";
+  return currentMode;
+}
+
+export function isSummaryLikeQuery(normalizedQuery: string): boolean {
+  if (/\b(summarize|summary|overview)\b/.test(normalizedQuery)) return true;
+  return /^(what is this|what is it about|explain this (pdf|document|file|material|paper|textbook)|explain the (pdf|document|file|material|paper|textbook))\??$/.test(
+    normalizedQuery,
+  );
 }
 
 export function workspaceVerb(section: WorkspaceSection): string {

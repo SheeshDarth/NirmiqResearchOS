@@ -1,6 +1,6 @@
 # NIRMIQ Backend Architecture
 
-Last updated: 2026-06-20
+Last updated: 2026-06-22
 
 ## Overview
 
@@ -72,10 +72,11 @@ This keeps the current frontend stable while addressing API-versioning readiness
 5. Retrieve candidates from BM25 and optional vector search.
 6. Fuse with RRF and rerank/pack context.
 7. Generate grounded answer or abstain.
-8. Compute citation coverage and trust metadata.
-9. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
-10. Persist user/assistant turns.
-11. Return answer, citations, debug metadata, and grounding state.
+8. Map final answer citation anchors back to the exact selected context chunks used during synthesis.
+9. Compute citation coverage and trust metadata.
+10. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
+11. Persist user/assistant turns.
+12. Return answer, answer-used citations, optional debug metadata, and grounding state.
 
 ## SQLite Responsibilities
 
@@ -113,6 +114,7 @@ This keeps the current frontend stable while addressing API-versioning readiness
 - Compact frontend source cockpit to reduce unnecessary backend calls.
 - Chunk quality scoring and retrieval quality weighting.
 - Citation verification with fallback rewrite for unsupported claims.
+- Public citations are filtered to final answer-used context chunks, not the full retrieval bundle.
 - Local ingestion allowlists and upload content sniffing.
 - Adaptive long-context temperature for deep research and drafting.
 - SQLite-backed selected-document summary cache.

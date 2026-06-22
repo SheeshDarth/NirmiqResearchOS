@@ -36,6 +36,7 @@ class QueryService:
     async def _execute(self, payload: QueryRequest, persist: bool) -> QueryResponse:
         _ = await self._memory_service.get_summary(payload.session_id)
         intent = detect_query_intent(payload.query, payload.mode)
+        response_mode = self._resolve_response_mode(payload.mode, intent)
         retrieval_mode = self._resolve_retrieval_mode(payload.mode, payload.retrieval_mode)
         retrieval_profile = self._resolve_retrieval_profile(payload.retrieval_profile, intent)
         cached_response = self._cached_summary_response(
@@ -59,7 +60,7 @@ class QueryService:
             return cached_response
 
         exam_context = self._build_exam_context(payload)
-        retrieval_query = self._retrieval_query(payload.query, payload.mode, exam_context, intent)
+        retrieval_query = self._retrieval_query(payload.query, response_mode, exam_context, intent)
         bundle = await self._retrieval_service.retrieve_with_mode(
             retrieval_query,
             mode=retrieval_mode,
@@ -71,11 +72,11 @@ class QueryService:
         answer, grounded, synthesis_meta = await self._synthesis_service.synthesize(
             payload.query,
             bundle,
-            response_mode=payload.mode,
+            response_mode=response_mode,
             exam_profile=payload.exam_profile.model_dump() if payload.exam_profile else None,
             exam_context=exam_context,
         )
-        citations = to_citations(bundle.chunks) if grounded else []
+        citations = self._citations_from_synthesis_context(bundle, synthesis_meta, grounded)
         combined_meta = {
             **bundle.meta,
             **synthesis_meta,
@@ -83,7 +84,8 @@ class QueryService:
             "retrieval_query_expanded": retrieval_query != payload.query,
             "requested_retrieval_profile": payload.retrieval_profile,
             "effective_retrieval_profile": retrieval_profile,
-            "response_mode": payload.mode,
+            "requested_response_mode": payload.mode,
+            "response_mode": response_mode,
             "cache_hit": False,
             "detected_intent": intent.intent,
             "intent_confidence": intent.confidence,
@@ -230,7 +232,36 @@ class QueryService:
 
     @staticmethod
     def _summary_profile(*, retrieval_mode: str, retrieval_profile: str) -> str:
-        return f"{retrieval_mode}:{retrieval_profile}:v4"
+        return f"{retrieval_mode}:{retrieval_profile}:v5"
+
+    @staticmethod
+    def _citations_from_synthesis_context(
+        bundle: RetrievalBundle,
+        synthesis_meta: dict[str, object],
+        grounded: bool,
+    ) -> list[Citation]:
+        if not grounded:
+            return []
+        raw_chunk_ids = synthesis_meta.get("cited_context_chunk_ids")
+        if not isinstance(raw_chunk_ids, list) or not raw_chunk_ids:
+            return []
+
+        cited_chunk_ids: list[str] = []
+        seen: set[str] = set()
+        for raw_chunk_id in raw_chunk_ids:
+            chunk_id = str(raw_chunk_id)
+            if not chunk_id or chunk_id in seen:
+                continue
+            cited_chunk_ids.append(chunk_id)
+            seen.add(chunk_id)
+
+        chunks_by_id = {chunk.chunk_id: chunk for chunk in bundle.chunks}
+        cited_chunks = [
+            chunks_by_id[chunk_id]
+            for chunk_id in cited_chunk_ids
+            if chunk_id in chunks_by_id
+        ]
+        return to_citations(cited_chunks)
 
     def _build_exam_context(self, payload: QueryRequest) -> dict[str, object]:
         if not payload.document_id or not self._uses_exam_context(payload.mode):
@@ -265,11 +296,10 @@ class QueryService:
         exam_context: dict[str, object],
         intent: QueryIntent,
     ) -> str:
-        normalized_mode = mode.strip().lower()
         normalized_query = query.strip().lower()
-        if intent.intent == "summary" or normalized_mode == "summary" or (
-            any(term in normalized_query for term in ("summarize", "summary", "overview", "explain"))
-            and any(term in normalized_query for term in ("pdf", "document", "paper", "material", "file", "this"))
+        if intent.intent == "summary" or (
+            any(term in normalized_query for term in ("summarize", "summary", "overview"))
+            and any(term in normalized_query for term in ("pdf", "document", "paper", "material", "file", "textbook"))
         ):
             return (
                 f"{query}\n\n"
@@ -316,6 +346,35 @@ class QueryService:
         if intent.intent in {"paper_draft", "deep_research", "exam", "compare"}:
             return "precision"
         return normalized
+
+    @staticmethod
+    def _resolve_response_mode(requested_mode: str, intent: QueryIntent) -> str:
+        normalized = requested_mode.strip().lower()
+        if intent.intent == "summary":
+            return "summary"
+        if intent.intent == "compare":
+            return "compare_concepts"
+        if intent.intent == "paper_draft":
+            return "research_paper"
+        if intent.intent == "deep_research":
+            return "deep_research"
+        if intent.intent == "exam":
+            return normalized if normalized in QueryService._exam_modes() else "exam_answer"
+        if intent.intent == "general_chat":
+            return "general_chat"
+        if normalized == "summary":
+            return "research"
+        return normalized if normalized else "research"
+
+    @staticmethod
+    def _exam_modes() -> set[str]:
+        return {
+            "exam_answer",
+            "revision_notes",
+            "important_questions",
+            "compare_concepts",
+            "study_guide",
+        }
 
     @staticmethod
     def _uses_exam_context(mode: str) -> bool:
