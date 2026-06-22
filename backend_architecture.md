@@ -69,14 +69,15 @@ This keeps the current frontend stable while addressing API-versioning readiness
 2. Load session memory.
 3. Normalize and route prompt intent.
 4. Return cached selected-document summary when the document hash/profile matches.
-5. Retrieve candidates from BM25 and optional vector search.
-6. Fuse with RRF and rerank/pack context.
-7. Generate grounded answer or abstain.
-8. Map final answer citation anchors back to the exact selected context chunks used during synthesis.
-9. Compute citation coverage and trust metadata.
-10. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
-11. Persist user/assistant turns.
-12. Return answer, answer-used citations, optional debug metadata, and grounding state.
+5. Expand retrieval query internally for summary, factual lookup, comparison, paper, deep research, and exam intents.
+6. Retrieve candidates from BM25 and optional vector search.
+7. Fuse with RRF and rerank/pack context.
+8. Generate grounded answer or abstain.
+9. Map final answer citation anchors back to the exact selected context chunks used during synthesis.
+10. Compute citation coverage and trust metadata.
+11. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
+12. Persist user/assistant turns.
+13. Return answer, answer-used citations, optional debug metadata, and grounding state.
 
 ## SQLite Responsibilities
 
@@ -115,6 +116,9 @@ This keeps the current frontend stable while addressing API-versioning readiness
 - Chunk quality scoring and retrieval quality weighting.
 - Citation verification with fallback rewrite for unsupported claims.
 - Public citations are filtered to final answer-used context chunks, not the full retrieval bundle.
+- Backend intent routing now owns exam-style language and factual query expansion, reducing reliance on frontend mode selection.
+- Factual selected-document prompts add focused retrieval hints for definitions, examples, algorithms, limitations, and common ML families such as unsupervised learning.
+- Fallback synthesis uses a compact answer contract for list/algorithm questions: direct answer, key points, evidence note.
 - Local ingestion allowlists and upload content sniffing.
 - Adaptive long-context temperature for deep research and drafting.
 - SQLite-backed selected-document summary cache.

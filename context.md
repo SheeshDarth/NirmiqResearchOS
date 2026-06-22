@@ -7,6 +7,49 @@ Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
+## Latest Session Update - 2026-06-22 V4.1 Chat Shell And Accuracy Pass
+
+Objective: respond to live testing feedback that answers improved but still needed stronger accuracy and a simpler, more ChatGPT-like presentation.
+
+Council verdict:
+
+- The main product path should be `attach material -> ask naturally -> read a clear answer -> open sources only if needed`.
+- Frontend mode controls should stop driving normal query behavior; backend intent routing should own summaries, comparisons, paper drafting, exam-style answers, and abstention.
+- Presentation is part of reliability. Answers need a predictable contract: direct answer, key points, and evidence note.
+- More visible tools create doubt. Paper Lab and Exam Lab should remain available as quiet tool hints, not compete with the primary chat.
+
+Implemented:
+
+- Simplified the top workspace header from a mode switcher into a clear `Ask your documents` assistant header.
+- Moved Research/Chat/Paper/Exam controls into compact composer tool chips: `Auto`, `Chat`, `Paper`, `Exam`.
+- Changed normal query submission so it no longer inherits stale UI modes such as `summary`; default `Auto` sends `research` and lets the backend detect intent.
+- Kept explicit actions such as one-click summary, golden-demo prompts, Paper, and Exam as optional mode hints.
+- Extracted `AnswerBody` into `apps/web/components/answer-body.tsx` for the ongoing frontend component split.
+- Improved answer readability with a narrower assistant column, better answer line spacing, compact headings, and less dashboard-like header weight.
+- Added backend detection for exam-style language such as `10 mark answer`, `study guide`, `revision notes`, and `important questions` even when the UI is in normal Research/Auto mode.
+- Wired backend-detected exam intent into exam context loading so question banks/diagrams can be used without perfect frontend mode selection.
+- Added focused retrieval expansion for factual lookup prompts, especially natural textbook questions like `Explain a few unsupervised algorithms`.
+- Expanded unsupervised-algorithm focus terms for selected-document seed chunks and synthesis sentence scoring.
+- Tightened the fallback synthesis answer contract for list/algorithm questions to produce `Direct answer`, `Key points`, and `Evidence note` instead of dense chunk dumps.
+
+Verification:
+
+- `python -m pytest apps/api/app/tests/unit/test_query_intent.py apps/api/app/tests/unit/test_synthesis_faithfulness.py -q`: passed, 17 tests.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+- `npm.cmd run test:api`: passed, 47 tests.
+
+Preview note:
+
+- Browser preview initially showed only the server boot shell because the already-running Next dev server served HTML pointing to a stale page chunk after a rebuild.
+- This is a dev-runtime chunk mismatch, not a TypeScript/build failure. The fix for local preview is to stop the stale web dev process and restart from `scripts/run_local.ps1` or `NIRMIQ ResearchOS.cmd`.
+
+Tradeoffs:
+
+- This is not the full component split yet. `page.tsx` is smaller but still owns most state.
+- The answer quality improvement is conservative and local-first; no cloud/API model routing or heavy reranker/graph dependency was added.
+- Retrieval accuracy still needs a larger real-world labeled eval set to move from demo-good to robust across textbooks.
+
 ## Latest Session Update - 2026-06-22 UI Cleanup Pass
 
 Objective: remove harmful or unnecessary product-surface clutter before the larger ChatGPT-style component rebuild.

@@ -5,6 +5,7 @@ from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.retrieval_policy import RetrievalPolicy
 from app.services.query_service import QueryService
 from app.services.synthesis_service import SynthesisService
+from app.domain.query_intent import QueryIntent
 
 
 class FakeGenerator:
@@ -195,6 +196,59 @@ def test_query_citations_are_limited_to_synthesis_used_chunks() -> None:
 
     assert [citation.chunk_id for citation in citations] == ["used"]
     assert citations[0].excerpt == "This chunk directly supports the final answer."
+
+
+def test_factual_retrieval_query_expands_unsupervised_algorithm_terms() -> None:
+    query = "Explain a few unsupervised algorithms from this textbook"
+    expanded = QueryService._retrieval_query(
+        query,
+        "research",
+        {"questions": [], "diagrams": []},
+        QueryIntent("factual_lookup", 0.68, "default_grounded_retrieval"),
+    )
+
+    assert expanded != query
+    assert "clustering" in expanded.lower()
+    assert "anomaly detection" in expanded.lower()
+
+
+def test_fallback_list_answer_uses_compact_answer_contract() -> None:
+    service = SynthesisService(
+        settings=_settings(),
+        policy=RetrievalPolicy(min_grounding_score=0.1),
+        generator=FakeGenerator(""),  # type: ignore[arg-type]
+    )
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="chunk-1",
+                document_id="doc-1",
+                text=(
+                    "Unsupervised learning techniques include clustering, density estimation, "
+                    "dimensionality reduction, and anomaly detection."
+                ),
+                score=1.0,
+                page_start=1,
+                page_end=1,
+                source="bm25",
+            )
+        ],
+        meta={},
+    )
+
+    answer, grounded, meta = asyncio.run(
+        service.synthesize(
+            query="Explain a few unsupervised algorithms",
+            bundle=bundle,
+            response_mode="research",
+        )
+    )
+
+    assert grounded is True
+    assert "Direct answer" in answer
+    assert "Key points" in answer
+    assert "clustering" in answer.lower()
+    assert meta["citation_coverage"] >= 0.5
 
 
 def test_any_unsupported_cited_claim_forces_rewrite() -> None:

@@ -840,13 +840,22 @@ button.chunk-card:hover {
   display: none;
 }
 
+.thread-title.compact {
+  display: block;
+  min-width: 0;
+}
+
 .thread-title h1 {
-  margin: 5px 0 0;
+  margin: 0;
   font-family: var(--font-heading);
-  font-size: clamp(24px, 3.4vw, 42px);
+  font-size: clamp(20px, 2.2vw, 30px);
   font-weight: 900;
-  letter-spacing: -0.075em;
-  line-height: 0.96;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.thread-title p {
+  margin: 4px 0 0;
 }
 
 .route-strip {
@@ -1086,7 +1095,7 @@ button.chunk-card:hover {
 }
 
 .bubble {
-  max-width: min(880px, 92%);
+  max-width: min(820px, 92%);
   border: 1px solid var(--nirmiq-border);
   border-radius: 22px;
   padding: 16px 18px;
@@ -1110,6 +1119,7 @@ button.chunk-card:hover {
 
 .bubble.assistant {
   justify-self: start;
+  width: min(820px, 92%);
   background: rgba(18, 22, 27, 0.72);
   border-bottom-left-radius: 6px;
   animation: answerSettle 420ms var(--motion-curve) both;
@@ -1124,18 +1134,20 @@ button.chunk-card:hover {
 
 .structured-answer {
   display: grid;
-  gap: 7px;
-  max-width: 72ch;
+  gap: 9px;
+  max-width: 68ch;
   white-space: normal;
 }
 
 .structured-answer p {
   margin: 0;
+  font-size: 15.5px;
+  line-height: 1.72;
 }
 
 .answer-heading {
   display: block;
-  margin-top: 8px;
+  margin-top: 10px;
   color: var(--nirmiq-accent-strong);
   font-family: var(--font-heading);
   font-size: 16px;
@@ -1146,6 +1158,7 @@ button.chunk-card:hover {
   position: relative;
   padding-left: 18px;
   color: var(--nirmiq-text);
+  line-height: 1.65;
 }
 
 .answer-bullet::before {
@@ -1384,6 +1397,10 @@ button.chunk-card:hover {
   padding: 5px 7px;
 }
 
+.composer-wrap.collapsed .tool-strip {
+  display: none;
+}
+
 .composer-card {
   max-width: 1180px;
   margin: 0 auto;
@@ -1438,6 +1455,45 @@ button.chunk-card:hover {
 
 .source-cockpit:hover {
   border-color: rgba(184, 106, 60, 0.2);
+}
+
+.tool-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0 0 7px;
+}
+
+.tool-chip {
+  min-height: 30px;
+  border: 1px solid var(--nirmiq-border);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: rgba(13, 17, 23, 0.58);
+  color: var(--nirmiq-text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 850;
+  transition:
+    background var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    transform var(--motion-fast) var(--motion-curve);
+}
+
+.tool-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(109, 139, 116, 0.34);
+  color: var(--nirmiq-text);
+}
+
+.tool-chip.active {
+  color: #b8ffd8;
+  border-color: rgba(109, 139, 116, 0.48);
+  background:
+    linear-gradient(135deg, rgba(109, 139, 116, 0.18), rgba(31, 78, 95, 0.1)),
+    rgba(13, 17, 23, 0.72);
 }
 
 .source-status {

@@ -45,6 +45,8 @@ Implementation rules:
 - ChatGPT-like first: ask, upload, read, inspect sources.
 - Hide complexity until needed.
 - Keep citations available, not constantly overwhelming.
+- Treat Research, Paper, Exam, and Chat as quiet tool hints near the composer, not as dashboard tabs that make users choose the correct system mode.
+- The default visible route is Auto: the user asks naturally and backend intent routing decides summary, factual lookup, comparison, paper draft, exam-style answer, or abstention.
 - Keep evaluation/debug surfaces out of the normal product shell. Retrieval evaluation belongs in scripts, docs, and developer workflows.
 - Do not show full local filesystem paths, chunk hashes, raw retrieval scores, cache state, or intent routing in normal user-facing UI.
 - Use plain labels: Sources, Check the answer, Analyze a paper, Study for exam, Research deeply.
@@ -94,6 +96,16 @@ Implementation rules:
 - Golden demo prompts should be visible but not dominate normal usage.
 - Send/Enter should be disabled while a request is busy to prevent duplicate answers.
 - Uploads should derive their default title from the selected filename to avoid stale-source confusion.
+- Tool chips should stay compact: `Auto`, `Chat`, `Paper`, `Exam`.
+- Normal questions should not inherit stale one-click modes like Summary. Summary remains an explicit action or backend-detected intent.
+
+## Answer Presentation Contract
+
+- Default answer shape: `Direct answer`, `Key points`, `Evidence note`.
+- List and algorithm questions should produce concise lists, not pasted textbook paragraphs.
+- Citations should appear in answer text and compact source chips, with detailed chunks only in Sources.
+- Abstention should be clear and useful: say what context is missing instead of pretending support exists.
+- The answer column should stay readable around 65-70 characters per line.
 
 ## Citations UX
 

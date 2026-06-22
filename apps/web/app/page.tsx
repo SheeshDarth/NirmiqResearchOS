@@ -36,6 +36,7 @@ import {
 } from "../lib/api-client";
 import { LocalLogin } from "../components/local-login";
 import { StudyGuideAnswer } from "../components/study-guide-answer";
+import { AnswerBody } from "../components/answer-body";
 import {
   DEFAULT_SOURCE_PATH,
   GOLDEN_DEMO_QUESTIONS,
@@ -50,6 +51,7 @@ import {
   buildRunExportMarkdown,
   composerPlaceholder,
   cx,
+  defaultModeForWorkspace,
   downloadTextFile,
   escapeHtml,
   formatDate,
@@ -58,7 +60,6 @@ import {
   getTrustCopy,
   getVerificationBadge,
   getVisibleChunks,
-  inferModeForQuery,
   modeLabel,
   previewText,
   workspaceVerb,
@@ -404,9 +405,9 @@ export default function Home() {
     await executeQuery(query.trim());
   }
 
-  async function executeQuery(submittedQuery: string, modeOverride: StudyMode = currentMode.value) {
+  async function executeQuery(submittedQuery: string, modeOverride?: StudyMode) {
     if (!submittedQuery || !sessionId.trim() || busy !== "") return;
-    const effectiveMode = inferModeForQuery(submittedQuery, modeOverride, workspaceSection);
+    const effectiveMode = modeOverride ?? defaultModeForWorkspace(workspaceSection);
     const effectiveSection = workspaceSectionForMode(effectiveMode);
     const examModes = ["exam_answer", "revision_notes", "important_questions", "compare_concepts", "study_guide"];
     if (effectiveSection !== workspaceSection) setWorkspaceSection(effectiveSection);
@@ -1026,19 +1027,9 @@ export default function Home() {
                 <span>{PRODUCT_TAGLINE}</span>
               </div>
             </div>
-            <div className="workspace-switcher">
-              {WORKSPACE_SECTIONS.map((section) => (
-                <button
-                  className={cx("section-button", workspaceSection === section.value && "active")}
-                  data-testid={`workspace-${section.value}`}
-                  key={section.value}
-                  onClick={() => selectWorkspaceSection(section.value)}
-                  type="button"
-                >
-                  <strong>{section.label}</strong>
-                  <span>{section.hint}</span>
-                </button>
-              ))}
+            <div className="thread-title compact">
+              <h1>Ask your documents</h1>
+              <p className="tiny">Local answers, source-backed when your material has evidence.</p>
             </div>
             <div className="top-actions">
               <button className="button ghost" type="button" onClick={() => setShowLibrary((current) => !current)}>
@@ -1052,7 +1043,7 @@ export default function Home() {
           <div className="route-strip">
             <span className="source-pill">{selectedDocument ? activeMaterialName : "No document selected"}</span>
             <span className="tiny">
-              Ask normally. NIRMIQ routes summaries, comparisons, papers, and exam answers automatically.
+              Ask normally. NIRMIQ handles summaries, comparisons, papers, and exam-style questions automatically.
             </span>
           </div>
         </header>
@@ -1250,6 +1241,20 @@ export default function Home() {
                 </button>
               </div>
             </div>
+            <div className="tool-strip" aria-label="NIRMIQ tools">
+              {WORKSPACE_SECTIONS.map((section) => (
+                <button
+                  className={cx("tool-chip", workspaceSection === section.value && "active")}
+                  data-testid={`workspace-${section.value}`}
+                  key={section.value}
+                  onClick={() => selectWorkspaceSection(section.value)}
+                  type="button"
+                  title={section.hint}
+                >
+                  {section.label}
+                </button>
+              ))}
+            </div>
             {composerCollapsed ? (
               <div className="composer-minimized">
                 Composer collapsed. Click Ask when you want the next question.
@@ -1334,7 +1339,7 @@ export default function Home() {
                 <div className="composer-actions">
                   <p className="composer-hint">
                     {latestCitations.length
-                      ? `${latestCitations.length} evidence links ready. Open Deep Research to inspect citations.`
+                      ? `${latestCitations.length} evidence links ready. Open Sources to inspect citations.`
                       : "Answers stay grounded in the selected study material when evidence is available."}
                   </p>
                   <div className="chip-row" style={{ marginTop: 0 }}>
@@ -1783,37 +1788,4 @@ export default function Home() {
   );
 }
 
-function AnswerBody({ answer }: { answer: string }) {
-  const lines = answer.split("\n");
-  return (
-    <div className="answer structured-answer">
-      {lines.map((rawLine, index) => {
-        const line = rawLine.trim();
-        if (!line) return <div className="answer-gap" key={`gap-${index}`} />;
-        const isBullet = /^[-*]\s+/.test(line);
-        const isHeading =
-          !isBullet &&
-          line.length <= 72 &&
-          !/[.!?]$/.test(line) &&
-          !/^\[\d+\]/.test(line) &&
-          index !== lines.length - 1;
-        if (isHeading) {
-          return (
-            <strong className="answer-heading" key={`${line}-${index}`}>
-              {line.replace(/^#+\s*/, "")}
-            </strong>
-          );
-        }
-        if (isBullet) {
-          return (
-            <p className="answer-bullet" key={`${line}-${index}`}>
-              {line.replace(/^[-*]\s+/, "")}
-            </p>
-          );
-        }
-        return <p key={`${line}-${index}`}>{line}</p>;
-      })}
-    </div>
-  );
-}
 

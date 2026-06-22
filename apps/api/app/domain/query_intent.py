@@ -21,6 +21,8 @@ def detect_query_intent(query: str, mode: str) -> QueryIntent:
         return QueryIntent("summary", 0.95 if normalized_mode == "summary" else 0.85, "document_summary")
     if normalized_mode in _EXAM_MODES:
         return QueryIntent("exam", 0.95, "exam_grounded")
+    if _looks_like_exam_request(normalized_query, tokens):
+        return QueryIntent("exam", 0.86, "exam_grounded")
     if normalized_mode == "research_paper" or _has_phrase(
         normalized_query, ("research paper", "related work", "methodology", "paper section")
     ):
@@ -87,3 +89,23 @@ def _is_summary_request(normalized_query: str, tokens: set[str], normalized_mode
         return False
     document_level_terms = {"pdf", "document", "file", "material", "paper", "textbook"}
     return bool(tokens & document_level_terms) or normalized_query in {"explain", "what is this", "what is it about"}
+
+
+def _looks_like_exam_request(normalized_query: str, tokens: set[str]) -> bool:
+    if _has_phrase(
+        normalized_query,
+        (
+            "question bank",
+            "important question",
+            "important questions",
+            "study guide",
+            "revision notes",
+            "exam answer",
+            "marks answer",
+            "mark answer",
+        ),
+    ):
+        return True
+    if _has_any(tokens, {"exam", "quiz", "revision"}):
+        return True
+    return bool(re.search(r"\b\d+\s*[- ]?marks?\b", normalized_query))

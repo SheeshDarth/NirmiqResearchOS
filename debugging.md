@@ -1,6 +1,6 @@
 # NIRMIQ Debugging Guide
 
-Last updated: 2026-06-19
+Last updated: 2026-06-22
 
 ## Local URLs
 
@@ -74,6 +74,16 @@ cd C:\Nirmiq-researchOS
 Remove-Item -Recurse -Force .\apps\web\.next
 .\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
 ```
+
+If the browser shows only `Preparing your local study workspace...` and the console reports `ChunkLoadError` for `/_next/static/chunks/app/page-*.js`, the dev server is probably serving stale HTML after `.next` changed during a build. Stop the stale preview and relaunch:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\stop_local.ps1
+.\scripts\run_local.ps1 -OpenBrowser
+```
+
+If the stale server was started manually and `stop_local.ps1` does not own the PID, stop the process listening on port `3002`, then rerun the launcher.
 
 Manual backend:
 

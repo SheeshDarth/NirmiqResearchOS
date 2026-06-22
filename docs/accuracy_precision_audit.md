@@ -2,6 +2,29 @@
 
 Last updated: 2026-06-22
 
+## 2026-06-22 V4.1 Accuracy/Presentation Update
+
+Implemented improvements:
+
+- Backend intent routing now detects exam-style prompts from natural language, not only from explicit frontend modes.
+- Exam context loading can follow backend-detected exam intent, preserving question-bank/diagram usefulness when users ask naturally.
+- Factual lookup retrieval now expands natural questions with focused hints for definitions, examples, types, limitations, and algorithm families.
+- Unsupervised-algorithm queries receive extra retrieval and synthesis focus terms such as clustering, density estimation, anomaly detection, dimensionality reduction, PCA, k-means, and DBSCAN.
+- Fallback synthesis for list/algorithm questions now uses a compact answer contract: `Direct answer`, `Key points`, `Evidence note`.
+- Normal frontend queries no longer inherit stale summary mode. The default `Auto` path sends a neutral research request and lets backend intent routing decide.
+
+Validation:
+
+- Focused query intent and synthesis tests passed.
+- Full API suite passed with 47 tests.
+- Frontend production build passed.
+
+Remaining accuracy gaps:
+
+- The project still needs a larger real-world labeled eval set from actual textbooks, notes, papers, and exam material.
+- Current focused expansions help common academic phrasing but are still deterministic lexical policies, not a learned query rewriter.
+- The next quality sprint should record saved failure cases from live testing and add them to retrieval/synthesis regression tests.
+
 ## Research Basis
 
 The quality plan is based on RAG evaluation and hallucination-mitigation work including:
