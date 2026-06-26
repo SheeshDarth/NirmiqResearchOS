@@ -44,6 +44,18 @@ Limitations:
 - The PDFs are synthetic and intentionally compact so reviewers can index them quickly.
 - A real-world seed set now exists, but it is still small and should grow before claims are made about broad academic accuracy.
 
+## Baseline Before RAG Reliability Work
+
+The RAG Reliability Phase starts from the harder real-world seed set below, not from the golden demo score.
+
+Current baseline to beat:
+
+- BM25 MRR: `0.578`.
+- Recall@8: `0.750`.
+- Citation expected coverage: `0.750`.
+
+The target is to improve evidence precision through textbook-aware metadata, section-first retrieval, feedback-to-eval conversion, and safer answer fallback behavior. The first fix should not be a larger model, higher temperature, or larger context window.
+
 ## Real-World Academic Seed Results
 
 Date: 2026-06-20

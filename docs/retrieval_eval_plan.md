@@ -1,12 +1,28 @@
-# Retrieval Evaluation Plan (Phase 1)
+# Retrieval Evaluation Plan: RAG Reliability Phase
 
 ## Goal
-Validate groundedness and relevance before adding advanced orchestration.
+Improve real-world academic retrieval precision before adding heavier graph, agent, or cloud model features.
+
+The current golden demo proves the end-to-end flow. The RAG Reliability Phase focuses on harder textbooks, notes, and papers where weak evidence selection still causes broad or hallucinated answers.
+
+Baseline before reliability work:
+
+- BM25 MRR: `0.578`.
+- Recall@8: `0.750`.
+- Citation expected coverage: `0.750`.
 
 ## Metrics
-- Recall@K (`K=5,10`)
+- Recall@K (`K=3,5,8,20`)
 - MRR for known-answer question sets
+- nDCG@K for multi-evidence questions
 - Citation coverage rate
+- Expected citation coverage against phrase/page labels
+- Unsupported claim rate
+- Abstention correctness
+- Retrieval latency
+- Generation latency
+- Summary cache-hit latency
+- Memory behavior on low-end/no-Ollama mode
 - Abstention precision (when retrieval confidence is low)
 - Grounded-answer metrics when running the full query path:
   - grounded response rate
@@ -17,26 +33,40 @@ Validate groundedness and relevance before adding advanced orchestration.
   - grounding state distribution
 
 ## Dataset Strategy
-- Start with 20-50 curated local documents.
-- Build 40-80 manually labeled QA pairs with expected source chunks.
+- Start with local textbooks, lecture notes, papers, and exam PDFs.
+- Grow the real-world eval labels from `16` to at least `40` in the first reliability pass.
+- Convert repeated `Needs work` feedback into candidate eval records.
+- Build 40-80 manually labeled QA pairs with expected source chunks, pages, or evidence phrases.
 - Store labels in local JSONL under `data/processed/eval/`.
 - Supported label schema:
   - `query: string`
   - `expected_document_ids: string[]`
   - `expected_chunk_ids: string[]` (optional, preferred when available)
+  - `expected_phrases: string[]` (preferred for real-world PDFs where chunk ids may change)
+  - `expected_pages: number[]` (optional)
+  - `answerable: boolean`
+  - `failure_reason: string` (for promoted `Needs work` cases)
 
 ## Evaluation Loop
 1. Run ingestion for corpus.
 2. Execute benchmark queries.
 3. Measure BM25-only, vector-only, hybrid+RRF, hybrid+RRF+rerank.
-4. Tune `K` budgets and rerank cutoffs.
-5. Freeze defaults in `app/core/config.py`.
-6. Use `scripts/eval_retrieval.py` for repeatable local metrics output.
-7. Compare `--modes hybrid bm25 vector` to monitor mode-wise gains/regressions.
-8. Use `--full-query` when you want to evaluate the actual synthesis path and the new grounding metadata.
+4. Inspect retrieval diagnostics for failed cases:
+   - section candidates,
+   - chunk-selection reasons,
+   - lexical/vector/section hit state,
+   - final rank and quality score.
+5. Tune section-first retrieval, metadata extraction, query expansion, `K` budgets, and rerank cutoffs.
+6. Freeze defaults in `app/core/config.py`.
+7. Use `scripts/eval_retrieval.py` for repeatable local metrics output.
+8. Compare `--modes hybrid bm25 vector` to monitor mode-wise gains/regressions.
+9. Use `--full-query` when evaluating synthesis path, grounding metadata, citation coverage, and abstention.
 
 ## Exit Criteria
-- Hybrid+rerank beats single-method baselines.
-- Citation coverage exceeds 90% on labeled set.
+- Recall@8 improves from about `0.750` to at least `0.850`.
+- MRR improves from about `0.578` to at least `0.700`.
+- Expected citation coverage improves from about `0.750` to at least `0.900`.
+- Golden demo metrics do not regress.
+- BM25-only mode remains usable without Chroma, reranker, or Ollama.
 - Abstention behavior is predictable and documented.
 - Full-query grounding metrics stabilize across runs and make regressions visible.

@@ -195,6 +195,26 @@ Impact:
 - Local answer feedback now captures real failure cases through `Good` and `Needs work`.
 - Golden demo and real-world eval scripts make retrieval quality measurable.
 
+## 2026-06-26 First Reliability Slice Implemented
+
+Implemented before the next metric run:
+
+- Added SQLite `document_sections` metadata.
+- Added nullable chunk metadata for `section_id`, `heading`, `section_path`, `chunk_type`, and `key_terms_json`.
+- Added lightweight textbook heading and section detection during indexing.
+- Added metadata-aware BM25 search text so headings and key terms influence lexical retrieval.
+- Added selected-document section-first retrieval when section metadata matches the query.
+- Added debug-only `retrieval_meta` fields:
+  - `section_candidates`
+  - `section_first_enabled`
+  - `chunk_selection_reasons`
+  - `retrieval_diagnostics`
+- Added unit/integration tests for section detection, metadata persistence, and retrieval diagnostics.
+
+Current caveat:
+
+- This is the first precision layer, not the finished reliability target. The next step is to rerun demo and real-world evals, promote `Needs work` feedback into labels, and tune against measured failures.
+
 ## RAG Reliability Phase Roadmap
 
 ### Phase A: Freeze Baseline

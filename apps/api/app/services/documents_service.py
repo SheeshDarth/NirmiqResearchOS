@@ -60,6 +60,11 @@ class DocumentsService:
                 text=chunk["text"],
                 token_count=int(chunk["token_count"]),
                 chunk_hash=chunk["chunk_hash"],
+                section_id=chunk.get("section_id"),
+                heading=chunk.get("heading"),
+                section_path=chunk.get("section_path"),
+                chunk_type=chunk.get("chunk_type"),
+                key_terms_json=chunk.get("key_terms_json"),
                 is_active=bool(chunk["is_active"]),
                 created_at=chunk["created_at"],
             )

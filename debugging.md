@@ -544,6 +544,35 @@ Expected current baseline:
 
 If this fails because source files are missing, replace `source_file` paths in `data/processed/eval/real_world_academic_seed.jsonl` with local PDFs/notes. The referenced source PDFs are intentionally not committed.
 
+### Diagnosing Bad Answers During RAG Reliability Work
+
+When a response is wrong, vague, overlong, or hallucinated, inspect evidence before changing model settings.
+
+Recommended order:
+
+1. Confirm the selected document is correct and has active chunks in the Library panel.
+2. Open Deep Research/debug metadata for the response.
+3. Check `retrieval_meta.section_first_enabled`.
+4. Check `retrieval_meta.section_candidates`:
+   - If empty, heading/key-term metadata did not match the query.
+   - If the wrong section is ranked first, improve section extraction or query expansion.
+5. Check `retrieval_meta.chunk_selection_reasons`:
+   - `lexical_hit=false` and `vector_hit=false` means the chunk probably came from fallback, not strong retrieval.
+   - `section_match=false` on most final chunks means section-first filtering did not help the final context.
+   - Low `quality_score` suggests noisy PDF text or parse artifacts.
+6. Check `retrieval_meta.retrieval_diagnostics`:
+   - `active_chunks_considered` shows corpus scope.
+   - `active_sections_considered` confirms section metadata exists.
+   - `section_filter_applied` confirms whether retrieval narrowed to candidate sections.
+   - `returned_chunks` confirms whether synthesis had evidence at all.
+7. Check answer citations:
+   - If citations exist but do not support the claim, this is a citation-faithfulness issue.
+   - If citations are relevant but the answer is poorly phrased, this is synthesis/presentation.
+   - If citations are unrelated, this is retrieval precision.
+8. Mark the answer as `Needs work` so it can become a local eval candidate.
+
+Do not treat hallucination as a model-size problem first. The current evidence says the main failure mode is retrieval precision on real textbooks: BM25 MRR `0.578`, Recall@8 `0.750`, and citation expected coverage `0.750`.
+
 ### Linux Browser Preview
 
 Linux path:

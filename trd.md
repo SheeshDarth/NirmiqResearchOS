@@ -45,6 +45,10 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Cache selected-document summaries by document id, content hash, and summary profile.
 - Add deterministic query intent metadata without changing the public query request shape.
 - Compute citation coverage metadata for generated and fallback answers.
+- Persist additive textbook-aware metadata for indexed chunks: section id, heading, section path, chunk type, and key terms.
+- Persist document-level section records for section-first retrieval over long textbooks and notes.
+- Return retrieval diagnostics in debug metadata without adding normal-user UI controls.
+- Convert saved `Needs work` feedback into local eval candidates for future retrieval tuning.
 - Add Paper Lab metadata for paper-draft responses: outline, citation clusters, and related-work matrix.
 - Provide client-side Markdown export for grounded Paper Lab drafts.
 
@@ -78,6 +82,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - `GET /documents/{document_id}/chunks`: source drilldown.
 - `POST /query`: grounded query flow with retrieval mode/profile/mode/session.
 - `POST /query` debug metadata may include cache hit, detected intent, intent route, and citation coverage fields.
+- `POST /query` debug metadata may include `section_candidates`, `section_first_enabled`, `chunk_selection_reasons`, `retrieval_diagnostics`, and `feedback_eval_candidate_count`.
 - `POST /query` debug metadata may include `paper_lab` only for paper-draft intent.
 - `GET /memory/{session_id}`: session memory snapshot.
 - `GET /memory/{session_id}/export`: local Markdown export of the session.
@@ -97,6 +102,9 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Use document-scoped fallback when a selected document exists and broad prompts retrieve low lexical scores.
 - Include debug metadata for evaluation and development.
 - Use deterministic intent routing to expand retrieval hints for summaries, comparisons, deep research, paper drafting, and exam workflows.
+- Use section-first retrieval for selected-document queries when heading/key-term metadata identifies a relevant region.
+- Preserve BM25-only retrieval as the offline and low-end fallback path.
+- Track chunk-selection reasons including lexical hit, vector hit, section match, quality score, rerank position, and final rank.
 - Apply a lightweight query/context relevance gate before General Chat synthesis so old corpus chunks do not create false grounded answers.
 - Apply Exam Lab relevance against imported question-bank text for study-guide/important-question flows.
 - Paper drafting responses should expose deterministic paper-structure metadata without adding another generation pass.
@@ -130,6 +138,20 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Backend unit/integration tests pass.
 - Desktop unpacked packaging passes.
 - Full `scripts/ship_check.ps1` passes.
+
+## RAG Reliability Phase Acceptance Criteria
+
+- Current real-world baseline is preserved before tuning:
+  - BM25 MRR `0.578`.
+  - Recall@8 `0.750`.
+  - Citation expected coverage `0.750`.
+- Real-world eval labels grow from `16` to at least `40`.
+- Recall@8 improves to at least `0.850`.
+- MRR improves to at least `0.700`.
+- Expected citation coverage improves to at least `0.900`.
+- Debug retrieval metadata explains why each final chunk was selected.
+- No public `POST /query` request-body change.
+- No dependency on Chroma, reranker, Ollama, graph databases, or cloud APIs for baseline operation.
 
 ## 2026-06-20 Polish Technical Update
 

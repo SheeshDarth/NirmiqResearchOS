@@ -7,6 +7,46 @@ Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
+## Latest Session Update - 2026-06-26 RAG Reliability Phase Kickoff
+
+Objective: update the public documentation and begin the first backend slice of the RAG Reliability Phase without changing public query APIs or adding heavy dependencies.
+
+Implemented:
+
+- Refreshed `README.md` with a clear `Known Retrieval Gap` and `Next Phase: RAG Reliability` section.
+- Preserved the honest real-world baseline:
+  - BM25 MRR `0.578`.
+  - Recall@8 `0.750`.
+  - Citation expected coverage `0.750`.
+- Added additive SQLite support for textbook-aware retrieval:
+  - New `document_sections` table.
+  - Nullable chunk metadata for `section_id`, `heading`, `section_path`, `chunk_type`, and `key_terms_json`.
+- Updated indexing to detect lightweight textbook headings/sections and persist section metadata while staying backwards-compatible with old chunks.
+- Updated BM25 indexing to include heading, section path, chunk type, and key terms in lexical search text.
+- Added section-first retrieval for selected-document queries:
+  - rank candidate sections from local metadata,
+  - narrow chunk retrieval when a relevant section is detected,
+  - keep normal BM25/vector/hybrid fallback when section evidence is weak.
+- Added debug-only retrieval diagnostics inside `retrieval_meta`:
+  - `section_candidates`,
+  - `section_first_enabled`,
+  - `chunk_selection_reasons`,
+  - `retrieval_diagnostics`.
+- Added tests for section detection, metadata persistence, and selected-document section-first diagnostics.
+
+Acceptance targets for the phase:
+
+- Improve Recall@8 from about `0.750` to at least `0.850`.
+- Improve MRR from about `0.578` to at least `0.700`.
+- Improve expected citation coverage from about `0.750` to at least `0.900`.
+- Preserve golden demo behavior and local fallback behavior without Chroma, reranker, or Ollama.
+
+Tradeoffs:
+
+- Heading detection is heuristic by design. It is cheap, offline, and low-VRAM, but it will not perfectly identify every PDF structure yet.
+- Section-first retrieval is only applied when a selected document has positive section matches. This avoids over-filtering broad or unclear questions.
+- Diagnostics are returned as optional debug metadata instead of visible UI controls, keeping the user experience simple.
+
 ## Latest Session Update - 2026-06-26 RAG Reliability Problem Log
 
 Objective: start the RAG Reliability Phase by documenting all known problems and the architecture-level path to reduce hallucination from weak retrieval.

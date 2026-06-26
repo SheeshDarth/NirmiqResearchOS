@@ -121,6 +121,7 @@ Implemented in the current repository:
 - Inspect evidence chunks, pages, and source details.
 - Use four workspaces: Research, Chat, Paper Lab, and Exam Lab.
 - Run hybrid retrieval with BM25, optional vector search, RRF, and reranking hooks.
+- Start the RAG Reliability Phase with textbook-aware section metadata, section-first retrieval diagnostics, and chunk-selection reasons inside debug retrieval metadata.
 - Use selected-document summary caching keyed by document id, content hash, and summary profile.
 - Route query intent deterministically for summary, lookup, compare, deep research, paper, exam, chat, and unclear prompts.
 - Show compact trust signals: `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
@@ -159,15 +160,36 @@ Implemented in the current repository:
 - Enforce local request body limits, response compression, and scanner-clean SQLite migrations.
 - Run the full publish gate with `scripts/ship_check.ps1`, including tests, compile, web build, smoke, and golden-demo abstention checks.
 
-## Planned Next
+## Known Retrieval Gap
 
-- Larger retrieval eval set from real engineering notes, papers, and exam PDFs.
-- Convert saved `Needs work` feedback into labeled regression/eval cases.
-- Chapter-wise and section-wise summaries for long textbooks.
-- Screenshot/GIF assets for the public README.
-- Local data purge/export UI.
-- GraphRAG-lite concept expansion only after baseline retrieval metrics justify it.
-- Optional connected model mode only with explicit user consent and privacy disclosure.
+The golden demo is strong, but the harder real-world seed set shows the current retrieval gap honestly:
+
+| Baseline | BM25 MRR | Recall@8 | Citation expected coverage |
+| --- | ---: | ---: | ---: |
+| Real-world academic seed | 0.578 | 0.750 | 0.750 |
+
+This means NIRMIQ is already useful for local document Q&A, but arbitrary textbook and notes retrieval still needs higher precision before the project should claim production-grade academic accuracy.
+
+The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
+
+## Next Phase: RAG Reliability
+
+What is being improved next:
+
+- Freeze the current real-world baseline before retrieval changes.
+- Grow real-world eval labels from `16` to at least `40`.
+- Convert saved `Needs work` feedback into local eval candidates.
+- Add textbook-aware metadata: chapter, section, heading, page range, captions, definitions, and key terms.
+- Retrieve sections/pages first, then rank chunks inside those regions.
+- Keep BM25-only fallback fully usable for offline and low-end devices.
+- Track chunk-selection reasons, section candidates, citation coverage, unsupported claims, latency, and memory behavior.
+
+Acceptance targets:
+
+- Improve Recall@8 from about `0.750` to at least `0.850`.
+- Improve MRR from about `0.578` to at least `0.700`.
+- Improve expected citation coverage from about `0.750` to at least `0.900`.
+- Preserve the golden demo results and the no-Ollama/no-Chroma fallback path.
 
 ## Workspaces
 
@@ -463,6 +485,7 @@ Details:
 - [Retrieval evaluation results](docs/retrieval_eval_results.md)
 - [Benchmark report](docs/benchmark_report.md)
 - [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
+- [Engineering problem log and RAG Reliability roadmap](problems_faced.md)
 
 Real-world seed eval now also exists for actual local academic material:
 
@@ -486,7 +509,7 @@ Run:
 .\scripts\eval_real_world.ps1
 ```
 
-This seed set is intentionally harder than the golden demo and shows where retrieval tuning still needs work.
+This seed set is intentionally harder than the golden demo and is the baseline for the RAG Reliability Phase. The goal is to improve retrieval precision and citation coverage before increasing model size, temperature, or context length.
 
 ## Screenshots And GIFs
 

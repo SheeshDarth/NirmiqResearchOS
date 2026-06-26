@@ -32,6 +32,7 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 - Local-first trust: documents stay on the user machine by default.
 - Evidence visibility: users can inspect sources instead of trusting black-box output.
 - Low-friction UX: ChatGPT-like interaction, not a dashboard maze.
+- Measured reliability: answer quality improves through local retrieval metrics, section-aware indexing, feedback-to-eval loops, and citation checks rather than cloud dependency.
 
 ## V3 Scope
 
@@ -50,6 +51,7 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 - Safer selected-source behavior: when a document is selected, default questions remain scoped to that source.
 - Honest evidence behavior: stale vector hits, zero-text reindex failures, and unsupported cited claims must not produce trusted answers.
 - V4.2 local answer feedback: users can mark answers as `Good` or `Needs work` so bad responses become a local improvement dataset.
+- RAG Reliability Phase: selected-document queries gain textbook-aware section metadata and hidden retrieval diagnostics so the system can improve precision without exposing more controls to users.
 
 ## V4 Golden Demo Scope
 
@@ -127,10 +129,37 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 - Paper Lab can produce a grounded Markdown draft package instead of only a chat answer.
 - Local model runtime remains bounded through low-memory Ollama settings and embedding batches.
 - Direct local-path ingestion and Docker dev defaults respect the local-first privacy contract.
+- Real-world academic retrieval improves against measured baselines instead of relying on larger models as the first fix.
 
 ## Why Users Choose NIRMIQ
 
 NIRMIQ is not a generic upload-and-chat clone. It is a local academic intelligence workspace that combines retrieval engineering, citation transparency, paper workflows, and exam workflows in one focused system. Its advantage is trust: the document corpus remains the source of truth, and users can inspect why an answer was produced.
+
+## Next Phase: RAG Reliability
+
+Product goal:
+
+Make answers feel more accurate, focused, and source-faithful on real textbooks, notes, and papers while keeping the interface as simple as a chatbot.
+
+Why this matters:
+
+- The golden demo proves the flow works.
+- Real textbooks reveal harder retrieval failures: BM25 MRR `0.578`, Recall@8 `0.750`, and expected citation coverage `0.750`.
+- Users experience these retrieval gaps as hallucination, vague answers, boring summaries, or citations that do not support the exact claim.
+
+Planned product behavior:
+
+- When the user selects a document, NIRMIQ should first identify the most relevant chapter/section/page region, then answer from chunks inside that region.
+- If evidence is weak, NIRMIQ should ask for a narrower question or abstain instead of producing a confident generic answer.
+- Trust states stay visible, but detailed retrieval metadata remains hidden unless Deep Research/debug panels are opened.
+- Answer feedback becomes a local improvement signal, not analytics.
+
+Acceptance targets:
+
+- Recall@8 at least `0.850`.
+- MRR at least `0.700`.
+- Expected citation coverage at least `0.900`.
+- Golden demo and offline fallback behavior must not regress.
 
 ## V4 Candidate Upgrades
 
@@ -139,7 +168,7 @@ NIRMIQ is not a generic upload-and-chat clone. It is a local academic intelligen
 - Paper Lab DOCX/LaTeX export after Markdown behavior is validated.
 - Exam Lab answer templates by marks and diagram-aware study guides.
 - Local data purge/export controls.
-- Retrieval evaluation dataset for NIRMIQ academic use cases.
+- Larger retrieval evaluation dataset for NIRMIQ academic use cases after the first reliability pass.
 - Streaming answers after synthesis reliability is stable.
 
 ## 2026-06-11 Accuracy Rescue Acceptance Update

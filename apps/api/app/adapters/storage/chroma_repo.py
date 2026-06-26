@@ -53,6 +53,9 @@ class ChromaRepo:
                 "page_start": int(chunk["page_start"]) if chunk["page_start"] is not None else -1,
                 "page_end": int(chunk["page_end"]) if chunk["page_end"] is not None else -1,
                 "quality_score": float(chunk.get("quality_score", 1.0)),
+                "section_id": str(chunk.get("section_id") or ""),
+                "heading": str(chunk.get("heading") or ""),
+                "section_path": str(chunk.get("section_path") or ""),
             }
             for chunk in chunks
         ]
@@ -109,6 +112,9 @@ class ChromaRepo:
                     "text": documents[idx] if idx < len(documents) else "",
                     "score": score,
                     "quality_score": quality_score_raw,
+                    "section_id": metadata.get("section_id") if isinstance(metadata, dict) else None,
+                    "heading": metadata.get("heading") if isinstance(metadata, dict) else None,
+                    "section_path": metadata.get("section_path") if isinstance(metadata, dict) else None,
                 }
             )
         return hits

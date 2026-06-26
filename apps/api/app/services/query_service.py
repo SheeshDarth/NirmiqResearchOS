@@ -427,6 +427,10 @@ class QueryService:
                     page_end=row.get("page_end"),
                     source="summary_seed",
                     quality_score=float(row.get("quality_score") or 1.0),
+                    section_id=row.get("section_id"),
+                    heading=row.get("heading"),
+                    section_path=row.get("section_path"),
+                    chunk_type=str(row.get("chunk_type") or "body"),
                 )
             )
             existing_ids.add(chunk_id)
@@ -520,6 +524,10 @@ class QueryService:
                     page_end=row.get("page_end"),
                     source="focused_seed",
                     quality_score=float(row.get("quality_score") or 1.0),
+                    section_id=row.get("section_id"),
+                    heading=row.get("heading"),
+                    section_path=row.get("section_path"),
+                    chunk_type=str(row.get("chunk_type") or "body"),
                 )
             )
             existing_ids.add(chunk_id)

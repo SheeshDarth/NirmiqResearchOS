@@ -6,6 +6,36 @@ Last updated: 2026-06-26
 
 See [`../problems_faced.md`](../problems_faced.md) for the current architecture diagram, full problem history, current RAG retrieval gaps, future risks, and the RAG Reliability Phase roadmap.
 
+## 2026-06-26 RAG Reliability Phase Start
+
+Current active gap:
+
+- Real-world academic retrieval is weaker than the bundled golden demo.
+- BM25 baseline on the 16-sample real-world seed: MRR `0.578`, Recall@8 `0.750`, expected citation coverage `0.750`.
+- Users experience this as broad answers, missed textbook sections, unsupported citations, or hallucination.
+
+Implemented first slice:
+
+- Added additive SQLite `document_sections` records.
+- Added chunk metadata for section id, heading, section path, chunk type, and key terms.
+- Added lightweight heading/section detection during indexing.
+- Added metadata-aware BM25 search text.
+- Added section-first retrieval for selected-document queries when relevant section candidates are found.
+- Added debug-only retrieval diagnostics: section candidates, chunk-selection reasons, and returned-chunk counts.
+
+Why this matters:
+
+- The next accuracy gain should come from better evidence precision, not from raising model size, temperature, or context length.
+- The app remains offline-first and low-memory because the first reliability layer is SQLite/BM25-based.
+- The optional vector/reranker path can still help later, but it is not required for the baseline.
+
+Acceptance targets:
+
+- Recall@8: `0.750` to at least `0.850`.
+- MRR: `0.578` to at least `0.700`.
+- Expected citation coverage: `0.750` to at least `0.900`.
+- No golden-demo regression.
+
 ## 2026-06-26 V4.2 Local Feedback Loop
 
 Implemented:

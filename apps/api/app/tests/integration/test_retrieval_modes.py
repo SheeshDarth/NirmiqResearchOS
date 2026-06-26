@@ -84,3 +84,50 @@ def test_query_can_scope_retrieval_to_selected_document(tmp_path: Path) -> None:
         assert body["retrieval_meta"]["document_scope"] == selected_document_id
         assert body["citations"]
         assert {citation["document_id"] for citation in body["citations"]} == {selected_document_id}
+
+
+def test_selected_document_query_includes_section_first_diagnostics(tmp_path: Path) -> None:
+    sample = tmp_path / "sectioned_textbook.txt"
+    sample.write_text(
+        "\n".join(
+            [
+                "Chapter 1 Retrieval Systems",
+                "NIRMIQ uses citation grounded retrieval with BM25 and reciprocal rank fusion.",
+                "Evidence chunks are selected to answer questions from the source material.",
+                "Chapter 2 Interface Design",
+                "The interface keeps controls compact so students can read answers clearly.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with TestClient(app) as client:
+        ingest_response = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Sectioned Textbook",
+                "mime_type": "text/plain",
+            },
+        )
+        assert ingest_response.status_code == 200
+        document_id = ingest_response.json()["document_id"]
+
+        query_response = client.post(
+            "/query",
+            json={
+                "session_id": "section-diagnostics-session",
+                "query": "What does NIRMIQ use for grounded retrieval?",
+                "document_id": document_id,
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+
+        assert query_response.status_code == 200
+        meta = query_response.json()["retrieval_meta"]
+        assert meta["section_first_enabled"] is True
+        assert meta["section_candidates"]
+        assert meta["chunk_selection_reasons"]
+        assert meta["retrieval_diagnostics"]["returned_chunks"] >= 1
+        assert any(reason["section_match"] for reason in meta["chunk_selection_reasons"])
