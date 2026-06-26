@@ -1277,6 +1277,53 @@ button.chunk-card:hover {
   background: rgba(184, 106, 60, 0.11);
 }
 
+.feedback-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+  color: var(--nirmiq-text-subtle);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.feedback-button {
+  min-height: 25px;
+  border: 1px solid rgba(238, 244, 241, 0.09);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(13, 17, 23, 0.48);
+  color: var(--nirmiq-text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 850;
+  transition:
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    background var(--motion-fast) ease,
+    transform var(--motion-fast) var(--motion-curve);
+}
+
+.feedback-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(109, 139, 116, 0.38);
+  color: var(--nirmiq-text);
+}
+
+.feedback-button.active {
+  color: #b8ffd8;
+  border-color: rgba(109, 139, 116, 0.42);
+  background: rgba(109, 139, 116, 0.14);
+}
+
+.feedback-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .evidence-trail {
   align-items: center;
   padding-top: 2px;

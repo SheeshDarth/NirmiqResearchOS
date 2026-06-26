@@ -1,6 +1,28 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-06-22
+Last updated: 2026-06-26
+
+## 2026-06-26 V4.2 Local Feedback Loop
+
+Implemented:
+
+- Added answer-level `Good` / `Needs work` feedback in the chat UI.
+- Added SQLite-backed `answer_feedback` records through `/memory/{session_id}/feedback`.
+- Stored feedback remains local and includes the query, answer, rating, optional source document/title, reason, and timestamp.
+- Session deletion removes associated feedback records.
+- Document deletion preserves the feedback text for review while clearing stale document ids.
+
+Why this matters for accuracy:
+
+- Live testing failures can now be captured as structured records.
+- The next eval sprint can convert repeated `Needs work` feedback into labeled questions with expected source chunks.
+- This avoids blindly adding prompt rules or retrieval tweaks without measuring whether they helped.
+
+Recommended next use:
+
+- Run one textbook through 20-30 realistic questions.
+- Mark every wrong, vague, overlong, or poorly cited answer as `Needs work`.
+- Promote repeated failure patterns into `data/processed/eval` labels and regression tests.
 
 ## 2026-06-22 V4.1 Accuracy/Presentation Update
 

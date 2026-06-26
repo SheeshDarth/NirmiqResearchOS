@@ -1,6 +1,6 @@
 # NIRMIQ UI/UX Specification
 
-Last updated: 2026-06-22
+Last updated: 2026-06-26
 
 Note: the requested filename `UI/UX.md` is represented as `UI_UX.md` because Windows treats `/` as a path separator.
 
@@ -55,6 +55,7 @@ Implementation rules:
 - Let the user reclaim reading space by minimizing the composer.
 - Avoid exam-only framing; Research and Chat are general document-intelligence lanes.
 - Golden demo first: reviewers should be able to load a local corpus and run the proof path without understanding backend internals.
+- Answer feedback should be quiet and answer-level: `Good` and `Needs work`, not a ratings dashboard.
 
 ## Screen Model
 
@@ -74,6 +75,7 @@ Implementation rules:
 - Right action: collapsible Deep Research panel.
 - Source cockpit: active sources, chunk count, grounding state, quick summarize/upload/custom PDF actions.
 - Conversation thread: primary reading area.
+- Assistant answer footer: compact trust line, optional sources drawer, and quiet local feedback controls.
 - Composer: compact by default, minimizable.
 
 ## Workspace-Specific Composer Behavior
@@ -106,6 +108,7 @@ Implementation rules:
 - Citations should appear in answer text and compact source chips, with detailed chunks only in Sources.
 - Abstention should be clear and useful: say what context is missing instead of pretending support exists.
 - The answer column should stay readable around 65-70 characters per line.
+- Feedback controls should stay visually lighter than the answer and citations so they help testing without making the product feel crowded.
 
 ## Citations UX
 

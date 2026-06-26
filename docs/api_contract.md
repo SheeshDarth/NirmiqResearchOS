@@ -136,6 +136,39 @@
   - Includes stored citations and retrieval metadata for assistant turns.
   - Reuses the same SQLite `messages` table as query persistence.
 
+### `POST /memory/{session_id}/feedback`
+- Request:
+  - `rating: "good" | "needs_work"`
+  - `query: string`
+  - `answer: string`
+  - `document_id?: string`
+  - `source_title?: string`
+  - `reason?: string`
+- Response:
+  - `id: string`
+  - `session_id: string`
+  - `rating: "good" | "needs_work"`
+  - `query: string`
+  - `answer: string`
+  - `document_id?: string | null`
+  - `source_title?: string | null`
+  - `reason?: string | null`
+  - `created_at: string`
+- Behavior:
+  - Saves local answer-quality feedback for retrieval and synthesis tuning.
+  - Does not send feedback to analytics, cloud APIs, or model training.
+  - Creates the session row if it does not already exist.
+
+### `GET /memory/{session_id}/feedback`
+- Query:
+  - `limit?: number` default `50`, maximum `200`
+- Response:
+  - `session_id: string`
+  - `items: AnswerFeedbackItem[]`
+- Behavior:
+  - Lists recent local answer feedback for review or eval-label creation.
+  - Clearing a session removes its feedback records.
+
 ### `GET /documents`
 - Response:
   - `items: DocumentItem[]`

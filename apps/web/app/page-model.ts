@@ -23,7 +23,8 @@ export type BusyState =
   | "documents"
   | "delete"
   | "demo"
-  | "privacy";
+  | "privacy"
+  | "feedback";
 export type DeepView = "evidence" | "context" | "compare";
 export type Chunk = DocumentDetailResponse["chunks"][number];
 

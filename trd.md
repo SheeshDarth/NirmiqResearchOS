@@ -1,6 +1,6 @@
 # NIRMIQ Technical Requirements Document
 
-Last updated: 2026-06-20
+Last updated: 2026-06-26
 
 ## Project
 
@@ -35,6 +35,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Let users minimize the composer/search box to read long responses.
 - Let Exam Lab generate printable custom PDF study material from grounded answers.
 - Keep session continuity through SQLite-backed message history and memory snapshots.
+- Let users mark answer quality locally as `Good` or `Needs work` for future retrieval and synthesis tuning.
 - Restrict direct local-path ingestion to configured corpus roots by default.
 - Validate uploaded file signatures/readability before indexing.
 - Apply the same suffix, size, and lightweight signature/readability checks to direct local-path ingestion.
@@ -61,6 +62,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Honest scoring: summary/factual seed chunks may expand context but must not inflate grounding confidence.
 - Fast enough for demos: repeated PDF parsing should use content-hash page cache.
 - Efficient: repeated selected-document summaries should reuse SQLite cache until source content changes.
+- Improvement-ready: live testing feedback should be saved locally as structured records instead of being lost in chat history.
 - Memory efficient: default runtime profile should remain stable on RTX 4050-class hardware without requiring cloud APIs.
 
 ## API Requirements
@@ -79,6 +81,8 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - `POST /query` debug metadata may include `paper_lab` only for paper-draft intent.
 - `GET /memory/{session_id}`: session memory snapshot.
 - `GET /memory/{session_id}/export`: local Markdown export of the session.
+- `POST /memory/{session_id}/feedback`: save local answer-quality feedback for a specific run.
+- `GET /memory/{session_id}/feedback`: list recent local answer-quality feedback for review/eval building.
 - `DELETE /memory/{session_id}`: clear local session messages and snapshots.
 - `DELETE /documents`: clear all indexed material, metadata, summaries, jobs, exam artifacts, and vector entries without deleting source files from disk.
 - Exam routes for profiles, question banks, and study/exam artifacts.

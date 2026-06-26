@@ -144,6 +144,20 @@ class SQLiteRepo:
                     UNIQUE(document_id, content_hash, summary_profile),
                     FOREIGN KEY(document_id) REFERENCES documents(id)
                 );
+
+                CREATE TABLE IF NOT EXISTS answer_feedback (
+                    id TEXT PRIMARY KEY,
+                    session_id TEXT NOT NULL,
+                    rating TEXT NOT NULL CHECK(rating IN ('good', 'needs_work')),
+                    query TEXT NOT NULL,
+                    answer TEXT NOT NULL,
+                    document_id TEXT,
+                    source_title TEXT,
+                    reason TEXT,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(session_id) REFERENCES sessions(id),
+                    FOREIGN KEY(document_id) REFERENCES documents(id)
+                );
                 """
             )
             conn.executescript(
@@ -156,6 +170,10 @@ class SQLiteRepo:
                 CREATE INDEX IF NOT EXISTS idx_diagram_assets_document ON diagram_assets(document_id);
                 CREATE INDEX IF NOT EXISTS idx_document_summaries_lookup
                     ON document_summaries(document_id, content_hash, summary_profile);
+                CREATE INDEX IF NOT EXISTS idx_answer_feedback_session_created
+                    ON answer_feedback(session_id, created_at);
+                CREATE INDEX IF NOT EXISTS idx_answer_feedback_rating
+                    ON answer_feedback(rating);
                 """
             )
             self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
@@ -206,6 +224,7 @@ class SQLiteRepo:
             row = conn.execute("SELECT id FROM documents WHERE id = ?", (document_id,)).fetchone()
             if not row:
                 return False
+            conn.execute("UPDATE answer_feedback SET document_id = NULL WHERE document_id = ?", (document_id,))
             conn.execute("DELETE FROM diagram_assets WHERE document_id = ?", (document_id,))
             conn.execute("DELETE FROM document_summaries WHERE document_id = ?", (document_id,))
             conn.execute("DELETE FROM question_bank_items WHERE document_id = ?", (document_id,))
@@ -219,6 +238,7 @@ class SQLiteRepo:
         with self._connect() as conn:
             rows = conn.execute("SELECT id FROM documents ORDER BY updated_at DESC").fetchall()
             document_ids = [str(row["id"]) for row in rows]
+            conn.execute("UPDATE answer_feedback SET document_id = NULL WHERE document_id IS NOT NULL")
             conn.execute("DELETE FROM diagram_assets")
             conn.execute("DELETE FROM document_summaries")
             conn.execute("DELETE FROM question_bank_items")
@@ -622,6 +642,73 @@ class SQLiteRepo:
         ordered.reverse()
         return ordered
 
+    def insert_answer_feedback(
+        self,
+        *,
+        feedback_id: str,
+        session_id: str,
+        rating: str,
+        query: str,
+        answer: str,
+        document_id: str | None = None,
+        source_title: str | None = None,
+        reason: str | None = None,
+    ) -> dict[str, Any]:
+        now = self._utc_now()
+        self.ensure_session(session_id)
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO answer_feedback (
+                    id, session_id, rating, query, answer, document_id, source_title, reason, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    feedback_id,
+                    session_id,
+                    rating,
+                    query,
+                    answer,
+                    document_id,
+                    source_title,
+                    reason,
+                    now,
+                ),
+            )
+            row = conn.execute(
+                """
+                SELECT id, session_id, rating, query, answer, document_id, source_title, reason, created_at
+                FROM answer_feedback
+                WHERE id = ?
+                """,
+                (feedback_id,),
+            ).fetchone()
+        return dict(row)
+
+    def list_answer_feedback(self, session_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(limit, 200))
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, session_id, rating, query, answer, document_id, source_title, reason, created_at
+                FROM answer_feedback
+                WHERE session_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (session_id, safe_limit),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_answer_feedback_count(self, session_id: str) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS count FROM answer_feedback WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+        return int(row["count"]) if row else 0
+
     def delete_session(self, session_id: str) -> dict[str, int | bool]:
         with self._connect() as conn:
             message_row = conn.execute(
@@ -635,6 +722,7 @@ class SQLiteRepo:
             session_row = conn.execute("SELECT id FROM sessions WHERE id = ?", (session_id,)).fetchone()
             deleted_messages = int(message_row["count"]) if message_row else 0
             deleted_snapshots = int(snapshot_row["count"]) if snapshot_row else 0
+            conn.execute("DELETE FROM answer_feedback WHERE session_id = ?", (session_id,))
             conn.execute("DELETE FROM memory_snapshots WHERE session_id = ?", (session_id,))
             conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
             conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))

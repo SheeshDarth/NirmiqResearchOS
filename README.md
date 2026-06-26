@@ -109,6 +109,7 @@ Implemented in the current repository:
 - Golden demo smoke script that fails if unsupported chat prompts return grounded answers.
 - Local answer export as Markdown with citations.
 - Whole-thread Markdown export from local session memory.
+- Local answer feedback capture with `Good` / `Needs work` signals for future retrieval evaluation.
 - Upload PDFs, text, Markdown, and images.
 - Ingest local-path documents from trusted corpus roots.
 - Summarize selected PDFs with citations.
@@ -143,6 +144,7 @@ Implemented in the current repository:
 - Run Research, Chat, Paper Lab, and Exam Lab modes from one workspace.
 - Export grounded answers/drafts as local Markdown.
 - Export the current thread as local Markdown.
+- Save answer-quality feedback locally for later accuracy tuning.
 - Generate Exam Lab custom PDFs from grounded responses.
 - Clear thread memory and indexed material from the UI for privacy/reset demos.
 - Run local smoke checks, backend tests, and frontend production build.
@@ -156,6 +158,7 @@ Implemented in the current repository:
 ## Planned Next
 
 - Larger retrieval eval set from real engineering notes, papers, and exam PDFs.
+- Convert saved `Needs work` feedback into labeled regression/eval cases.
 - Chapter-wise and section-wise summaries for long textbooks.
 - Screenshot/GIF assets for the public README.
 - Local data purge/export UI.

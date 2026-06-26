@@ -1,6 +1,6 @@
 # NIRMIQ Backend Architecture
 
-Last updated: 2026-06-22
+Last updated: 2026-06-26
 
 ## Overview
 
@@ -31,7 +31,7 @@ The desktop shell is intentionally not a second application layer. It preserves 
 - `RetrievalService`: BM25/vector retrieval, RRF fusion, optional reranking, citation assembly.
 - `SynthesisService`: grounded response generation, summary formatting, citation coverage, fallback behavior, abstention.
 - `QueryService`: end-to-end query orchestration, intent routing, summary cache orchestration, mode/profile handling, memory writes.
-- `MemoryService`: session snapshots and continuity.
+- `MemoryService`: session snapshots, continuity, thread export/delete, and local answer feedback for quality review.
 - `DocumentsService`: library and chunk drilldown.
 - `Local Data Controls`: thread export/delete and document-index purge through existing memory/document services.
 - `ExamService`: exam profiles, question banks, and exam-specific artifacts.
@@ -78,6 +78,20 @@ This keeps the current frontend stable while addressing API-versioning readiness
 11. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
 12. Persist user/assistant turns.
 13. Return answer, answer-used citations, optional debug metadata, and grounding state.
+
+### Answer Feedback
+
+1. User rates an assistant answer as `Good` or `Needs work` from the chat bubble.
+2. `POST /memory/{session_id}/feedback` stores the prompt, answer, rating, optional source document/title, reason, and timestamp in SQLite.
+3. Feedback stays local and is not sent to analytics, cloud services, or model fine-tuning.
+4. Clearing a session removes its feedback records.
+5. Deleting a document preserves the review signal but clears the document id reference to avoid stale links.
+
+Purpose:
+
+- Build a real local failure/success set from Siddharth's testing.
+- Feed future retrieval-evaluation labels without adding a heavy analytics stack.
+- Keep answer-quality tuning grounded in actual textbook/document behavior.
 
 ## SQLite Responsibilities
 

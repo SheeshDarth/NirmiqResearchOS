@@ -1,11 +1,53 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-06-22
+Last updated: 2026-06-26
 Current branch: `v3-foundation`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-06-26 V4.2 Local Feedback Loop And Phone Codex Access
+
+Objective: continue the next phase without complicating the UI, while giving Siddharth a safe phone-based Codex access path.
+
+Implemented:
+
+- Added a local SQLite `answer_feedback` table for answer-quality signals.
+- Added `POST /memory/{session_id}/feedback` and `GET /memory/{session_id}/feedback`.
+- Added a compact ChatGPT-style feedback row below assistant answers: `Good` and `Needs work`.
+- Saved feedback stores session id, rating, prompt, answer, optional source document id/title, reason, and timestamp.
+- Session deletion now removes associated feedback records.
+- Document deletion preserves the feedback review signal but nulls the deleted document id so stale foreign references are not kept.
+- Added unit and integration tests for feedback storage, API contract, session deletion, and document deletion behavior.
+- Refreshed `docs/remote_codex_access.md` from the current official Codex manual:
+  - Recommended path is Codex App Remote Connections through ChatGPT mobile.
+  - Do not expose NIRMIQ local FastAPI/Next.js or Codex app-server ports publicly.
+  - Use Codex Web/GitHub only for code/docs tasks that do not need private local corpora.
+
+Why it improves the project:
+
+- Bad or boring answers can now become a local review dataset instead of disappearing after testing.
+- This supports the next retrieval-evaluation sprint without adding a heavy analytics system.
+- The UI remains simple because feedback is shown as quiet answer-level controls, not a dashboard.
+- Phone access is framed around the official secure remote-control flow instead of risky port exposure.
+
+Tradeoffs:
+
+- Feedback is currently manual and local-only. It does not auto-tune retrieval yet.
+- Feedback is stored per current UI run key, so saved-button state resets on browser refresh while the backend record remains.
+- The official phone remote-control flow requires the Codex desktop host to stay awake and signed into the same account.
+
+Verification:
+
+- `python -m pytest apps/api/app/tests/unit/test_answer_feedback.py apps/api/app/tests/integration/test_answer_feedback_flow.py -q`: passed, 3 tests.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+- `npm.cmd run test:api`: passed, 50 tests.
+
+Test harness fix:
+
+- `scripts/test_api.ps1` now uses a unique per-run temp/cache folder under `temp/pytest-runs` and `temp/pytest-cache-runs` to avoid stale Windows temp ACL/lock failures.
 
 ## Latest Session Update - 2026-06-22 V4.1 Chat Shell And Accuracy Pass
 

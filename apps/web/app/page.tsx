@@ -21,8 +21,10 @@ import {
   listDocuments,
   purgeDocuments,
   runQuery,
+  saveAnswerFeedback,
   upsertExamProfile,
   uploadDocument,
+  type AnswerFeedbackRating,
   type DiagramAssetItem,
   type DocumentDetailResponse,
   type DocumentItem,
@@ -109,6 +111,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [queryResult, setQueryResult] = useState<QueryResponse | null>(null);
   const [queryHistory, setQueryHistory] = useState<ChatRun[]>([]);
+  const [savedFeedback, setSavedFeedback] = useState<Record<string, AnswerFeedbackRating>>({});
   const [memory, setMemory] = useState<SessionSummaryResponse | null>(null);
   const [timeline, setTimeline] = useState<SessionTimelineResponse | null>(null);
   const [deepView, setDeepView] = useState<DeepView>("evidence");
@@ -559,6 +562,32 @@ export default function Home() {
     setError("Answer exported locally as Markdown with citations.");
   }
 
+  async function onRateAnswer(run: ChatRun, runKey: string, rating: AnswerFeedbackRating) {
+    if (busy !== "" || savedFeedback[runKey]) return;
+    setBusy("feedback");
+    setError("");
+    try {
+      await saveAnswerFeedback(run.session_id, {
+        rating,
+        query: run.query,
+        answer: run.response.answer,
+        document_id: run.document_id,
+        source_title: run.source_title,
+        reason: rating === "good" ? "helpful_answer" : "needs_accuracy_or_clarity_review",
+      });
+      setSavedFeedback((current) => ({ ...current, [runKey]: rating }));
+      setError(
+        rating === "good"
+          ? "Saved as a strong local answer example."
+          : "Saved as a local review case for retrieval and answer-quality tuning.",
+      );
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function onExportThread() {
     if (!sessionId.trim()) return;
     setBusy("privacy");
@@ -587,6 +616,7 @@ export default function Home() {
       const response = await deleteSession(sessionId.trim());
       setQueryHistory([]);
       setQueryResult(null);
+      setSavedFeedback({});
       setMemory(null);
       setTimeline(null);
       setError(`Cleared ${response.deleted_messages} local thread messages.`);
@@ -1051,8 +1081,11 @@ export default function Home() {
         <div className="thread-scroll">
           {queryHistory.length ? (
             <div className="turn-list">
-              {queryHistory.map((run, index) => (
-                <article className="turn" key={`${run.timestamp}-${index}`}>
+              {queryHistory.map((run, index) => {
+                const runKey = run.timestamp;
+                const feedbackRating = savedFeedback[runKey];
+                return (
+                <article className="turn" key={runKey}>
                   <div className="bubble user">
                     <div className="message-meta">
                       <span className="tiny">You</span>
@@ -1089,6 +1122,25 @@ export default function Home() {
                         Open Sources
                       </button>
                     </div>
+                    <div className="feedback-row" aria-label="Answer feedback">
+                      <span>{feedbackRating ? "Saved for local quality review" : "Was this useful?"}</span>
+                      <button
+                        className={cx("feedback-button", feedbackRating === "good" && "active")}
+                        disabled={busy !== "" || Boolean(feedbackRating)}
+                        onClick={() => onRateAnswer(run, runKey, "good")}
+                        type="button"
+                      >
+                        Good
+                      </button>
+                      <button
+                        className={cx("feedback-button", feedbackRating === "needs_work" && "active")}
+                        disabled={busy !== "" || Boolean(feedbackRating)}
+                        onClick={() => onRateAnswer(run, runKey, "needs_work")}
+                        type="button"
+                      >
+                        Needs work
+                      </button>
+                    </div>
                     {run.response.citations.length ? (
                       <details className="source-drawer">
                         <summary>
@@ -1112,7 +1164,8 @@ export default function Home() {
                     ) : null}
                   </div>
                 </article>
-              ))}
+                );
+              })}
               <div ref={chatEndRef} />
             </div>
           ) : (

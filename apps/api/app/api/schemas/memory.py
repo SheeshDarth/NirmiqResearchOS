@@ -19,6 +19,32 @@ class SessionDeleteResponse(BaseModel):
     deleted_snapshots: int
 
 
+class AnswerFeedbackRequest(BaseModel):
+    rating: Literal["good", "needs_work"]
+    query: str = Field(..., min_length=1, max_length=4000)
+    answer: str = Field(..., min_length=1, max_length=20000)
+    document_id: str | None = Field(default=None, max_length=160)
+    source_title: str | None = Field(default=None, max_length=300)
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class AnswerFeedbackItem(BaseModel):
+    id: str
+    session_id: str
+    rating: Literal["good", "needs_work"]
+    query: str
+    answer: str
+    document_id: str | None = None
+    source_title: str | None = None
+    reason: str | None = None
+    created_at: datetime
+
+
+class AnswerFeedbackListResponse(BaseModel):
+    session_id: str
+    items: list[AnswerFeedbackItem]
+
+
 class SessionTimelineMessage(BaseModel):
     id: str
     role: Literal["user", "assistant", "system"]
