@@ -7,6 +7,29 @@ Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
+## Latest Session Update - 2026-06-26 RAG Reliability Problem Log
+
+Objective: start the RAG Reliability Phase by documenting all known problems and the architecture-level path to reduce hallucination from weak retrieval.
+
+Implemented:
+
+- Added `problems_faced.md` as the canonical engineering problem log.
+- Added a Mermaid architecture diagram showing ingestion, retrieval, synthesis, verification, feedback, and evaluation loops.
+- Documented past problems, current retrieval gaps, future risks, root causes, what has worked, and the retrieval reliability roadmap.
+- Recorded the current real-world retrieval baseline:
+  - BM25 MRR around `0.578`.
+  - BM25 Recall@8 around `0.750`.
+  - Expected citation coverage around `0.750`.
+- Framed hallucination as primarily a retrieval precision and evidence-verification problem, not only a model-quality problem.
+
+Next intended phase:
+
+- Freeze baseline eval metrics.
+- Convert `Needs work` feedback into labeled retrieval cases.
+- Add textbook-aware chunk metadata.
+- Add section-first retrieval before chunk-level ranking.
+- Improve local deterministic query expansion and lightweight reranking only after diagnostics are available.
+
 ## Latest Session Update - 2026-06-26 V4.2 Local Feedback Loop And Phone Codex Access
 
 Objective: continue the next phase without complicating the UI, while giving Siddharth a safe phone-based Codex access path.

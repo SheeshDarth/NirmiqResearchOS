@@ -98,6 +98,10 @@ The focus is not just answering.
 
 The focus is answering with evidence.
 
+## Engineering Problem Log
+
+NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_faced.md). It documents past failures, current RAG retrieval gaps, future risks, the hallucination root cause analysis, and the RAG Reliability Phase roadmap.
+
 ## Current V4 Foundation
 
 Implemented in the current repository:

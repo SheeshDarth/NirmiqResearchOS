@@ -2,6 +2,10 @@
 
 Last updated: 2026-06-26
 
+## Canonical Problem Log
+
+See [`../problems_faced.md`](../problems_faced.md) for the current architecture diagram, full problem history, current RAG retrieval gaps, future risks, and the RAG Reliability Phase roadmap.
+
 ## 2026-06-26 V4.2 Local Feedback Loop
 
 Implemented:
