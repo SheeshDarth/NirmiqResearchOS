@@ -5,9 +5,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
-$tempRoot = Join-Path $root "temp\pytest"
+$runId = [Guid]::NewGuid().ToString("N")
+$tempRoot = Join-Path $root "temp\pytest-runs\$runId"
 if (-not $CacheDir) {
-    $CacheDir = Join-Path $root "temp\pytest-cache"
+    $CacheDir = Join-Path $root "temp\pytest-cache-runs\$runId"
 }
 
 New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null

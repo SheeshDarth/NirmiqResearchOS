@@ -1,11 +1,119 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-06-22
+Last updated: 2026-06-26
 Current branch: `v3-foundation`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-06-26 RAG Reliability Problem Log
+
+Objective: start the RAG Reliability Phase by documenting all known problems and the architecture-level path to reduce hallucination from weak retrieval.
+
+Implemented:
+
+- Added `problems_faced.md` as the canonical engineering problem log.
+- Added a Mermaid architecture diagram showing ingestion, retrieval, synthesis, verification, feedback, and evaluation loops.
+- Documented past problems, current retrieval gaps, future risks, root causes, what has worked, and the retrieval reliability roadmap.
+- Recorded the current real-world retrieval baseline:
+  - BM25 MRR around `0.578`.
+  - BM25 Recall@8 around `0.750`.
+  - Expected citation coverage around `0.750`.
+- Framed hallucination as primarily a retrieval precision and evidence-verification problem, not only a model-quality problem.
+
+Next intended phase:
+
+- Freeze baseline eval metrics.
+- Convert `Needs work` feedback into labeled retrieval cases.
+- Add textbook-aware chunk metadata.
+- Add section-first retrieval before chunk-level ranking.
+- Improve local deterministic query expansion and lightweight reranking only after diagnostics are available.
+
+## Latest Session Update - 2026-06-26 V4.2 Local Feedback Loop And Phone Codex Access
+
+Objective: continue the next phase without complicating the UI, while giving Siddharth a safe phone-based Codex access path.
+
+Implemented:
+
+- Added a local SQLite `answer_feedback` table for answer-quality signals.
+- Added `POST /memory/{session_id}/feedback` and `GET /memory/{session_id}/feedback`.
+- Added a compact ChatGPT-style feedback row below assistant answers: `Good` and `Needs work`.
+- Saved feedback stores session id, rating, prompt, answer, optional source document id/title, reason, and timestamp.
+- Session deletion now removes associated feedback records.
+- Document deletion preserves the feedback review signal but nulls the deleted document id so stale foreign references are not kept.
+- Added unit and integration tests for feedback storage, API contract, session deletion, and document deletion behavior.
+- Refreshed `docs/remote_codex_access.md` from the current official Codex manual:
+  - Recommended path is Codex App Remote Connections through ChatGPT mobile.
+  - Do not expose NIRMIQ local FastAPI/Next.js or Codex app-server ports publicly.
+  - Use Codex Web/GitHub only for code/docs tasks that do not need private local corpora.
+
+Why it improves the project:
+
+- Bad or boring answers can now become a local review dataset instead of disappearing after testing.
+- This supports the next retrieval-evaluation sprint without adding a heavy analytics system.
+- The UI remains simple because feedback is shown as quiet answer-level controls, not a dashboard.
+- Phone access is framed around the official secure remote-control flow instead of risky port exposure.
+
+Tradeoffs:
+
+- Feedback is currently manual and local-only. It does not auto-tune retrieval yet.
+- Feedback is stored per current UI run key, so saved-button state resets on browser refresh while the backend record remains.
+- The official phone remote-control flow requires the Codex desktop host to stay awake and signed into the same account.
+
+Verification:
+
+- `python -m pytest apps/api/app/tests/unit/test_answer_feedback.py apps/api/app/tests/integration/test_answer_feedback_flow.py -q`: passed, 3 tests.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+- `npm.cmd run test:api`: passed, 50 tests.
+
+Test harness fix:
+
+- `scripts/test_api.ps1` now uses a unique per-run temp/cache folder under `temp/pytest-runs` and `temp/pytest-cache-runs` to avoid stale Windows temp ACL/lock failures.
+
+## Latest Session Update - 2026-06-22 V4.1 Chat Shell And Accuracy Pass
+
+Objective: respond to live testing feedback that answers improved but still needed stronger accuracy and a simpler, more ChatGPT-like presentation.
+
+Council verdict:
+
+- The main product path should be `attach material -> ask naturally -> read a clear answer -> open sources only if needed`.
+- Frontend mode controls should stop driving normal query behavior; backend intent routing should own summaries, comparisons, paper drafting, exam-style answers, and abstention.
+- Presentation is part of reliability. Answers need a predictable contract: direct answer, key points, and evidence note.
+- More visible tools create doubt. Paper Lab and Exam Lab should remain available as quiet tool hints, not compete with the primary chat.
+
+Implemented:
+
+- Simplified the top workspace header from a mode switcher into a clear `Ask your documents` assistant header.
+- Moved Research/Chat/Paper/Exam controls into compact composer tool chips: `Auto`, `Chat`, `Paper`, `Exam`.
+- Changed normal query submission so it no longer inherits stale UI modes such as `summary`; default `Auto` sends `research` and lets the backend detect intent.
+- Kept explicit actions such as one-click summary, golden-demo prompts, Paper, and Exam as optional mode hints.
+- Extracted `AnswerBody` into `apps/web/components/answer-body.tsx` for the ongoing frontend component split.
+- Improved answer readability with a narrower assistant column, better answer line spacing, compact headings, and less dashboard-like header weight.
+- Added backend detection for exam-style language such as `10 mark answer`, `study guide`, `revision notes`, and `important questions` even when the UI is in normal Research/Auto mode.
+- Wired backend-detected exam intent into exam context loading so question banks/diagrams can be used without perfect frontend mode selection.
+- Added focused retrieval expansion for factual lookup prompts, especially natural textbook questions like `Explain a few unsupervised algorithms`.
+- Expanded unsupervised-algorithm focus terms for selected-document seed chunks and synthesis sentence scoring.
+- Tightened the fallback synthesis answer contract for list/algorithm questions to produce `Direct answer`, `Key points`, and `Evidence note` instead of dense chunk dumps.
+
+Verification:
+
+- `python -m pytest apps/api/app/tests/unit/test_query_intent.py apps/api/app/tests/unit/test_synthesis_faithfulness.py -q`: passed, 17 tests.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+- `npm.cmd run test:api`: passed, 47 tests.
+
+Preview note:
+
+- Browser preview initially showed only the server boot shell because the already-running Next dev server served HTML pointing to a stale page chunk after a rebuild.
+- This is a dev-runtime chunk mismatch, not a TypeScript/build failure. The fix for local preview is to stop the stale web dev process and restart from `scripts/run_local.ps1` or `NIRMIQ ResearchOS.cmd`.
+
+Tradeoffs:
+
+- This is not the full component split yet. `page.tsx` is smaller but still owns most state.
+- The answer quality improvement is conservative and local-first; no cloud/API model routing or heavy reranker/graph dependency was added.
+- Retrieval accuracy still needs a larger real-world labeled eval set to move from demo-good to robust across textbooks.
 
 ## Latest Session Update - 2026-06-22 UI Cleanup Pass
 

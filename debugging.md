@@ -1,6 +1,32 @@
 # NIRMIQ Debugging Guide
 
-Last updated: 2026-06-19
+Last updated: 2026-06-26
+
+## 2026-06-26 V4.2 Feedback Loop And Remote Codex Notes
+
+Added debugging support:
+
+- `POST /memory/{session_id}/feedback` lets testers save answer quality failures locally without screenshots or manual notes.
+- `GET /memory/{session_id}/feedback` lists recent feedback records for building eval labels.
+- Feedback records include prompt, answer, rating, optional source title/document id, reason, and timestamp.
+- `DELETE /memory/{session_id}` now clears feedback for that session.
+
+How to use during RAG debugging:
+
+1. Ask against a real textbook or notes file.
+2. If the answer is wrong, too broad, boring, missing citations, or not presentation-ready, click `Needs work`.
+3. Export or inspect feedback later and convert repeated failures into retrieval eval cases.
+4. Only promote a prompt into the benchmark after confirming the expected source pages/chunks.
+
+Remote access note:
+
+- Use Codex App Remote Connections through ChatGPT mobile for phone steering.
+- Do not expose local FastAPI/Next.js/Codex app-server ports publicly for convenience; NIRMIQ contains local documents and metadata.
+
+Test harness note:
+
+- `scripts/test_api.ps1` uses per-run folders under `temp/pytest-runs` and `temp/pytest-cache-runs`.
+- This avoids Windows `PermissionError: [WinError 5] Access is denied` when an old `temp/pytest/pytest-of-*` directory is locked or has stale ACLs.
 
 ## Local URLs
 
@@ -74,6 +100,16 @@ cd C:\Nirmiq-researchOS
 Remove-Item -Recurse -Force .\apps\web\.next
 .\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
 ```
+
+If the browser shows only `Preparing your local study workspace...` and the console reports `ChunkLoadError` for `/_next/static/chunks/app/page-*.js`, the dev server is probably serving stale HTML after `.next` changed during a build. Stop the stale preview and relaunch:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\stop_local.ps1
+.\scripts\run_local.ps1 -OpenBrowser
+```
+
+If the stale server was started manually and `stop_local.ps1` does not own the PID, stop the process listening on port `3002`, then rerun the launcher.
 
 Manual backend:
 

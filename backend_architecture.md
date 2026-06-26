@@ -1,6 +1,6 @@
 # NIRMIQ Backend Architecture
 
-Last updated: 2026-06-22
+Last updated: 2026-06-26
 
 ## Overview
 
@@ -31,7 +31,7 @@ The desktop shell is intentionally not a second application layer. It preserves 
 - `RetrievalService`: BM25/vector retrieval, RRF fusion, optional reranking, citation assembly.
 - `SynthesisService`: grounded response generation, summary formatting, citation coverage, fallback behavior, abstention.
 - `QueryService`: end-to-end query orchestration, intent routing, summary cache orchestration, mode/profile handling, memory writes.
-- `MemoryService`: session snapshots and continuity.
+- `MemoryService`: session snapshots, continuity, thread export/delete, and local answer feedback for quality review.
 - `DocumentsService`: library and chunk drilldown.
 - `Local Data Controls`: thread export/delete and document-index purge through existing memory/document services.
 - `ExamService`: exam profiles, question banks, and exam-specific artifacts.
@@ -69,14 +69,29 @@ This keeps the current frontend stable while addressing API-versioning readiness
 2. Load session memory.
 3. Normalize and route prompt intent.
 4. Return cached selected-document summary when the document hash/profile matches.
-5. Retrieve candidates from BM25 and optional vector search.
-6. Fuse with RRF and rerank/pack context.
-7. Generate grounded answer or abstain.
-8. Map final answer citation anchors back to the exact selected context chunks used during synthesis.
-9. Compute citation coverage and trust metadata.
-10. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
-11. Persist user/assistant turns.
-12. Return answer, answer-used citations, optional debug metadata, and grounding state.
+5. Expand retrieval query internally for summary, factual lookup, comparison, paper, deep research, and exam intents.
+6. Retrieve candidates from BM25 and optional vector search.
+7. Fuse with RRF and rerank/pack context.
+8. Generate grounded answer or abstain.
+9. Map final answer citation anchors back to the exact selected context chunks used during synthesis.
+10. Compute citation coverage and trust metadata.
+11. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
+12. Persist user/assistant turns.
+13. Return answer, answer-used citations, optional debug metadata, and grounding state.
+
+### Answer Feedback
+
+1. User rates an assistant answer as `Good` or `Needs work` from the chat bubble.
+2. `POST /memory/{session_id}/feedback` stores the prompt, answer, rating, optional source document/title, reason, and timestamp in SQLite.
+3. Feedback stays local and is not sent to analytics, cloud services, or model fine-tuning.
+4. Clearing a session removes its feedback records.
+5. Deleting a document preserves the review signal but clears the document id reference to avoid stale links.
+
+Purpose:
+
+- Build a real local failure/success set from Siddharth's testing.
+- Feed future retrieval-evaluation labels without adding a heavy analytics stack.
+- Keep answer-quality tuning grounded in actual textbook/document behavior.
 
 ## SQLite Responsibilities
 
@@ -115,6 +130,9 @@ This keeps the current frontend stable while addressing API-versioning readiness
 - Chunk quality scoring and retrieval quality weighting.
 - Citation verification with fallback rewrite for unsupported claims.
 - Public citations are filtered to final answer-used context chunks, not the full retrieval bundle.
+- Backend intent routing now owns exam-style language and factual query expansion, reducing reliance on frontend mode selection.
+- Factual selected-document prompts add focused retrieval hints for definitions, examples, algorithms, limitations, and common ML families such as unsupervised learning.
+- Fallback synthesis uses a compact answer contract for list/algorithm questions: direct answer, key points, evidence note.
 - Local ingestion allowlists and upload content sniffing.
 - Adaptive long-context temperature for deep research and drafting.
 - SQLite-backed selected-document summary cache.

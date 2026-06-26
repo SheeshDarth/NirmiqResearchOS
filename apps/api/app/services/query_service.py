@@ -59,7 +59,7 @@ class QueryService:
                 cached_response.retrieval_meta = None
             return cached_response
 
-        exam_context = self._build_exam_context(payload)
+        exam_context = self._build_exam_context(payload, intent)
         retrieval_query = self._retrieval_query(payload.query, response_mode, exam_context, intent)
         bundle = await self._retrieval_service.retrieve_with_mode(
             retrieval_query,
@@ -263,8 +263,8 @@ class QueryService:
         ]
         return to_citations(cited_chunks)
 
-    def _build_exam_context(self, payload: QueryRequest) -> dict[str, object]:
-        if not payload.document_id or not self._uses_exam_context(payload.mode):
+    def _build_exam_context(self, payload: QueryRequest, intent: QueryIntent) -> dict[str, object]:
+        if not payload.document_id or not self._uses_exam_context(payload.mode, intent):
             return {"questions": [], "diagrams": []}
         questions = self._sqlite_repo.list_question_bank_items(payload.document_id)[:12]
         diagrams = self._sqlite_repo.list_diagram_assets(payload.document_id)[:8]
@@ -312,6 +312,14 @@ class QueryService:
             return f"{query}\n\nPaper drafting retrieval hints: related work methodology results limitations future work citations."
         if intent.intent == "deep_research":
             return f"{query}\n\nDeep research retrieval hints: mechanism evidence caveats architecture results limitations implications."
+        if intent.intent == "factual_lookup":
+            hints = QueryService._focused_retrieval_hints(query)
+            if hints:
+                return f"{query}\n\nFocused retrieval hints: {hints}"
+            return (
+                f"{query}\n\n"
+                "Focused retrieval hints: definition explanation examples types steps advantages limitations key points."
+            )
         if mode.strip().lower() not in {"study_guide", "important_questions"}:
             return query
         questions = exam_context.get("questions", [])
@@ -377,8 +385,8 @@ class QueryService:
         }
 
     @staticmethod
-    def _uses_exam_context(mode: str) -> bool:
-        return mode.strip().lower() in {
+    def _uses_exam_context(mode: str, intent: QueryIntent) -> bool:
+        return intent.intent == "exam" or mode.strip().lower() in {
             "exam_answer",
             "revision_notes",
             "important_questions",
@@ -555,7 +563,55 @@ class QueryService:
             stem = QueryService._light_stem(token)
             if stem != token:
                 terms.add(stem)
+        if "unsupervised" in terms and ("algorithm" in terms or "algorithms" in terms):
+            terms.update(
+                {
+                    "clustering",
+                    "cluster",
+                    "density",
+                    "anomaly",
+                    "detection",
+                    "dimensionality",
+                    "reduction",
+                    "pca",
+                    "k-means",
+                    "dbscan",
+                }
+            )
         return terms
+
+    @staticmethod
+    def _focused_retrieval_hints(query: str) -> str:
+        normalized = query.lower()
+        tokens = set(re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", normalized))
+        hints = ["definition", "explanation", "examples", "types", "key points"]
+        if {"algorithm", "algorithms"} & tokens:
+            hints.extend(["algorithm", "method", "procedure", "training", "model"])
+        if "unsupervised" in tokens:
+            hints.extend(
+                [
+                    "unsupervised learning",
+                    "clustering",
+                    "k-means",
+                    "dbscan",
+                    "hierarchical clustering",
+                    "density estimation",
+                    "anomaly detection",
+                    "dimensionality reduction",
+                    "pca",
+                ]
+            )
+        if {"supervised", "classification", "regression"} & tokens:
+            hints.extend(["classification", "regression", "labels", "training examples", "prediction"])
+        if {"limitation", "limitations", "caveat", "caveats"} & tokens:
+            hints.extend(["limitations", "assumptions", "tradeoffs", "failure cases"])
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for hint in hints:
+            if hint not in seen:
+                deduped.append(hint)
+                seen.add(hint)
+        return " ".join(deduped)
 
     @staticmethod
     def _factual_seed_score(row: dict[str, object], query: str, focus_terms: set[str]) -> float:

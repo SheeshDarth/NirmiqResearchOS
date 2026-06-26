@@ -1,6 +1,6 @@
 # NIRMIQ Product Requirements Document
 
-Last updated: 2026-06-20
+Last updated: 2026-06-26
 
 ## Product Name
 
@@ -49,6 +49,7 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 - Compact trust badge for citation verification and citation coverage.
 - Safer selected-source behavior: when a document is selected, default questions remain scoped to that source.
 - Honest evidence behavior: stale vector hits, zero-text reindex failures, and unsupported cited claims must not produce trusted answers.
+- V4.2 local answer feedback: users can mark answers as `Good` or `Needs work` so bad responses become a local improvement dataset.
 
 ## V4 Golden Demo Scope
 
@@ -86,6 +87,7 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 3. Read grounded answer.
 4. Open Sources only if citation detail is needed.
 5. Minimize composer while reading long responses.
+6. Mark the answer as useful or needing work when it should influence later tuning.
 
 ### Chat
 

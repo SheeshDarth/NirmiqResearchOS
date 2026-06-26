@@ -5,6 +5,9 @@ from app.adapters.llm.generator import Generator
 from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.api.schemas.common import Citation
 from app.api.schemas.memory import (
+    AnswerFeedbackItem,
+    AnswerFeedbackListResponse,
+    AnswerFeedbackRequest,
     SessionDeleteResponse,
     SessionSummaryResponse,
     SessionTimelineMessage,
@@ -108,6 +111,34 @@ class MemoryService:
             deleted=bool(result["deleted"]),
             deleted_messages=int(result["deleted_messages"]),
             deleted_snapshots=int(result["deleted_snapshots"]),
+        )
+
+    async def save_answer_feedback(
+        self,
+        session_id: str,
+        payload: AnswerFeedbackRequest,
+    ) -> AnswerFeedbackItem:
+        row = self._sqlite_repo.insert_answer_feedback(
+            feedback_id=str(uuid4()),
+            session_id=session_id,
+            rating=payload.rating,
+            query=payload.query.strip(),
+            answer=payload.answer.strip(),
+            document_id=payload.document_id.strip() if payload.document_id else None,
+            source_title=payload.source_title.strip() if payload.source_title else None,
+            reason=payload.reason.strip() if payload.reason else None,
+        )
+        return AnswerFeedbackItem.model_validate(row)
+
+    async def list_answer_feedback(
+        self,
+        session_id: str,
+        limit: int = 50,
+    ) -> AnswerFeedbackListResponse:
+        rows = self._sqlite_repo.list_answer_feedback(session_id=session_id, limit=limit)
+        return AnswerFeedbackListResponse(
+            session_id=session_id,
+            items=[AnswerFeedbackItem.model_validate(row) for row in rows],
         )
 
     async def maybe_refresh_snapshot(self, session_id: str) -> None:

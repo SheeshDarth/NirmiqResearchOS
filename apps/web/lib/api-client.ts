@@ -94,6 +94,25 @@ export type SessionDeleteResponse = {
   deleted_snapshots: number;
 };
 
+export type AnswerFeedbackRating = "good" | "needs_work";
+
+export type AnswerFeedbackItem = {
+  id: string;
+  session_id: string;
+  rating: AnswerFeedbackRating;
+  query: string;
+  answer: string;
+  document_id?: string | null;
+  source_title?: string | null;
+  reason?: string | null;
+  created_at: string;
+};
+
+export type AnswerFeedbackListResponse = {
+  session_id: string;
+  items: AnswerFeedbackItem[];
+};
+
 export type DocumentItem = {
   id: string;
   title?: string | null;
@@ -321,6 +340,35 @@ export async function deleteSession(sessionId: string): Promise<SessionDeleteRes
     method: "DELETE",
   });
   return parseJson<SessionDeleteResponse>(response);
+}
+
+export async function saveAnswerFeedback(
+  sessionId: string,
+  payload: {
+    rating: AnswerFeedbackRating;
+    query: string;
+    answer: string;
+    document_id?: string;
+    source_title?: string;
+    reason?: string;
+  },
+): Promise<AnswerFeedbackItem> {
+  const response = await apiFetch(`${API_BASE}/memory/${encodeURIComponent(sessionId)}/feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<AnswerFeedbackItem>(response);
+}
+
+export async function listAnswerFeedback(
+  sessionId: string,
+  limit = 50,
+): Promise<AnswerFeedbackListResponse> {
+  const response = await apiFetch(
+    `${API_BASE}/memory/${encodeURIComponent(sessionId)}/feedback?limit=${encodeURIComponent(String(limit))}`,
+  );
+  return parseJson<AnswerFeedbackListResponse>(response);
 }
 
 export async function listDocuments(): Promise<DocumentListResponse> {

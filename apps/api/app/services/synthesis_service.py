@@ -347,7 +347,8 @@ class SynthesisService:
             "Cite claims with [n] where n is the context block number.\n"
             "Prefer higher-scoring context blocks when multiple sources support the same claim.\n"
             "Answer the user's exact question, not a generic document summary.\n"
-            "Use readable sections: Short answer, Key points, and Where this came from when appropriate.\n"
+            "Use this compact answer contract whenever possible: Direct answer, Key points, Evidence note.\n"
+            "If the user asks for algorithms, examples, steps, or a list, answer as a concise list and cite each item.\n"
             "Keep paragraphs short and avoid dense textbook dumps.\n"
             f"{mode_instruction}\n\n"
             f"{exam_instruction}\n"
@@ -374,6 +375,12 @@ class SynthesisService:
             return SynthesisService._fallback_research_paper(query=query, context_chunks=context_chunks)
         if mode == "study_guide" and exam_context and exam_context.get("questions"):
             return SynthesisService._fallback_study_guide(context_chunks=context_chunks, exam_context=exam_context)
+        if SynthesisService._is_list_or_algorithm_query(query):
+            return SynthesisService._fallback_list_answer(
+                query=query,
+                context_chunks=context_chunks,
+                response_mode=response_mode,
+            )
         if SynthesisService._is_definition_solution_query(query):
             return SynthesisService._fallback_definition_solution_answer(
                 query=query,
@@ -814,13 +821,56 @@ class SynthesisService:
                 sections.extend(f"- {sentence} [{idx}]" for idx, sentence in details)
             sections.append("\nWhere this came from\nOpen Sources to inspect the cited passages.")
             return "\n".join(sections)
-        bullets = "\n".join(f"- {sentence} [{idx}]" for idx, sentence in selected[:5])
         lead = selected[0][1]
+        support = selected[1:5] or selected[:1]
+        bullets = "\n".join(f"- {sentence} [{idx}]" for idx, sentence in support[:4])
         return (
-            f"{heading}\n{lead} [{selected[0][0]}]\n\n"
+            f"{heading}\n\n"
+            f"Direct answer\n{lead} [{selected[0][0]}]\n\n"
             f"Key points\n{bullets}\n\n"
-            "Study takeaway\nAsk a follow-up like \"give examples\", \"compare these\", or \"make exam questions\" if you want the next layer."
+            "Evidence note\nOpen Sources to inspect the exact passages used."
         )
+
+    @staticmethod
+    def _is_list_or_algorithm_query(query: str) -> bool:
+        normalized = query.lower()
+        return bool(
+            re.search(r"\b(list|few|some|examples?|algorithms?|types?|methods?|techniques?)\b", normalized)
+        )
+
+    @staticmethod
+    def _fallback_list_answer(
+        query: str,
+        context_chunks: list[tuple[int, str]],
+        response_mode: str,
+    ) -> str:
+        query_terms = SynthesisService._query_terms(query)
+        evidence = SynthesisService._best_evidence_sentences(
+            context_chunks=context_chunks,
+            query_terms=query_terms,
+            limit=6,
+        )
+        if not evidence:
+            previews = [
+                (idx, SynthesisService._context_text(block)[:220].strip())
+                for idx, block in context_chunks[:3]
+                if SynthesisService._context_text(block).strip()
+            ]
+            if not previews:
+                return "I found citations, but not enough readable evidence to list items safely."
+            return SynthesisService._format_extract_answer(
+                heading=SynthesisService._fallback_heading(response_mode),
+                selected=previews,
+                response_mode=response_mode,
+            )
+
+        heading = SynthesisService._fallback_heading(response_mode)
+        sections = [heading, "\nDirect answer"]
+        sections.append(f"The uploaded material supports the following points. [{evidence[0][0]}]")
+        sections.append("\nKey points")
+        sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in evidence[:5])
+        sections.append("\nEvidence note\nOnly items supported by retrieved passages are included.")
+        return "\n".join(sections)
 
     @staticmethod
     def _first_readable_sentences(
@@ -859,11 +909,25 @@ class SynthesisService:
 
     @staticmethod
     def _query_terms(query: str) -> set[str]:
-        return {
+        terms = {
             token
             for token in re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", query.lower())
             if token not in _QUERY_STOPWORDS
         }
+        if "unsupervised" in terms and ("algorithm" in terms or "algorithms" in terms):
+            terms.update(
+                {
+                    "clustering",
+                    "cluster",
+                    "density",
+                    "anomaly",
+                    "detection",
+                    "dimensionality",
+                    "reduction",
+                    "pca",
+                }
+            )
+        return terms
 
     @staticmethod
     def _relevance_query(

@@ -28,6 +28,12 @@ def test_intent_router_detects_exam_mode() -> None:
     assert intent.intent == "exam"
 
 
+def test_intent_router_detects_exam_language_without_exam_mode() -> None:
+    intent = detect_query_intent("Write a 10 mark answer from this chapter", "research")
+    assert intent.intent == "exam"
+    assert intent.route == "exam_grounded"
+
+
 def test_intent_router_detects_general_chat_mode() -> None:
     intent = detect_query_intent("Can you help me think?", "general_chat")
     assert intent.intent == "general_chat"

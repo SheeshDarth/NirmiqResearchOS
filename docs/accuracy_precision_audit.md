@@ -1,6 +1,55 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-06-22
+Last updated: 2026-06-26
+
+## Canonical Problem Log
+
+See [`../problems_faced.md`](../problems_faced.md) for the current architecture diagram, full problem history, current RAG retrieval gaps, future risks, and the RAG Reliability Phase roadmap.
+
+## 2026-06-26 V4.2 Local Feedback Loop
+
+Implemented:
+
+- Added answer-level `Good` / `Needs work` feedback in the chat UI.
+- Added SQLite-backed `answer_feedback` records through `/memory/{session_id}/feedback`.
+- Stored feedback remains local and includes the query, answer, rating, optional source document/title, reason, and timestamp.
+- Session deletion removes associated feedback records.
+- Document deletion preserves the feedback text for review while clearing stale document ids.
+
+Why this matters for accuracy:
+
+- Live testing failures can now be captured as structured records.
+- The next eval sprint can convert repeated `Needs work` feedback into labeled questions with expected source chunks.
+- This avoids blindly adding prompt rules or retrieval tweaks without measuring whether they helped.
+
+Recommended next use:
+
+- Run one textbook through 20-30 realistic questions.
+- Mark every wrong, vague, overlong, or poorly cited answer as `Needs work`.
+- Promote repeated failure patterns into `data/processed/eval` labels and regression tests.
+
+## 2026-06-22 V4.1 Accuracy/Presentation Update
+
+Implemented improvements:
+
+- Backend intent routing now detects exam-style prompts from natural language, not only from explicit frontend modes.
+- Exam context loading can follow backend-detected exam intent, preserving question-bank/diagram usefulness when users ask naturally.
+- Factual lookup retrieval now expands natural questions with focused hints for definitions, examples, types, limitations, and algorithm families.
+- Unsupervised-algorithm queries receive extra retrieval and synthesis focus terms such as clustering, density estimation, anomaly detection, dimensionality reduction, PCA, k-means, and DBSCAN.
+- Fallback synthesis for list/algorithm questions now uses a compact answer contract: `Direct answer`, `Key points`, `Evidence note`.
+- Normal frontend queries no longer inherit stale summary mode. The default `Auto` path sends a neutral research request and lets backend intent routing decide.
+
+Validation:
+
+- Focused query intent and synthesis tests passed.
+- Full API suite passed with 47 tests.
+- Frontend production build passed.
+
+Remaining accuracy gaps:
+
+- The project still needs a larger real-world labeled eval set from actual textbooks, notes, papers, and exam material.
+- Current focused expansions help common academic phrasing but are still deterministic lexical policies, not a learned query rewriter.
+- The next quality sprint should record saved failure cases from live testing and add them to retrieval/synthesis regression tests.
 
 ## Research Basis
 

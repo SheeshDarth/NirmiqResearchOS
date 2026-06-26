@@ -1,6 +1,13 @@
 from fastapi import APIRouter, Depends, Response
 
-from app.api.schemas.memory import SessionDeleteResponse, SessionSummaryResponse, SessionTimelineResponse
+from app.api.schemas.memory import (
+    AnswerFeedbackItem,
+    AnswerFeedbackListResponse,
+    AnswerFeedbackRequest,
+    SessionDeleteResponse,
+    SessionSummaryResponse,
+    SessionTimelineResponse,
+)
 from app.core.deps import get_memory_service
 from app.services.memory_service import MemoryService
 
@@ -35,6 +42,24 @@ async def get_session_timeline(
     service: MemoryService = Depends(get_memory_service),
 ) -> SessionTimelineResponse:
     return await service.get_timeline(session_id)
+
+
+@router.post("/{session_id}/feedback", response_model=AnswerFeedbackItem)
+async def save_answer_feedback(
+    session_id: str,
+    payload: AnswerFeedbackRequest,
+    service: MemoryService = Depends(get_memory_service),
+) -> AnswerFeedbackItem:
+    return await service.save_answer_feedback(session_id, payload)
+
+
+@router.get("/{session_id}/feedback", response_model=AnswerFeedbackListResponse)
+async def list_answer_feedback(
+    session_id: str,
+    limit: int = 50,
+    service: MemoryService = Depends(get_memory_service),
+) -> AnswerFeedbackListResponse:
+    return await service.list_answer_feedback(session_id, limit=limit)
 
 
 @router.delete("/{session_id}", response_model=SessionDeleteResponse)

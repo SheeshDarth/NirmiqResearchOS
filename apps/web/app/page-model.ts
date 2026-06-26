@@ -23,7 +23,8 @@ export type BusyState =
   | "documents"
   | "delete"
   | "demo"
-  | "privacy";
+  | "privacy"
+  | "feedback";
 export type DeepView = "evidence" | "context" | "compare";
 export type Chunk = DocumentDetailResponse["chunks"][number];
 
@@ -88,23 +89,23 @@ export const WORKSPACE_SECTIONS: Array<{
 }> = [
   {
     value: "research",
-    label: "Research",
-    hint: "Deep reads with citations.",
+    label: "Auto",
+    hint: "Route from your question.",
   },
   {
     value: "general",
     label: "Chat",
-    hint: "Talk normally, local-first.",
+    hint: "General local chat.",
   },
   {
     value: "paper",
-    label: "Paper Lab",
-    hint: "Engineering research drafts.",
+    label: "Paper",
+    hint: "Draft with citations.",
   },
   {
     value: "exam",
-    label: "Exam Lab",
-    hint: "Marks, guides, diagrams.",
+    label: "Exam",
+    hint: "Marks-ready help.",
   },
 ];
 
@@ -503,10 +504,10 @@ export function composerPlaceholder(section: WorkspaceSection, mode: StudyMode, 
     return "Chat normally. If local sources are relevant, NIRMIQ will cite them.";
   }
   if (section === "paper") {
-    return "Ask for thesis, abstract, related work, methodology, limitations, or citation-backed sections...";
+    return "Ask for related work, methodology, limitations, abstract, or a cited paper section...";
   }
   if (section === "exam") {
-    return "Paste an exam question, marks requirement, or ask for a custom study guide PDF...";
+    return "Paste an exam question, marks requirement, or ask for a study guide...";
   }
   if (mode === "summary") {
     return `Summarize ${materialName} or ask for chapter-wise / method-wise breakdown...`;
@@ -514,38 +515,18 @@ export function composerPlaceholder(section: WorkspaceSection, mode: StudyMode, 
   if (mode === "deep_research") {
     return "Ask for a deeper cited analysis, assumptions, limitations, or research implications...";
   }
-  return `Ask about ${materialName}...`;
+  return `Ask anything about ${materialName}...`;
 }
 
-export function inferModeForQuery(query: string, currentMode: StudyMode, section: WorkspaceSection): StudyMode {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return currentMode;
-  if (isSummaryLikeQuery(normalized)) return "summary";
-  if (/\b(compare|contrast|difference|differences|versus|vs)\b/.test(normalized)) return "compare_concepts";
-  if (/\b(question bank|quiz|exam|marks?|10-mark|5-mark|important questions?)\b/.test(normalized)) {
-    return normalized.includes("revision") || normalized.includes("notes") ? "revision_notes" : "exam_answer";
-  }
-  if (/\b(research paper|related work|methodology|abstract|paper section|literature review)\b/.test(normalized)) {
-    return "research_paper";
-  }
-  if (/\b(deep research|detailed analysis|limitations|caveats|implications)\b/.test(normalized)) {
-    return "deep_research";
-  }
-  if (currentMode === "summary") return "research";
+export function defaultModeForWorkspace(section: WorkspaceSection): StudyMode {
   if (section === "general") return "general_chat";
-  return currentMode;
-}
-
-export function isSummaryLikeQuery(normalizedQuery: string): boolean {
-  if (/\b(summarize|summary|overview)\b/.test(normalizedQuery)) return true;
-  return /^(what is this|what is it about|explain this (pdf|document|file|material|paper|textbook)|explain the (pdf|document|file|material|paper|textbook))\??$/.test(
-    normalizedQuery,
-  );
+  if (section === "paper") return "research_paper";
+  if (section === "exam") return "exam_answer";
+  return "research";
 }
 
 export function workspaceVerb(section: WorkspaceSection): string {
   if (section === "paper") return "Draft";
   if (section === "exam") return "Solve";
-  if (section === "general") return "Send";
   return "Ask";
 }
