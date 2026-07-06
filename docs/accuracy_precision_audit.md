@@ -1,10 +1,34 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-06-26
+Last updated: 2026-07-06
 
 ## Canonical Problem Log
 
 See [`../problems_faced.md`](../problems_faced.md) for the current architecture diagram, full problem history, current RAG retrieval gaps, future risks, and the RAG Reliability Phase roadmap.
+
+## 2026-07-06 Evidence Reliability Gate And Eval Correction
+
+Implemented:
+
+- Fixed a legacy SQLite migration ordering bug where existing databases attempted to create `idx_chunks_section_active` before the additive `section_id` column existed.
+- Added a regression test for legacy `document_chunks` schemas.
+- Fixed full-query evaluation so expected evidence is checked against full cited chunk text, not truncated UI citation excerpts.
+- Added an evidence reliability gate in `SynthesisService`.
+- The gate blocks grounded answers when selected evidence, cited context, citation anchors, citation coverage, or verification state are not strong enough.
+- Citation coverage is now line-aware so study-guide question headings and structural UI labels are not treated as factual claims.
+
+Corrected full-query real-world result:
+
+| Mode | Samples | MRR | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 16 | 0.573 | 0.688 | 0.688 | 0.938 | 0.063 |
+| BM25 | 16 | 0.583 | 0.688 | 0.688 | 0.938 | 0.063 |
+
+Interpretation:
+
+- The previous `0.3125` full-query citation coverage was an evaluator artifact caused by scoring truncated citation previews.
+- The corrected answer path still trails raw retrieval coverage (`0.750`), so evidence selection and answer-used citation selection remain active reliability work.
+- The system now fails closed for at least one low-coverage real-world case instead of reporting `grounded=true` for every query.
 
 ## 2026-06-26 RAG Reliability Phase Start
 

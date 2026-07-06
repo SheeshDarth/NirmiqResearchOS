@@ -75,10 +75,11 @@ This keeps the current frontend stable while addressing API-versioning readiness
 8. Fuse with RRF and rerank/pack context.
 9. Generate grounded answer or abstain.
 10. Map final answer citation anchors back to the exact selected context chunks used during synthesis.
-11. Compute citation coverage and trust metadata.
-12. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
-13. Persist user/assistant turns.
-14. Return answer, answer-used citations, optional debug metadata, and grounding state.
+11. Run the evidence reliability gate over citation coverage, answer-used citations, verification state, and relevance.
+12. Compute citation coverage and trust metadata.
+13. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
+14. Persist user/assistant turns.
+15. Return answer, answer-used citations, optional debug metadata, and grounding state.
 
 ### Answer Feedback
 
@@ -151,6 +152,7 @@ Purpose:
 - Electron desktop shell with local runtime startup, diagnostics menu, log access, and portable Windows packaging path.
 - Textbook-aware section metadata and section-first retrieval diagnostics for selected-document queries.
 - Debug-only retrieval metadata for section candidates, chunk-selection reasons, and retrieval diagnostics.
+- Evidence reliability gate blocks `grounded=true` when final answer citations do not satisfy support checks.
 
 ## Next Backend Upgrades
 

@@ -234,9 +234,22 @@ async def run_eval_for_mode(
             citation_anchor_hits += 1 if contains_citation_anchor(answer) else 0
             backend = str(retrieval_meta.get("generation_backend", "unknown"))
             generation_backend_counts[backend] = generation_backend_counts.get(backend, 0) + 1
-            retrieved_chunk_ids = [citation.chunk_id for citation in citations]
-            retrieved_doc_ids = [citation.document_id for citation in citations]
-            retrieved_texts = [str(citation.excerpt or "") for citation in citations]
+            raw_cited_chunk_ids = retrieval_meta.get("cited_context_chunk_ids")
+            if isinstance(raw_cited_chunk_ids, list) and raw_cited_chunk_ids:
+                retrieved_chunk_ids = [str(chunk_id) for chunk_id in raw_cited_chunk_ids if str(chunk_id).strip()]
+            else:
+                retrieved_chunk_ids = [citation.chunk_id for citation in citations]
+            cited_rows = container.sqlite_repo.get_chunks_by_ids(retrieved_chunk_ids)
+            retrieved_doc_ids = [
+                str(cited_rows[chunk_id]["document_id"])
+                for chunk_id in retrieved_chunk_ids
+                if chunk_id in cited_rows
+            ] or [citation.document_id for citation in citations]
+            retrieved_texts = [
+                str(cited_rows[chunk_id]["text"])
+                for chunk_id in retrieved_chunk_ids
+                if chunk_id in cited_rows
+            ] or [str(citation.excerpt or "") for citation in citations]
             citation_presence_hits += 1 if citations else 0
         else:
             bundle = await container.retrieval_service.retrieve_with_mode(

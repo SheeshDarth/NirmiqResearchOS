@@ -185,6 +185,12 @@ class SQLiteRepo:
                 );
                 """
             )
+            self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
+            self._ensure_column(conn, "document_chunks", "section_id", "TEXT")
+            self._ensure_column(conn, "document_chunks", "heading", "TEXT")
+            self._ensure_column(conn, "document_chunks", "section_path", "TEXT")
+            self._ensure_column(conn, "document_chunks", "chunk_type", "TEXT NOT NULL DEFAULT 'body'")
+            self._ensure_column(conn, "document_chunks", "key_terms_json", "TEXT")
             conn.executescript(
                 """
                 CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
@@ -203,12 +209,6 @@ class SQLiteRepo:
                     ON answer_feedback(rating);
                 """
             )
-            self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
-            self._ensure_column(conn, "document_chunks", "section_id", "TEXT")
-            self._ensure_column(conn, "document_chunks", "heading", "TEXT")
-            self._ensure_column(conn, "document_chunks", "section_path", "TEXT")
-            self._ensure_column(conn, "document_chunks", "chunk_type", "TEXT NOT NULL DEFAULT 'body'")
-            self._ensure_column(conn, "document_chunks", "key_terms_json", "TEXT")
 
     def insert_document(
         self,

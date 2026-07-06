@@ -17,6 +17,7 @@ Baseline before reliability work:
 - nDCG@K for multi-evidence questions
 - Citation coverage rate
 - Expected citation coverage against phrase/page labels
+- Full-query expected citation coverage must score full cited chunk text, not truncated UI citation excerpts
 - Unsupported claim rate
 - Abstention correctness
 - Retrieval latency

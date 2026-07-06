@@ -29,8 +29,8 @@ Results:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | nDCG@5 | nDCG@8 | Citation Expected Coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 30 | 0.967 | 1.00 | 1.00 | 1.00 | 0.847 | 0.840 | 0.844 | 1.00 |
-| BM25 | 30 | 0.839 | 1.00 | 1.00 | 1.00 | 0.749 | 0.743 | 0.743 | 1.00 |
+| Hybrid | 30 | 0.983 | 1.00 | 1.00 | 1.00 | 0.869 | 0.861 | 0.861 | 1.00 |
+| BM25 | 30 | 0.983 | 1.00 | 1.00 | 1.00 | 0.859 | 0.852 | 0.852 | 1.00 |
 
 Interpretation:
 
@@ -101,6 +101,39 @@ Next tuning targets:
 - Add 40-80 more labels across textbooks, lecture notes, scanned PDFs, and research papers.
 - Track which questions fail because of parsing noise versus retrieval ranking.
 - Tune summary/factual expansion and source diversity using this harder set instead of only the golden demo.
+
+## Full-Query Real-World Evaluation
+
+Date: 2026-07-06
+
+Command:
+
+```powershell
+$env:USE_OLLAMA_GENERATION='false'
+$env:USE_OLLAMA_EMBEDDINGS='false'
+$env:USE_OLLAMA_RERANKER='false'
+$env:LOW_MEMORY_MODE='true'
+python scripts\eval_retrieval.py --dataset data\processed\eval\real_world_academic_seed.jsonl --auto-ingest-sources --k 3 5 8 --modes hybrid bm25 --full-query --output temp\eval\real_world_full_query_metrics.json
+```
+
+Important correction:
+
+- Full-query evaluation now scores expected phrases against the full cited chunk text.
+- The earlier diagnostic used truncated UI citation excerpts and undercounted support.
+- UI excerpts remain compact, but evaluator coverage must use full source text.
+
+Results:
+
+| Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 16 | 0.573 | 0.688 | 0.688 | 0.688 | 0.688 | 0.938 | 0.063 |
+| BM25 | 16 | 0.583 | 0.688 | 0.688 | 0.688 | 0.688 | 0.938 | 0.063 |
+
+Interpretation:
+
+- The answer layer is no longer as broken as the truncated-preview metric suggested.
+- It still loses some evidence compared with raw retrieval Recall@8 `0.750`.
+- The new evidence reliability gate blocks low-citation-coverage answers instead of always returning `grounded=true`.
 
 ## Metrics Definitions
 

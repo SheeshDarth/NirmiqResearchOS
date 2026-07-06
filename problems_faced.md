@@ -1,6 +1,6 @@
 # Problems Faced And RAG Reliability Roadmap
 
-Last updated: 2026-06-26
+Last updated: 2026-07-06
 
 This is the canonical engineering problem log for NIRMIQ ResearchOS. It documents what has failed, what is still failing, what may fail later, and how the next RAG Reliability Phase should resolve the core retrieval and hallucination issues.
 
@@ -214,6 +214,42 @@ Implemented before the next metric run:
 Current caveat:
 
 - This is the first precision layer, not the finished reliability target. The next step is to rerun demo and real-world evals, promote `Needs work` feedback into labels, and tune against measured failures.
+
+## 2026-07-06 Deep Research Review And Evidence Gate
+
+What the deep research report got right:
+
+- NIRMIQ should use Adaptive Evidence-Grounded Hybrid RAG, not plain RAG and not always-on GraphRAG.
+- Lite mode should be BM25/extractive-first with strict abstention.
+- Edge mode can use hybrid retrieval when it proves value.
+- Pro mode can add background graph reasoning later.
+- Generated summaries and answers must remain derived artifacts, never first-class truth.
+
+Failure discovered:
+
+- Real-world eval initially failed with `no such column: section_id`.
+- Root cause: legacy SQLite databases tried to create a section index before additive section columns were applied.
+- Fix: run additive chunk-column migrations before index creation.
+
+Evaluation correction:
+
+- Full-query eval was scoring expected evidence against truncated UI citation excerpts.
+- That made citation expected coverage appear to be `0.3125`.
+- After using full cited chunk text, corrected full-query citation expected coverage is `0.6875`.
+
+Implemented:
+
+- Legacy SQLite migration regression test.
+- Full cited-chunk scoring in `scripts/eval_retrieval.py`.
+- Evidence reliability gate in `SynthesisService`.
+- Line-aware citation coverage so headings/question labels are not counted as claims.
+- Cleaner extractive fallback wording so wrapper text is not falsely cited.
+
+Remaining problem:
+
+- Full-query coverage (`0.688`) still trails raw retrieval coverage (`0.750`).
+- BM25 still beats hybrid on the real-world seed.
+- The next reliability work is answer-used citation selection, eval expansion, and hybrid/BM25 routing, not GraphRAG.
 
 ## RAG Reliability Phase Roadmap
 

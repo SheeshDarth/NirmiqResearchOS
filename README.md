@@ -476,8 +476,8 @@ Latest local retrieval results on 30 labeled questions:
 
 | Mode | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 0.967 | 1.00 | 1.00 | 1.00 | 0.847 | 1.00 |
-| BM25 | 0.839 | 1.00 | 1.00 | 1.00 | 0.749 | 1.00 |
+| Hybrid | 0.983 | 1.00 | 1.00 | 1.00 | 0.869 | 1.00 |
+| BM25 | 0.983 | 1.00 | 1.00 | 1.00 | 0.859 | 1.00 |
 
 Details:
 
@@ -510,6 +510,13 @@ Run:
 ```
 
 This seed set is intentionally harder than the golden demo and is the baseline for the RAG Reliability Phase. The goal is to improve retrieval precision and citation coverage before increasing model size, temperature, or context length.
+
+Full-query real-world evaluation now scores expected evidence against full cited chunks, not truncated UI citation previews:
+
+| Mode | MRR | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 0.573 | 0.688 | 0.688 | 0.938 | 0.063 |
+| BM25 | 0.583 | 0.688 | 0.688 | 0.938 | 0.063 |
 
 ## Screenshots And GIFs
 

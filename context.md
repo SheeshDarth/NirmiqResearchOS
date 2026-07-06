@@ -1,11 +1,52 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-06-26
+Last updated: 2026-07-06
 Current branch: `v3-foundation`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-07-06 Deep Research Evaluation And Evidence Gate
+
+Objective: analyze `deep-research-report.md`, evaluate current RAG functioning, identify architecture failures, and proceed with the safest reliability fixes.
+
+Findings:
+
+- The deep research report correctly recommends Adaptive Evidence-Grounded Hybrid RAG with Lite/Edge/Pro modes.
+- NIRMIQ's architecture is directionally aligned with that recommendation.
+- GraphRAG should remain optional Pro/background work until BM25/hybrid reliability improves.
+- Real-world retrieval remains the quality bottleneck:
+  - Hybrid MRR `0.490`, Recall@8 `0.750`, citation expected coverage `0.750`.
+  - BM25 MRR `0.578`, Recall@8 `0.750`, citation expected coverage `0.750`.
+- BM25 still beats hybrid on the current real-world seed, so BM25 remains the Lite/default reliability baseline.
+- Full-query eval initially looked much worse because it scored expected phrases against truncated UI citation excerpts.
+- After fixing the evaluator to use full cited chunk text, full-query real-world citation expected coverage is `0.688`.
+
+Implemented:
+
+- Fixed SQLite migration ordering so legacy databases add section metadata columns before section indexes are created.
+- Added a legacy-schema regression test.
+- Fixed full-query retrieval evaluation to score full cited chunks instead of truncated citation preview text.
+- Added an evidence reliability gate in `SynthesisService`.
+- The gate blocks grounded answers when evidence/citation support is too weak.
+- Improved citation coverage scoring so structural study-guide lines and UI headings are not treated as unsupported claims.
+- Fixed fallback list-answer wording so cited direct answers use source text rather than generic wrapper prose.
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q`: `55 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+- `scripts/eval_real_world.ps1`: passed, real-world retrieval baseline unchanged.
+- `scripts/eval_demo_dataset.ps1`: passed, demo retrieval remains at Recall@8 `1.00` and citation expected coverage `1.00`.
+
+Next:
+
+- Expand real-world eval from `16` to at least `40`, then `100+`.
+- Add per-sample failure reporting for full-query eval.
+- Improve answer-used citation selection so full-query coverage catches up to raw retrieval coverage.
+- Tune hybrid retrieval only when it beats BM25 on real corpora.
 
 ## Latest Session Update - 2026-06-26 RAG Reliability Phase Kickoff
 

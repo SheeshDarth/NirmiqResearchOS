@@ -183,6 +183,7 @@ class SynthesisService:
             temperature=generation_temperature,
         )
 
+        used_fallback_answer = False
         if not generated:
             generated = self._fallback_answer(
                 query=query,
@@ -190,6 +191,7 @@ class SynthesisService:
                 response_mode=response_mode,
                 exam_context=exam_context,
             )
+            used_fallback_answer = True
         else:
             generated = self._anchor_uncited_sentences(generated, selected)
 
@@ -209,6 +211,60 @@ class SynthesisService:
                 "original_cited_claims_checked": verification["cited_claims_checked"],
             }
             answer_rewritten = True
+            used_fallback_answer = True
+
+        coverage_meta = citation_coverage(generated)
+        citation_context_meta = self._citation_context_meta(
+            answer=generated,
+            bundle=bundle,
+            selected_context=selected,
+        )
+        evidence_gate = self._evidence_reliability_gate(
+            response_mode=response_mode,
+            generation_backend=self._generator.last_backend,
+            answer_rewritten=answer_rewritten,
+            used_fallback_answer=used_fallback_answer,
+            grounding_state=grounding_state,
+            context_relevance=context_relevance,
+            coverage_meta=coverage_meta,
+            verification=verification,
+            citation_context_meta=citation_context_meta,
+            selected_context=selected,
+        )
+        if not evidence_gate["evidence_gate_passed"]:
+            return (
+                self._evidence_gate_message(evidence_gate),
+                False,
+                {
+                    "generation_backend": self._generator.last_backend,
+                    "generation_model_requested": getattr(self._generator, "last_model_requested", None),
+                    "generation_model_used": getattr(self._generator, "last_model_used", None),
+                    "generation_model_fallback": getattr(self._generator, "last_model_fallback", False),
+                    "generation_error": getattr(self._generator, "last_error", None),
+                    "grounding_score": top_grounding_score,
+                    "citation_count": citation_count,
+                    "context_chunks_used": len(selected),
+                    "grounding_state": "weak",
+                    "grounding_summary": "evidence reliability gate blocked the answer",
+                    "document_overview_request": overview_query,
+                    "low_score_overview_allowed": low_score_overview,
+                    **context_relevance,
+                    "exam_profile_used": bool(exam_profile),
+                    "exam_context_used": bool(
+                        exam_context and (exam_context.get("questions") or exam_context.get("diagrams"))
+                    ),
+                    "citation_verification_state": verification["state"],
+                    "generation_temperature": generation_temperature,
+                    **coverage_meta,
+                    "cited_claims_checked": verification["cited_claims_checked"],
+                    "unsupported_claims": verification["unsupported_claims"],
+                    "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
+                    "original_unsupported_claims": verification.get("original_unsupported_claims", []),
+                    "answer_rewritten_for_faithfulness": answer_rewritten,
+                    **citation_context_meta,
+                    **evidence_gate,
+                },
+            )
 
         meta = {
             "generation_backend": self._generator.last_backend,
@@ -230,17 +286,14 @@ class SynthesisService:
             ),
             "citation_verification_state": verification["state"],
             "generation_temperature": generation_temperature,
-            **citation_coverage(generated),
+            **coverage_meta,
             "cited_claims_checked": verification["cited_claims_checked"],
             "unsupported_claims": verification["unsupported_claims"],
             "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
             "original_unsupported_claims": verification.get("original_unsupported_claims", []),
             "answer_rewritten_for_faithfulness": answer_rewritten,
-            **self._citation_context_meta(
-                answer=generated,
-                bundle=bundle,
-                selected_context=selected,
-            ),
+            **citation_context_meta,
+            **evidence_gate,
         }
         return (generated, True, meta)
 
@@ -315,6 +368,69 @@ class SynthesisService:
             ],
             "citation_source": "answer_used_context_chunks",
         }
+
+    @staticmethod
+    def _evidence_reliability_gate(
+        *,
+        response_mode: str,
+        generation_backend: str,
+        answer_rewritten: bool,
+        used_fallback_answer: bool,
+        grounding_state: str,
+        context_relevance: dict[str, object],
+        coverage_meta: dict[str, object],
+        verification: dict[str, object],
+        citation_context_meta: dict[str, object],
+        selected_context: list[tuple[int, str]],
+    ) -> dict[str, object]:
+        reasons: list[str] = []
+        mode = response_mode.strip().lower()
+        sentence_count = int(coverage_meta.get("citation_sentence_count") or 0)
+        anchor_count = int(coverage_meta.get("citation_anchor_count") or 0)
+        citation_coverage_score = float(coverage_meta.get("citation_coverage") or 0.0)
+        cited_context_ids = citation_context_meta.get("cited_context_chunk_ids")
+        cited_context_count = len(cited_context_ids) if isinstance(cited_context_ids, list) else 0
+        relevance_state = str(context_relevance.get("context_relevance_state") or "unknown")
+        verification_state = str(verification.get("state") or "unknown")
+        overview_or_draft = mode in {"summary", "deep_research", "research_paper", "study_guide"}
+
+        if not selected_context:
+            reasons.append("no_selected_evidence")
+        if grounding_state == "weak":
+            reasons.append("weak_retrieval_grounding")
+        if relevance_state == "unrelated" and not overview_or_draft:
+            reasons.append("unrelated_context")
+        extractive_fallback = used_fallback_answer or generation_backend == "fallback" or answer_rewritten
+        if verification_state == "unsupported" and sentence_count > 0:
+            reasons.append("citation_verification_unsupported")
+        if verification_state == "unchecked" and sentence_count > 0 and not extractive_fallback:
+            reasons.append("citation_verification_unchecked")
+        if sentence_count > 0 and anchor_count <= 0:
+            reasons.append("no_answer_citation_anchors")
+        if sentence_count > 0 and cited_context_count <= 0:
+            reasons.append("no_answer_used_citations")
+
+        min_coverage = 0.6 if overview_or_draft or extractive_fallback else 0.75
+        if sentence_count >= 2 and citation_coverage_score < min_coverage:
+            reasons.append("low_citation_coverage")
+
+        return {
+            "evidence_gate_state": "passed" if not reasons else "failed",
+            "evidence_gate_reasons": reasons,
+            "evidence_gate_min_citation_coverage": min_coverage,
+            "evidence_gate_cited_context_count": cited_context_count,
+            "evidence_gate_passed": not reasons,
+        }
+
+    @staticmethod
+    def _evidence_gate_message(evidence_gate: dict[str, object]) -> str:
+        reasons = evidence_gate.get("evidence_gate_reasons")
+        reason_text = ", ".join(str(reason) for reason in reasons) if isinstance(reasons, list) else "weak evidence"
+        return (
+            "I found related material, but not enough source-backed evidence to answer safely. "
+            f"Reliability check failed: {reason_text}. "
+            "Try asking a narrower question, selecting the correct document, or opening Sources to inspect the retrieved passages."
+        )
 
     @staticmethod
     def _answer_citation_anchors(answer: str, *, allowed_anchors: set[int]) -> list[int]:
@@ -866,7 +982,7 @@ class SynthesisService:
 
         heading = SynthesisService._fallback_heading(response_mode)
         sections = [heading, "\nDirect answer"]
-        sections.append(f"The uploaded material supports the following points. [{evidence[0][0]}]")
+        sections.append(f"{evidence[0][1]} [{evidence[0][0]}]")
         sections.append("\nKey points")
         sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in evidence[:5])
         sections.append("\nEvidence note\nOnly items supported by retrieved passages are included.")

@@ -1,3 +1,4 @@
+import sqlite3
 from pathlib import Path
 
 from app.adapters.storage.sqlite_repo import SQLiteRepo
@@ -78,3 +79,43 @@ def test_sqlite_chunk_section_metadata_is_additive(tmp_path: Path) -> None:
     assert chunks[0]["chunk_type"] == "definition"
     sections = repo.list_active_sections("doc-1")
     assert sections[0]["id"] == "section-1"
+
+
+def test_sqlite_init_migrates_legacy_chunk_table_before_section_indexes(tmp_path: Path) -> None:
+    db_path = tmp_path / "legacy.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.executescript(
+            """
+            CREATE TABLE document_chunks (
+                id TEXT PRIMARY KEY,
+                document_id TEXT NOT NULL,
+                index_version INTEGER NOT NULL,
+                chunk_index INTEGER NOT NULL,
+                page_start INTEGER,
+                page_end INTEGER,
+                text TEXT NOT NULL,
+                token_count INTEGER NOT NULL,
+                chunk_hash TEXT NOT NULL,
+                quality_score REAL NOT NULL DEFAULT 1.0,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL
+            );
+            """
+        )
+
+    repo = SQLiteRepo(db_path)
+    repo.init_db()
+
+    with sqlite3.connect(db_path) as conn:
+        columns = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(document_chunks)").fetchall()
+        }
+        indexes = {
+            row[1]
+            for row in conn.execute("PRAGMA index_list(document_chunks)").fetchall()
+        }
+
+    assert "section_id" in columns
+    assert "heading" in columns
+    assert "idx_chunks_section_active" in indexes
