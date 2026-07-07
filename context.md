@@ -7,6 +7,47 @@ Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
+## Latest Session Update - 2026-07-07 Overnight Sprint Baseline Diagnostics
+
+Objective: execute the first safe overnight sprint block, freeze baseline health, and capture concrete retrieval failures for the next accuracy pass.
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q`: `55 passed`, `1` warning.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+- `.\scripts\eval_demo_dataset.ps1`: passed.
+  - Hybrid and BM25 Recall@8 remain `1.000`.
+  - Hybrid and BM25 citation expected coverage remain `1.000`.
+- `.\scripts\eval_real_world.ps1`: passed.
+  - Hybrid MRR `0.490`, Recall@8 `0.750`, citation expected coverage `0.750`.
+  - BM25 MRR `0.578`, Recall@8 `0.750`, citation expected coverage `0.750`.
+
+Implemented:
+
+- Added failure-diagnostic output support to `scripts/eval_retrieval.py`.
+- Updated `scripts/eval_real_world.ps1` to write `data/processed/eval/real_world_retrieval_failures.jsonl`.
+- Added `docs/retrieval_failure_backlog.md` as the tracked summary of weak retrieval patterns.
+
+Findings:
+
+- The first failure log contains `13` weak retrieval records.
+- Hybrid has `7` weak records; BM25 has `6`.
+- `8` records are missed at rank 8; `5` are late hits beyond rank 3.
+- Main observed causes:
+  - textbook index/glossary chunks outranking body explanations,
+  - natural query wording not expanding to source terms such as "positional encodings",
+  - exact-phrase eval labels being too brittle in some cases,
+  - OCR/encoding artifacts reducing lexical match quality,
+  - broad overview questions needing stronger section-first retrieval.
+
+Next:
+
+- Add normalized phrase matching to eval diagnostics.
+- Penalize index/glossary/table-of-contents chunks for explanatory questions.
+- Add deterministic local query expansion from headings and academic synonyms.
+- Expand the real-world eval set toward `40` cases.
+
 ## Latest Session Update - 2026-07-07 Overnight Sprint And Ascension OS Kickoff
 
 Objective: create a practical overnight execution plan for NIRMIQ while starting Ascension OS as a separate, cleanly scoped product direction.

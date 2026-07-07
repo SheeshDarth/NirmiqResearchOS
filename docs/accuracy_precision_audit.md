@@ -1,10 +1,36 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Canonical Problem Log
 
 See [`../problems_faced.md`](../problems_faced.md) for the current architecture diagram, full problem history, current RAG retrieval gaps, future risks, and the RAG Reliability Phase roadmap.
+
+See [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md) for concrete real-world retrieval misses and weak hits generated from the current eval scripts.
+
+## 2026-07-07 Retrieval Failure Diagnostics
+
+Implemented:
+
+- Added `--failures-output` support to `scripts/eval_retrieval.py`.
+- Updated `scripts/eval_real_world.ps1` to emit `data/processed/eval/real_world_retrieval_failures.jsonl`.
+- Added a tracked human-readable backlog at [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md).
+
+Current diagnostic summary:
+
+- Weak retrieval records: `13`.
+- Hybrid weak records: `7`.
+- BM25 weak records: `6`.
+- Missed at rank 8: `8`.
+- Late hits beyond rank 3: `5`.
+
+Observed root causes:
+
+- Textbook index/glossary chunks sometimes outrank explanatory body chunks.
+- User wording does not always expand to source-specific terms such as "positional encodings".
+- Some phrase labels are too brittle for equivalent source wording.
+- OCR/encoding artifacts reduce lexical matching.
+- Broad overview questions need stronger section-first retrieval.
 
 ## 2026-07-06 Evidence Reliability Gate And Eval Correction
 

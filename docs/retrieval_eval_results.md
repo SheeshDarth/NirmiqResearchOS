@@ -1,6 +1,6 @@
 ﻿# Retrieval Evaluation Results
 
-Date: 2026-06-14
+Date: 2026-07-07
 
 Dataset: `data/processed/eval/demo_academic_qa.jsonl`
 
@@ -58,7 +58,7 @@ The target is to improve evidence precision through textbook-aware metadata, sec
 
 ## Real-World Academic Seed Results
 
-Date: 2026-06-20
+Date: 2026-07-07
 
 Dataset: `data/processed/eval/real_world_academic_seed.jsonl`
 
@@ -82,6 +82,14 @@ Command:
 cd C:\Nirmiq-researchOS
 .\scripts\eval_real_world.ps1
 ```
+
+The real-world script now also writes weak retrieval records to:
+
+```text
+data/processed/eval/real_world_retrieval_failures.jsonl
+```
+
+Human-readable analysis lives in [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md).
 
 Results:
 

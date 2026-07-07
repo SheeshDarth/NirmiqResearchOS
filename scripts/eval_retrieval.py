@@ -21,12 +21,15 @@ from app.api.schemas.query import QueryRequest
 
 @dataclass(slots=True)
 class EvalSample:
+    sample_id: str
     query: str
     expected_document_ids: list[str]
     expected_chunk_ids: list[str]
     expected_phrases: list[str]
     source_file: str | None = None
     document_id: str | None = None
+    category: str | None = None
+    expected_answer: str | None = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,6 +69,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Index source_file entries before evaluation and scope each query to that document.",
     )
+    parser.add_argument(
+        "--failures-output",
+        type=Path,
+        default=None,
+        help="Optional JSONL path for per-sample misses and weak retrieval hits.",
+    )
     return parser.parse_args()
 
 
@@ -88,6 +97,9 @@ def load_samples(path: Path) -> list[EvalSample]:
             if str(value).strip()
         ]
         source_file = str(payload.get("source_file") or "").strip() or None
+        sample_id = str(payload.get("id") or f"line-{line_no}").strip()
+        category = str(payload.get("category") or "").strip() or None
+        expected_answer = str(payload.get("expected_answer") or "").strip() or None
         if not query:
             raise ValueError(f"Line {line_no} missing query.")
         if not expected_doc_ids and not expected_chunk_ids and not expected_phrases and not source_file:
@@ -96,11 +108,14 @@ def load_samples(path: Path) -> list[EvalSample]:
             )
         samples.append(
             EvalSample(
+                sample_id=sample_id,
                 query=query,
                 expected_document_ids=expected_doc_ids,
                 expected_chunk_ids=expected_chunk_ids,
                 expected_phrases=expected_phrases,
                 source_file=source_file,
+                category=category,
+                expected_answer=expected_answer,
             )
         )
     return samples
@@ -196,7 +211,12 @@ def math_log2(value: int) -> float:
 
 
 async def run_eval_for_mode(
-    samples: list[EvalSample], ks: list[int], mode: str, container: AppContainer, full_query: bool
+    samples: list[EvalSample],
+    ks: list[int],
+    mode: str,
+    container: AppContainer,
+    full_query: bool,
+    failure_records: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     recall_hits = {k: 0 for k in ks}
     ndcg_sums = {k: 0.0 for k in ks}
@@ -211,6 +231,8 @@ async def run_eval_for_mode(
     grounded_response_hits = 0
     generation_backend_counts: dict[str, int] = {}
     total = len(samples)
+    max_k = max(ks) if ks else 0
+    review_rank_threshold = min(ks) if ks else 3
 
     for index, sample in enumerate(samples):
         if full_query:
@@ -266,6 +288,7 @@ async def run_eval_for_mode(
             expected = set(sample.expected_chunk_ids)
             retrieved = retrieved_chunk_ids
             level_counts["chunk"] += 1
+            first_rank = first_id_rank(retrieved, expected)
             mrr_sum += reciprocal_rank(retrieved, expected)
             for k in ks:
                 if has_hit_at_k(retrieved, expected, k):
@@ -273,8 +296,21 @@ async def run_eval_for_mode(
                 ndcg_sums[k] += binary_ndcg_at_k(retrieved, expected, k)
             if any(item in expected for item in retrieved):
                 citation_expected_hits += 1
+            maybe_record_failure(
+                failure_records,
+                sample=sample,
+                mode=mode,
+                target_level="chunk",
+                first_rank=first_rank,
+                max_k=max_k,
+                review_rank_threshold=review_rank_threshold,
+                retrieved_chunk_ids=retrieved_chunk_ids,
+                retrieved_doc_ids=retrieved_doc_ids,
+                retrieved_texts=retrieved_texts,
+            )
         elif sample.expected_phrases:
             level_counts["phrase"] += 1
+            first_rank = first_phrase_rank(retrieved_texts, sample.expected_phrases)
             mrr_sum += phrase_reciprocal_rank(retrieved_texts, sample.expected_phrases)
             for k in ks:
                 if phrase_hit_at_k(retrieved_texts, sample.expected_phrases, k):
@@ -282,10 +318,23 @@ async def run_eval_for_mode(
                 ndcg_sums[k] += phrase_ndcg_at_k(retrieved_texts, sample.expected_phrases, k)
             if any(phrase_hit(text, sample.expected_phrases) for text in retrieved_texts):
                 citation_expected_hits += 1
+            maybe_record_failure(
+                failure_records,
+                sample=sample,
+                mode=mode,
+                target_level="phrase",
+                first_rank=first_rank,
+                max_k=max_k,
+                review_rank_threshold=review_rank_threshold,
+                retrieved_chunk_ids=retrieved_chunk_ids,
+                retrieved_doc_ids=retrieved_doc_ids,
+                retrieved_texts=retrieved_texts,
+            )
         elif sample.expected_document_ids:
             expected = set(sample.expected_document_ids)
             retrieved = retrieved_doc_ids
             level_counts["document"] += 1
+            first_rank = first_id_rank(retrieved, expected)
             mrr_sum += reciprocal_rank(retrieved, expected)
             for k in ks:
                 if has_hit_at_k(retrieved, expected, k):
@@ -293,6 +342,18 @@ async def run_eval_for_mode(
                 ndcg_sums[k] += binary_ndcg_at_k(retrieved, expected, k)
             if any(item in expected for item in retrieved):
                 citation_expected_hits += 1
+            maybe_record_failure(
+                failure_records,
+                sample=sample,
+                mode=mode,
+                target_level="document",
+                first_rank=first_rank,
+                max_k=max_k,
+                review_rank_threshold=review_rank_threshold,
+                retrieved_chunk_ids=retrieved_chunk_ids,
+                retrieved_doc_ids=retrieved_doc_ids,
+                retrieved_texts=retrieved_texts,
+            )
         else:
             raise ValueError(f"Eval sample missing expectation target: {sample.query}")
 
@@ -337,6 +398,81 @@ def contains_citation_anchor(text: str) -> bool:
     return bool(re.search(r"\[\d+\]", text))
 
 
+def first_id_rank(retrieved: list[str], expected: set[str]) -> int:
+    for rank, item in enumerate(retrieved, start=1):
+        if item in expected:
+            return rank
+    return 0
+
+
+def first_phrase_rank(retrieved_texts: list[str], expected_phrases: list[str]) -> int:
+    for rank, text in enumerate(retrieved_texts, start=1):
+        if phrase_hit(text, expected_phrases):
+            return rank
+    return 0
+
+
+def maybe_record_failure(
+    failure_records: list[dict[str, Any]] | None,
+    *,
+    sample: EvalSample,
+    mode: str,
+    target_level: str,
+    first_rank: int,
+    max_k: int,
+    review_rank_threshold: int,
+    retrieved_chunk_ids: list[str],
+    retrieved_doc_ids: list[str],
+    retrieved_texts: list[str],
+) -> None:
+    if failure_records is None:
+        return
+    if first_rank and first_rank <= review_rank_threshold:
+        return
+
+    if first_rank == 0:
+        status = f"missed@{max_k}"
+    elif first_rank > max_k:
+        status = f"missed@{max_k}"
+    else:
+        status = f"late_hit_rank_{first_rank}"
+
+    failure_records.append(
+        {
+            "sample_id": sample.sample_id,
+            "category": sample.category,
+            "mode": mode,
+            "status": status,
+            "target_level": target_level,
+            "first_expected_rank": first_rank,
+            "query": sample.query,
+            "source_file": sample.source_file,
+            "document_id": sample.document_id,
+            "expected_answer": sample.expected_answer,
+            "expected_phrases": sample.expected_phrases,
+            "top_chunks": [
+                {
+                    "rank": rank,
+                    "chunk_id": chunk_id,
+                    "document_id": document_id,
+                    "excerpt": compact_excerpt(text),
+                }
+                for rank, (chunk_id, document_id, text) in enumerate(
+                    zip(retrieved_chunk_ids[:max_k], retrieved_doc_ids[:max_k], retrieved_texts[:max_k]),
+                    start=1,
+                )
+            ],
+        }
+    )
+
+
+def compact_excerpt(text: str, limit: int = 260) -> str:
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 3].rstrip() + "..."
+
+
 async def main_async() -> int:
     args = parse_args()
     ks = sorted(set(int(k) for k in args.k if int(k) > 0))
@@ -359,6 +495,7 @@ async def main_async() -> int:
     )
 
     per_mode: dict[str, Any] = {}
+    failure_records: list[dict[str, Any]] = []
     for mode in valid_modes:
         per_mode[mode] = await run_eval_for_mode(
             samples=samples,
@@ -366,6 +503,7 @@ async def main_async() -> int:
             mode=mode,
             container=container,
             full_query=bool(args.full_query),
+            failure_records=failure_records if args.failures_output else None,
         )
     output_payload: dict[str, Any] = {
         "dataset": str(args.dataset),
@@ -378,6 +516,12 @@ async def main_async() -> int:
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(output + "\n", encoding="utf-8")
+    if args.failures_output:
+        args.failures_output.parent.mkdir(parents=True, exist_ok=True)
+        args.failures_output.write_text(
+            "\n".join(json.dumps(record, ensure_ascii=False) for record in failure_records) + "\n",
+            encoding="utf-8",
+        )
     return 0
 
 

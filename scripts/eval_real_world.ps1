@@ -1,5 +1,6 @@
 param(
     [string]$Dataset = "data\processed\eval\real_world_academic_seed.jsonl",
+    [string]$FailuresOutput = "data\processed\eval\real_world_retrieval_failures.jsonl",
     [switch]$FullQuery
 )
 
@@ -19,6 +20,7 @@ $argsList = @(
     "--modes", "hybrid", "bm25",
     "--output", "data/processed/eval/real_world_retrieval_metrics.json"
 )
+if ($FailuresOutput) { $argsList += "--failures-output"; $argsList += $FailuresOutput }
 if ($FullQuery) { $argsList += "--full-query" }
 
 python @argsList
