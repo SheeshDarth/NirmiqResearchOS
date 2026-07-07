@@ -51,6 +51,14 @@ Current remaining gap:
 - Remaining weak records dropped from `13` to `5`, mainly OCR/encoding and section-overview failures.
 - Full-query coverage still trails raw retrieval, so the next backend bottleneck is answer-used citation selection.
 
+Follow-up heartbeat progress:
+
+- Updated `scripts/eval_real_world.ps1` so raw retrieval and full-query runs write separate metrics and failure files by default.
+- Generated `data/processed/eval/real_world_full_query_metrics.json`.
+- Generated `data/processed/eval/real_world_full_query_failures.jsonl`.
+- Added `docs/answer_used_citation_backlog.md`.
+- Full-query failure log currently has `8` missed-at-8 records, compared with `5` weak raw retrieval records.
+
 ## Latest Session Update - 2026-07-07 Overnight Sprint Baseline Diagnostics
 
 Objective: execute the first safe overnight sprint block, freeze baseline health, and capture concrete retrieval failures for the next accuracy pass.

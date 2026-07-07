@@ -123,12 +123,13 @@ Date: 2026-07-06
 Command:
 
 ```powershell
-$env:USE_OLLAMA_GENERATION='false'
-$env:USE_OLLAMA_EMBEDDINGS='false'
-$env:USE_OLLAMA_RERANKER='false'
-$env:LOW_MEMORY_MODE='true'
-python scripts\eval_retrieval.py --dataset data\processed\eval\real_world_academic_seed.jsonl --auto-ingest-sources --k 3 5 8 --modes hybrid bm25 --full-query --output temp\eval\real_world_full_query_metrics.json
+.\scripts\eval_real_world.ps1 -FullQuery
 ```
+
+Full-query outputs are written separately from raw retrieval outputs:
+
+- `data/processed/eval/real_world_full_query_metrics.json`
+- `data/processed/eval/real_world_full_query_failures.jsonl`
 
 Important correction:
 

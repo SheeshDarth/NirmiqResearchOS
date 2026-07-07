@@ -1,0 +1,70 @@
+{
+  "dataset": "data\\processed\\eval\\real_world_academic_seed.jsonl",
+  "evaluation_mode": "full_query",
+  "modes": [
+    "hybrid",
+    "bm25"
+  ],
+  "results": {
+    "hybrid": {
+      "mode": "hybrid",
+      "samples": 16,
+      "target_level": "phrase",
+      "mrr": 0.5833333333333333,
+      "recall@3": 0.75,
+      "recall@5": 0.75,
+      "recall@8": 0.75,
+      "ndcg@3": 0.40609706076535124,
+      "ndcg@5": 0.41872876992163544,
+      "ndcg@8": 0.41872876992163544,
+      "citation_presence_rate": 0.9375,
+      "citation_expected_coverage": 0.75,
+      "grounding_metrics": {
+        "grounded_response_rate": 0.9375,
+        "abstention_rate": 0.0625,
+        "citation_anchor_rate": 0.9375,
+        "avg_grounding_score": 8.418910397791446,
+        "avg_citation_count": 10.125,
+        "grounding_state_rates": {
+          "strong": 0.9375,
+          "moderate": 0.0,
+          "weak": 0.0625,
+          "unknown": 0.0
+        },
+        "generation_backend_rates": {
+          "fallback": 1.0
+        }
+      }
+    },
+    "bm25": {
+      "mode": "bm25",
+      "samples": 16,
+      "target_level": "phrase",
+      "mrr": 0.6145833333333333,
+      "recall@3": 0.75,
+      "recall@5": 0.75,
+      "recall@8": 0.75,
+      "ndcg@3": 0.42024045986103353,
+      "ndcg@5": 0.43287216901731773,
+      "ndcg@8": 0.43287216901731773,
+      "citation_presence_rate": 0.9375,
+      "citation_expected_coverage": 0.75,
+      "grounding_metrics": {
+        "grounded_response_rate": 0.9375,
+        "abstention_rate": 0.0625,
+        "citation_anchor_rate": 0.9375,
+        "avg_grounding_score": 8.854117227639248,
+        "avg_citation_count": 10.25,
+        "grounding_state_rates": {
+          "strong": 0.9375,
+          "moderate": 0.0,
+          "weak": 0.0625,
+          "unknown": 0.0
+        },
+        "generation_backend_rates": {
+          "fallback": 1.0
+        }
+      }
+    }
+  }
+}

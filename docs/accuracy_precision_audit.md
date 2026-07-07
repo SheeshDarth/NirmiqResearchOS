@@ -8,6 +8,8 @@ See [`../problems_faced.md`](../problems_faced.md) for the current architecture 
 
 See [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md) for concrete real-world retrieval misses and weak hits generated from the current eval scripts.
 
+See [`answer_used_citation_backlog.md`](answer_used_citation_backlog.md) for cases where raw retrieval finds better evidence than the final answer-used citations.
+
 ## 2026-07-07 Retrieval Failure Diagnostics
 
 Implemented:
