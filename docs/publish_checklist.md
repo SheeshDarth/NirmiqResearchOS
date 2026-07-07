@@ -1,6 +1,6 @@
 # NIRMIQ Publish Checklist
 
-Last updated: 2026-06-20
+Last updated: 2026-07-07
 
 ## Target
 
@@ -15,6 +15,21 @@ Full EOD ship check:
 ```powershell
 .\scripts\ship_check.ps1
 ```
+
+Latest local verification:
+
+- Date: 2026-07-07.
+- Result: `SHIP CHECK PASS`.
+- Backend tests: `61 passed`, `1` warning.
+- API compile: passed.
+- Web build: passed.
+- Publish smoke: passed.
+- Golden demo warm start: passed.
+
+Implementation note:
+
+- `ship_check.ps1` uses an isolated per-run pytest temp/cache directory under `temp\pytest-runs\`.
+- This prevents stale Windows temp/cache permissions from breaking the release gate.
 
 Root command equivalent:
 

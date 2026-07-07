@@ -7,6 +7,34 @@ Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
+## Latest Session Update - 2026-07-07 Release Gate Hardening
+
+Objective: run the full release-readiness gate and fix any safe, local-only issue that blocks repeatable shipping.
+
+Finding:
+
+- `.\scripts\ship_check.ps1` initially failed during backend tests with `PermissionError: [WinError 5] Access is denied`.
+- Root cause: the script reused a fixed `temp\pytest` and `temp\pytest-cache` location, which can be left in a stale or locked state on Windows.
+
+Implemented:
+
+- Hardened `scripts\ship_check.ps1` to create a unique per-run pytest temp/cache directory under `temp\pytest-runs\`.
+- This avoids stale Windows ACL/lock problems without deleting user data or requiring admin permissions.
+
+Validation:
+
+- `.\scripts\ship_check.ps1`: passed end to end.
+- Backend tests inside ship check: `61 passed`, `1` warning.
+- API compile: passed.
+- Web production build: passed.
+- Publish smoke: passed.
+- Golden demo warm start: passed.
+- Local scoped API/web processes were stopped after the check.
+
+Current repo note:
+
+- `deep-research-report.md` remains intentionally untracked.
+
 ## Latest Session Update - 2026-07-07 Ascension Separation And RAG Sprint Continuation
 
 Objective: move Ascension OS foundation out of the NIRMIQ ResearchOS repository and continue the next RAG reliability sprint.
