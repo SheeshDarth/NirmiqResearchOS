@@ -1030,6 +1030,7 @@ class SynthesisService:
             for token in re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", query.lower())
             if token not in _QUERY_STOPWORDS
         }
+        normalized = query.lower()
         if "unsupervised" in terms and ("algorithm" in terms or "algorithms" in terms):
             terms.update(
                 {
@@ -1043,6 +1044,16 @@ class SynthesisService:
                     "pca",
                 }
             )
+        if any(phrase in normalized for phrase in ("token position", "token positions", "represent positions")):
+            terms.update({"positional", "encoding", "encodings", "embedding", "embeddings", "sequence", "order"})
+        if "multi-head" in normalized or "multi head" in normalized:
+            terms.update({"jointly", "attend", "information", "representation", "subspaces", "positions", "heads"})
+        if "recurrence" in normalized or "convolution" in normalized:
+            terms.update({"transformer", "attention", "mechanism", "eschewing", "relying", "entirely", "architecture"})
+        if "cross-validation" in normalized or "cross validation" in normalized or "model selection" in normalized:
+            terms.update({"selecting", "model", "tuning", "hyperparameters", "validation", "kfold", "fold"})
+        if "privacy" in normalized or "sensitive" in normalized:
+            terms.update({"sensitive", "personal", "information", "pii", "mask", "masking", "encryption", "secure", "retention"})
         return terms
 
     @staticmethod

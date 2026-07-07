@@ -68,13 +68,14 @@ Corrected full-query real-world result:
 
 | Mode | Samples | MRR | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 16 | 0.583 | 0.750 | 0.750 | 0.938 | 0.063 |
-| BM25 | 16 | 0.615 | 0.750 | 0.750 | 0.938 | 0.063 |
+| Hybrid | 16 | 0.646 | 0.813 | 0.813 | 0.938 | 0.063 |
+| BM25 | 16 | 0.667 | 0.875 | 0.875 | 0.938 | 0.063 |
 
 Interpretation:
 
 - The previous `0.3125` full-query citation coverage was an evaluator artifact caused by scoring truncated citation previews.
-- The corrected answer path still trails raw retrieval coverage (`0.875`), so evidence selection and answer-used citation selection remain active reliability work.
+- The corrected BM25 answer path now matches raw retrieval coverage (`0.875`) on the current seed.
+- Hybrid answer-used citation selection still trails raw hybrid retrieval, so this remains active reliability work.
 - The system now fails closed for at least one low-coverage real-world case instead of reporting `grounded=true` for every query.
 
 ## 2026-06-26 RAG Reliability Phase Start

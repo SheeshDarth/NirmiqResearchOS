@@ -40,16 +40,17 @@ Validation:
   - BM25: MRR `0.781`, Recall@8 `0.875`, citation expected coverage `0.875`.
 - `.\scripts\eval_demo_dataset.ps1`: passed with no golden-demo regression.
   - Hybrid and BM25 remain Recall@8 `1.000` and citation expected coverage `1.000`.
-- Full-query real-world eval also improved but still trails raw retrieval.
-  - Hybrid: MRR `0.583`, Recall@8 `0.750`, citation expected coverage `0.750`.
-  - BM25: MRR `0.615`, Recall@8 `0.750`, citation expected coverage `0.750`.
+- Full-query real-world eval also improved after synthesis-side query expansion.
+  - Hybrid: MRR `0.646`, Recall@8 `0.813`, citation expected coverage `0.813`.
+  - BM25: MRR `0.667`, Recall@8 `0.875`, citation expected coverage `0.875`.
 
 Current remaining gap:
 
 - Citation expected coverage improved but remains below the `0.900` target.
 - The real-world eval set still has only `16` samples and must grow toward `40+`.
 - Remaining weak records dropped from `13` to `5`, mainly OCR/encoding and section-overview failures.
-- Full-query coverage still trails raw retrieval, so the next backend bottleneck is answer-used citation selection.
+- BM25 full-query coverage now matches raw BM25 retrieval coverage on the current seed.
+- Hybrid full-query coverage still trails raw hybrid retrieval, so answer-used citation selection remains active work.
 
 Follow-up heartbeat progress:
 
@@ -57,7 +58,13 @@ Follow-up heartbeat progress:
 - Generated `data/processed/eval/real_world_full_query_metrics.json`.
 - Generated `data/processed/eval/real_world_full_query_failures.jsonl`.
 - Added `docs/answer_used_citation_backlog.md`.
-- Full-query failure log currently has `8` missed-at-8 records, compared with `5` weak raw retrieval records.
+- Full-query failure log dropped from `8` to `5` missed-at-8 records after synthesis-side query expansion.
+
+Second follow-up heartbeat progress:
+
+- Added synthesis-side academic query-term expansion so answer fallback scoring uses the same intent vocabulary as retrieval.
+- Added `apps/api/app/tests/unit/test_synthesis_query_terms.py`.
+- Full-query BM25 citation expected coverage improved from `0.750` to `0.875`.
 
 ## Latest Session Update - 2026-07-07 Overnight Sprint Baseline Diagnostics
 

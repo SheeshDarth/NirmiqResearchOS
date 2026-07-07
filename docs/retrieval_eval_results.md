@@ -141,13 +141,14 @@ Results:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 16 | 0.583 | 0.750 | 0.750 | 0.750 | 0.750 | 0.938 | 0.063 |
-| BM25 | 16 | 0.615 | 0.750 | 0.750 | 0.750 | 0.750 | 0.938 | 0.063 |
+| Hybrid | 16 | 0.646 | 0.813 | 0.813 | 0.813 | 0.813 | 0.938 | 0.063 |
+| BM25 | 16 | 0.667 | 0.875 | 0.875 | 0.875 | 0.875 | 0.938 | 0.063 |
 
 Interpretation:
 
 - The answer layer is no longer as broken as the truncated-preview metric suggested.
-- It still loses some evidence compared with raw retrieval Recall@8 `0.875`, so answer-used citation selection is the next bottleneck.
+- BM25 full-query coverage now matches raw BM25 retrieval coverage on this seed.
+- Hybrid full-query still trails raw hybrid retrieval slightly, so answer-used citation selection remains active reliability work.
 - The new evidence reliability gate blocks low-citation-coverage answers instead of always returning `grounded=true`.
 
 ## Metrics Definitions
