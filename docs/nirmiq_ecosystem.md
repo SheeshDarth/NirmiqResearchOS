@@ -40,6 +40,12 @@ Offline-first learning, research, paper, citation, and exam intelligence system.
 
 Voice assistant layer for interacting with NIRMIQ workflows, memory, and tools through speech.
 
+### Ascension OS
+
+Adjacent product track for a local-first personal execution operating system. Ascension OS is not part of the current academic product, but it can later connect to the NIRMIQ ecosystem through explicit adapters.
+
+Current foundation: [`ascension_os_foundation.md`](ascension_os_foundation.md).
+
 ## Standalone Product Rule
 
 NIRMIQ Academic Intelligence System must remain valuable on its own:
@@ -63,4 +69,3 @@ The rest of the ecosystem should enhance it, not become a dependency.
 - NIRMIQ Echo can eventually provide voice control.
 
 For V3, this repository stays focused on the Academic Intelligence System.
-

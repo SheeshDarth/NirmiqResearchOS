@@ -1,11 +1,43 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 Current branch: `v3-foundation`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-07-07 Overnight Sprint And Ascension OS Kickoff
+
+Objective: create a practical overnight execution plan for NIRMIQ while starting Ascension OS as a separate, cleanly scoped product direction.
+
+Implemented:
+
+- Added `docs/overnight_work_plan.md` as the active overnight sprint plan.
+- The plan prioritizes:
+  - preserving passing tests and build,
+  - expanding real-world retrieval evaluation,
+  - improving answer-used citation selection,
+  - simplifying answer presentation,
+  - updating docs and release readiness after each verified change.
+- Added `docs/ascension_os_foundation.md` as the initial Ascension OS foundation.
+- Ascension OS is intentionally scoped as a separate local-first personal execution operating system, not a feature inside NIRMIQ ResearchOS.
+- Documented the product boundary:
+  - NIRMIQ ResearchOS remains the academic document intelligence workspace.
+  - Ascension OS can become the broader command center for goals, projects, execution loops, and personal operating routines.
+
+Tradeoffs:
+
+- No Ascension OS application code was generated yet. This avoids mixing an early new product with the current shippable NIRMIQ demo.
+- No heavy agent, graph, cloud, or automation dependency was added.
+- The next safest engineering step remains RAG reliability and UI clarity before adding new product surface area.
+
+Next:
+
+- Execute the overnight sprint blocks in order.
+- Expand real-world eval labels toward `40`.
+- Improve answer-used citation selection.
+- Keep Ascension OS in docs until its PRD/TRD and repository boundary are confirmed.
 
 ## Latest Session Update - 2026-07-06 Deep Research Evaluation And Evidence Gate
 

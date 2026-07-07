@@ -102,6 +102,11 @@ The focus is answering with evidence.
 
 NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_faced.md). It documents past failures, current RAG retrieval gaps, future risks, the hallucination root cause analysis, and the RAG Reliability Phase roadmap.
 
+## Active Engineering Tracks
+
+- [`docs/overnight_work_plan.md`](docs/overnight_work_plan.md): focused sprint plan for demo reliability, retrieval evaluation, citation selection, UI clarity, and release readiness.
+- [`docs/ascension_os_foundation.md`](docs/ascension_os_foundation.md): separate foundation draft for Ascension OS, a future local-first personal execution workspace. It is intentionally not a dependency of NIRMIQ ResearchOS.
+
 ## Current V4 Foundation
 
 Implemented in the current repository:
