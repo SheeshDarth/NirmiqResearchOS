@@ -44,7 +44,7 @@ Voice assistant layer for interacting with NIRMIQ workflows, memory, and tools t
 
 Adjacent product track for a local-first personal execution operating system. Ascension OS is not part of the current academic product, but it can later connect to the NIRMIQ ecosystem through explicit adapters.
 
-Current foundation: [`ascension_os_foundation.md`](ascension_os_foundation.md).
+Current foundation location: `C:\Users\Siddharth\Documents\Ascension OS\ascension_os_foundation.md`.
 
 ## Standalone Product Rule
 

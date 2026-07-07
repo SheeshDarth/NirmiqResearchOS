@@ -32,6 +32,25 @@ Observed root causes:
 - OCR/encoding artifacts reduce lexical matching.
 - Broad overview questions need stronger section-first retrieval.
 
+First reliability slice:
+
+- Added normalized phrase matching in eval diagnostics.
+- Added deterministic query expansion for academic wording mismatches.
+- Added retrieval noise penalties for index/glossary/reference-like chunks.
+
+Updated raw retrieval result:
+
+| Mode | Samples | MRR | Recall@8 | Citation expected coverage |
+| --- | ---: | ---: | ---: | ---: |
+| Hybrid | 16 | 0.655 | 0.875 | 0.875 |
+| BM25 | 16 | 0.781 | 0.875 | 0.875 |
+
+Interpretation:
+
+- The first slice reached the original MRR and Recall@8 targets on the current 16-sample seed.
+- Expected citation coverage improved from `0.750` to `0.875`, but still needs to reach `0.900+` on a larger real-world eval set.
+- Remaining failures cluster around OCR/encoding noise and section-level overview retrieval.
+
 ## 2026-07-06 Evidence Reliability Gate And Eval Correction
 
 Implemented:
@@ -47,13 +66,13 @@ Corrected full-query real-world result:
 
 | Mode | Samples | MRR | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 16 | 0.573 | 0.688 | 0.688 | 0.938 | 0.063 |
-| BM25 | 16 | 0.583 | 0.688 | 0.688 | 0.938 | 0.063 |
+| Hybrid | 16 | 0.583 | 0.750 | 0.750 | 0.938 | 0.063 |
+| BM25 | 16 | 0.615 | 0.750 | 0.750 | 0.938 | 0.063 |
 
 Interpretation:
 
 - The previous `0.3125` full-query citation coverage was an evaluator artifact caused by scoring truncated citation previews.
-- The corrected answer path still trails raw retrieval coverage (`0.750`), so evidence selection and answer-used citation selection remain active reliability work.
+- The corrected answer path still trails raw retrieval coverage (`0.875`), so evidence selection and answer-used citation selection remain active reliability work.
 - The system now fails closed for at least one low-coverage real-world case instead of reporting `grounded=true` for every query.
 
 ## 2026-06-26 RAG Reliability Phase Start

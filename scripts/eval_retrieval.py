@@ -3,6 +3,7 @@ import asyncio
 import json
 import re
 import sys
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -92,7 +93,7 @@ def load_samples(path: Path) -> list[EvalSample]:
         expected_doc_ids = [str(value) for value in payload.get("expected_document_ids", [])]
         expected_chunk_ids = [str(value) for value in payload.get("expected_chunk_ids", [])]
         expected_phrases = [
-            str(value).strip().lower()
+            normalize_eval_text(str(value))
             for value in payload.get("expected_phrases", [])
             if str(value).strip()
         ]
@@ -163,8 +164,8 @@ def has_hit_at_k(retrieved: list[str], expected: set[str], k: int) -> bool:
 
 
 def phrase_hit(text: str, expected_phrases: list[str]) -> bool:
-    lowered = text.lower()
-    return any(phrase in lowered for phrase in expected_phrases)
+    normalized = normalize_eval_text(text)
+    return any(phrase in normalized for phrase in expected_phrases)
 
 
 def phrase_reciprocal_rank(retrieved_texts: list[str], expected_phrases: list[str]) -> float:
@@ -194,7 +195,7 @@ def phrase_ndcg_at_k(retrieved_texts: list[str], expected_phrases: list[str], k:
     dcg = 0.0
     matched: set[str] = set()
     for rank, text in enumerate(retrieved_texts[:k], start=1):
-        lowered = text.lower()
+        lowered = normalize_eval_text(text)
         hit = next((phrase for phrase in expected_phrases if phrase in lowered and phrase not in matched), None)
         if hit:
             matched.add(hit)
@@ -396,6 +397,35 @@ async def run_eval_for_mode(
 
 def contains_citation_anchor(text: str) -> bool:
     return bool(re.search(r"\[\d+\]", text))
+
+
+def normalize_eval_text(text: str) -> str:
+    replacements = {
+        "\u2010": "-",
+        "\u2011": "-",
+        "\u2012": "-",
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\ufb01": "fi",
+        "\ufb02": "fl",
+        "â€“": "-",
+        "â€”": "-",
+        "â€œ": '"',
+        "â€": '"',
+        "â€™": "'",
+        "ï¬": "fi",
+        "ï¬‚": "fl",
+    }
+    normalized = unicodedata.normalize("NFKC", text).lower()
+    for needle, replacement in replacements.items():
+        normalized = normalized.replace(needle, replacement)
+    normalized = re.sub(r"[^a-z0-9+.#-]+", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return normalized
 
 
 def first_id_rank(retrieved: list[str], expected: set[str]) -> int:

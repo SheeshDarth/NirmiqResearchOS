@@ -7,6 +7,50 @@ Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
+## Latest Session Update - 2026-07-07 Ascension Separation And RAG Sprint Continuation
+
+Objective: move Ascension OS foundation out of the NIRMIQ ResearchOS repository and continue the next RAG reliability sprint.
+
+Implemented:
+
+- Moved `docs/ascension_os_foundation.md` to `C:\Users\Siddharth\Documents\Ascension OS\ascension_os_foundation.md`.
+- Updated NIRMIQ docs so Ascension OS is referenced as an adjacent product track outside this repository.
+- Kept NIRMIQ ResearchOS focused on academic document intelligence and retrieval reliability.
+
+Next sprint scope:
+
+- Add deterministic query expansion for academic wording mismatches.
+- Add retrieval noise penalties so index/glossary/reference chunks do not dominate explanatory answers.
+- Add normalized phrase matching in evaluation diagnostics to reduce false misses from PDF punctuation, ligatures, and encoding artifacts.
+- Re-run backend tests and real-world eval to verify whether the reliability slice improves metrics without breaking the golden demo.
+
+Implemented in this sprint:
+
+- Added deterministic local query expansion in `RetrievalService`.
+- Added retrieval noise penalties for index/glossary/reference-like chunks during candidate prioritization.
+- Added debug metadata for query expansion and retrieval noise policy.
+- Added normalized phrase matching to `scripts/eval_retrieval.py`.
+- Added unit tests for query expansion and index-like chunk penalty behavior.
+
+Validation:
+
+- Focused retrieval policy tests: `7 passed`.
+- `.\scripts\eval_real_world.ps1`: passed and improved the 16-sample real-world seed.
+  - Hybrid: MRR `0.655`, Recall@8 `0.875`, citation expected coverage `0.875`.
+  - BM25: MRR `0.781`, Recall@8 `0.875`, citation expected coverage `0.875`.
+- `.\scripts\eval_demo_dataset.ps1`: passed with no golden-demo regression.
+  - Hybrid and BM25 remain Recall@8 `1.000` and citation expected coverage `1.000`.
+- Full-query real-world eval also improved but still trails raw retrieval.
+  - Hybrid: MRR `0.583`, Recall@8 `0.750`, citation expected coverage `0.750`.
+  - BM25: MRR `0.615`, Recall@8 `0.750`, citation expected coverage `0.750`.
+
+Current remaining gap:
+
+- Citation expected coverage improved but remains below the `0.900` target.
+- The real-world eval set still has only `16` samples and must grow toward `40+`.
+- Remaining weak records dropped from `13` to `5`, mainly OCR/encoding and section-overview failures.
+- Full-query coverage still trails raw retrieval, so the next backend bottleneck is answer-used citation selection.
+
 ## Latest Session Update - 2026-07-07 Overnight Sprint Baseline Diagnostics
 
 Objective: execute the first safe overnight sprint block, freeze baseline health, and capture concrete retrieval failures for the next accuracy pass.
@@ -61,7 +105,7 @@ Implemented:
   - improving answer-used citation selection,
   - simplifying answer presentation,
   - updating docs and release readiness after each verified change.
-- Added `docs/ascension_os_foundation.md` as the initial Ascension OS foundation.
+- Added `docs/ascension_os_foundation.md` as the initial Ascension OS foundation. This file was later moved outside the NIRMIQ repo to `C:\Users\Siddharth\Documents\Ascension OS\ascension_os_foundation.md`.
 - Ascension OS is intentionally scoped as a separate local-first personal execution operating system, not a feature inside NIRMIQ ResearchOS.
 - Documented the product boundary:
   - NIRMIQ ResearchOS remains the academic document intelligence workspace.
@@ -78,7 +122,7 @@ Next:
 - Execute the overnight sprint blocks in order.
 - Expand real-world eval labels toward `40`.
 - Improve answer-used citation selection.
-- Keep Ascension OS in docs until its PRD/TRD and repository boundary are confirmed.
+- Keep Ascension OS outside the NIRMIQ ResearchOS repo until its PRD/TRD and repository boundary are confirmed.
 
 ## Latest Session Update - 2026-07-06 Deep Research Evaluation And Evidence Gate
 

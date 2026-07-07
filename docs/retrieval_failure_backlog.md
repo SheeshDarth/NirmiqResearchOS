@@ -14,7 +14,7 @@ Generated from:
 .\scripts\eval_real_world.ps1
 ```
 
-Baseline metrics remain unchanged:
+Original baseline before the first reliability slice:
 
 - Hybrid MRR: `0.490`
 - Hybrid Recall@8: `0.750`
@@ -23,14 +23,22 @@ Baseline metrics remain unchanged:
 - BM25 Recall@8: `0.750`
 - BM25 expected citation coverage: `0.750`
 
+Current result after deterministic query expansion, normalized eval matching, and retrieval noise penalties:
+
+- Hybrid MRR: `0.655`
+- Hybrid Recall@8: `0.875`
+- Hybrid expected citation coverage: `0.875`
+- BM25 MRR: `0.781`
+- BM25 Recall@8: `0.875`
+- BM25 expected citation coverage: `0.875`
+
 Failure log summary:
 
-- Weak retrieval records: `13`
-- Hybrid records: `7`
-- BM25 records: `6`
-- Missed at 8: `8`
-- Late hit rank 4: `3`
-- Late hit rank 6: `2`
+- Weak retrieval records: `5`
+- Hybrid records: `3`
+- BM25 records: `2`
+- Missed at 8: `4`
+- Late hit rank 7: `1`
 
 The failure log records both hard misses and late hits beyond rank 3, because late evidence is less likely to be used correctly during synthesis.
 
@@ -109,19 +117,23 @@ Likely fix:
 
 ## Next Engineering Fixes
 
-Priority order:
+Completed in the first reliability slice:
 
-1. Add normalized phrase matching to eval diagnostics.
-2. Add chunk-type penalty for index/glossary/table-of-contents noise.
-3. Add deterministic query expansion for academic synonyms and section terms.
-4. Improve section-first retrieval candidate ranking.
-5. Expand real-world eval labels from `16` toward `40`.
+- Added normalized phrase matching to eval diagnostics.
+- Added retrieval noise penalties for index/glossary/reference-like chunks.
+- Added deterministic query expansion for common academic wording mismatches.
+
+Next priority order:
+
+1. Improve section-first retrieval candidate ranking.
+2. Add more robust OCR/mojibake normalization during parsing.
+3. Expand real-world eval labels from `16` toward `40`.
+4. Add answer-used citation selection tuning after retrieval coverage stabilizes.
 
 ## Acceptance Target
 
-The next reliability pass should move:
+The next reliability pass should preserve or improve:
 
-- Recall@8 from `0.750` to at least `0.850`.
-- MRR from `0.578` to at least `0.700`.
-- Expected citation coverage from `0.750` to at least `0.900`.
-
+- Recall@8 at or above `0.850`.
+- MRR at or above `0.700`.
+- Expected citation coverage from `0.875` to at least `0.900`.

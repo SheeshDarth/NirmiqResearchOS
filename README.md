@@ -105,7 +105,7 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 ## Active Engineering Tracks
 
 - [`docs/overnight_work_plan.md`](docs/overnight_work_plan.md): focused sprint plan for demo reliability, retrieval evaluation, citation selection, UI clarity, and release readiness.
-- [`docs/ascension_os_foundation.md`](docs/ascension_os_foundation.md): separate foundation draft for Ascension OS, a future local-first personal execution workspace. It is intentionally not a dependency of NIRMIQ ResearchOS.
+- Ascension OS foundation now lives outside this repository at `C:\Users\Siddharth\Documents\Ascension OS` so NIRMIQ ResearchOS remains focused on academic document intelligence.
 
 ## Current V4 Foundation
 
@@ -165,15 +165,16 @@ Implemented in the current repository:
 - Enforce local request body limits, response compression, and scanner-clean SQLite migrations.
 - Run the full publish gate with `scripts/ship_check.ps1`, including tests, compile, web build, smoke, and golden-demo abstention checks.
 
-## Known Retrieval Gap
+## Known Retrieval Status
 
-The golden demo is strong, but the harder real-world seed set shows the current retrieval gap honestly:
+The golden demo is strong, and the harder real-world seed now shows measurable improvement after the first RAG reliability slice:
 
-| Baseline | BM25 MRR | Recall@8 | Citation expected coverage |
+| Real-world seed | BM25 MRR | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: |
-| Real-world academic seed | 0.578 | 0.750 | 0.750 |
+| Before reliability slice | 0.578 | 0.750 | 0.750 |
+| Current | 0.781 | 0.875 | 0.875 |
 
-This means NIRMIQ is already useful for local document Q&A, but arbitrary textbook and notes retrieval still needs higher precision before the project should claim production-grade academic accuracy.
+This means the first reliability slice reached the MRR and Recall@8 targets on the current 16-sample seed. Citation expected coverage improved but still needs to reach `0.900+` on a larger eval set before the project should claim production-grade academic accuracy.
 
 The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
 
@@ -181,19 +182,18 @@ The core issue is not just model quality. Most hallucination risk comes from wea
 
 What is being improved next:
 
-- Freeze the current real-world baseline before retrieval changes.
 - Grow real-world eval labels from `16` to at least `40`.
 - Convert saved `Needs work` feedback into local eval candidates.
-- Add textbook-aware metadata: chapter, section, heading, page range, captions, definitions, and key terms.
-- Retrieve sections/pages first, then rank chunks inside those regions.
+- Continue improving textbook-aware retrieval metadata: chapter, section, heading, page range, captions, definitions, and key terms.
+- Improve section/page-first retrieval before chunk ranking.
 - Keep BM25-only fallback fully usable for offline and low-end devices.
 - Track chunk-selection reasons, section candidates, citation coverage, unsupported claims, latency, and memory behavior.
 
 Acceptance targets:
 
-- Improve Recall@8 from about `0.750` to at least `0.850`.
-- Improve MRR from about `0.578` to at least `0.700`.
-- Improve expected citation coverage from about `0.750` to at least `0.900`.
+- Preserve Recall@8 at or above `0.850` as the eval set grows.
+- Preserve MRR at or above `0.700` as the eval set grows.
+- Improve expected citation coverage from `0.875` to at least `0.900`.
 - Preserve the golden demo results and the no-Ollama/no-Chroma fallback path.
 
 ## Workspaces
@@ -505,8 +505,8 @@ Latest phrase-level real-world retrieval result:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 16 | 0.490 | 0.563 | 0.688 | 0.750 | 0.750 |
-| BM25 | 16 | 0.578 | 0.625 | 0.688 | 0.750 | 0.750 |
+| Hybrid | 16 | 0.655 | 0.813 | 0.813 | 0.875 | 0.875 |
+| BM25 | 16 | 0.781 | 0.875 | 0.875 | 0.875 | 0.875 |
 
 Run:
 

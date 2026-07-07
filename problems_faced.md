@@ -56,6 +56,14 @@ The harder real-world seed evaluation currently shows:
 - BM25 Recall@8: approximately `0.750`.
 - Expected citation coverage: approximately `0.750`.
 
+After the first reliability slice:
+
+- BM25 MRR: approximately `0.781`.
+- BM25 Recall@8: approximately `0.875`.
+- Expected citation coverage: approximately `0.875`.
+
+The first slice added deterministic query expansion, normalized eval matching, and retrieval noise penalties. It reached the initial MRR and Recall@8 targets on the current 16-sample real-world seed, but citation coverage still needs to reach at least `0.900` on a larger eval set.
+
 Interpretation:
 
 - NIRMIQ is useful, but not yet reliable enough for arbitrary textbook-grade academic Q&A.

@@ -53,6 +53,8 @@ class RetrievalService:
             normalized_profile = "balanced"
         target_document_id = document_id.strip() if document_id and document_id.strip() else None
         profile_config = self._profile_config(normalized_profile)
+        expanded_query = self._expand_query(query)
+        query_expansion_terms = self._query_expansion_terms(query)
 
         active_chunks = self._sqlite_repo.list_active_chunks(document_id=target_document_id)
         all_active_chunks = list(active_chunks)
@@ -61,7 +63,7 @@ class RetrievalService:
             for chunk in all_active_chunks
         }
         active_sections = self._sqlite_repo.list_active_sections(document_id=target_document_id)
-        section_candidates = self._rank_sections(query=query, sections=active_sections)
+        section_candidates = self._rank_sections(query=expanded_query, sections=active_sections)
         section_candidate_ids = {
             str(candidate["section_id"])
             for candidate in section_candidates
@@ -79,7 +81,7 @@ class RetrievalService:
                 active_chunks = scoped_chunks
                 section_filtered_chunk_count = len(scoped_chunks)
         bm25_hits = await self._bm25_index.search(
-            query=query,
+            query=expanded_query,
             chunks=active_chunks,
             limit=profile_config["bm25_k"],
         )
@@ -131,13 +133,28 @@ class RetrievalService:
         candidate_ids = [chunk_id for chunk_id in candidate_ids if chunk_id in chunks_by_id]
 
         candidate_texts = [str(chunks_by_id[cid]["text"]) for cid in candidate_ids if cid in chunks_by_id]
-        reranked_order = await self._reranker.rerank(query=query, texts=candidate_texts)
+        reranked_order = await self._reranker.rerank(query=expanded_query, texts=candidate_texts)
         rerank_backend = self._reranker.last_backend
         ordered_candidates = [candidate_ids[idx] for idx in reranked_order if idx < len(candidate_ids)]
         rerank_position_by_id = {
             chunk_id: position
             for position, chunk_id in enumerate(ordered_candidates, start=1)
         }
+        top_bm25_score = max((hit.score for hit in bm25_hits), default=1.0)
+        ordered_candidates = sorted(
+            ordered_candidates,
+            key=lambda chunk_id: self._candidate_priority(
+                chunk_id=chunk_id,
+                chunks_by_id=chunks_by_id,
+                rerank_position_by_id=rerank_position_by_id,
+                bm25_score_map=bm25_score_map,
+                vector_score_map=vector_score_map,
+                section_candidate_ids=section_candidate_ids,
+                top_bm25_score=top_bm25_score,
+                query=expanded_query,
+            ),
+            reverse=True,
+        )
         top_ids: list[str] = []
         per_document_counts: dict[str, int] = {}
         max_chunks_for_document = (
@@ -170,7 +187,8 @@ class RetrievalService:
             quality_score = self._normalize_quality(row.get("quality_score"))
             base_score = (0.5 * fused_score) + (0.3 * lexical_score) + (0.2 * semantic_score)
             quality_multiplier = 0.55 + (0.45 * quality_score)
-            combined = base_score * quality_multiplier
+            noise_penalty = self._chunk_noise_penalty(row=row, query=expanded_query)
+            combined = max(0.0, (base_score * quality_multiplier) - noise_penalty)
             source = "hybrid"
             if chunk_id in bm25_score_map and chunk_id not in vector_score_map:
                 source = "bm25"
@@ -204,6 +222,7 @@ class RetrievalService:
                         and str(row.get("section_id")) in section_candidate_ids
                     ),
                     "quality_score": quality_score,
+                    "noise_penalty": round(noise_penalty, 4),
                     "rerank_position": rerank_position_by_id.get(chunk_id),
                     "final_score": round(combined, 4),
                     "heading": row.get("heading"),
@@ -251,12 +270,229 @@ class RetrievalService:
                     "candidate_ids_after_fusion": len(candidate_ids),
                     "returned_chunks": len(chunks),
                 },
+                "query_expansion_terms": query_expansion_terms,
+                "query_expansion_applied": bool(query_expansion_terms),
+                "retrieval_noise_policy": "enabled",
                 "average_chunk_quality": avg_quality,
                 "quality_weighting": "enabled",
                 "scope": "document" if target_document_id else "corpus",
                 "retrieval_profile": normalized_profile,
                 "strategy": f"phase1_{normalized_mode}",
             },
+        )
+
+    @staticmethod
+    def _candidate_priority(
+        *,
+        chunk_id: str,
+        chunks_by_id: dict[str, dict[str, object]],
+        rerank_position_by_id: dict[str, int],
+        bm25_score_map: dict[str, float],
+        vector_score_map: dict[str, float],
+        section_candidate_ids: set[str],
+        top_bm25_score: float,
+        query: str,
+    ) -> float:
+        row = chunks_by_id.get(chunk_id)
+        if not row:
+            return 0.0
+        rerank_position = rerank_position_by_id.get(chunk_id, len(rerank_position_by_id) + 1)
+        rerank_score = 1.0 / max(rerank_position, 1)
+        lexical_score = min(1.0, bm25_score_map.get(chunk_id, 0.0) / max(top_bm25_score, 1e-9))
+        semantic_score = vector_score_map.get(chunk_id, 0.0)
+        quality_score = RetrievalService._normalize_quality(row.get("quality_score"))
+        section_bonus = (
+            0.12
+            if row.get("section_id") and str(row.get("section_id")) in section_candidate_ids
+            else 0.0
+        )
+        noise_penalty = RetrievalService._chunk_noise_penalty(row=row, query=query)
+        return (
+            (0.46 * rerank_score)
+            + (0.26 * lexical_score)
+            + (0.10 * semantic_score)
+            + (0.18 * quality_score)
+            + section_bonus
+            - noise_penalty
+        )
+
+    @staticmethod
+    def _expand_query(query: str) -> str:
+        terms = RetrievalService._query_expansion_terms(query)
+        if not terms:
+            return query
+        return f"{query} {' '.join(terms)}"
+
+    @staticmethod
+    def _query_expansion_terms(query: str) -> list[str]:
+        normalized = query.lower()
+        expansion_rules: list[tuple[tuple[str, ...], tuple[str, ...]]] = [
+            (
+                ("token position", "token positions", "represent positions", "represent token"),
+                (
+                    "positional",
+                    "encoding",
+                    "encodings",
+                    "position",
+                    "embeddings",
+                    "sequence",
+                    "order",
+                ),
+            ),
+            (
+                ("regularization", "overfitting", "overfit"),
+                (
+                    "constraining",
+                    "constraint",
+                    "restrict",
+                    "simpler",
+                    "freedom",
+                    "parameters",
+                    "generalization",
+                ),
+            ),
+            (
+                ("cross-validation", "cross validation", "model selection", "hyperparameter"),
+                (
+                    "selecting",
+                    "model",
+                    "tuning",
+                    "hyperparameters",
+                    "k-fold",
+                    "validation",
+                    "evaluate",
+                ),
+            ),
+            (
+                ("learning algorithms", "common algorithms", "algorithm"),
+                (
+                    "linear",
+                    "polynomial",
+                    "regression",
+                    "logistic",
+                    "nearest",
+                    "neighbors",
+                    "support",
+                    "vector",
+                    "machines",
+                    "decision",
+                    "trees",
+                    "random",
+                    "forests",
+                    "ensemble",
+                ),
+            ),
+            (
+                ("dimensionality", "dimension reduction", "reduce dimensions"),
+                (
+                    "curse",
+                    "dimensionality",
+                    "reduction",
+                    "training",
+                    "data",
+                    "pca",
+                    "projection",
+                ),
+            ),
+            (
+                ("privacy", "private", "data leak", "sensitive"),
+                (
+                    "sensitive",
+                    "user",
+                    "data",
+                    "personal",
+                    "information",
+                    "pii",
+                    "mask",
+                    "masking",
+                    "encryption",
+                    "secure",
+                    "retention",
+                ),
+            ),
+            (
+                ("summary", "summarize", "overview", "main idea", "what is this about"),
+                (
+                    "introduction",
+                    "overview",
+                    "abstract",
+                    "conclusion",
+                    "topics",
+                    "covers",
+                    "main",
+                    "findings",
+                ),
+            ),
+        ]
+        expanded: list[str] = []
+        seen = set(RetrievalService._metadata_terms(query))
+        for triggers, additions in expansion_rules:
+            if not any(trigger in normalized for trigger in triggers):
+                continue
+            for term in additions:
+                clean = term.lower()
+                if clean in seen:
+                    continue
+                expanded.append(clean)
+                seen.add(clean)
+        return expanded
+
+    @staticmethod
+    def _chunk_noise_penalty(*, row: dict[str, object], query: str) -> float:
+        if not RetrievalService._is_explanatory_query(query):
+            return 0.0
+
+        text = str(row.get("text") or "")
+        lowered = text[:1200].lower()
+        metadata = " ".join(
+            str(row.get(key) or "").lower()
+            for key in ("heading", "section_path", "chunk_type")
+        )
+        penalty = 0.0
+        if any(marker in metadata for marker in ("index", "glossary", "bibliography", "references")):
+            penalty += 0.34
+        if any(marker in lowered[:500] for marker in ("copyright", "permission to reproduce", "provided proper attribution")):
+            penalty += 0.24
+        if RetrievalService._looks_like_index_chunk(lowered):
+            penalty += 0.26
+        if lowered.count("http") >= 3:
+            penalty += 0.12
+        return min(0.6, penalty)
+
+    @staticmethod
+    def _is_explanatory_query(query: str) -> bool:
+        lowered = query.lower()
+        return any(
+            marker in lowered
+            for marker in (
+                "what",
+                "why",
+                "how",
+                "explain",
+                "describe",
+                "summarize",
+                "summary",
+                "which",
+                "list",
+                "compare",
+                "overview",
+            )
+        )
+
+    @staticmethod
+    def _looks_like_index_chunk(text: str) -> bool:
+        sample = text[:900]
+        if len(sample) < 180:
+            return False
+        comma_count = sample.count(",")
+        sentence_count = sample.count(".") + sample.count("?") + sample.count("!")
+        line_count = max(1, sample.count("\n") + 1)
+        short_fragment_count = sum(1 for fragment in re.split(r"[,;\n]", sample) if 2 <= len(fragment.strip()) <= 42)
+        return (
+            comma_count >= 14
+            and short_fragment_count >= 14
+            and sentence_count <= 8
+            and short_fragment_count / line_count >= 5
         )
 
     @staticmethod
