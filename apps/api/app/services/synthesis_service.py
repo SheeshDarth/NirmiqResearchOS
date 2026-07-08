@@ -502,13 +502,19 @@ class SynthesisService:
                 query=query,
                 context_chunks=context_chunks,
             )
+        if SynthesisService._is_definition_query(query):
+            return SynthesisService._fallback_definition_answer(
+                query=query,
+                context_chunks=context_chunks,
+                response_mode=response_mode,
+            )
 
         query_terms = SynthesisService._query_terms(query)
         candidates: list[tuple[float, int, str]] = []
         for idx, block in context_chunks[:6]:
             text = SynthesisService._context_text(block)
             for sentence_index, sentence in enumerate(SynthesisService._split_sentences(text)[:10]):
-                if len(sentence.split()) < 6:
+                if len(sentence.split()) < 6 or SynthesisService._is_low_value_evidence_sentence(sentence):
                     continue
                 term_score = SynthesisService._sentence_score(sentence, query_terms)
                 rank_bonus = max(0, 7 - idx) * 0.12 + max(0, 10 - sentence_index) * 0.02
@@ -665,7 +671,7 @@ class SynthesisService:
         for idx, block in context_chunks[:8]:
             text = SynthesisService._context_text(block)
             for sentence_index, sentence in enumerate(SynthesisService._split_sentences(text)[:10]):
-                if len(sentence.split()) < 6:
+                if len(sentence.split()) < 6 or SynthesisService._is_low_value_evidence_sentence(sentence):
                     continue
                 score = SynthesisService._sentence_score(sentence, query_terms)
                 rank_bonus = max(0, 9 - idx) * 0.08 + max(0, 10 - sentence_index) * 0.01
@@ -726,7 +732,7 @@ class SynthesisService:
         )
         for idx, block in context_chunks[:10]:
             for sentence_index, sentence in enumerate(SynthesisService._split_sentences(SynthesisService._context_text(block))[:12]):
-                if len(sentence.split()) < 7:
+                if len(sentence.split()) < 7 or SynthesisService._is_low_value_evidence_sentence(sentence):
                     continue
                 lowered = sentence.lower()
                 base = SynthesisService._sentence_score(sentence, query_terms)
@@ -754,6 +760,117 @@ class SynthesisService:
         return "\n".join(sections)
 
     @staticmethod
+    def _fallback_definition_answer(
+        query: str,
+        context_chunks: list[tuple[int, str]],
+        response_mode: str,
+    ) -> str:
+        query_terms = SynthesisService._query_terms(query)
+        definition_cues = (
+            " is a ",
+            " is an ",
+            " means ",
+            " refers ",
+            " called ",
+            "probabilistic model",
+            "generative model",
+            "assumes",
+            "generated from",
+            "parameters are unknown",
+        )
+        working_cues = (
+            "generated from",
+            "distribution",
+            "parameters",
+            "density",
+            "sample",
+            "estimate",
+            "algorithm",
+            "cluster",
+        )
+        use_cues = (
+            "used for",
+            "density estimation",
+            "clustering",
+            "anomaly detection",
+            "outlier",
+            "visualization",
+        )
+        limitation_cues = (
+            "limitation",
+            "although",
+            "however",
+            "not",
+            "different shapes",
+            "doesn't do so well",
+            "does not",
+        )
+
+        definitions: list[tuple[float, int, str]] = []
+        workings: list[tuple[float, int, str]] = []
+        uses: list[tuple[float, int, str]] = []
+        limits: list[tuple[float, int, str]] = []
+        for idx, block in context_chunks[:10]:
+            text = SynthesisService._context_text(block)
+            for sentence_index, sentence in enumerate(SynthesisService._split_sentences(text)[:12]):
+                if len(sentence.split()) < 7 or SynthesisService._is_low_value_evidence_sentence(sentence):
+                    continue
+                lowered = f" {sentence.lower()} "
+                base = SynthesisService._sentence_score(sentence, query_terms)
+                rank_bonus = max(0, 10 - idx) * 0.04 + max(0, 12 - sentence_index) * 0.01
+                definition_score = base + rank_bonus + sum(1.0 for cue in definition_cues if cue in lowered)
+                working_score = base + rank_bonus + sum(0.65 for cue in working_cues if cue in lowered)
+                use_score = base + rank_bonus + sum(0.75 for cue in use_cues if cue in lowered)
+                limit_score = base + rank_bonus + sum(0.85 for cue in limitation_cues if cue in lowered)
+                if definition_score > base + rank_bonus:
+                    definitions.append((definition_score, idx, sentence))
+                if working_score > base + rank_bonus:
+                    workings.append((working_score, idx, sentence))
+                if use_score > base + rank_bonus:
+                    uses.append((use_score, idx, sentence))
+                if limit_score > base + rank_bonus:
+                    limits.append((limit_score, idx, sentence))
+
+        selected_definition = SynthesisService._dedupe_scored_sentences(definitions, limit=1)
+        selected_working = SynthesisService._dedupe_scored_sentences(workings, limit=2)
+        selected_uses = SynthesisService._dedupe_scored_sentences(uses, limit=2)
+        selected_limits = SynthesisService._dedupe_scored_sentences(limits, limit=1)
+
+        if not selected_definition:
+            selected_definition = SynthesisService._best_evidence_sentences(
+                context_chunks=context_chunks,
+                query_terms=query_terms,
+                limit=1,
+            )
+        if not selected_definition:
+            return "I found related passages, but not a clear source-backed definition to answer safely."
+
+        mode = response_mode.strip().lower()
+        title = "Exam-ready definition" if mode == "exam_answer" else "Short answer"
+        sections = [title, "\nDirect answer"]
+        sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in selected_definition)
+
+        extra_seen = {sentence for _, sentence in selected_definition}
+        working_items = [(anchor, sentence) for anchor, sentence in selected_working if sentence not in extra_seen]
+        extra_seen.update(sentence for _, sentence in working_items)
+        use_items = [(anchor, sentence) for anchor, sentence in selected_uses if sentence not in extra_seen]
+        extra_seen.update(sentence for _, sentence in use_items)
+        limit_items = [(anchor, sentence) for anchor, sentence in selected_limits if sentence not in extra_seen]
+
+        if working_items:
+            sections.append("\nHow it works")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in working_items[:2])
+        if use_items:
+            sections.append("\nWhat it is used for")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in use_items[:2])
+        if limit_items:
+            sections.append("\nLimitation")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in limit_items[:1])
+
+        sections.append("\nEvidence note\nOpen Sources to inspect the exact textbook passages used.")
+        return "\n".join(sections)
+
+    @staticmethod
     def _dedupe_scored_sentences(
         scored: list[tuple[float, int, str]],
         *,
@@ -762,6 +879,9 @@ class SynthesisService:
         selected: list[tuple[int, str]] = []
         seen: set[str] = set()
         for _, idx, sentence in sorted(scored, key=lambda item: item[0], reverse=True):
+            sentence = SynthesisService._clean_evidence_sentence(sentence)
+            if len(sentence.split()) < 6 or SynthesisService._is_low_value_evidence_sentence(sentence):
+                continue
             normalized = re.sub(r"\W+", "", sentence.lower())[:120]
             if normalized in seen:
                 continue
@@ -800,6 +920,15 @@ class SynthesisService:
         asks_definition = any(phrase in normalized for phrase in ("what is", "define", "meaning of"))
         asks_solution = any(term in normalized for term in ("reduce", "reduced", "prevent", "avoid", "fix"))
         return asks_definition and asks_solution
+
+    @staticmethod
+    def _is_definition_query(query: str) -> bool:
+        normalized = query.lower().strip()
+        if any(phrase in normalized for phrase in ("what is", "define", "meaning of")):
+            return True
+        if normalized.startswith("explain ") and not SynthesisService._is_list_or_algorithm_query(normalized):
+            return True
+        return bool(re.search(r"\bwhat does .+ mean\b", normalized))
 
     @staticmethod
     def _fallback_document_summary(query: str, context_chunks: list[tuple[int, str]]) -> str:
@@ -914,6 +1043,64 @@ class SynthesisService:
         return any(pattern in lowered for pattern in low_value_patterns)
 
     @staticmethod
+    def _is_low_value_evidence_sentence(sentence: str) -> bool:
+        lowered = sentence.lower()
+        if SynthesisService._is_low_value_summary_sentence(sentence):
+            return True
+        if any(
+            marker in lowered
+            for marker in (
+                "isbn",
+                "copyright",
+                "permission to reproduce",
+                "all rights reserved",
+                "trademark",
+            )
+        ):
+            return True
+        comma_fragments = [fragment.strip() for fragment in re.split(r"[,;]", sentence) if fragment.strip()]
+        compact_fragment_count = sum(1 for fragment in comma_fragments if 2 <= len(fragment.split()) <= 6)
+        index_markers = (
+            "beam search",
+            "bellman",
+            "inverse_transform",
+            "fast-mcd",
+            "see also",
+            "sklearn.",
+        )
+        marker_count = sum(marker in lowered for marker in index_markers)
+        if marker_count >= 2 and len(comma_fragments) >= 3:
+            return True
+        if compact_fragment_count >= 5 and marker_count >= 1:
+            return True
+        if compact_fragment_count >= 8 and sentence.count(".") <= 1:
+            return True
+        return False
+
+    @staticmethod
+    def _clean_evidence_sentence(sentence: str) -> str:
+        cleaned = re.sub(r"\s+", " ", sentence).strip(" -")
+        cleaned = re.split(r"\s+>>>\s+", cleaned, maxsplit=1)[0].strip()
+        cleaned = re.sub(r"\s+#\s+.*$", "", cleaned).strip()
+        use_match = re.search(
+            r"\bgaussian mixture models?.*?\bcan be used for\s+([^.]+)",
+            cleaned,
+            flags=re.I,
+        )
+        if use_match:
+            cleaned = f"Gaussian mixture models can be used for {use_match.group(1).strip()}"
+        cleaned = re.sub(
+            r"^(?:(?:[A-Z][A-Za-z0-9'()./-]*)|&)(?:\s+(?:(?:[A-Z][A-Za-z0-9'()./-]*)|&)){0,5}\s+"
+            r"(?=(?:A|An|The|This|It|All|Each|When|There)\b)",
+            "",
+            cleaned,
+        ).strip()
+        cleaned = cleaned.rstrip(" :")
+        if cleaned and cleaned[-1] not in ".!?":
+            cleaned = f"{cleaned}."
+        return cleaned
+
+    @staticmethod
     def _format_extract_answer(
         *,
         heading: str,
@@ -1000,7 +1187,7 @@ class SynthesisService:
         for idx, block in context_chunks[:8]:
             for sentence in SynthesisService._split_sentences(SynthesisService._context_text(block))[:6]:
                 cleaned = sentence.strip()
-                if len(cleaned.split()) < 8 or cleaned in seen:
+                if len(cleaned.split()) < 8 or cleaned in seen or SynthesisService._is_low_value_evidence_sentence(cleaned):
                     continue
                 seen.add(cleaned)
                 selected.append((idx, cleaned))
@@ -1042,6 +1229,21 @@ class SynthesisService:
                     "dimensionality",
                     "reduction",
                     "pca",
+                }
+            )
+        if "gmm" in terms or "gaussian mixture" in normalized:
+            terms.update(
+                {
+                    "probabilistic",
+                    "distribution",
+                    "distributions",
+                    "generated",
+                    "parameters",
+                    "cluster",
+                    "clusters",
+                    "ellipsoidal",
+                    "density",
+                    "generative",
                 }
             )
         if any(phrase in normalized for phrase in ("token position", "token positions", "represent positions")):

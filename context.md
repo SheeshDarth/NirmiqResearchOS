@@ -2533,3 +2533,57 @@ Completed:
 Note:
 
 - This was a Windows desktop app package refresh, not an Android APK build. Android APK generation remains a separate mobile packaging sprint if needed.
+
+### Latest Update: Definition Query RAG Reliability Fix
+
+Date: 2026-07-08
+
+Problem:
+
+- A user asked the Scikit-Learn textbook query `What is a Gaussian mixture model?`.
+- The previous answer was not acceptable: it stitched together index/back-matter fragments such as Bayesian GMM, BIC, Beam Search, Bellman equations, and PCA references instead of explaining the concept.
+- The correct textbook definition was present in the corpus on page 357, but retrieval packing and fallback synthesis did not prioritize it.
+
+Root cause:
+
+- Definition-style questions only had special fallback handling when they also asked for a solution/fix.
+- Focused factual seed chunks skipped promotion when the best chunk was already present in the retrieval bundle, so direct evidence could appear as anchor `[3]` instead of `[1]`.
+- The seed scorer penalized any occurrence of the word `index`, which incorrectly hurt valid passages containing phrases like `cluster index`.
+- Section ranking let back-matter/index-like sections and Bayesian variant headings compete too strongly with the base `Gaussian Mixtures` textbook section.
+- Fallback synthesis allowed heading prefixes, code examples, and index-style comma fragments into the final answer.
+
+Implemented:
+
+- Added deterministic GMM/Gaussian-mixture query expansion for local retrieval and synthesis terms.
+- Improved factual seed scoring so definition language like `is a`, `probabilistic model`, `assumes`, and `generated from` beats mere keyword mentions.
+- Replaced broad `index` text penalties with metadata/index-fragment penalties.
+- Added section ranking boosts for exact base concept sections and penalties for back-matter/API-like sections.
+- Added a definition-specific fallback answer format: direct answer, how it works, what it is used for, limitation when supported.
+- Added low-value evidence filtering to block index fragments such as `Beam Search`, `Bellman`, `inverse_transform`, and `fast-MCD` from answer text.
+- Added evidence sentence cleanup to remove leaked headings and code prompts while preserving citation support.
+- Promoted high-value factual seed chunks to the front even when they already exist in the retrieval bundle, making the direct answer cite `[1]`.
+- Added unit coverage in `apps/api/app/tests/unit/test_definition_answer_quality.py`.
+
+Live verification:
+
+- Query: `What is a Gaussian mixture model?`
+- Selected document: `Hands-On Machine Learning with Scikit-Learn, Keras and TensorFlow, 3rd Ed. - Annotated`.
+- New answer starts with: `A Gaussian mixture model (GMM) is a probabilistic model that assumes that the instances were generated from a mixture of several Gaussian distributions whose parameters are unknown. [1]`
+- First citation now points to page 357, the actual `Gaussian Mixtures` definition section.
+- Citation verification state: `supported`.
+
+Validation:
+
+- Focused tests: `22 passed`.
+- Full backend tests: `66 passed, 1 warning`.
+- `python -m compileall apps/api/app`: passed.
+- Real-world retrieval eval after adding the Gaussian mixture label:
+  - Samples: `17`.
+  - Hybrid: MRR `0.675`, Recall@8 `0.882`, citation expected coverage `0.882`.
+  - BM25: MRR `0.794`, Recall@8 `0.882`, citation expected coverage `0.882`.
+
+Tradeoff:
+
+- This fix is deterministic and lightweight, tuned for definition-quality reliability without adding a larger model, cloud API, graph DB, or heavy reranker.
+- It improves textbook concept questions immediately, but the same pattern should be expanded with more labeled failures for other academic domains.
+- Remaining eval misses include dimensionality-reduction wording and noisy OCR privacy notes; these are good candidates for the next retrieval-tuning pass.

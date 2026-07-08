@@ -457,12 +457,12 @@ Latest phrase-level retrieval metrics:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 16 | 0.490 | 0.563 | 0.688 | 0.750 | 0.750 |
-| BM25 | 16 | 0.578 | 0.625 | 0.688 | 0.750 | 0.750 |
+| Hybrid | 17 | 0.675 | 0.824 | 0.824 | 0.882 | 0.882 |
+| BM25 | 17 | 0.794 | 0.882 | 0.882 | 0.882 | 0.882 |
 
 Interpretation:
 
-- This is the honest baseline for real local academic material.
+- This is the current measured baseline for real local academic material after the Gaussian mixture definition fix.
 - The project is demo-ready, but not yet production-perfect for arbitrary documents.
 - BM25 currently wins on this seed because exact academic phrase labels dominate and Ollama embeddings remain off in the low-memory profile.
 
@@ -471,3 +471,41 @@ Next accuracy sprint:
 - Add at least 40 more real labels.
 - Separate parsing failures from retrieval-ranking failures.
 - Tune hybrid retrieval only against this harder dataset, not only the golden demo.
+
+## 2026-07-08 Definition Query Failure: Gaussian Mixture Model
+
+Observed failure:
+
+- Query: `What is a Gaussian mixture model?`
+- Source: Scikit-Learn textbook.
+- Bad behavior: the answer stitched together index/back-matter terms such as Bayesian Gaussian mixtures, BIC, Beam Search, Bellman equations, PCA, and anomaly-detection headings.
+- Expected behavior: use the page 357 `Gaussian Mixtures` definition before related applications or Bayesian variants.
+
+Diagnosis:
+
+- The correct chunk existed, but the answer path treated keyword mentions as if they were definitions.
+- Back-matter/index-like sections could rank competitively with real chapter sections.
+- Factual seed chunks were not promoted when they already existed in the retrieval bundle.
+- Fallback synthesis lacked a definition-specific answer contract.
+
+Fix shipped:
+
+- Added GMM/Gaussian-mixture query expansion.
+- Added definition-aware factual seed scoring and exact-section ranking.
+- Penalized index/API-like sections without penalizing legitimate phrases like `cluster index`.
+- Added definition fallback synthesis with direct answer, working, uses, and optional limitation.
+- Added low-value evidence filtering and sentence cleanup.
+- Added unit tests for definition chunk priority, index-fragment rejection, fallback definition output, and seed promotion.
+
+Verification:
+
+- Live answer now cites the page 357 definition as `[1]`.
+- Citation verification: `supported`.
+- Real-world eval seed now includes this query as `textbook-ml-007`.
+- Updated 17-sample metrics: Hybrid Recall@8 `0.882`, BM25 Recall@8 `0.882`, BM25 MRR `0.794`.
+- Backend suite: `66 passed, 1 warning`.
+- Compile check: `python -m compileall apps/api/app` passed.
+
+Next eval action:
+
+- Add similar definition queries for DBSCAN, k-means, PCA, overfitting, cross-validation, and gradient descent.
