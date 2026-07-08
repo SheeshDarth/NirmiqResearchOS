@@ -161,3 +161,29 @@ Still to polish:
 - Split source reader for long papers.
 - Paper Lab templates: literature review, methodology, limitations, abstract.
 - Exam Lab templates: 2-mark, 5-mark, 10-mark, study guide, important questions.
+
+## 2026-07-08 Minimal Chatbot Interface Pass
+
+Goal:
+
+- Make NIRMIQ feel closer to ChatGPT: one clear conversation surface, one composer, one obvious upload path, and optional tools hidden until needed.
+
+Implemented:
+
+- The default composer now shows only the essential flow: attached source, upload, library, text input, and ask.
+- Workspace modes, summarize, export, sources, minimize, new thread, and advanced retrieval settings now live behind a compact `Tools` disclosure.
+- The minimized composer now has an explicit `Ask` affordance so users can reopen it without guessing.
+- The active source language changed to an attachment mental model, which is easier for non-technical users.
+- Composer styling is lower-profile: narrower width, shorter textarea, calmer border treatment, and less visible metadata.
+
+Design rule going forward:
+
+- If a control is not needed for the next user message, it should not be permanently visible.
+- Trust cues should stay visible on answers, while evidence details belong in Sources or Deep Research.
+- Paper Lab and Exam Lab should remain available, but not compete with the primary chat flow.
+
+Remaining debt:
+
+- Split `apps/web/app/page.tsx` into focused components before the next major visual iteration.
+- Perform mobile visual QA and keyboard navigation QA.
+- Replace the current disclosure-based power tools with a cleaner drawer once the component split lands.

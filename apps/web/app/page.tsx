@@ -160,6 +160,8 @@ export default function Home() {
   const activeMaterialName = selectedDocumentDetail?.title || selectedDocument?.title || "No study material selected";
   const activePlaceholder = composerPlaceholder(workspaceSection, currentMode.value, activeMaterialName);
   const activeActionLabel = workspaceVerb(workspaceSection);
+  const activeWorkspaceLabel =
+    WORKSPACE_SECTIONS.find((section) => section.value === workspaceSection)?.label ?? "Auto";
   useEffect(() => {
     const storedName = window.localStorage.getItem("nirmiq.localProfileName");
     const storedEmail = window.localStorage.getItem("nirmiq.localEmail");
@@ -1073,7 +1075,7 @@ export default function Home() {
           <div className="route-strip">
             <span className="source-pill">{selectedDocument ? activeMaterialName : "No document selected"}</span>
             <span className="tiny">
-              Ask normally. NIRMIQ handles summaries, comparisons, papers, and exam-style questions automatically.
+              {activeWorkspaceLabel} mode. Ask naturally; sources and tools stay tucked away until you need them.
             </span>
           </div>
         </header>
@@ -1246,37 +1248,11 @@ export default function Home() {
               <div className="source-status">
                 <span className={cx("source-dot", selectedDocument && "ok")} />
                 <div>
-                  <span className="source-label">Current document</span>
+                  <span className="source-label">Attached source</span>
                   <strong>{selectedDocument ? activeMaterialName : "No material attached"}</strong>
                 </div>
               </div>
               <div className="source-actions">
-                {workspaceSection === "exam" ? (
-                  <button
-                    className="quick-action"
-                    disabled={busy !== ""}
-                    onClick={onGenerateExamPdf}
-                    type="button"
-                  >
-                    Custom PDF
-                  </button>
-                ) : null}
-                <button
-                  className="quick-action"
-                  disabled={!documentId || busy !== ""}
-                  onClick={onSummarizeSelectedSource}
-                  type="button"
-                >
-                  Summarize
-                </button>
-                <button
-                  className="quick-action ghost"
-                  disabled={!currentRun || busy !== ""}
-                  onClick={onExportCurrentRun}
-                  type="button"
-                >
-                  Export
-                </button>
                 <button
                   className="quick-action ghost"
                   disabled={busy !== ""}
@@ -1287,30 +1263,19 @@ export default function Home() {
                 </button>
                 <button
                   className="quick-action ghost"
-                  onClick={() => setComposerCollapsed((current) => !current)}
+                  onClick={() => setShowLibrary((current) => !current)}
                   type="button"
                 >
-                  {composerCollapsed ? "Ask" : "Collapse"}
+                  Library
                 </button>
               </div>
             </div>
-            <div className="tool-strip" aria-label="NIRMIQ tools">
-              {WORKSPACE_SECTIONS.map((section) => (
-                <button
-                  className={cx("tool-chip", workspaceSection === section.value && "active")}
-                  data-testid={`workspace-${section.value}`}
-                  key={section.value}
-                  onClick={() => selectWorkspaceSection(section.value)}
-                  type="button"
-                  title={section.hint}
-                >
-                  {section.label}
-                </button>
-              ))}
-            </div>
             {composerCollapsed ? (
               <div className="composer-minimized">
-                Composer collapsed. Click Ask when you want the next question.
+                Search box minimized. Click Ask to write the next question.
+                <button className="clear-link" onClick={() => setComposerCollapsed(false)} type="button">
+                  Ask
+                </button>
               </div>
             ) : (
               <>
@@ -1337,70 +1302,131 @@ export default function Home() {
                     {busy === "query" ? "Reading" : activeActionLabel}
                   </button>
                 </div>
-                <details className="composer-settings">
+                <details className="composer-tools">
                   <summary>
-                    Advanced
-                    <span>optional</span>
+                    Tools
+                    <span>{activeWorkspaceLabel} / {modeLabel(studyMode)}</span>
                   </summary>
-                  <div className="composer-meta">
-                    <label className="label">
-                      Thread
-                      <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
-                    </label>
-                    <label className="label">
-                      Route
-                      <select
-                        className="select"
-                        value={studyMode}
-                        onChange={(event) => setStudyMode(event.target.value as StudyMode)}
+                  <div className="tool-strip" aria-label="NIRMIQ tools">
+                    {WORKSPACE_SECTIONS.map((section) => (
+                      <button
+                        className={cx("tool-chip", workspaceSection === section.value && "active")}
+                        data-testid={`workspace-${section.value}`}
+                        key={section.value}
+                        onClick={() => selectWorkspaceSection(section.value)}
+                        type="button"
+                        title={section.hint}
                       >
-                        {availableModes.map((mode) => (
-                          <option key={mode.value} value={mode.value}>
-                            {mode.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="label">
-                      Retrieval
-                      <select
-                        className="select"
-                        value={retrievalMode}
-                        onChange={(event) => setRetrievalMode(event.target.value as RetrievalMode)}
-                      >
-                        <option value="hybrid">Hybrid</option>
-                        <option value="bm25">BM25</option>
-                        <option value="vector">Vector</option>
-                      </select>
-                    </label>
-                    <label className="label">
-                      Profile
-                      <select
-                        className="select"
-                        value={retrievalProfile}
-                        onChange={(event) => setRetrievalProfile(event.target.value as RetrievalProfile)}
-                      >
-                        {RETRIEVAL_PROFILES.map((profile) => (
-                          <option key={profile.value} value={profile.value}>
-                            {profile.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                        {section.label}
+                      </button>
+                    ))}
                   </div>
-                </details>
-                <div className="composer-actions">
+                  <div className="source-actions expanded">
+                    {workspaceSection === "exam" ? (
+                      <button
+                        className="quick-action"
+                        disabled={busy !== ""}
+                        onClick={onGenerateExamPdf}
+                        type="button"
+                      >
+                        Custom PDF
+                      </button>
+                    ) : null}
+                    <button
+                      className="quick-action"
+                      disabled={!documentId || busy !== ""}
+                      onClick={onSummarizeSelectedSource}
+                      type="button"
+                    >
+                      Summarize
+                    </button>
+                    <button
+                      className="quick-action ghost"
+                      disabled={!currentRun || busy !== ""}
+                      onClick={onExportCurrentRun}
+                      type="button"
+                    >
+                      Export
+                    </button>
+                    <button
+                      className="quick-action ghost"
+                      onClick={() => {
+                        setShowInspector(true);
+                        setDeepView("evidence");
+                      }}
+                      type="button"
+                    >
+                      Sources
+                    </button>
+                    <button
+                      className="quick-action ghost"
+                      onClick={() => setComposerCollapsed(true)}
+                      type="button"
+                    >
+                      Minimize
+                    </button>
+                    <button className="quick-action ghost" type="button" onClick={clearThread}>
+                      New thread
+                    </button>
+                  </div>
+                  <details className="composer-settings compact-details">
+                    <summary>
+                      Advanced
+                      <span>optional</span>
+                    </summary>
+                    <div className="composer-meta">
+                      <label className="label">
+                        Thread
+                        <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
+                      </label>
+                      <label className="label">
+                        Route
+                        <select
+                          className="select"
+                          value={studyMode}
+                          onChange={(event) => setStudyMode(event.target.value as StudyMode)}
+                        >
+                          {availableModes.map((mode) => (
+                            <option key={mode.value} value={mode.value}>
+                              {mode.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="label">
+                        Retrieval
+                        <select
+                          className="select"
+                          value={retrievalMode}
+                          onChange={(event) => setRetrievalMode(event.target.value as RetrievalMode)}
+                        >
+                          <option value="hybrid">Hybrid</option>
+                          <option value="bm25">BM25</option>
+                          <option value="vector">Vector</option>
+                        </select>
+                      </label>
+                      <label className="label">
+                        Profile
+                        <select
+                          className="select"
+                          value={retrievalProfile}
+                          onChange={(event) => setRetrievalProfile(event.target.value as RetrievalProfile)}
+                        >
+                          {RETRIEVAL_PROFILES.map((profile) => (
+                            <option key={profile.value} value={profile.value}>
+                              {profile.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  </details>
                   <p className="composer-hint">
                     {latestCitations.length
                       ? `${latestCitations.length} evidence links ready. Open Sources to inspect citations.`
                       : "Answers stay grounded in the selected study material when evidence is available."}
                   </p>
-                  <div className="chip-row" style={{ marginTop: 0 }}>
-                    <button className="clear-link" type="button" onClick={clearThread}>
-                      Clear Thread
-                    </button>
-                  </div>
-                </div>
+                </details>
               </>
             )}
           </div>

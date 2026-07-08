@@ -2587,3 +2587,40 @@ Tradeoff:
 - This fix is deterministic and lightweight, tuned for definition-quality reliability without adding a larger model, cloud API, graph DB, or heavy reranker.
 - It improves textbook concept questions immediately, but the same pattern should be expanded with more labeled failures for other academic domains.
 - Remaining eval misses include dimensionality-reduction wording and noisy OCR privacy notes; these are good candidates for the next retrieval-tuning pass.
+
+### Latest Update: Minimal Chatbot Interface Pass
+
+Date: 2026-07-08
+
+Problem:
+
+- The current desktop UI still felt too close to a cockpit/debug console instead of a simple AI chatbot.
+- Too many primary actions were visible at once: summarize, export, collapse, source tools, route tools, and advanced retrieval settings.
+- The composer consumed attention even after an answer was generated, making responses harder to read.
+
+Implemented:
+
+- Preserved backend APIs and existing capabilities.
+- Kept the main composer focused on three visible actions: attach/upload, ask, and library/source access.
+- Moved workspace modes, summarize, export, sources, minimize, new thread, and advanced retrieval controls into a compact `Tools` disclosure.
+- Renamed the visible source label from `Current document` to `Attached source` so it reads like a ChatGPT-style attachment model.
+- Reworded the header route copy to make the product feel automatic: users can ask naturally while sources and tools remain tucked away.
+- Made the minimized composer more explicit with a small `Ask` action instead of a passive collapsed state.
+- Reduced composer visual weight with a narrower max width, tighter textarea, calmer borders, and fewer always-visible chips.
+
+Validation:
+
+- `npm run build` from `apps/web`: passed after the UI changes.
+- `git diff --check`: no whitespace errors; only line-ending warnings from Git on Windows.
+
+Tradeoff:
+
+- This is a safe V4 usability pass, not a full frontend rewrite.
+- `apps/web/app/page.tsx` remains too large and still needs a component split into thread, composer, library, sources, Paper Lab, and Exam Lab modules.
+- The advanced tools still exist for power users, but they no longer dominate the default flow.
+
+Next UI debt:
+
+- Run a manual visual QA pass at desktop, laptop, and mobile widths.
+- Add Playwright/browser screenshot QA once the local browser tooling is stable.
+- Convert the current `Tools` disclosure into cleaner section-specific drawers after the component split.
