@@ -7,11 +7,15 @@ def citation_coverage(answer: str) -> dict[str, object]:
         lambda match: f" {match.group(2).strip()}{match.group(1)} ",
         answer,
     )
-    sentences = [
-        sentence.strip()
-        for sentence in re.split(r"(?<=[.!?])\s+|\n+", normalized_answer)
-        if _is_claim_like(sentence)
-    ]
+    sentences: list[str] = []
+    for line in normalized_answer.splitlines():
+        if _is_structural_line(line):
+            continue
+        sentences.extend(
+            sentence.strip()
+            for sentence in re.split(r"(?<=[.!?])\s+", line)
+            if _is_claim_like(sentence)
+        )
     if not sentences:
         return {
             "citation_coverage": 0.0,
@@ -30,8 +34,51 @@ def citation_coverage(answer: str) -> dict[str, object]:
 
 def _is_claim_like(sentence: str) -> bool:
     cleaned = re.sub(r"\[\d+\]", "", sentence).strip(" -*:")
+    lowered = cleaned.lower()
     if len(cleaned.split()) < 4:
         return False
-    if cleaned.lower() in {"sources", "answer", "main ideas", "what it is about"}:
+    if lowered in {
+        "sources",
+        "answer",
+        "main ideas",
+        "what it is about",
+        "direct answer",
+        "key points",
+        "evidence note",
+        "useful caveats / details",
+    }:
+        return False
+    if lowered.startswith(
+        (
+            "document summary from",
+            "study guide from",
+            "if you want",
+            "open sources",
+            "where this came from",
+            "study takeaway",
+            "trust note",
+            "source diagrams",
+            "the retrieved passages did not contain enough",
+        )
+    ):
+        return False
+    if re.match(r"^q\d+\.", lowered):
         return False
     return True
+
+
+def _is_structural_line(line: str) -> bool:
+    lowered = re.sub(r"\s+", " ", line.strip().lower())
+    if not lowered:
+        return True
+    if re.match(r"^q\d+\.", lowered):
+        return True
+    if lowered.startswith(
+        (
+            "document summary from",
+            "study guide from",
+            "source diagrams",
+        )
+    ):
+        return True
+    return False

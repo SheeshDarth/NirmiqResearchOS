@@ -71,13 +71,15 @@ This keeps the current frontend stable while addressing API-versioning readiness
 4. Return cached selected-document summary when the document hash/profile matches.
 5. Expand retrieval query internally for summary, factual lookup, comparison, paper, deep research, and exam intents.
 6. Retrieve candidates from BM25 and optional vector search.
-7. Fuse with RRF and rerank/pack context.
-8. Generate grounded answer or abstain.
-9. Map final answer citation anchors back to the exact selected context chunks used during synthesis.
-10. Compute citation coverage and trust metadata.
-11. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
-12. Persist user/assistant turns.
-13. Return answer, answer-used citations, optional debug metadata, and grounding state.
+7. When a selected document has section metadata, rank candidate sections/pages before chunk-level retrieval.
+8. Fuse with RRF and rerank/pack context.
+9. Generate grounded answer or abstain.
+10. Map final answer citation anchors back to the exact selected context chunks used during synthesis.
+11. Run the evidence reliability gate over citation coverage, answer-used citations, verification state, and relevance.
+12. Compute citation coverage and trust metadata.
+13. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
+14. Persist user/assistant turns.
+15. Return answer, answer-used citations, optional debug metadata, and grounding state.
 
 ### Answer Feedback
 
@@ -97,6 +99,8 @@ Purpose:
 
 - Documents and ingestion jobs.
 - Document chunks and active index versions.
+- Document sections for textbook-aware retrieval.
+- Chunk metadata for `section_id`, `heading`, `section_path`, `chunk_type`, and `key_terms_json`.
 - Sessions and messages.
 - Memory snapshots.
 - Exam profiles and question banks.
@@ -146,10 +150,17 @@ Purpose:
 - Thread Markdown export, session memory deletion, and indexed-material purge for local privacy/reviewer demos.
 - Indexed-material purge removes app-owned uploaded files, parse-cache files, and extracted diagram directories while preserving arbitrary external local-path sources.
 - Electron desktop shell with local runtime startup, diagnostics menu, log access, and portable Windows packaging path.
+- Textbook-aware section metadata and section-first retrieval diagnostics for selected-document queries.
+- Debug-only retrieval metadata for section candidates, chunk-selection reasons, and retrieval diagnostics.
+- Evidence reliability gate blocks `grounded=true` when final answer citations do not satisfy support checks.
 
 ## Next Backend Upgrades
 
-- SQLite concept graph tables for GraphRAG-lite.
+- Expand the RAG Reliability Phase before adding heavier graph or agent systems.
+- Convert local `Needs work` feedback into retrieval-eval candidates.
+- Improve textbook section detection with page headers, captions, definition blocks, and key-term extraction.
+- Tune section-first retrieval against the real-world seed set while preserving BM25-only fallback.
+- SQLite concept graph tables for GraphRAG-lite only after section-first retrieval metrics plateau.
 - Multi-document source diversity controls for Paper Lab.
 - Local data purge/export endpoints.
 - Optional local agent orchestrator with explicit tool allowlists and approval gates.

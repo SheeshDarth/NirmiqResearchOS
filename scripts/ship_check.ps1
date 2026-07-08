@@ -8,6 +8,9 @@ $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $runtimeDir = Join-Path $root "temp\runtime"
 New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
+$pytestRunId = [guid]::NewGuid().ToString("N")
+$pytestTempDir = Join-Path $root "temp\pytest-runs\$pytestRunId\tmp"
+$pytestCacheDir = Join-Path $root "temp\pytest-runs\$pytestRunId\cache"
 
 function Repair-PathEnvironment {
     $pathValue = [System.Environment]::GetEnvironmentVariable("Path", "Process")
@@ -112,7 +115,7 @@ try {
         Push-Location $root
         try {
             $env:PYTHONPATH = "apps/api"
-            $env:TEMP = Join-Path $root "temp\pytest"
+            $env:TEMP = $pytestTempDir
             $env:TMP = $env:TEMP
             $env:TMPDIR = $env:TEMP
             $env:USE_OLLAMA_GENERATION = "false"
@@ -121,8 +124,9 @@ try {
             $env:LOW_MEMORY_MODE = "true"
             $env:SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS = "true"
             New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
+            New-Item -ItemType Directory -Force -Path $pytestCacheDir | Out-Null
             Invoke-NativeChecked "Backend tests" {
-                python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q -o "cache_dir=$root\temp\pytest-cache"
+                python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q -o "cache_dir=$pytestCacheDir"
             }
             Invoke-NativeChecked "API compile" {
                 python -m compileall apps/api/app

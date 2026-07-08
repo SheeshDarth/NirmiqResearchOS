@@ -88,8 +88,8 @@ Updated on 2026-06-14 with the lightweight PDF demo dataset:
 
 | Mode | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 0.967 | 1.00 | 1.00 | 1.00 | 0.847 | 1.00 |
-| BM25 | 0.839 | 1.00 | 1.00 | 1.00 | 0.749 | 1.00 |
+| Hybrid | 0.983 | 1.00 | 1.00 | 1.00 | 0.869 | 1.00 |
+| BM25 | 0.983 | 1.00 | 1.00 | 1.00 | 0.859 | 1.00 |
 
 Command:
 
@@ -116,8 +116,8 @@ The source PDFs are local/untracked by design. Keep copyright-sensitive textbook
 
 | Mode | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 0.490 | 0.563 | 0.688 | 0.750 | 0.750 |
-| BM25 | 0.578 | 0.625 | 0.688 | 0.750 | 0.750 |
+| Hybrid | 0.655 | 0.813 | 0.813 | 0.875 | 0.875 |
+| BM25 | 0.781 | 0.875 | 0.875 | 0.875 | 0.875 |
 
 Command:
 
@@ -130,4 +130,4 @@ Interpretation:
 
 - The golden demo remains the reviewer proof path.
 - The real-world seed is the accuracy-improvement benchmark.
-- These numbers are not yet launch-marketing quality; they are useful because they expose where the next retrieval tuning sprint should focus.
+- The first reliability slice materially improved the 16-sample seed, but the set must grow before making broad launch-marketing claims.

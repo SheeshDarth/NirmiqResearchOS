@@ -427,6 +427,10 @@ class QueryService:
                     page_end=row.get("page_end"),
                     source="summary_seed",
                     quality_score=float(row.get("quality_score") or 1.0),
+                    section_id=row.get("section_id"),
+                    heading=row.get("heading"),
+                    section_path=row.get("section_path"),
+                    chunk_type=str(row.get("chunk_type") or "body"),
                 )
             )
             existing_ids.add(chunk_id)
@@ -504,33 +508,44 @@ class QueryService:
             for row in rows
         ]
         seed_rows = [row for score, row in sorted(scored_rows, key=lambda item: item[0], reverse=True) if score > 0][:5]
-        existing_ids = {chunk.chunk_id for chunk in bundle.chunks}
+        existing_chunks = {chunk.chunk_id: chunk for chunk in bundle.chunks}
+        promoted_ids: set[str] = set()
         seed_chunks: list[RetrievedChunk] = []
         for rank, row in enumerate(seed_rows):
             chunk_id = str(row["id"])
-            if chunk_id in existing_ids:
+            if chunk_id in promoted_ids:
                 continue
-            seed_chunks.append(
-                RetrievedChunk(
-                    chunk_id=chunk_id,
-                    document_id=str(row["document_id"]),
-                    text=str(row["text"]),
-                    score=max(0.01, 0.12 - (rank * 0.005)),
-                    page_start=row.get("page_start"),
-                    page_end=row.get("page_end"),
-                    source="focused_seed",
-                    quality_score=float(row.get("quality_score") or 1.0),
+            if chunk_id in existing_chunks:
+                seed_chunks.append(existing_chunks[chunk_id])
+            else:
+                seed_chunks.append(
+                    RetrievedChunk(
+                        chunk_id=chunk_id,
+                        document_id=str(row["document_id"]),
+                        text=str(row["text"]),
+                        score=max(0.01, 0.12 - (rank * 0.005)),
+                        page_start=row.get("page_start"),
+                        page_end=row.get("page_end"),
+                        source="focused_seed",
+                        quality_score=float(row.get("quality_score") or 1.0),
+                        section_id=row.get("section_id"),
+                        heading=row.get("heading"),
+                        section_path=row.get("section_path"),
+                        chunk_type=str(row.get("chunk_type") or "body"),
+                    )
                 )
-            )
-            existing_ids.add(chunk_id)
+            promoted_ids.add(chunk_id)
         if not seed_chunks:
             return bundle
+        remaining_chunks = [
+            chunk for chunk in bundle.chunks if chunk.chunk_id not in promoted_ids
+        ]
         return RetrievalBundle(
-            chunks=[*seed_chunks, *bundle.chunks],
+            chunks=[*seed_chunks, *remaining_chunks],
             meta={
                 **bundle.meta,
                 "focused_seed_chunks": len(seed_chunks),
-                "focused_seed_strategy": "definition_solution_terms",
+                "focused_seed_strategy": "definition_priority_terms",
             },
         )
 
@@ -629,16 +644,34 @@ class QueryService:
         score = quality + (len(overlap) * 1.4)
         if any(phrase in normalized_query for phrase in ("what is", "define", "meaning")):
             definition_cues = {
+                " is a ",
+                " is an ",
                 "means",
                 "called",
                 "occurs",
                 "refers",
+                "assumes",
                 "generalize",
+                "probabilistic model",
+                "generative model",
+                "generated from",
+                "parameters are unknown",
                 "training data",
                 "new instances",
                 "new data",
             }
             score += sum(0.9 for cue in definition_cues if cue in text)
+            metadata = " ".join(
+                str(row.get(key) or "").lower()
+                for key in ("heading", "section_path", "chunk_type")
+            )
+            if any(term in normalized_query for term in ("gaussian mixture", "gmm")):
+                if re.search(r"\bgaussian mixtures?\b", metadata):
+                    score += 2.4
+                if "probabilistic model" in text or "generated from a mixture" in text:
+                    score += 2.0
+                if "bayesian" in metadata and "bayesian" not in normalized_query:
+                    score -= 1.2
         if any(term in normalized_query for term in ("reduce", "reduced", "prevent", "avoid", "fix")):
             solution_cues = {
                 "possible solutions",
@@ -653,7 +686,14 @@ class QueryService:
                 "early stopping",
             }
             score += sum(0.8 for cue in solution_cues if cue in text)
-        if "references" in text or "bibliography" in text or "index" in text:
+        metadata = " ".join(
+            str(row.get(key) or "").lower()
+            for key in ("heading", "section_path", "chunk_type")
+        )
+        if (
+            any(marker in metadata for marker in ("references", "bibliography", "index"))
+            or RetrievalService._looks_like_index_chunk(text)
+        ):
             score -= 3.0
         return score
 

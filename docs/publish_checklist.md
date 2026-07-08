@@ -1,6 +1,6 @@
 # NIRMIQ Publish Checklist
 
-Last updated: 2026-06-20
+Last updated: 2026-07-08
 
 ## Target
 
@@ -10,16 +10,40 @@ Publish a working NIRMIQ ResearchOS local-first golden demo with clear GitHub cr
 
 Run from `C:\Nirmiq-researchOS`.
 
-Full EOD ship check:
-
-```powershell
-.\scripts\ship_check.ps1
-```
-
-Root command equivalent:
+Full EOD ship check, execution-policy safe:
 
 ```powershell
 npm.cmd run ship:check
+```
+
+Latest local verification:
+
+- Date: 2026-07-08.
+- Result: `SHIP CHECK PASS`.
+- Backend tests: `61 passed`, `1` warning.
+- API compile: passed.
+- Web build: passed.
+- Publish smoke: passed.
+- Golden demo warm start: passed.
+- Command used: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ship_check.ps1`.
+
+Implementation note:
+
+- `ship_check.ps1` uses an isolated per-run pytest temp/cache directory under `temp\pytest-runs\`.
+- This prevents stale Windows temp/cache permissions from breaking the release gate.
+- Direct `.\scripts\ship_check.ps1` may be blocked by Windows PowerShell execution policy.
+- Use `npm.cmd run ship:check`, `NIRMIQ Ship Check.cmd`, or the explicit bypass command below.
+
+Double-click Windows launcher:
+
+```text
+NIRMIQ Ship Check.cmd
+```
+
+Explicit PowerShell equivalent:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ship_check.ps1
 ```
 
 Manual equivalent:

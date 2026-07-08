@@ -1,10 +1,112 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-06-26
+Last updated: 2026-07-07
 
 ## Canonical Problem Log
 
 See [`../problems_faced.md`](../problems_faced.md) for the current architecture diagram, full problem history, current RAG retrieval gaps, future risks, and the RAG Reliability Phase roadmap.
+
+See [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md) for concrete real-world retrieval misses and weak hits generated from the current eval scripts.
+
+See [`answer_used_citation_backlog.md`](answer_used_citation_backlog.md) for cases where raw retrieval finds better evidence than the final answer-used citations.
+
+## 2026-07-07 Retrieval Failure Diagnostics
+
+Implemented:
+
+- Added `--failures-output` support to `scripts/eval_retrieval.py`.
+- Updated `scripts/eval_real_world.ps1` to emit `data/processed/eval/real_world_retrieval_failures.jsonl`.
+- Added a tracked human-readable backlog at [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md).
+
+Current diagnostic summary:
+
+- Weak retrieval records: `13`.
+- Hybrid weak records: `7`.
+- BM25 weak records: `6`.
+- Missed at rank 8: `8`.
+- Late hits beyond rank 3: `5`.
+
+Observed root causes:
+
+- Textbook index/glossary chunks sometimes outrank explanatory body chunks.
+- User wording does not always expand to source-specific terms such as "positional encodings".
+- Some phrase labels are too brittle for equivalent source wording.
+- OCR/encoding artifacts reduce lexical matching.
+- Broad overview questions need stronger section-first retrieval.
+
+First reliability slice:
+
+- Added normalized phrase matching in eval diagnostics.
+- Added deterministic query expansion for academic wording mismatches.
+- Added retrieval noise penalties for index/glossary/reference-like chunks.
+
+Updated raw retrieval result:
+
+| Mode | Samples | MRR | Recall@8 | Citation expected coverage |
+| --- | ---: | ---: | ---: | ---: |
+| Hybrid | 16 | 0.655 | 0.875 | 0.875 |
+| BM25 | 16 | 0.781 | 0.875 | 0.875 |
+
+Interpretation:
+
+- The first slice reached the original MRR and Recall@8 targets on the current 16-sample seed.
+- Expected citation coverage improved from `0.750` to `0.875`, but still needs to reach `0.900+` on a larger real-world eval set.
+- Remaining failures cluster around OCR/encoding noise and section-level overview retrieval.
+
+## 2026-07-06 Evidence Reliability Gate And Eval Correction
+
+Implemented:
+
+- Fixed a legacy SQLite migration ordering bug where existing databases attempted to create `idx_chunks_section_active` before the additive `section_id` column existed.
+- Added a regression test for legacy `document_chunks` schemas.
+- Fixed full-query evaluation so expected evidence is checked against full cited chunk text, not truncated UI citation excerpts.
+- Added an evidence reliability gate in `SynthesisService`.
+- The gate blocks grounded answers when selected evidence, cited context, citation anchors, citation coverage, or verification state are not strong enough.
+- Citation coverage is now line-aware so study-guide question headings and structural UI labels are not treated as factual claims.
+
+Corrected full-query real-world result:
+
+| Mode | Samples | MRR | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 16 | 0.646 | 0.813 | 0.813 | 0.938 | 0.063 |
+| BM25 | 16 | 0.667 | 0.875 | 0.875 | 0.938 | 0.063 |
+
+Interpretation:
+
+- The previous `0.3125` full-query citation coverage was an evaluator artifact caused by scoring truncated citation previews.
+- The corrected BM25 answer path now matches raw retrieval coverage (`0.875`) on the current seed.
+- Hybrid answer-used citation selection still trails raw hybrid retrieval, so this remains active reliability work.
+- The system now fails closed for at least one low-coverage real-world case instead of reporting `grounded=true` for every query.
+
+## 2026-06-26 RAG Reliability Phase Start
+
+Current active gap:
+
+- Real-world academic retrieval is weaker than the bundled golden demo.
+- BM25 baseline on the 16-sample real-world seed: MRR `0.578`, Recall@8 `0.750`, expected citation coverage `0.750`.
+- Users experience this as broad answers, missed textbook sections, unsupported citations, or hallucination.
+
+Implemented first slice:
+
+- Added additive SQLite `document_sections` records.
+- Added chunk metadata for section id, heading, section path, chunk type, and key terms.
+- Added lightweight heading/section detection during indexing.
+- Added metadata-aware BM25 search text.
+- Added section-first retrieval for selected-document queries when relevant section candidates are found.
+- Added debug-only retrieval diagnostics: section candidates, chunk-selection reasons, and returned-chunk counts.
+
+Why this matters:
+
+- The next accuracy gain should come from better evidence precision, not from raising model size, temperature, or context length.
+- The app remains offline-first and low-memory because the first reliability layer is SQLite/BM25-based.
+- The optional vector/reranker path can still help later, but it is not required for the baseline.
+
+Acceptance targets:
+
+- Recall@8: `0.750` to at least `0.850`.
+- MRR: `0.578` to at least `0.700`.
+- Expected citation coverage: `0.750` to at least `0.900`.
+- No golden-demo regression.
 
 ## 2026-06-26 V4.2 Local Feedback Loop
 
@@ -355,12 +457,12 @@ Latest phrase-level retrieval metrics:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 16 | 0.490 | 0.563 | 0.688 | 0.750 | 0.750 |
-| BM25 | 16 | 0.578 | 0.625 | 0.688 | 0.750 | 0.750 |
+| Hybrid | 17 | 0.675 | 0.824 | 0.824 | 0.882 | 0.882 |
+| BM25 | 17 | 0.794 | 0.882 | 0.882 | 0.882 | 0.882 |
 
 Interpretation:
 
-- This is the honest baseline for real local academic material.
+- This is the current measured baseline for real local academic material after the Gaussian mixture definition fix.
 - The project is demo-ready, but not yet production-perfect for arbitrary documents.
 - BM25 currently wins on this seed because exact academic phrase labels dominate and Ollama embeddings remain off in the low-memory profile.
 
@@ -369,3 +471,41 @@ Next accuracy sprint:
 - Add at least 40 more real labels.
 - Separate parsing failures from retrieval-ranking failures.
 - Tune hybrid retrieval only against this harder dataset, not only the golden demo.
+
+## 2026-07-08 Definition Query Failure: Gaussian Mixture Model
+
+Observed failure:
+
+- Query: `What is a Gaussian mixture model?`
+- Source: Scikit-Learn textbook.
+- Bad behavior: the answer stitched together index/back-matter terms such as Bayesian Gaussian mixtures, BIC, Beam Search, Bellman equations, PCA, and anomaly-detection headings.
+- Expected behavior: use the page 357 `Gaussian Mixtures` definition before related applications or Bayesian variants.
+
+Diagnosis:
+
+- The correct chunk existed, but the answer path treated keyword mentions as if they were definitions.
+- Back-matter/index-like sections could rank competitively with real chapter sections.
+- Factual seed chunks were not promoted when they already existed in the retrieval bundle.
+- Fallback synthesis lacked a definition-specific answer contract.
+
+Fix shipped:
+
+- Added GMM/Gaussian-mixture query expansion.
+- Added definition-aware factual seed scoring and exact-section ranking.
+- Penalized index/API-like sections without penalizing legitimate phrases like `cluster index`.
+- Added definition fallback synthesis with direct answer, working, uses, and optional limitation.
+- Added low-value evidence filtering and sentence cleanup.
+- Added unit tests for definition chunk priority, index-fragment rejection, fallback definition output, and seed promotion.
+
+Verification:
+
+- Live answer now cites the page 357 definition as `[1]`.
+- Citation verification: `supported`.
+- Real-world eval seed now includes this query as `textbook-ml-007`.
+- Updated 17-sample metrics: Hybrid Recall@8 `0.882`, BM25 Recall@8 `0.882`, BM25 MRR `0.794`.
+- Backend suite: `66 passed, 1 warning`.
+- Compile check: `python -m compileall apps/api/app` passed.
+
+Next eval action:
+
+- Add similar definition queries for DBSCAN, k-means, PCA, overfitting, cross-validation, and gradient descent.

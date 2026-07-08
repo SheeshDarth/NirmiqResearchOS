@@ -26,7 +26,7 @@ class BM25Index:
         if not query.strip() or not chunks:
             return []
 
-        tokenized_docs: list[list[str]] = [self._tokenize(str(chunk["text"])) for chunk in chunks]
+        tokenized_docs: list[list[str]] = [self._tokenize(self._search_text(chunk)) for chunk in chunks]
         query_tokens = self._tokenize(query)
         if not query_tokens:
             return []
@@ -82,6 +82,15 @@ class BM25Index:
             if stem != token:
                 tokens.append(stem)
         return tokens
+
+    @staticmethod
+    def _search_text(chunk: dict[str, object]) -> str:
+        metadata = " ".join(
+            str(chunk.get(key) or "")
+            for key in ("heading", "section_path", "chunk_type", "key_terms_json")
+        )
+        # Repeat compact academic metadata once so headings/definitions can beat generic body text.
+        return f"{metadata} {metadata} {chunk.get('text') or ''}"
 
     @staticmethod
     def _light_stem(token: str) -> str:

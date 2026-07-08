@@ -102,6 +102,11 @@ The focus is answering with evidence.
 
 NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_faced.md). It documents past failures, current RAG retrieval gaps, future risks, the hallucination root cause analysis, and the RAG Reliability Phase roadmap.
 
+## Active Engineering Tracks
+
+- [`docs/overnight_work_plan.md`](docs/overnight_work_plan.md): focused sprint plan for demo reliability, retrieval evaluation, citation selection, UI clarity, and release readiness.
+- Ascension OS foundation now lives outside this repository at `C:\Users\Siddharth\Documents\Ascension OS` so NIRMIQ ResearchOS remains focused on academic document intelligence.
+
 ## Current V4 Foundation
 
 Implemented in the current repository:
@@ -121,6 +126,7 @@ Implemented in the current repository:
 - Inspect evidence chunks, pages, and source details.
 - Use four workspaces: Research, Chat, Paper Lab, and Exam Lab.
 - Run hybrid retrieval with BM25, optional vector search, RRF, and reranking hooks.
+- Start the RAG Reliability Phase with textbook-aware section metadata, section-first retrieval diagnostics, and chunk-selection reasons inside debug retrieval metadata.
 - Use selected-document summary caching keyed by document id, content hash, and summary profile.
 - Route query intent deterministically for summary, lookup, compare, deep research, paper, exam, chat, and unclear prompts.
 - Show compact trust signals: `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
@@ -157,17 +163,38 @@ Implemented in the current repository:
 - Run optional Docker dev containers with checked-in API and web Dockerfiles.
 - Use `/api/v1/*` routes while preserving the original local API route paths.
 - Enforce local request body limits, response compression, and scanner-clean SQLite migrations.
-- Run the full publish gate with `scripts/ship_check.ps1`, including tests, compile, web build, smoke, and golden-demo abstention checks.
+- Run the full publish gate with `npm.cmd run ship:check` or `NIRMIQ Ship Check.cmd`, including tests, compile, web build, smoke, and golden-demo abstention checks.
 
-## Planned Next
+## Known Retrieval Status
 
-- Larger retrieval eval set from real engineering notes, papers, and exam PDFs.
-- Convert saved `Needs work` feedback into labeled regression/eval cases.
-- Chapter-wise and section-wise summaries for long textbooks.
-- Screenshot/GIF assets for the public README.
-- Local data purge/export UI.
-- GraphRAG-lite concept expansion only after baseline retrieval metrics justify it.
-- Optional connected model mode only with explicit user consent and privacy disclosure.
+The golden demo is strong, and the harder real-world seed now shows measurable improvement after the first RAG reliability slice:
+
+| Real-world seed | BM25 MRR | Recall@8 | Citation expected coverage |
+| --- | ---: | ---: | ---: |
+| Before reliability slice | 0.578 | 0.750 | 0.750 |
+| Current | 0.781 | 0.875 | 0.875 |
+
+This means the first reliability slice reached the MRR and Recall@8 targets on the current 16-sample seed. Citation expected coverage improved but still needs to reach `0.900+` on a larger eval set before the project should claim production-grade academic accuracy.
+
+The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
+
+## Next Phase: RAG Reliability
+
+What is being improved next:
+
+- Grow real-world eval labels from `16` to at least `40`.
+- Convert saved `Needs work` feedback into local eval candidates.
+- Continue improving textbook-aware retrieval metadata: chapter, section, heading, page range, captions, definitions, and key terms.
+- Improve section/page-first retrieval before chunk ranking.
+- Keep BM25-only fallback fully usable for offline and low-end devices.
+- Track chunk-selection reasons, section candidates, citation coverage, unsupported claims, latency, and memory behavior.
+
+Acceptance targets:
+
+- Preserve Recall@8 at or above `0.850` as the eval set grows.
+- Preserve MRR at or above `0.700` as the eval set grows.
+- Improve expected citation coverage from `0.875` to at least `0.900`.
+- Preserve the golden demo results and the no-Ollama/no-Chroma fallback path.
 
 ## Workspaces
 
@@ -454,8 +481,8 @@ Latest local retrieval results on 30 labeled questions:
 
 | Mode | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 0.967 | 1.00 | 1.00 | 1.00 | 0.847 | 1.00 |
-| BM25 | 0.839 | 1.00 | 1.00 | 1.00 | 0.749 | 1.00 |
+| Hybrid | 0.983 | 1.00 | 1.00 | 1.00 | 0.869 | 1.00 |
+| BM25 | 0.983 | 1.00 | 1.00 | 1.00 | 0.859 | 1.00 |
 
 Details:
 
@@ -463,6 +490,7 @@ Details:
 - [Retrieval evaluation results](docs/retrieval_eval_results.md)
 - [Benchmark report](docs/benchmark_report.md)
 - [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
+- [Engineering problem log and RAG Reliability roadmap](problems_faced.md)
 
 Real-world seed eval now also exists for actual local academic material:
 
@@ -477,8 +505,8 @@ Latest phrase-level real-world retrieval result:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 16 | 0.490 | 0.563 | 0.688 | 0.750 | 0.750 |
-| BM25 | 16 | 0.578 | 0.625 | 0.688 | 0.750 | 0.750 |
+| Hybrid | 16 | 0.655 | 0.813 | 0.813 | 0.875 | 0.875 |
+| BM25 | 16 | 0.781 | 0.875 | 0.875 | 0.875 | 0.875 |
 
 Run:
 
@@ -486,7 +514,14 @@ Run:
 .\scripts\eval_real_world.ps1
 ```
 
-This seed set is intentionally harder than the golden demo and shows where retrieval tuning still needs work.
+This seed set is intentionally harder than the golden demo and is the baseline for the RAG Reliability Phase. The goal is to improve retrieval precision and citation coverage before increasing model size, temperature, or context length.
+
+Full-query real-world evaluation now scores expected evidence against full cited chunks, not truncated UI citation previews:
+
+| Mode | MRR | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 0.573 | 0.688 | 0.688 | 0.938 | 0.063 |
+| BM25 | 0.583 | 0.688 | 0.688 | 0.938 | 0.063 |
 
 ## Screenshots And GIFs
 
@@ -509,7 +544,13 @@ Strongest EOD check:
 
 ```powershell
 cd C:\Nirmiq-researchOS
-.\scripts\ship_check.ps1
+npm.cmd run ship:check
+```
+
+Windows double-click alternative:
+
+```text
+NIRMIQ Ship Check.cmd
 ```
 
 This runs backend tests, API compile, frontend production build, local smoke check, and the golden demo.

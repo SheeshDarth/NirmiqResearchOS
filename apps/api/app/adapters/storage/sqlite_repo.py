@@ -8,6 +8,11 @@ class SQLiteRepo:
     _MIGRATION_COLUMNS = {
         "document_chunks": {
             "quality_score": "REAL NOT NULL DEFAULT 1.0",
+            "section_id": "TEXT",
+            "heading": "TEXT",
+            "section_path": "TEXT",
+            "chunk_type": "TEXT NOT NULL DEFAULT 'body'",
+            "key_terms_json": "TEXT",
         },
     }
 
@@ -53,6 +58,26 @@ class SQLiteRepo:
                     token_count INTEGER NOT NULL,
                     chunk_hash TEXT NOT NULL,
                     quality_score REAL NOT NULL DEFAULT 1.0,
+                    section_id TEXT,
+                    heading TEXT,
+                    section_path TEXT,
+                    chunk_type TEXT NOT NULL DEFAULT 'body',
+                    key_terms_json TEXT,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(document_id) REFERENCES documents(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS document_sections (
+                    id TEXT PRIMARY KEY,
+                    document_id TEXT NOT NULL,
+                    index_version INTEGER NOT NULL,
+                    section_index INTEGER NOT NULL,
+                    heading TEXT NOT NULL,
+                    section_path TEXT NOT NULL,
+                    page_start INTEGER,
+                    page_end INTEGER,
+                    key_terms_json TEXT,
                     is_active INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT NOT NULL,
                     FOREIGN KEY(document_id) REFERENCES documents(id)
@@ -160,10 +185,18 @@ class SQLiteRepo:
                 );
                 """
             )
+            self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
+            self._ensure_column(conn, "document_chunks", "section_id", "TEXT")
+            self._ensure_column(conn, "document_chunks", "heading", "TEXT")
+            self._ensure_column(conn, "document_chunks", "section_path", "TEXT")
+            self._ensure_column(conn, "document_chunks", "chunk_type", "TEXT NOT NULL DEFAULT 'body'")
+            self._ensure_column(conn, "document_chunks", "key_terms_json", "TEXT")
             conn.executescript(
                 """
                 CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
                 CREATE INDEX IF NOT EXISTS idx_chunks_document_active ON document_chunks(document_id, is_active);
+                CREATE INDEX IF NOT EXISTS idx_chunks_section_active ON document_chunks(section_id, is_active);
+                CREATE INDEX IF NOT EXISTS idx_sections_document_active ON document_sections(document_id, is_active);
                 CREATE INDEX IF NOT EXISTS idx_messages_session_created ON messages(session_id, created_at);
                 CREATE INDEX IF NOT EXISTS idx_exam_profiles_session ON exam_profiles(session_id);
                 CREATE INDEX IF NOT EXISTS idx_question_bank_document ON question_bank_items(document_id);
@@ -176,7 +209,6 @@ class SQLiteRepo:
                     ON answer_feedback(rating);
                 """
             )
-            self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
 
     def insert_document(
         self,
@@ -231,6 +263,7 @@ class SQLiteRepo:
             conn.execute("DELETE FROM exam_profiles WHERE document_id = ?", (document_id,))
             conn.execute("DELETE FROM ingestion_jobs WHERE document_id = ?", (document_id,))
             conn.execute("DELETE FROM document_chunks WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM document_sections WHERE document_id = ?", (document_id,))
             conn.execute("DELETE FROM documents WHERE id = ?", (document_id,))
         return True
 
@@ -245,6 +278,7 @@ class SQLiteRepo:
             conn.execute("DELETE FROM exam_profiles")
             conn.execute("DELETE FROM ingestion_jobs")
             conn.execute("DELETE FROM document_chunks")
+            conn.execute("DELETE FROM document_sections")
             conn.execute("DELETE FROM documents")
         return document_ids
 
@@ -265,7 +299,8 @@ class SQLiteRepo:
     def get_document_chunks(self, document_id: str, active_only: bool = True) -> list[dict[str, Any]]:
         query = """
             SELECT id, document_id, index_version, chunk_index, page_start, page_end,
-                   text, token_count, chunk_hash, quality_score, is_active, created_at
+                   text, token_count, chunk_hash, quality_score, section_id, heading,
+                   section_path, chunk_type, key_terms_json, is_active, created_at
             FROM document_chunks
             WHERE document_id = ?
         """
@@ -369,6 +404,50 @@ class SQLiteRepo:
                 (document_id,),
             )
 
+    def deactivate_document_sections(self, document_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE document_sections SET is_active = 0 WHERE document_id = ? AND is_active = 1",
+                (document_id,),
+            )
+
+    def insert_document_section(
+        self,
+        *,
+        section_id: str,
+        document_id: str,
+        index_version: int,
+        section_index: int,
+        heading: str,
+        section_path: str,
+        page_start: int | None,
+        page_end: int | None,
+        key_terms_json: str | None = None,
+    ) -> None:
+        now = self._utc_now()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO document_sections (
+                    id, document_id, index_version, section_index, heading, section_path,
+                    page_start, page_end, key_terms_json, is_active, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                """,
+                (
+                    section_id,
+                    document_id,
+                    index_version,
+                    section_index,
+                    heading,
+                    section_path,
+                    page_start,
+                    page_end,
+                    key_terms_json,
+                    now,
+                ),
+            )
+
     def insert_document_chunk(
         self,
         chunk_id: str,
@@ -381,17 +460,28 @@ class SQLiteRepo:
         token_count: int,
         chunk_hash: str,
         quality_score: float = 1.0,
+        section_id: str | None = None,
+        heading: str | None = None,
+        section_path: str | None = None,
+        chunk_type: str = "body",
+        key_terms_json: str | None = None,
     ) -> None:
         now = self._utc_now()
         with self._connect() as conn:
             self._ensure_column(conn, "document_chunks", "quality_score", "REAL NOT NULL DEFAULT 1.0")
+            self._ensure_column(conn, "document_chunks", "section_id", "TEXT")
+            self._ensure_column(conn, "document_chunks", "heading", "TEXT")
+            self._ensure_column(conn, "document_chunks", "section_path", "TEXT")
+            self._ensure_column(conn, "document_chunks", "chunk_type", "TEXT NOT NULL DEFAULT 'body'")
+            self._ensure_column(conn, "document_chunks", "key_terms_json", "TEXT")
             conn.execute(
                 """
                 INSERT INTO document_chunks (
                     id, document_id, index_version, chunk_index, page_start, page_end,
-                    text, token_count, chunk_hash, quality_score, is_active, created_at
+                    text, token_count, chunk_hash, quality_score, section_id, heading,
+                    section_path, chunk_type, key_terms_json, is_active, created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
                 """,
                 (
                     chunk_id,
@@ -404,6 +494,11 @@ class SQLiteRepo:
                     token_count,
                     chunk_hash,
                     quality_score,
+                    section_id,
+                    heading,
+                    section_path,
+                    chunk_type,
+                    key_terms_json,
                     now,
                 ),
             )
@@ -415,7 +510,8 @@ class SQLiteRepo:
         with self._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT id, document_id, page_start, page_end, text, token_count, quality_score
+                SELECT id, document_id, page_start, page_end, text, token_count, quality_score,
+                       section_id, heading, section_path, chunk_type, key_terms_json
                 FROM document_chunks
                 WHERE is_active = 1
                 """
@@ -438,7 +534,8 @@ class SQLiteRepo:
 
     def list_active_chunks(self, document_id: str | None = None) -> list[dict[str, Any]]:
         query = """
-            SELECT id, document_id, page_start, page_end, text, token_count, quality_score
+            SELECT id, document_id, page_start, page_end, text, token_count, quality_score,
+                   section_id, heading, section_path, chunk_type, key_terms_json
             FROM document_chunks
             WHERE is_active = 1
         """
@@ -456,7 +553,8 @@ class SQLiteRepo:
         placeholders = ",".join("?" for _ in chunk_ids)
         query = (
             """
-            SELECT id, document_id, page_start, page_end, text, token_count, quality_score
+            SELECT id, document_id, page_start, page_end, text, token_count, quality_score,
+                   section_id, heading, section_path, chunk_type, key_terms_json
             FROM document_chunks
             WHERE id IN (
             """
@@ -467,6 +565,21 @@ class SQLiteRepo:
         with self._connect() as conn:
             rows = conn.execute(query, chunk_ids).fetchall()
         return {str(row["id"]): dict(row) for row in rows}
+
+    def list_active_sections(self, document_id: str | None = None) -> list[dict[str, Any]]:
+        query = """
+            SELECT id, document_id, index_version, section_index, heading, section_path,
+                   page_start, page_end, key_terms_json, is_active, created_at
+            FROM document_sections
+            WHERE is_active = 1
+        """
+        params: tuple[str, ...] = (document_id,) if document_id else ()
+        if document_id:
+            query += " AND document_id = ?"
+        query += " ORDER BY section_index ASC, created_at ASC"
+        with self._connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+        return [dict(row) for row in rows]
 
     def get_active_chunk_count(self, document_id: str) -> int:
         with self._connect() as conn:

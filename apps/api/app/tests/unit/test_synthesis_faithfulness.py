@@ -298,6 +298,32 @@ def test_unsupported_uncited_generation_does_not_receive_fabricated_anchor() -> 
     assert meta["citation_verification_state"] == "supported"
 
 
+def test_low_citation_coverage_fails_evidence_reliability_gate() -> None:
+    generated = (
+        "NIRMIQ uses grounded retrieval for academic documents. [1]\n"
+        "The system guarantees perfect answers forever."
+    )
+    service = SynthesisService(
+        settings=_settings(),
+        policy=RetrievalPolicy(min_grounding_score=0.1),
+        generator=FakeGenerator(generated),  # type: ignore[arg-type]
+    )
+
+    answer, grounded, meta = asyncio.run(
+        service.synthesize(
+            query="What does NIRMIQ use?",
+            bundle=_bundle(),
+            response_mode="research",
+        )
+    )
+
+    assert grounded is False
+    assert "not enough source-backed evidence" in answer
+    assert meta["evidence_gate_state"] == "failed"
+    assert "low_citation_coverage" in meta["evidence_gate_reasons"]
+    assert meta["citation_coverage"] < meta["evidence_gate_min_citation_coverage"]
+
+
 def test_long_context_deep_research_uses_configured_creative_temperature() -> None:
     generator = FakeGenerator("NIRMIQ uses grounded retrieval and citation-aware synthesis. [1]")
     service = SynthesisService(

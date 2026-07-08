@@ -1,11 +1,276 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-06-26
+Last updated: 2026-07-08
 Current branch: `v3-foundation`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-07-08 Ship Check Retry UX Fix
+
+Objective: retry the release gate and resolve the remaining execution-policy friction.
+
+Finding:
+
+- Direct `.\scripts\ship_check.ps1` can fail on Windows with `PSSecurityException` when PowerShell script execution is disabled.
+- The project itself was healthy when invoked with `-ExecutionPolicy Bypass`.
+
+Implemented:
+
+- Added `NIRMIQ Ship Check.cmd` as a double-clickable ship-check launcher.
+- Updated `docs/publish_checklist.md` to lead with `npm.cmd run ship:check`, the CMD launcher, and the explicit bypass command.
+- Updated `README.md` so public setup instructions do not push users toward a command that Windows may block.
+
+Validation:
+
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ship_check.ps1`: passed.
+- Backend tests: `61 passed`, `1` warning.
+- API compile: passed.
+- Web build: passed.
+- Publish smoke: passed.
+- Golden demo warm start: passed.
+
+## Latest Session Update - 2026-07-07 Release Gate Hardening
+
+Objective: run the full release-readiness gate and fix any safe, local-only issue that blocks repeatable shipping.
+
+Finding:
+
+- `.\scripts\ship_check.ps1` initially failed during backend tests with `PermissionError: [WinError 5] Access is denied`.
+- Root cause: the script reused a fixed `temp\pytest` and `temp\pytest-cache` location, which can be left in a stale or locked state on Windows.
+
+Implemented:
+
+- Hardened `scripts\ship_check.ps1` to create a unique per-run pytest temp/cache directory under `temp\pytest-runs\`.
+- This avoids stale Windows ACL/lock problems without deleting user data or requiring admin permissions.
+
+Validation:
+
+- `.\scripts\ship_check.ps1`: passed end to end.
+- Backend tests inside ship check: `61 passed`, `1` warning.
+- API compile: passed.
+- Web production build: passed.
+- Publish smoke: passed.
+- Golden demo warm start: passed.
+- Local scoped API/web processes were stopped after the check.
+
+Current repo note:
+
+- `deep-research-report.md` remains intentionally untracked.
+
+## Latest Session Update - 2026-07-07 Ascension Separation And RAG Sprint Continuation
+
+Objective: move Ascension OS foundation out of the NIRMIQ ResearchOS repository and continue the next RAG reliability sprint.
+
+Implemented:
+
+- Moved `docs/ascension_os_foundation.md` to `C:\Users\Siddharth\Documents\Ascension OS\ascension_os_foundation.md`.
+- Updated NIRMIQ docs so Ascension OS is referenced as an adjacent product track outside this repository.
+- Kept NIRMIQ ResearchOS focused on academic document intelligence and retrieval reliability.
+
+Next sprint scope:
+
+- Add deterministic query expansion for academic wording mismatches.
+- Add retrieval noise penalties so index/glossary/reference chunks do not dominate explanatory answers.
+- Add normalized phrase matching in evaluation diagnostics to reduce false misses from PDF punctuation, ligatures, and encoding artifacts.
+- Re-run backend tests and real-world eval to verify whether the reliability slice improves metrics without breaking the golden demo.
+
+Implemented in this sprint:
+
+- Added deterministic local query expansion in `RetrievalService`.
+- Added retrieval noise penalties for index/glossary/reference-like chunks during candidate prioritization.
+- Added debug metadata for query expansion and retrieval noise policy.
+- Added normalized phrase matching to `scripts/eval_retrieval.py`.
+- Added unit tests for query expansion and index-like chunk penalty behavior.
+
+Validation:
+
+- Focused retrieval policy tests: `7 passed`.
+- `.\scripts\eval_real_world.ps1`: passed and improved the 16-sample real-world seed.
+  - Hybrid: MRR `0.655`, Recall@8 `0.875`, citation expected coverage `0.875`.
+  - BM25: MRR `0.781`, Recall@8 `0.875`, citation expected coverage `0.875`.
+- `.\scripts\eval_demo_dataset.ps1`: passed with no golden-demo regression.
+  - Hybrid and BM25 remain Recall@8 `1.000` and citation expected coverage `1.000`.
+- Full-query real-world eval also improved after synthesis-side query expansion.
+  - Hybrid: MRR `0.646`, Recall@8 `0.813`, citation expected coverage `0.813`.
+  - BM25: MRR `0.667`, Recall@8 `0.875`, citation expected coverage `0.875`.
+
+Current remaining gap:
+
+- Citation expected coverage improved but remains below the `0.900` target.
+- The real-world eval set still has only `16` samples and must grow toward `40+`.
+- Remaining weak records dropped from `13` to `5`, mainly OCR/encoding and section-overview failures.
+- BM25 full-query coverage now matches raw BM25 retrieval coverage on the current seed.
+- Hybrid full-query coverage still trails raw hybrid retrieval, so answer-used citation selection remains active work.
+
+Follow-up heartbeat progress:
+
+- Updated `scripts/eval_real_world.ps1` so raw retrieval and full-query runs write separate metrics and failure files by default.
+- Generated `data/processed/eval/real_world_full_query_metrics.json`.
+- Generated `data/processed/eval/real_world_full_query_failures.jsonl`.
+- Added `docs/answer_used_citation_backlog.md`.
+- Full-query failure log dropped from `8` to `5` missed-at-8 records after synthesis-side query expansion.
+
+Second follow-up heartbeat progress:
+
+- Added synthesis-side academic query-term expansion so answer fallback scoring uses the same intent vocabulary as retrieval.
+- Added `apps/api/app/tests/unit/test_synthesis_query_terms.py`.
+- Full-query BM25 citation expected coverage improved from `0.750` to `0.875`.
+
+## Latest Session Update - 2026-07-07 Overnight Sprint Baseline Diagnostics
+
+Objective: execute the first safe overnight sprint block, freeze baseline health, and capture concrete retrieval failures for the next accuracy pass.
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q`: `55 passed`, `1` warning.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+- `.\scripts\eval_demo_dataset.ps1`: passed.
+  - Hybrid and BM25 Recall@8 remain `1.000`.
+  - Hybrid and BM25 citation expected coverage remain `1.000`.
+- `.\scripts\eval_real_world.ps1`: passed.
+  - Hybrid MRR `0.490`, Recall@8 `0.750`, citation expected coverage `0.750`.
+  - BM25 MRR `0.578`, Recall@8 `0.750`, citation expected coverage `0.750`.
+
+Implemented:
+
+- Added failure-diagnostic output support to `scripts/eval_retrieval.py`.
+- Updated `scripts/eval_real_world.ps1` to write `data/processed/eval/real_world_retrieval_failures.jsonl`.
+- Added `docs/retrieval_failure_backlog.md` as the tracked summary of weak retrieval patterns.
+
+Findings:
+
+- The first failure log contains `13` weak retrieval records.
+- Hybrid has `7` weak records; BM25 has `6`.
+- `8` records are missed at rank 8; `5` are late hits beyond rank 3.
+- Main observed causes:
+  - textbook index/glossary chunks outranking body explanations,
+  - natural query wording not expanding to source terms such as "positional encodings",
+  - exact-phrase eval labels being too brittle in some cases,
+  - OCR/encoding artifacts reducing lexical match quality,
+  - broad overview questions needing stronger section-first retrieval.
+
+Next:
+
+- Add normalized phrase matching to eval diagnostics.
+- Penalize index/glossary/table-of-contents chunks for explanatory questions.
+- Add deterministic local query expansion from headings and academic synonyms.
+- Expand the real-world eval set toward `40` cases.
+
+## Latest Session Update - 2026-07-07 Overnight Sprint And Ascension OS Kickoff
+
+Objective: create a practical overnight execution plan for NIRMIQ while starting Ascension OS as a separate, cleanly scoped product direction.
+
+Implemented:
+
+- Added `docs/overnight_work_plan.md` as the active overnight sprint plan.
+- The plan prioritizes:
+  - preserving passing tests and build,
+  - expanding real-world retrieval evaluation,
+  - improving answer-used citation selection,
+  - simplifying answer presentation,
+  - updating docs and release readiness after each verified change.
+- Added `docs/ascension_os_foundation.md` as the initial Ascension OS foundation. This file was later moved outside the NIRMIQ repo to `C:\Users\Siddharth\Documents\Ascension OS\ascension_os_foundation.md`.
+- Ascension OS is intentionally scoped as a separate local-first personal execution operating system, not a feature inside NIRMIQ ResearchOS.
+- Documented the product boundary:
+  - NIRMIQ ResearchOS remains the academic document intelligence workspace.
+  - Ascension OS can become the broader command center for goals, projects, execution loops, and personal operating routines.
+
+Tradeoffs:
+
+- No Ascension OS application code was generated yet. This avoids mixing an early new product with the current shippable NIRMIQ demo.
+- No heavy agent, graph, cloud, or automation dependency was added.
+- The next safest engineering step remains RAG reliability and UI clarity before adding new product surface area.
+
+Next:
+
+- Execute the overnight sprint blocks in order.
+- Expand real-world eval labels toward `40`.
+- Improve answer-used citation selection.
+- Keep Ascension OS outside the NIRMIQ ResearchOS repo until its PRD/TRD and repository boundary are confirmed.
+
+## Latest Session Update - 2026-07-06 Deep Research Evaluation And Evidence Gate
+
+Objective: analyze `deep-research-report.md`, evaluate current RAG functioning, identify architecture failures, and proceed with the safest reliability fixes.
+
+Findings:
+
+- The deep research report correctly recommends Adaptive Evidence-Grounded Hybrid RAG with Lite/Edge/Pro modes.
+- NIRMIQ's architecture is directionally aligned with that recommendation.
+- GraphRAG should remain optional Pro/background work until BM25/hybrid reliability improves.
+- Real-world retrieval remains the quality bottleneck:
+  - Hybrid MRR `0.490`, Recall@8 `0.750`, citation expected coverage `0.750`.
+  - BM25 MRR `0.578`, Recall@8 `0.750`, citation expected coverage `0.750`.
+- BM25 still beats hybrid on the current real-world seed, so BM25 remains the Lite/default reliability baseline.
+- Full-query eval initially looked much worse because it scored expected phrases against truncated UI citation excerpts.
+- After fixing the evaluator to use full cited chunk text, full-query real-world citation expected coverage is `0.688`.
+
+Implemented:
+
+- Fixed SQLite migration ordering so legacy databases add section metadata columns before section indexes are created.
+- Added a legacy-schema regression test.
+- Fixed full-query retrieval evaluation to score full cited chunks instead of truncated citation preview text.
+- Added an evidence reliability gate in `SynthesisService`.
+- The gate blocks grounded answers when evidence/citation support is too weak.
+- Improved citation coverage scoring so structural study-guide lines and UI headings are not treated as unsupported claims.
+- Fixed fallback list-answer wording so cited direct answers use source text rather than generic wrapper prose.
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q`: `55 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+- `scripts/eval_real_world.ps1`: passed, real-world retrieval baseline unchanged.
+- `scripts/eval_demo_dataset.ps1`: passed, demo retrieval remains at Recall@8 `1.00` and citation expected coverage `1.00`.
+
+Next:
+
+- Expand real-world eval from `16` to at least `40`, then `100+`.
+- Add per-sample failure reporting for full-query eval.
+- Improve answer-used citation selection so full-query coverage catches up to raw retrieval coverage.
+- Tune hybrid retrieval only when it beats BM25 on real corpora.
+
+## Latest Session Update - 2026-06-26 RAG Reliability Phase Kickoff
+
+Objective: update the public documentation and begin the first backend slice of the RAG Reliability Phase without changing public query APIs or adding heavy dependencies.
+
+Implemented:
+
+- Refreshed `README.md` with a clear `Known Retrieval Gap` and `Next Phase: RAG Reliability` section.
+- Preserved the honest real-world baseline:
+  - BM25 MRR `0.578`.
+  - Recall@8 `0.750`.
+  - Citation expected coverage `0.750`.
+- Added additive SQLite support for textbook-aware retrieval:
+  - New `document_sections` table.
+  - Nullable chunk metadata for `section_id`, `heading`, `section_path`, `chunk_type`, and `key_terms_json`.
+- Updated indexing to detect lightweight textbook headings/sections and persist section metadata while staying backwards-compatible with old chunks.
+- Updated BM25 indexing to include heading, section path, chunk type, and key terms in lexical search text.
+- Added section-first retrieval for selected-document queries:
+  - rank candidate sections from local metadata,
+  - narrow chunk retrieval when a relevant section is detected,
+  - keep normal BM25/vector/hybrid fallback when section evidence is weak.
+- Added debug-only retrieval diagnostics inside `retrieval_meta`:
+  - `section_candidates`,
+  - `section_first_enabled`,
+  - `chunk_selection_reasons`,
+  - `retrieval_diagnostics`.
+- Added tests for section detection, metadata persistence, and selected-document section-first diagnostics.
+
+Acceptance targets for the phase:
+
+- Improve Recall@8 from about `0.750` to at least `0.850`.
+- Improve MRR from about `0.578` to at least `0.700`.
+- Improve expected citation coverage from about `0.750` to at least `0.900`.
+- Preserve golden demo behavior and local fallback behavior without Chroma, reranker, or Ollama.
+
+Tradeoffs:
+
+- Heading detection is heuristic by design. It is cheap, offline, and low-VRAM, but it will not perfectly identify every PDF structure yet.
+- Section-first retrieval is only applied when a selected document has positive section matches. This avoids over-filtering broad or unclear questions.
+- Diagnostics are returned as optional debug metadata instead of visible UI controls, keeping the user experience simple.
 
 ## Latest Session Update - 2026-06-26 RAG Reliability Problem Log
 
@@ -2268,3 +2533,57 @@ Completed:
 Note:
 
 - This was a Windows desktop app package refresh, not an Android APK build. Android APK generation remains a separate mobile packaging sprint if needed.
+
+### Latest Update: Definition Query RAG Reliability Fix
+
+Date: 2026-07-08
+
+Problem:
+
+- A user asked the Scikit-Learn textbook query `What is a Gaussian mixture model?`.
+- The previous answer was not acceptable: it stitched together index/back-matter fragments such as Bayesian GMM, BIC, Beam Search, Bellman equations, and PCA references instead of explaining the concept.
+- The correct textbook definition was present in the corpus on page 357, but retrieval packing and fallback synthesis did not prioritize it.
+
+Root cause:
+
+- Definition-style questions only had special fallback handling when they also asked for a solution/fix.
+- Focused factual seed chunks skipped promotion when the best chunk was already present in the retrieval bundle, so direct evidence could appear as anchor `[3]` instead of `[1]`.
+- The seed scorer penalized any occurrence of the word `index`, which incorrectly hurt valid passages containing phrases like `cluster index`.
+- Section ranking let back-matter/index-like sections and Bayesian variant headings compete too strongly with the base `Gaussian Mixtures` textbook section.
+- Fallback synthesis allowed heading prefixes, code examples, and index-style comma fragments into the final answer.
+
+Implemented:
+
+- Added deterministic GMM/Gaussian-mixture query expansion for local retrieval and synthesis terms.
+- Improved factual seed scoring so definition language like `is a`, `probabilistic model`, `assumes`, and `generated from` beats mere keyword mentions.
+- Replaced broad `index` text penalties with metadata/index-fragment penalties.
+- Added section ranking boosts for exact base concept sections and penalties for back-matter/API-like sections.
+- Added a definition-specific fallback answer format: direct answer, how it works, what it is used for, limitation when supported.
+- Added low-value evidence filtering to block index fragments such as `Beam Search`, `Bellman`, `inverse_transform`, and `fast-MCD` from answer text.
+- Added evidence sentence cleanup to remove leaked headings and code prompts while preserving citation support.
+- Promoted high-value factual seed chunks to the front even when they already exist in the retrieval bundle, making the direct answer cite `[1]`.
+- Added unit coverage in `apps/api/app/tests/unit/test_definition_answer_quality.py`.
+
+Live verification:
+
+- Query: `What is a Gaussian mixture model?`
+- Selected document: `Hands-On Machine Learning with Scikit-Learn, Keras and TensorFlow, 3rd Ed. - Annotated`.
+- New answer starts with: `A Gaussian mixture model (GMM) is a probabilistic model that assumes that the instances were generated from a mixture of several Gaussian distributions whose parameters are unknown. [1]`
+- First citation now points to page 357, the actual `Gaussian Mixtures` definition section.
+- Citation verification state: `supported`.
+
+Validation:
+
+- Focused tests: `22 passed`.
+- Full backend tests: `66 passed, 1 warning`.
+- `python -m compileall apps/api/app`: passed.
+- Real-world retrieval eval after adding the Gaussian mixture label:
+  - Samples: `17`.
+  - Hybrid: MRR `0.675`, Recall@8 `0.882`, citation expected coverage `0.882`.
+  - BM25: MRR `0.794`, Recall@8 `0.882`, citation expected coverage `0.882`.
+
+Tradeoff:
+
+- This fix is deterministic and lightweight, tuned for definition-quality reliability without adding a larger model, cloud API, graph DB, or heavy reranker.
+- It improves textbook concept questions immediately, but the same pattern should be expanded with more labeled failures for other academic domains.
+- Remaining eval misses include dimensionality-reduction wording and noisy OCR privacy notes; these are good candidates for the next retrieval-tuning pass.

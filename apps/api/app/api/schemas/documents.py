@@ -39,6 +39,11 @@ class DocumentChunkItem(BaseModel):
     text: str
     token_count: int
     chunk_hash: str
+    section_id: str | None = None
+    heading: str | None = None
+    section_path: str | None = None
+    chunk_type: str | None = None
+    key_terms_json: str | None = None
     is_active: bool
     created_at: str
 

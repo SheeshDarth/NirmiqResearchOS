@@ -1,6 +1,6 @@
 # Problems Faced And RAG Reliability Roadmap
 
-Last updated: 2026-06-26
+Last updated: 2026-07-06
 
 This is the canonical engineering problem log for NIRMIQ ResearchOS. It documents what has failed, what is still failing, what may fail later, and how the next RAG Reliability Phase should resolve the core retrieval and hallucination issues.
 
@@ -55,6 +55,14 @@ The harder real-world seed evaluation currently shows:
 - BM25 MRR: approximately `0.578`.
 - BM25 Recall@8: approximately `0.750`.
 - Expected citation coverage: approximately `0.750`.
+
+After the first reliability slice:
+
+- BM25 MRR: approximately `0.781`.
+- BM25 Recall@8: approximately `0.875`.
+- Expected citation coverage: approximately `0.875`.
+
+The first slice added deterministic query expansion, normalized eval matching, and retrieval noise penalties. It reached the initial MRR and Recall@8 targets on the current 16-sample real-world seed, but citation coverage still needs to reach at least `0.900` on a larger eval set.
 
 Interpretation:
 
@@ -194,6 +202,62 @@ Impact:
 - Extractive fallback is safer than forcing generation when evidence is weak.
 - Local answer feedback now captures real failure cases through `Good` and `Needs work`.
 - Golden demo and real-world eval scripts make retrieval quality measurable.
+
+## 2026-06-26 First Reliability Slice Implemented
+
+Implemented before the next metric run:
+
+- Added SQLite `document_sections` metadata.
+- Added nullable chunk metadata for `section_id`, `heading`, `section_path`, `chunk_type`, and `key_terms_json`.
+- Added lightweight textbook heading and section detection during indexing.
+- Added metadata-aware BM25 search text so headings and key terms influence lexical retrieval.
+- Added selected-document section-first retrieval when section metadata matches the query.
+- Added debug-only `retrieval_meta` fields:
+  - `section_candidates`
+  - `section_first_enabled`
+  - `chunk_selection_reasons`
+  - `retrieval_diagnostics`
+- Added unit/integration tests for section detection, metadata persistence, and retrieval diagnostics.
+
+Current caveat:
+
+- This is the first precision layer, not the finished reliability target. The next step is to rerun demo and real-world evals, promote `Needs work` feedback into labels, and tune against measured failures.
+
+## 2026-07-06 Deep Research Review And Evidence Gate
+
+What the deep research report got right:
+
+- NIRMIQ should use Adaptive Evidence-Grounded Hybrid RAG, not plain RAG and not always-on GraphRAG.
+- Lite mode should be BM25/extractive-first with strict abstention.
+- Edge mode can use hybrid retrieval when it proves value.
+- Pro mode can add background graph reasoning later.
+- Generated summaries and answers must remain derived artifacts, never first-class truth.
+
+Failure discovered:
+
+- Real-world eval initially failed with `no such column: section_id`.
+- Root cause: legacy SQLite databases tried to create a section index before additive section columns were applied.
+- Fix: run additive chunk-column migrations before index creation.
+
+Evaluation correction:
+
+- Full-query eval was scoring expected evidence against truncated UI citation excerpts.
+- That made citation expected coverage appear to be `0.3125`.
+- After using full cited chunk text, corrected full-query citation expected coverage is `0.6875`.
+
+Implemented:
+
+- Legacy SQLite migration regression test.
+- Full cited-chunk scoring in `scripts/eval_retrieval.py`.
+- Evidence reliability gate in `SynthesisService`.
+- Line-aware citation coverage so headings/question labels are not counted as claims.
+- Cleaner extractive fallback wording so wrapper text is not falsely cited.
+
+Remaining problem:
+
+- Full-query coverage (`0.688`) still trails raw retrieval coverage (`0.750`).
+- BM25 still beats hybrid on the real-world seed.
+- The next reliability work is answer-used citation selection, eval expansion, and hybrid/BM25 routing, not GraphRAG.
 
 ## RAG Reliability Phase Roadmap
 
