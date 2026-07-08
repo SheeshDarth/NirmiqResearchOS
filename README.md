@@ -163,7 +163,7 @@ Implemented in the current repository:
 - Run optional Docker dev containers with checked-in API and web Dockerfiles.
 - Use `/api/v1/*` routes while preserving the original local API route paths.
 - Enforce local request body limits, response compression, and scanner-clean SQLite migrations.
-- Run the full publish gate with `scripts/ship_check.ps1`, including tests, compile, web build, smoke, and golden-demo abstention checks.
+- Run the full publish gate with `npm.cmd run ship:check` or `NIRMIQ Ship Check.cmd`, including tests, compile, web build, smoke, and golden-demo abstention checks.
 
 ## Known Retrieval Status
 
@@ -544,7 +544,13 @@ Strongest EOD check:
 
 ```powershell
 cd C:\Nirmiq-researchOS
-.\scripts\ship_check.ps1
+npm.cmd run ship:check
+```
+
+Windows double-click alternative:
+
+```text
+NIRMIQ Ship Check.cmd
 ```
 
 This runs backend tests, API compile, frontend production build, local smoke check, and the golden demo.

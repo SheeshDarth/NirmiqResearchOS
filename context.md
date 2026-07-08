@@ -1,11 +1,35 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-07-07
+Last updated: 2026-07-08
 Current branch: `v3-foundation`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-07-08 Ship Check Retry UX Fix
+
+Objective: retry the release gate and resolve the remaining execution-policy friction.
+
+Finding:
+
+- Direct `.\scripts\ship_check.ps1` can fail on Windows with `PSSecurityException` when PowerShell script execution is disabled.
+- The project itself was healthy when invoked with `-ExecutionPolicy Bypass`.
+
+Implemented:
+
+- Added `NIRMIQ Ship Check.cmd` as a double-clickable ship-check launcher.
+- Updated `docs/publish_checklist.md` to lead with `npm.cmd run ship:check`, the CMD launcher, and the explicit bypass command.
+- Updated `README.md` so public setup instructions do not push users toward a command that Windows may block.
+
+Validation:
+
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ship_check.ps1`: passed.
+- Backend tests: `61 passed`, `1` warning.
+- API compile: passed.
+- Web build: passed.
+- Publish smoke: passed.
+- Golden demo warm start: passed.
 
 ## Latest Session Update - 2026-07-07 Release Gate Hardening
 
