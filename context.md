@@ -2624,3 +2624,31 @@ Next UI debt:
 - Run a manual visual QA pass at desktop, laptop, and mobile widths.
 - Add Playwright/browser screenshot QA once the local browser tooling is stable.
 - Convert the current `Tools` disclosure into cleaner section-specific drawers after the component split.
+
+### Latest Update: Codex Tooling Upgrade
+
+Date: 2026-07-08
+
+Purpose:
+
+- Add stronger project tooling for release work, UI QA, and repository management without adding complexity to the NIRMIQ app itself.
+
+Installed / activated:
+
+- GitHub plugin: installed successfully through the Codex plugin installer.
+- Chrome automation plugin: installed successfully through the Codex plugin installer.
+- Node REPL MCP: available and verified.
+- Playwright package: verified import through Node REPL, so browser automation and screenshot QA can be used for the next UI pass.
+- PDF/Documents plugin support: already present in the Codex runtime.
+- Browser plugin support: already present in the Codex runtime.
+
+Verification:
+
+- GitHub connector can find `SheeshDarth/NirmiqResearchOS` with repository permissions.
+- Playwright import returned Chromium/Firefox/WebKit automation exports.
+
+Notes:
+
+- A dedicated Ollama/runtime monitor MCP was not available in the Codex install catalog. Runtime health should stay inside NIRMIQ as local `/health`, `/runtime`, and latency/memory diagnostics instead of depending on a separate cloud connector.
+- A dedicated SQLite MCP namespace did not expose in this session, but local SQLite inspection remains available through Python/Node and is sufficient for NIRMIQ's offline-first debugging workflow.
+- A hard restart of the Codex desktop app was not performed from inside the active session to avoid interrupting the work. The newly installed GitHub and Chrome tooling is already visible in this session; a manual close/reopen of Codex can still refresh the tool list if needed.
