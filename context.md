@@ -1,11 +1,38 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-07-08
-Current branch: `v3-foundation`
+Last updated: 2026-07-09
+Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-07-09 MegaSprint One Query-Agnostic RAG Reliability
+
+Objective: align NIRMIQ with the vision of a simple ChatGPT-like academic assistant that works across valid user queries, hides confusing metadata, and avoids confident answers when evidence is only loosely related.
+
+Implemented:
+
+- Replaced prompt-specific reliability framing with a query-category eval seed at `data/processed/eval/query_agnostic_rag_categories.jsonl`.
+- Added document-aware query expansion in retrieval so acronyms and source terminology can be expanded from uploaded material.
+- Added direct-evidence scoring to retrieval candidate priority and hidden chunk-selection diagnostics.
+- Penalized backmatter/index/glossary/example-list passages for explanatory questions so broad fragments do not outrank real concept sections.
+- Added synthesis-side answer relevance states: direct evidence, weak related mention, no direct evidence, and unrelated.
+- Simplified user-facing abstention messages so users see clear language instead of reliability-gate internals.
+- Simplified UI trust copy to `Verified`, `Needs more evidence`, and `Not found in sources`.
+- Hid normal metadata noise by showing answer-used source passages and page references rather than chunk IDs, token counts, scores, or retrieval internals.
+- Fixed SQLite test cleanup on Windows by closing SQLite connections after context-manager use.
+
+Validation:
+
+- Focused retrieval/synthesis tests: passed.
+- Full backend tests: `71 passed`, `1` warning, using workspace-scoped pytest temp/cache paths.
+- API compile: passed before doc updates; rerun before final push.
+- Query-category BM25 smoke eval: MRR `1.000`, Recall@8 `1.000`, citation expected coverage `1.000` on the initial 10-sample seed.
+
+Current repo note:
+
+- `deep-research-report.md` remains intentionally untracked and untouched.
 
 ## Latest Session Update - 2026-07-08 Ship Check Retry UX Fix
 

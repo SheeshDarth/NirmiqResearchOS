@@ -428,7 +428,7 @@ export default function Home() {
             source_path: selectedDocumentDetail?.source_path || selectedDocument?.source_path,
           }
         : {};
-      const shouldRequestDebug = showInspector || effectiveSection === "paper" || effectiveSection === "exam";
+      const shouldRequestDebug = true;
       const response = await runQuery({
         session_id: sessionId.trim(),
         query: submittedQuery,
@@ -1713,20 +1713,9 @@ export default function Home() {
               <p className="tiny">
                 {selectedDocument ? "Stored locally. Full path hidden for privacy." : "Select study material."}
               </p>
-              <div className="metric-grid" style={{ marginTop: 12 }}>
-                <div className="metric-card">
-                  <strong>{selectedDocumentDetail?.active_chunk_count ?? selectedDocument?.active_chunk_count ?? 0}</strong>
-                  <span className="tiny">chunks</span>
-                </div>
-                <div className="metric-card">
-                  <strong>{ingestStatus?.status ?? "idle"}</strong>
-                  <span className="tiny">index</span>
-                </div>
-                <div className="metric-card">
-                  <strong>{ingestJobs?.jobs.length ?? 0}</strong>
-                  <span className="tiny">jobs</span>
-                </div>
-              </div>
+              <p className="copy source-status-copy">
+                {selectedDocument ? "Only answer-used passages are shown here. Technical ranking data stays hidden." : "Upload or select material to inspect source support."}
+              </p>
             </div>
 
             {latestCitations.length ? (
@@ -1757,8 +1746,8 @@ export default function Home() {
             {selectedChunk ? (
               <div className="chunk-card active">
                 <div className="chunk-head">
-                  <strong>Focused chunk {selectedChunk.chunk_index + 1}</strong>
-                  <span className="chip">{selectedChunk.token_count} tokens</span>
+                  <strong>Selected source passage</strong>
+                  <span className="chip">{selectedChunk.page_start ? `Page ${selectedChunk.page_start}` : "Page unknown"}</span>
                 </div>
                 <p className="chunk-text">{previewText(selectedChunk.text, 900)}</p>
               </div>
@@ -1766,8 +1755,8 @@ export default function Home() {
 
             <div className="panel">
               <div className="section-head">
-                <h2>Retrieved chunks</h2>
-                <span className="tiny">{visibleChunks.length} visible</span>
+                <h2>Source passages</h2>
+                <span className="tiny">{visibleChunks.length} shown</span>
               </div>
               <div className="chunk-list" style={{ marginTop: 10 }}>
                 {visibleChunks.length ? (
@@ -1783,7 +1772,7 @@ export default function Home() {
                       type="button"
                     >
                       <div className="chunk-head">
-                        <strong>Chunk {chunk.chunk_index + 1}</strong>
+                        <strong>Passage</strong>
                         <span className="tiny">p.{chunk.page_start ?? "?"}-{chunk.page_end ?? "?"}</span>
                       </div>
                       <p className="chunk-text">{previewText(chunk.text, 330)}</p>

@@ -1,6 +1,25 @@
 # NIRMIQ Debugging Guide
 
-Last updated: 2026-06-26
+Last updated: 2026-07-09
+
+## 2026-07-09 MegaSprint One RAG Debugging Notes
+
+The main failure class is no longer only "did retrieval find a chunk?" The stricter question is: did retrieval find direct evidence that answers the user's actual query?
+
+When an answer feels wrong:
+
+1. Check the visible trust state first: `Verified`, `Needs more evidence`, or `Not found in sources`.
+2. Open Sources only if needed and inspect the answer-used passages/page references.
+3. If the answer used a loose mention instead of a direct explanation, mark it `Needs work`.
+4. Convert repeated failures into query-category eval labels instead of adding one-off prompt rules.
+5. Use debug metadata only during development: `answer_relevance_state`, `answer_relevance_score`, `direct_evidence_count`, `weak_related_count`, and `chunk_selection_reasons`.
+
+Expected behavior:
+
+- Direct evidence should answer with citations.
+- Weak related mentions should return `Needs more evidence`.
+- Unrelated context should return `Not found in sources`.
+- Normal users should not see scores, chunk ids, token counts, or reliability-gate internals.
 
 ## 2026-06-26 V4.2 Feedback Loop And Remote Codex Notes
 

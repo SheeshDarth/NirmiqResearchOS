@@ -95,7 +95,7 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         unrelated_body = unrelated_response.json()
         assert unrelated_body["grounded"] is False
         assert unrelated_body["citations"] == []
-        assert "not have enough relevant uploaded context" in unrelated_body["answer"]
+        assert "could not find this in the uploaded sources" in unrelated_body["answer"]
         assert unrelated_body["retrieval_meta"]["context_relevance_state"] == "unrelated"
         assert unrelated_body["retrieval_meta"]["grounding_state"] == "weak"
 

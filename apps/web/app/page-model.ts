@@ -296,40 +296,49 @@ export function getGroundingScore(response: QueryResponse | null): number {
 
 export function getGroundingLabel(response: QueryResponse | null): string {
   if (!response) return "Idle";
-  const score = getGroundingScore(response);
-  if (!response.grounded) return "Insufficient";
-  if (score >= 0.75) return "Strong";
-  if (score >= 0.45) return "Moderate";
-  return "Weak";
+  const state = response.retrieval_meta?.answer_relevance_state;
+  if (!response.grounded) {
+    return state === "unrelated" || state === "no_direct_evidence" ? "Not found" : "Needs more evidence";
+  }
+  return "Verified";
 }
 
 export function getVerificationBadge(response: QueryResponse | null): { label: string; className: string } | null {
-  const state = response?.retrieval_meta?.citation_verification_state;
-  const rewritten = response?.retrieval_meta?.answer_rewritten_for_faithfulness === true;
+  if (!response) return null;
+  const relevanceState = response.retrieval_meta?.answer_relevance_state;
+  if (!response.grounded) {
+    if (relevanceState === "unrelated" || relevanceState === "no_direct_evidence") {
+      return { label: "Not found in sources", className: "copper" };
+    }
+    return { label: "Needs more evidence", className: "copper" };
+  }
+  const state = response.retrieval_meta?.citation_verification_state;
   const coverage = response?.retrieval_meta?.citation_coverage;
   const numericCoverage =
     typeof coverage === "number" ? coverage : typeof coverage === "string" ? Number(coverage) : null;
-  if (rewritten) return { label: "Rewritten", className: "copper" };
   if (numericCoverage !== null && Number.isFinite(numericCoverage) && numericCoverage < 0.45) {
-    return { label: "Low citation coverage", className: "copper" };
+    return { label: "Needs more evidence", className: "copper" };
   }
-  if (state === "supported") return { label: "Verified", className: "sage" };
-  if (state === "unsupported" || state === "unchecked") return { label: "Needs review", className: "copper" };
-  return null;
+  if (state === "unsupported" || state === "unchecked") return { label: "Needs more evidence", className: "copper" };
+  return { label: "Verified", className: "sage" };
 }
 
 export function getTrustCopy(response: QueryResponse | null): string {
   if (!response) return "Attach study material or ask from your indexed documents.";
+  const relevanceState = response.retrieval_meta?.answer_relevance_state;
   const coverage = response.retrieval_meta?.citation_coverage;
   const numericCoverage =
     typeof coverage === "number" ? coverage : typeof coverage === "string" ? Number(coverage) : null;
   if (response.grounded && (numericCoverage === null || numericCoverage >= 0.45)) {
-    return "Answer grounded in your study material.";
+    return "Supported by your uploaded source.";
   }
   if (response.grounded) {
-    return "Answer uses local evidence, but citation coverage needs review.";
+    return "The source support is partial. Check Sources if this matters.";
   }
-  return "I could not find enough evidence in your uploaded documents.";
+  if (relevanceState === "unrelated" || relevanceState === "no_direct_evidence") {
+    return "Not found in the uploaded source.";
+  }
+  return "Needs clearer evidence from your uploaded documents.";
 }
 
 export function getPaperLabArtifact(response: QueryResponse | null): PaperLabArtifact | null {

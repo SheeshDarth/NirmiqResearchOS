@@ -556,11 +556,19 @@ class QueryService:
             "answer",
             "briefly",
             "could",
+            "detail",
+            "detailed",
             "does",
             "explain",
+            "few",
             "from",
             "give",
             "into",
+            "material",
+            "provide",
+            "source",
+            "software",
+            "softwares",
             "this",
             "that",
             "what",
@@ -593,13 +601,15 @@ class QueryService:
                     "dbscan",
                 }
             )
+        for phrase in RetrievalService._query_phrases(query):
+            terms.update(phrase.split())
         return terms
 
     @staticmethod
     def _focused_retrieval_hints(query: str) -> str:
         normalized = query.lower()
         tokens = set(re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", normalized))
-        hints = ["definition", "explanation", "examples", "types", "key points"]
+        hints = ["definition", "explanation", "mechanism", "uses", "limitations", "key points"]
         if {"algorithm", "algorithms"} & tokens:
             hints.extend(["algorithm", "method", "procedure", "training", "model"])
         if "unsupervised" in tokens:
@@ -620,6 +630,8 @@ class QueryService:
             hints.extend(["classification", "regression", "labels", "training examples", "prediction"])
         if {"limitation", "limitations", "caveat", "caveats"} & tokens:
             hints.extend(["limitations", "assumptions", "tradeoffs", "failure cases"])
+        if {"image", "images", "diagram", "diagrams", "figure", "figures", "visual"} & tokens:
+            hints.extend(["image", "figure", "diagram", "visual", "caption"])
         deduped: list[str] = []
         seen: set[str] = set()
         for hint in hints:
@@ -641,7 +653,15 @@ class QueryService:
 
         normalized_query = query.lower()
         quality = float(row.get("quality_score") or 1.0)
-        score = quality + (len(overlap) * 1.4)
+        directness_score = RetrievalService._chunk_answer_relevance(row=row, query=query)
+        query_phrases = RetrievalService._query_phrases(query)
+        metadata = " ".join(
+            str(row.get(key) or "").lower()
+            for key in ("heading", "section_path", "chunk_type")
+        )
+        combined = f"{metadata} {text[:2200]}"
+        phrase_hits = sum(1 for phrase in query_phrases if phrase in combined)
+        score = quality + (len(overlap) * 1.15) + (directness_score * 3.2) + (phrase_hits * 2.2)
         if any(phrase in normalized_query for phrase in ("what is", "define", "meaning")):
             definition_cues = {
                 " is a ",
@@ -661,17 +681,8 @@ class QueryService:
                 "new data",
             }
             score += sum(0.9 for cue in definition_cues if cue in text)
-            metadata = " ".join(
-                str(row.get(key) or "").lower()
-                for key in ("heading", "section_path", "chunk_type")
-            )
-            if any(term in normalized_query for term in ("gaussian mixture", "gmm")):
-                if re.search(r"\bgaussian mixtures?\b", metadata):
-                    score += 2.4
-                if "probabilistic model" in text or "generated from a mixture" in text:
-                    score += 2.0
-                if "bayesian" in metadata and "bayesian" not in normalized_query:
-                    score -= 1.2
+            if phrase_hits and any(cue in text for cue in (" is a ", " is an ", " means ", " refers ", "assumes")):
+                score += 1.4
         if any(term in normalized_query for term in ("reduce", "reduced", "prevent", "avoid", "fix")):
             solution_cues = {
                 "possible solutions",
@@ -686,15 +697,13 @@ class QueryService:
                 "early stopping",
             }
             score += sum(0.8 for cue in solution_cues if cue in text)
-        metadata = " ".join(
-            str(row.get(key) or "").lower()
-            for key in ("heading", "section_path", "chunk_type")
-        )
         if (
             any(marker in metadata for marker in ("references", "bibliography", "index"))
             or RetrievalService._looks_like_index_chunk(text)
         ):
             score -= 3.0
+        if RetrievalService._looks_like_broad_example_section(metadata, query=query):
+            score -= 1.5
         return score
 
     @staticmethod

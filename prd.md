@@ -1,6 +1,6 @@
 # NIRMIQ Product Requirements Document
 
-Last updated: 2026-06-26
+Last updated: 2026-07-09
 
 ## Product Name
 
@@ -32,7 +32,7 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 - Local-first trust: documents stay on the user machine by default.
 - Evidence visibility: users can inspect sources instead of trusting black-box output.
 - Low-friction UX: ChatGPT-like interaction, not a dashboard maze.
-- Measured reliability: answer quality improves through local retrieval metrics, section-aware indexing, feedback-to-eval loops, and citation checks rather than cloud dependency.
+- Measured reliability: answer quality improves through local retrieval metrics, query-category evals, direct-evidence ranking, feedback-to-eval loops, and citation checks rather than cloud dependency.
 
 ## V3 Scope
 
@@ -48,10 +48,12 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 - V3.1 summary cache for repeated selected-document summaries.
 - Deterministic intent routing for summary, factual lookup, compare, paper, exam, and chat prompts.
 - Compact trust badge for citation verification and citation coverage.
+- MegaSprint One compact trust states: `Verified`, `Needs more evidence`, and `Not found in sources`.
 - Safer selected-source behavior: when a document is selected, default questions remain scoped to that source.
 - Honest evidence behavior: stale vector hits, zero-text reindex failures, and unsupported cited claims must not produce trusted answers.
 - V4.2 local answer feedback: users can mark answers as `Good` or `Needs work` so bad responses become a local improvement dataset.
 - RAG Reliability Phase: selected-document queries gain textbook-aware section metadata and hidden retrieval diagnostics so the system can improve precision without exposing more controls to users.
+- Query-agnostic reliability: valid user questions are routed by intent/category and judged by direct source support, not by a small mandatory prompt list.
 
 ## V4 Golden Demo Scope
 

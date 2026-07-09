@@ -1,14 +1,32 @@
 # NIRMIQ UI/UX Specification
 
-Last updated: 2026-06-26
+Last updated: 2026-07-09
 
 Note: the requested filename `UI/UX.md` is represented as `UI_UX.md` because Windows treats `/` as a path separator.
 
 ## Design Direction
 
-NIRMIQ should feel like a minimal, technical academic cockpit rather than a generic AI template. The current visual language is dark, calm, precise, and locally intelligent: black glass, cyan/teal evidence accents, compact controls, and strong typography.
+NIRMIQ should feel like a minimal academic chatbot, not a dashboard cockpit. The current visual language stays dark, calm, precise, and locally intelligent, but the interaction priority is now: ask naturally, read clearly, verify only when needed.
 
 The logo direction is a restrained academic-intelligence mark: geometric, local-first, memory/network inspired, and compatible with the future NIRMIQ ecosystem without making this product look dependent on the rest of the suite.
+
+## MegaSprint One UX Rule
+
+Normal users should see:
+
+- A simple answer.
+- Citations only where useful.
+- One compact trust state: `Verified`, `Needs more evidence`, or `Not found in sources`.
+- A Sources panel with readable passages and page references.
+
+Normal users should not see:
+
+- Scores.
+- Chunk ids.
+- Token counts.
+- Local file paths.
+- Reliability-gate reason codes.
+- Retrieval metadata unless a future developer mode is explicitly enabled.
 
 ## Motion Direction
 

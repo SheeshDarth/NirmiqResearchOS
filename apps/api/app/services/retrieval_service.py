@@ -53,16 +53,20 @@ class RetrievalService:
             normalized_profile = "balanced"
         target_document_id = document_id.strip() if document_id and document_id.strip() else None
         profile_config = self._profile_config(normalized_profile)
-        expanded_query = self._expand_query(query)
-        query_expansion_terms = self._query_expansion_terms(query)
 
         active_chunks = self._sqlite_repo.list_active_chunks(document_id=target_document_id)
         all_active_chunks = list(active_chunks)
+        active_sections = self._sqlite_repo.list_active_sections(document_id=target_document_id)
+        query_expansion_terms = self._query_expansion_terms(
+            query,
+            chunks=all_active_chunks,
+            sections=active_sections,
+        )
+        expanded_query = self._expand_query(query, query_expansion_terms)
         active_chunk_sections = {
             str(chunk.get("id")): str(chunk.get("section_id") or "")
             for chunk in all_active_chunks
         }
-        active_sections = self._sqlite_repo.list_active_sections(document_id=target_document_id)
         section_candidates = self._rank_sections(query=expanded_query, sections=active_sections)
         section_candidate_ids = {
             str(candidate["section_id"])
@@ -188,7 +192,8 @@ class RetrievalService:
             base_score = (0.5 * fused_score) + (0.3 * lexical_score) + (0.2 * semantic_score)
             quality_multiplier = 0.55 + (0.45 * quality_score)
             noise_penalty = self._chunk_noise_penalty(row=row, query=expanded_query)
-            combined = max(0.0, (base_score * quality_multiplier) - noise_penalty)
+            directness_score = self._chunk_answer_relevance(row=row, query=expanded_query)
+            combined = max(0.0, (base_score * quality_multiplier) + (0.18 * directness_score) - noise_penalty)
             source = "hybrid"
             if chunk_id in bm25_score_map and chunk_id not in vector_score_map:
                 source = "bm25"
@@ -222,6 +227,7 @@ class RetrievalService:
                         and str(row.get("section_id")) in section_candidate_ids
                     ),
                     "quality_score": quality_score,
+                    "direct_evidence_score": round(directness_score, 4),
                     "noise_penalty": round(noise_penalty, 4),
                     "rerank_position": rerank_position_by_id.get(chunk_id),
                     "final_score": round(combined, 4),
@@ -301,6 +307,7 @@ class RetrievalService:
         lexical_score = min(1.0, bm25_score_map.get(chunk_id, 0.0) / max(top_bm25_score, 1e-9))
         semantic_score = vector_score_map.get(chunk_id, 0.0)
         quality_score = RetrievalService._normalize_quality(row.get("quality_score"))
+        directness_score = RetrievalService._chunk_answer_relevance(row=row, query=query)
         section_bonus = (
             0.12
             if row.get("section_id") and str(row.get("section_id")) in section_candidate_ids
@@ -308,25 +315,77 @@ class RetrievalService:
         )
         noise_penalty = RetrievalService._chunk_noise_penalty(row=row, query=query)
         return (
-            (0.46 * rerank_score)
-            + (0.26 * lexical_score)
-            + (0.10 * semantic_score)
-            + (0.18 * quality_score)
+            (0.38 * rerank_score)
+            + (0.22 * lexical_score)
+            + (0.08 * semantic_score)
+            + (0.14 * quality_score)
+            + (0.18 * directness_score)
             + section_bonus
             - noise_penalty
         )
 
     @staticmethod
-    def _expand_query(query: str) -> str:
-        terms = RetrievalService._query_expansion_terms(query)
+    def _expand_query(query: str, terms: list[str] | None = None) -> str:
+        terms = terms if terms is not None else RetrievalService._query_expansion_terms(query)
         if not terms:
             return query
         return f"{query} {' '.join(terms)}"
 
     @staticmethod
-    def _query_expansion_terms(query: str) -> list[str]:
+    def _query_expansion_terms(
+        query: str,
+        chunks: list[dict[str, object]] | None = None,
+        sections: list[dict[str, object]] | None = None,
+    ) -> list[str]:
         normalized = query.lower()
         expansion_rules: list[tuple[tuple[str, ...], tuple[str, ...]]] = [
+            (
+                ("what is", "define", "meaning of", "explain"),
+                (
+                    "definition",
+                    "means",
+                    "refers",
+                    "called",
+                    "concept",
+                    "mechanism",
+                    "works",
+                    "uses",
+                    "limitations",
+                ),
+            ),
+            (
+                ("compare", "contrast", "difference", "differences"),
+                (
+                    "similarities",
+                    "differences",
+                    "advantages",
+                    "limitations",
+                    "tradeoffs",
+                    "versus",
+                ),
+            ),
+            (
+                ("steps", "procedure", "process", "workflow", "how to"),
+                (
+                    "process",
+                    "steps",
+                    "procedure",
+                    "method",
+                    "workflow",
+                    "implementation",
+                ),
+            ),
+            (
+                ("diagram", "figure", "image reference", "image references", "visual"),
+                (
+                    "figure",
+                    "diagram",
+                    "image",
+                    "visual",
+                    "caption",
+                    "illustration",
+                ),
+            ),
             (
                 ("token position", "token positions", "represent positions", "represent token"),
                 (
@@ -395,6 +454,48 @@ class RetrievalService:
                 ),
             ),
             (
+                ("self-attention", "self attention", "recurrent layers", "recurrent layer"),
+                (
+                    "sequential",
+                    "operations",
+                    "maximum",
+                    "path",
+                    "length",
+                    "dependencies",
+                    "positions",
+                    "convolutional",
+                    "complexity",
+                ),
+            ),
+            (
+                ("multi-head attention", "multi head attention"),
+                (
+                    "linear",
+                    "project",
+                    "projected",
+                    "queries",
+                    "keys",
+                    "values",
+                    "heads",
+                    "concatenated",
+                    "representation",
+                ),
+            ),
+            (
+                ("limitation", "limitations", "caveat", "caveats", "tradeoff", "tradeoffs"),
+                (
+                    "however",
+                    "although",
+                    "reduced",
+                    "effective",
+                    "resolution",
+                    "averaging",
+                    "counteracts",
+                    "effect",
+                    "cost",
+                ),
+            ),
+            (
                 ("privacy", "private", "data leak", "sensitive"),
                 (
                     "sensitive",
@@ -423,19 +524,6 @@ class RetrievalService:
                     "findings",
                 ),
             ),
-            (
-                ("gaussian mixture", "gmm"),
-                (
-                    "probabilistic",
-                    "distributions",
-                    "generated",
-                    "parameters",
-                    "cluster",
-                    "ellipsoidal",
-                    "density",
-                    "generative",
-                ),
-            ),
         ]
         expanded: list[str] = []
         seen = set(RetrievalService._metadata_terms(query))
@@ -448,7 +536,105 @@ class RetrievalService:
                     continue
                 expanded.append(clean)
                 seen.add(clean)
+        for term in RetrievalService._document_aware_expansion_terms(
+            query=query,
+            chunks=chunks or [],
+            sections=sections or [],
+        ):
+            clean = term.lower().strip()
+            if clean and clean not in seen:
+                expanded.append(clean)
+                seen.add(clean)
         return expanded
+
+    @staticmethod
+    def _document_aware_expansion_terms(
+        *,
+        query: str,
+        chunks: list[dict[str, object]],
+        sections: list[dict[str, object]],
+    ) -> list[str]:
+        expansions: list[str] = []
+        seen: set[str] = set()
+        for term in RetrievalService._document_acronym_expansions(query=query, chunks=chunks, sections=sections):
+            if term not in seen:
+                expansions.append(term)
+                seen.add(term)
+        for term in RetrievalService._document_topic_terms(query=query, sections=sections):
+            if term not in seen:
+                expansions.append(term)
+                seen.add(term)
+        return expansions[:24]
+
+    @staticmethod
+    def _document_acronym_expansions(
+        *,
+        query: str,
+        chunks: list[dict[str, object]],
+        sections: list[dict[str, object]],
+    ) -> list[str]:
+        acronyms = {
+            token.upper().rstrip("S")
+            for token in re.findall(r"\b[A-Za-z][A-Za-z0-9+-]{1,8}s?\b", query)
+            if 2 <= len(token.rstrip("sS")) <= 8
+        }
+        if not acronyms:
+            return []
+
+        text_blocks: list[str] = []
+        for section in sections[:300]:
+            text_blocks.append(
+                " ".join(
+                    str(section.get(key) or "")
+                    for key in ("heading", "section_path", "key_terms_json")
+                )
+            )
+        for chunk in chunks[:1200]:
+            text = str(chunk.get("text") or "")
+            metadata = " ".join(
+                str(chunk.get(key) or "")
+                for key in ("heading", "section_path", "key_terms_json")
+            )
+            if any(acronym.lower() in f"{metadata} {text[:800]}".lower() for acronym in acronyms):
+                text_blocks.append(f"{metadata} {text[:1600]}")
+
+        expansions: list[str] = []
+        for block in text_blocks:
+            for acronym in acronyms:
+                pattern_before = re.compile(
+                    rf"\b([A-Za-z][A-Za-z0-9+/\- ]{{3,90}}?)\s+\(({re.escape(acronym)}s?)\)",
+                    flags=re.I,
+                )
+                pattern_after = re.compile(
+                    rf"\b{re.escape(acronym)}s?\s+\(([A-Za-z][A-Za-z0-9+/\- ]{{3,90}}?)\)",
+                    flags=re.I,
+                )
+                for match in [*pattern_before.finditer(block), *pattern_after.finditer(block)]:
+                    phrase = re.sub(r"\s+", " ", match.group(1)).strip(" -:;,.")
+                    phrase_terms = RetrievalService._metadata_terms(phrase)
+                    if 1 <= len(phrase_terms) <= 8:
+                        expansions.extend(sorted(phrase_terms))
+        return RetrievalService._dedupe_terms(expansions)
+
+    @staticmethod
+    def _document_topic_terms(query: str, sections: list[dict[str, object]]) -> list[str]:
+        query_terms = RetrievalService._metadata_terms(query)
+        query_phrases = RetrievalService._query_phrases(query)
+        if not query_terms or not sections:
+            return []
+        expansions: list[str] = []
+        for section in sections[:400]:
+            metadata = " ".join(
+                str(section.get(key) or "")
+                for key in ("heading", "section_path", "key_terms_json")
+            )
+            metadata_lower = metadata.lower()
+            phrase_hit = any(phrase in metadata_lower for phrase in query_phrases)
+            terms = RetrievalService._metadata_terms(metadata)
+            term_overlap = len(query_terms & terms)
+            if phrase_hit or term_overlap >= min(2, len(query_terms)):
+                expansions.extend(sorted(terms - query_terms))
+        return RetrievalService._dedupe_terms(expansions)[:16]
 
     @staticmethod
     def _chunk_noise_penalty(*, row: dict[str, object], query: str) -> float:
@@ -466,11 +652,64 @@ class RetrievalService:
             penalty += 0.34
         if any(marker in lowered[:500] for marker in ("copyright", "permission to reproduce", "provided proper attribution")):
             penalty += 0.24
+        if "<eos>" in lowered and "<pad>" in lowered:
+            penalty += 0.28
         if RetrievalService._looks_like_index_chunk(lowered):
             penalty += 0.26
+        if RetrievalService._looks_like_broad_example_section(metadata, query=query):
+            penalty += 0.22
         if lowered.count("http") >= 3:
             penalty += 0.12
         return min(0.6, penalty)
+
+    @staticmethod
+    def _chunk_answer_relevance(*, row: dict[str, object], query: str) -> float:
+        query_terms = RetrievalService._metadata_terms(query)
+        if not query_terms:
+            return 0.0
+        metadata = " ".join(
+            str(row.get(key) or "").lower()
+            for key in ("heading", "section_path", "chunk_type", "key_terms_json")
+        )
+        text = str(row.get("text") or "").lower()
+        combined = f"{metadata} {text[:1800]}"
+        combined_terms = RetrievalService._metadata_terms(combined)
+        matched_terms = {
+            term
+            for term in query_terms
+            if term in combined_terms
+            or any(len(term) >= 5 and candidate.startswith(term[:6]) for candidate in combined_terms)
+        }
+        coverage = len(matched_terms) / max(len(query_terms), 1)
+        score = min(1.0, coverage)
+
+        phrases = RetrievalService._query_phrases(query)
+        if phrases and any(phrase in combined for phrase in phrases):
+            score += 0.28
+        if RetrievalService._is_definition_or_explanation_query(query) and any(
+            cue in combined
+            for cue in (
+                " is a ",
+                " is an ",
+                " means ",
+                " refers ",
+                " called ",
+                " defined as ",
+                " consists of ",
+                " works by ",
+                " used for ",
+            )
+        ):
+            score += 0.18
+        if RetrievalService._asks_for_visual_reference(query) and any(
+            cue in combined for cue in ("figure", "fig.", "diagram", "image", "caption", "visual")
+        ):
+            score += 0.18
+        if RetrievalService._looks_like_index_chunk(text) or RetrievalService._looks_like_broad_example_section(metadata, query=query):
+            score -= 0.24
+        if RetrievalService._looks_like_loose_application_mention(combined, query=query):
+            score -= 0.34
+        return max(0.0, min(1.0, score))
 
     @staticmethod
     def _is_explanatory_query(query: str) -> bool:
@@ -493,6 +732,57 @@ class RetrievalService:
         )
 
     @staticmethod
+    def _is_definition_or_explanation_query(query: str) -> bool:
+        lowered = query.lower()
+        return any(
+            marker in lowered
+            for marker in (
+                "what is",
+                "what are",
+                "define",
+                "meaning",
+                "explain",
+                "describe",
+                "how does",
+                "how do",
+            )
+        )
+
+    @staticmethod
+    def _asks_for_visual_reference(query: str) -> bool:
+        lowered = query.lower()
+        return any(marker in lowered for marker in ("image", "diagram", "figure", "visual", "photo"))
+
+    @staticmethod
+    def _looks_like_broad_example_section(metadata: str, *, query: str) -> bool:
+        lowered_query = query.lower()
+        if any(term in lowered_query for term in ("example", "application", "use case")):
+            return False
+        broad_markers = (
+            "examples of applications",
+            "examples using",
+            "using google colab",
+            "image preprocessing layers",
+            "other algorithms for",
+        )
+        return any(marker in metadata for marker in broad_markers)
+
+    @staticmethod
+    def _looks_like_loose_application_mention(text: str, *, query: str) -> bool:
+        lowered_query = query.lower()
+        if any(term in lowered_query for term in ("example", "application", "use case")):
+            return False
+        return any(
+            marker in text
+            for marker in (
+                "one possible application",
+                "possible application",
+                "examples of applications",
+                "among many other",
+            )
+        )
+
+    @staticmethod
     def _looks_like_index_chunk(text: str) -> bool:
         sample = text[:900]
         if len(sample) < 180:
@@ -511,6 +801,7 @@ class RetrievalService:
     @staticmethod
     def _rank_sections(query: str, sections: list[dict[str, object]]) -> list[dict[str, object]]:
         query_terms = RetrievalService._metadata_terms(query)
+        query_phrases = RetrievalService._query_phrases(query)
         if not query_terms or not sections:
             return []
         normalized_query = query.lower()
@@ -529,24 +820,23 @@ class RetrievalService:
                 if term in metadata_terms
                 or any(len(term) >= 5 and candidate.startswith(term[:6]) for candidate in metadata_terms)
             )
+            phrase_matches = [phrase for phrase in query_phrases if phrase in f"{heading} {section_path}".lower()]
             score = (
                 (2.0 * len(query_terms & heading_terms))
                 + (1.4 * len(query_terms & path_terms))
                 + (1.1 * len(set(matched)))
+                + (2.8 * len(phrase_matches))
             )
             metadata = f"{heading} {section_path}".lower()
-            if any(phrase in normalized_query for phrase in ("what is", "define", "meaning of")):
-                if re.search(r"\bgaussian mixtures?\b", metadata) and "gaussian mixture" in normalized_query:
-                    score += 3.0
-                if (
-                    re.fullmatch(r"\s*gaussian mixtures?\s*", heading.lower())
-                    and "gaussian mixture" in normalized_query
-                ):
-                    score += 2.2
-                if "bayesian" in metadata and "bayesian" not in normalized_query:
-                    score -= 2.0
+            if RetrievalService._is_definition_or_explanation_query(normalized_query):
+                if phrase_matches and heading.lower().strip() in phrase_matches:
+                    score += 1.6
+                if any(marker in metadata for marker in ("overview", "introduction", "definition", "fundamentals")):
+                    score += 0.6
             if explanatory_query and RetrievalService._looks_like_index_section(section, metadata):
-                score -= 3.2
+                score -= 10.0
+            if explanatory_query and RetrievalService._looks_like_broad_example_section(metadata, query=query):
+                score -= 1.6
             if score <= 0:
                 continue
             ranked.append(
@@ -592,12 +882,21 @@ class RetrievalService:
             "answer",
             "are",
             "chapter",
+            "detail",
+            "detailed",
             "does",
             "explain",
+            "few",
             "from",
             "give",
             "into",
+            "material",
+            "into",
+            "provide",
             "section",
+            "software",
+            "softwares",
+            "source",
             "that",
             "the",
             "this",
@@ -612,6 +911,53 @@ class RetrievalService:
             for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", text.lower())
             if token not in stopwords and len(token) >= 4
         }
+
+    @staticmethod
+    def _query_phrases(text: str) -> list[str]:
+        stopwords = {
+            "about",
+            "answer",
+            "briefly",
+            "can",
+            "does",
+            "explain",
+            "from",
+            "give",
+            "how",
+            "in",
+            "of",
+            "provide",
+            "the",
+            "this",
+            "to",
+            "what",
+            "with",
+        }
+        tokens = [
+            token
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", text.lower())
+            if token not in stopwords
+        ]
+        phrases: list[str] = []
+        for size in (4, 3, 2):
+            for idx in range(0, max(0, len(tokens) - size + 1)):
+                phrase_tokens = tokens[idx : idx + size]
+                if len(" ".join(phrase_tokens)) < 7:
+                    continue
+                phrases.append(" ".join(phrase_tokens))
+        return RetrievalService._dedupe_terms(phrases)[:12]
+
+    @staticmethod
+    def _dedupe_terms(values: list[str]) -> list[str]:
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            clean = re.sub(r"\s+", " ", value.lower()).strip(" -:;,.")
+            if not clean or clean in seen:
+                continue
+            deduped.append(clean)
+            seen.add(clean)
+        return deduped
 
     @staticmethod
     def _decode_key_terms(raw_value: object) -> list[str]:

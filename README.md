@@ -123,14 +123,14 @@ Implemented in the current repository:
 - Ingest local-path documents from trusted corpus roots.
 - Summarize selected PDFs with citations.
 - Ask grounded questions against selected sources.
-- Inspect evidence chunks, pages, and source details.
+- Inspect answer-used source passages and page references without exposing ranking metadata by default.
 - Use four workspaces: Research, Chat, Paper Lab, and Exam Lab.
 - Run hybrid retrieval with BM25, optional vector search, RRF, and reranking hooks.
-- Start the RAG Reliability Phase with textbook-aware section metadata, section-first retrieval diagnostics, and chunk-selection reasons inside debug retrieval metadata.
+- Continue the RAG Reliability Phase with textbook-aware section metadata, section-first retrieval diagnostics, query-agnostic eval categories, and answer relevance metadata inside debug retrieval metadata.
 - Use selected-document summary caching keyed by document id, content hash, and summary profile.
 - Route query intent deterministically for summary, lookup, compare, deep research, paper, exam, chat, and unclear prompts.
-- Show compact trust signals: `Verified`, `Rewritten`, `Needs review`, or `Low citation coverage`.
-- Fall back to extractive grounded answers when evidence or citation verification is weak.
+- Show compact trust signals only as `Verified`, `Needs more evidence`, or `Not found in sources`.
+- Fall back or abstain when direct source evidence, answer-used citations, or citation verification are weak.
 - Abstain in Chat when retrieved material is unrelated to the actual question subject.
 - Use Paper Lab for citation clusters, related-work matrix, suggested outline, and Markdown draft export.
 - Use Exam Lab for marks-oriented answers, study guides, question-bank support, and printable custom PDFs.
@@ -159,6 +159,7 @@ Implemented in the current repository:
 - Clear thread memory and indexed material from the UI for privacy/reset demos.
 - Run local smoke checks, backend tests, and frontend production build.
 - Evaluate retrieval on a bundled 30-question demo dataset.
+- Evaluate query behavior through `data/processed/eval/query_agnostic_rag_categories.jsonl`, covering definitions, explanations, comparisons, procedures, limitations, visuals, summaries, exam answers, paper drafting, and unanswerable prompts.
 - Run GitHub CI for backend tests, API compile, frontend build, and Docker Compose validation.
 - Run optional Docker dev containers with checked-in API and web Dockerfiles.
 - Use `/api/v1/*` routes while preserving the original local API route paths.
@@ -178,12 +179,21 @@ This means the first reliability slice reached the MRR and Recall@8 targets on t
 
 The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
 
+Latest MegaSprint One reliability update:
+
+- Retrieval now uses document-aware expansion for acronyms and source terminology.
+- Candidate ranking includes an internal direct-evidence score so answerable passages beat loose mentions.
+- Broad index, glossary, backmatter, and example-list sections are penalized for explanatory questions.
+- Synthesis now separates direct evidence, weak related mentions, and true source misses.
+- Normal UI hides raw metadata and presents only the trust state plus optional source passages.
+
 ## Next Phase: RAG Reliability
 
 What is being improved next:
 
 - Grow real-world eval labels from `16` to at least `40`.
 - Convert saved `Needs work` feedback into local eval candidates.
+- Expand the query-agnostic category eval set with real textbook, notes, paper, and exam cases.
 - Continue improving textbook-aware retrieval metadata: chapter, section, heading, page range, captions, definitions, and key terms.
 - Improve section/page-first retrieval before chunk ranking.
 - Keep BM25-only fallback fully usable for offline and low-end devices.
@@ -254,10 +264,8 @@ NIRMIQ surfaces:
 
 - Source document.
 - Page number.
-- Chunk reference.
 - Supporting evidence.
-- Grounding status.
-- Citation coverage.
+- Compact trust status.
 
 This lets users verify the answer instead of blindly trusting it.
 

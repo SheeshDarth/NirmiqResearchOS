@@ -318,7 +318,7 @@ def test_low_citation_coverage_fails_evidence_reliability_gate() -> None:
     )
 
     assert grounded is False
-    assert "not enough source-backed evidence" in answer
+    assert "not enough direct source evidence" in answer
     assert meta["evidence_gate_state"] == "failed"
     assert "low_citation_coverage" in meta["evidence_gate_reasons"]
     assert meta["citation_coverage"] < meta["evidence_gate_min_citation_coverage"]

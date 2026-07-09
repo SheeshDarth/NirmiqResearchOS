@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-07-07
+Last updated: 2026-07-09
 
 ## Canonical Problem Log
 
@@ -9,6 +9,29 @@ See [`../problems_faced.md`](../problems_faced.md) for the current architecture 
 See [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md) for concrete real-world retrieval misses and weak hits generated from the current eval scripts.
 
 See [`answer_used_citation_backlog.md`](answer_used_citation_backlog.md) for cases where raw retrieval finds better evidence than the final answer-used citations.
+
+## 2026-07-09 MegaSprint One Query-Agnostic Reliability Slice
+
+Implemented:
+
+- Added `data/processed/eval/query_agnostic_rag_categories.jsonl` as the first category-based eval seed.
+- Added document-aware query expansion for source-local acronym definitions and topic metadata.
+- Added direct-evidence scoring in retrieval candidate priority.
+- Strengthened penalties for index, glossary, backmatter, and broad example-list passages during explanatory queries.
+- Added synthesis metadata for `answer_relevance_state`, `answer_relevance_score`, `direct_evidence_count`, `weak_related_count`, and direct evidence pages.
+- Simplified the normal UI trust surface to `Verified`, `Needs more evidence`, and `Not found in sources`.
+- Hid ranking metadata, scores, chunk IDs, and token counts from the normal source-inspection path.
+
+Why this matters:
+
+- The previous failure mode was often "source-backed but not question-backed": citations were real, but the cited passage was only loosely related.
+- This slice makes retrieval and synthesis judge whether evidence directly answers the query before allowing a confident answer.
+- The benchmark direction is now category coverage across valid user query types, not a mandatory list of hard-coded prompts.
+
+Validation:
+
+- Backend unit and integration tests: `71 passed`, `1` warning.
+- Query-category BM25 smoke eval: MRR `1.000`, Recall@8 `1.000`, citation expected coverage `1.000` on the initial 10-sample seed.
 
 ## 2026-07-07 Retrieval Failure Diagnostics
 

@@ -42,3 +42,62 @@ def test_explanatory_queries_penalize_index_like_chunks() -> None:
 
     assert RetrievalService._chunk_noise_penalty(row=index_row, query=query) > 0.25
     assert RetrievalService._chunk_noise_penalty(row=body_row, query=query) == 0.0
+
+
+def test_query_expansion_uses_document_acronym_definitions() -> None:
+    chunks = [
+        {
+            "text": "Convolutional neural networks (CNNs) are widely used for image recognition tasks.",
+            "heading": "Convolutional Neural Networks",
+            "section_path": "Chapter 14",
+        }
+    ]
+
+    terms = RetrievalService._query_expansion_terms("Explain CNNs in detail", chunks=chunks, sections=[])
+
+    assert "convolutional" in terms
+    assert "neural" in terms
+    assert "networks" in terms
+
+
+def test_direct_evidence_score_prefers_answer_passage_over_loose_mention() -> None:
+    direct_row = {
+        "text": "Convolutional neural networks use convolutional layers to detect visual patterns in images.",
+        "heading": "Convolutional Neural Networks",
+        "section_path": "Chapter 14",
+        "chunk_type": "body",
+    }
+    loose_row = {
+        "text": "Image recognition is one possible application among many other machine learning tasks.",
+        "heading": "Examples of Applications",
+        "section_path": "Chapter 1",
+        "chunk_type": "body",
+    }
+    query = "Explain convolutional neural networks in detail"
+
+    assert RetrievalService._chunk_answer_relevance(row=direct_row, query=query) > RetrievalService._chunk_answer_relevance(row=loose_row, query=query)
+
+
+def test_section_ranking_boosts_exact_query_phrase_without_topic_specific_rule() -> None:
+    sections = [
+        {
+            "id": "broad",
+            "heading": "Examples of Applications",
+            "section_path": "Chapter 1",
+            "key_terms_json": '["image","recognition","applications"]',
+            "page_start": 12,
+            "page_end": 14,
+        },
+        {
+            "id": "direct",
+            "heading": "Image Recognition",
+            "section_path": "Computer Vision / Image Recognition",
+            "key_terms_json": '["image","recognition","visual"]',
+            "page_start": 220,
+            "page_end": 224,
+        },
+    ]
+
+    ranked = RetrievalService._rank_sections("Explain image recognition software", sections)
+
+    assert ranked[0]["section_id"] == "direct"

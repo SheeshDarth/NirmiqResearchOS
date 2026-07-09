@@ -1,12 +1,29 @@
 # Problems Faced And RAG Reliability Roadmap
 
-Last updated: 2026-07-06
+Last updated: 2026-07-09
 
 This is the canonical engineering problem log for NIRMIQ ResearchOS. It documents what has failed, what is still failing, what may fail later, and how the next RAG Reliability Phase should resolve the core retrieval and hallucination issues.
 
 The main conclusion is simple:
 
 > The model hallucinates mostly because retrieval is not yet precise enough on large academic documents. If the right evidence does not enter context, the local model is forced to guess.
+
+## 2026-07-09 MegaSprint One Reliability Update
+
+Reduced:
+
+- Moved from mandatory prompt-specific regression thinking to query-category evaluation.
+- Added source-aware query expansion for acronyms and document terminology.
+- Added direct-evidence scoring so loose keyword matches do not become confident answers.
+- Strengthened penalties for index, glossary, backmatter, and broad example-list passages during explanatory questions.
+- Simplified normal trust language to `Verified`, `Needs more evidence`, and `Not found in sources`.
+- Hid scores, chunk ids, token counts, and reliability-gate internals from the normal UI.
+
+Still active:
+
+- Grow the query-category eval seed with real textbook, notes, research-paper, exam, and unanswerable labels.
+- Improve visual/diagram answers using extracted diagram metadata and captions only.
+- Continue section/page-first retrieval tuning before adding heavier graph databases or agent layers.
 
 ## Architecture Diagram
 

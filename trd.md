@@ -1,6 +1,6 @@
 # NIRMIQ Technical Requirements Document
 
-Last updated: 2026-06-26
+Last updated: 2026-07-09
 
 ## Project
 
@@ -49,6 +49,11 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Persist document-level section records for section-first retrieval over long textbooks and notes.
 - Return retrieval diagnostics in debug metadata without adding normal-user UI controls.
 - Convert saved `Needs work` feedback into local eval candidates for future retrieval tuning.
+- Maintain a query-agnostic eval seed covering definitions, explanations, comparisons, procedures, limitations, image/diagram requests, summaries, exam answers, paper drafting, and unanswerable prompts.
+- Expand selected-document queries with deterministic source-aware terms such as acronym definitions and section metadata.
+- Score retrieved chunks for direct answerability before synthesis.
+- Distinguish direct evidence, weak related mentions, no direct evidence, and unrelated context in hidden retrieval metadata.
+- Hide raw ranking metadata, scores, chunk IDs, token counts, and local paths from the normal chat UI.
 - Add Paper Lab metadata for paper-draft responses: outline, citation clusters, and related-work matrix.
 - Provide client-side Markdown export for grounded Paper Lab drafts.
 
@@ -60,7 +65,8 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Maintainable: prefer fewer services and explicit orchestration.
 - Stable: backend tests must isolate temp SQLite/Chroma/cache paths.
 - Grounded: response generation must cite retrieved chunks or abstain when context is weak.
-- Relevant: General Chat must abstain when retrieved chunks do not overlap the actual subject of the user query.
+- Relevant: all grounded modes should abstain or ask for narrower context when retrieved chunks do not directly support the actual subject of the user query.
+- Simple: normal users should see only compact trust states, citations/page references when useful, and readable source passages on demand.
 - Faithful: cited generated claims must pass deterministic verification or be rewritten to extractive fallback.
 - Active-source safe: retrieved vector hits must be ignored when the chunk is no longer active in SQLite.
 - Honest scoring: summary/factual seed chunks may expand context but must not inflate grounding confidence.

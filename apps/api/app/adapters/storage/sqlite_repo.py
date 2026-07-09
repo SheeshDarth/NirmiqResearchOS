@@ -4,6 +4,12 @@ from pathlib import Path
 from typing import Any
 
 
+class _ClosingConnection(sqlite3.Connection):
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        super().__exit__(exc_type, exc_value, traceback)
+        self.close()
+
+
 class SQLiteRepo:
     _MIGRATION_COLUMNS = {
         "document_chunks": {
@@ -21,7 +27,7 @@ class SQLiteRepo:
         self._sqlite_path.parent.mkdir(parents=True, exist_ok=True)
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self._sqlite_path)
+        connection = sqlite3.connect(self._sqlite_path, factory=_ClosingConnection)
         connection.row_factory = sqlite3.Row
         return connection
 

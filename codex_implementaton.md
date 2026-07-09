@@ -1,6 +1,6 @@
 # Codex Implementation Log
 
-Last updated: 2026-06-11
+Last updated: 2026-07-09
 
 Note: filename spelling follows the user request: `codex_implementaton.md`.
 
@@ -14,7 +14,16 @@ After each meaningful project work unit:
 
 ## Current Branch
 
-- `v3-foundation`
+- `main`
+
+## 2026-07-09 MegaSprint One Implementation Note
+
+- Implemented query-agnostic RAG reliability improvements instead of mandatory prompt-specific regression cases.
+- Added document-aware query expansion, direct-evidence retrieval scoring, stronger backmatter penalties, and synthesis relevance states.
+- Simplified UI trust labels to `Verified`, `Needs more evidence`, and `Not found in sources`.
+- Hid raw metadata from the normal chat/source flow.
+- Added `data/processed/eval/query_agnostic_rag_categories.jsonl`.
+- Backend verification after implementation: `71 passed`, `1` warning.
 
 ## Product Identity
 

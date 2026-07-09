@@ -129,12 +129,12 @@ class SynthesisService:
         low_score_overview = grounding_state == "weak" and overview_query and citation_count >= 2
         if low_score_overview:
             grounding_state = "moderate"
+        answer_relevance_state = str(context_relevance.get("answer_relevance_state") or "unknown")
         if strict_relevance_required and context_relevance["context_relevance_state"] == "unrelated":
             return (
                 (
-                    "I do not have enough relevant uploaded context to answer that safely. "
-                    "Upload source material for this question, select the right document, or use an external/internet model "
-                    "later when that optional mode is available."
+                    "I could not find this in the uploaded sources.\n\n"
+                    "Try selecting the right document, uploading source material for this topic, or asking a narrower question."
                 ),
                 False,
                 {
@@ -143,6 +143,24 @@ class SynthesisService:
                     "citation_count": citation_count,
                     "grounding_state": "weak",
                     "grounding_summary": "retrieved evidence was unrelated to the query",
+                    "document_overview_request": overview_query,
+                    "low_score_overview_allowed": low_score_overview,
+                    **context_relevance,
+                },
+            )
+        if strict_relevance_required and answer_relevance_state in {"weak_related", "no_direct_evidence"}:
+            return (
+                (
+                    "I found a related mention, but not enough direct evidence to answer confidently.\n\n"
+                    "Ask a narrower question or open Sources to check what the document actually says."
+                ),
+                False,
+                {
+                    "generation_backend": "none",
+                    "grounding_score": top_grounding_score,
+                    "citation_count": citation_count,
+                    "grounding_state": "weak",
+                    "grounding_summary": "retrieved evidence was not direct enough",
                     "document_overview_request": overview_query,
                     "low_score_overview_allowed": low_score_overview,
                     **context_relevance,
@@ -424,12 +442,9 @@ class SynthesisService:
 
     @staticmethod
     def _evidence_gate_message(evidence_gate: dict[str, object]) -> str:
-        reasons = evidence_gate.get("evidence_gate_reasons")
-        reason_text = ", ".join(str(reason) for reason in reasons) if isinstance(reasons, list) else "weak evidence"
         return (
-            "I found related material, but not enough source-backed evidence to answer safely. "
-            f"Reliability check failed: {reason_text}. "
-            "Try asking a narrower question, selecting the correct document, or opening Sources to inspect the retrieved passages."
+            "I found related material, but not enough direct source evidence to answer safely.\n\n"
+            "Try asking a narrower question, selecting the correct document, or opening Sources to inspect the passages."
         )
 
     @staticmethod
@@ -463,7 +478,8 @@ class SynthesisService:
             "Cite claims with [n] where n is the context block number.\n"
             "Prefer higher-scoring context blocks when multiple sources support the same claim.\n"
             "Answer the user's exact question, not a generic document summary.\n"
-            "Use this compact answer contract whenever possible: Direct answer, Key points, Evidence note.\n"
+            "Use this compact answer contract whenever possible: Short answer, Explanation, Key points, Source note.\n"
+            "Use citation anchors at the end of paragraphs or bullets that rely on source evidence. Avoid citation spam.\n"
             "If the user asks for algorithms, examples, steps, or a list, answer as a concise list and cite each item.\n"
             "Keep paragraphs short and avoid dense textbook dumps.\n"
             f"{mode_instruction}\n\n"
@@ -1293,7 +1309,10 @@ class SynthesisService:
 
     @staticmethod
     def _context_relevance(query: str, bundle: RetrievalBundle) -> dict[str, object]:
-        query_terms = SynthesisService._query_terms(query)
+        query_terms = SynthesisService._primary_query_terms(query) | SynthesisService._context_acronym_terms(
+            query=query,
+            bundle=bundle,
+        )
         context_terms: set[str] = set()
         for chunk in bundle.chunks[:5]:
             context_terms.update(re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", chunk.text.lower()))
@@ -1308,17 +1327,212 @@ class SynthesisService:
         if not query_terms:
             state = "unknown"
         elif len(matched_terms) >= 2 or score >= 0.34 or (
-            len(matched_terms) == 1 and len(query_terms) <= 2
+                len(matched_terms) == 1 and len(query_terms) <= 2
         ):
             state = "related"
         else:
             state = "unrelated"
+        direct_profile = SynthesisService._direct_evidence_profile(query=query, bundle=bundle)
+        if state == "related" and direct_profile["direct_evidence_count"] <= 0:
+            if direct_profile["weak_related_count"] > 0:
+                answer_relevance_state = "weak_related"
+            else:
+                answer_relevance_state = "no_direct_evidence"
+        elif state == "related":
+            answer_relevance_state = "direct"
+        else:
+            answer_relevance_state = "unrelated"
         return {
             "context_relevance_score": round(score, 3),
             "context_relevance_state": state,
             "context_relevance_terms": sorted(query_terms),
             "context_relevance_matched_terms": matched_terms,
+            "answer_relevance_state": answer_relevance_state,
+            **direct_profile,
         }
+
+    @staticmethod
+    def _primary_query_terms(query: str) -> set[str]:
+        generic_terms = {
+            "algorithm",
+            "algorithms",
+            "answer",
+            "concept",
+            "concepts",
+            "detail",
+            "detailed",
+            "diagram",
+            "diagrams",
+            "example",
+            "examples",
+            "explanation",
+            "figure",
+            "figures",
+            "image",
+            "images",
+            "key",
+            "limitation",
+            "limitations",
+            "method",
+            "methods",
+            "model",
+            "models",
+            "note",
+            "notes",
+            "point",
+            "points",
+            "software",
+            "softwares",
+            "source",
+            "sources",
+            "system",
+            "systems",
+            "type",
+            "types",
+            "visual",
+        }
+        terms = {
+            term
+            for term in SynthesisService._query_terms(query)
+            if term not in generic_terms and len(term) >= 4
+        }
+        if terms:
+            return terms
+        return {
+            term
+            for term in SynthesisService._query_terms(query)
+            if term not in {"answer", "explain", "source", "sources"} and len(term) >= 3
+        }
+
+    @staticmethod
+    def _direct_evidence_profile(query: str, bundle: RetrievalBundle) -> dict[str, object]:
+        query_terms = SynthesisService._primary_query_terms(query) | SynthesisService._context_acronym_terms(
+            query=query,
+            bundle=bundle,
+        )
+        if not query_terms:
+            return {
+                "answer_relevance_score": 0.0,
+                "primary_query_terms": [],
+                "direct_evidence_count": 0,
+                "weak_related_count": 0,
+                "direct_evidence_pages": [],
+            }
+
+        direct_count = 0
+        weak_count = 0
+        scores: list[float] = []
+        pages: list[int] = []
+        for chunk in bundle.chunks[:8]:
+            score = SynthesisService._chunk_directness_score(query=query, chunk_text=chunk.text, query_terms=query_terms)
+            scores.append(score)
+            if score >= 0.58:
+                direct_count += 1
+                if chunk.page_start is not None and chunk.page_start not in pages:
+                    pages.append(chunk.page_start)
+            elif score >= 0.15:
+                weak_count += 1
+
+        best_score = max(scores, default=0.0)
+        return {
+            "answer_relevance_score": round(best_score, 3),
+            "primary_query_terms": sorted(query_terms),
+            "direct_evidence_count": direct_count,
+            "weak_related_count": weak_count,
+            "direct_evidence_pages": pages[:6],
+        }
+
+    @staticmethod
+    def _context_acronym_terms(*, query: str, bundle: RetrievalBundle) -> set[str]:
+        acronyms = {
+            token.upper().rstrip("S")
+            for token in re.findall(r"\b[A-Za-z][A-Za-z0-9+-]{1,8}s?\b", query)
+            if 2 <= len(token.rstrip("sS")) <= 8
+        }
+        if not acronyms:
+            return set()
+        expansions: set[str] = set()
+        for chunk in bundle.chunks[:8]:
+            block = chunk.text[:1800]
+            for acronym in acronyms:
+                patterns = (
+                    re.compile(
+                        rf"\b([A-Za-z][A-Za-z0-9+/\- ]{{3,90}}?)\s+\(({re.escape(acronym)}s?)\)",
+                        flags=re.I,
+                    ),
+                    re.compile(
+                        rf"\b{re.escape(acronym)}s?\s+\(([A-Za-z][A-Za-z0-9+/\- ]{{3,90}}?)\)",
+                        flags=re.I,
+                    ),
+                )
+                for pattern in patterns:
+                    for match in pattern.finditer(block):
+                        phrase = re.sub(r"\s+", " ", match.group(1)).strip(" -:;,.")
+                        expansions.update(
+                            token
+                            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", phrase.lower())
+                            if token not in _QUERY_STOPWORDS and len(token) >= 4
+                        )
+        return expansions
+
+    @staticmethod
+    def _chunk_directness_score(*, query: str, chunk_text: str, query_terms: set[str]) -> float:
+        text = chunk_text.lower()
+        words = set(re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", text))
+        matched = {
+            term
+            for term in query_terms
+            if term in text or any(len(term) >= 5 and word.startswith(term[:6]) for word in words)
+        }
+        coverage = len(matched) / max(len(query_terms), 1)
+        score = min(1.0, coverage)
+        normalized_query = query.lower()
+        phrase_tokens = [
+            token
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", normalized_query)
+            if token not in _QUERY_STOPWORDS and token not in {"software", "softwares", "detail", "detailed"}
+        ]
+        for size in (4, 3, 2):
+            for index in range(0, max(0, len(phrase_tokens) - size + 1)):
+                phrase = " ".join(phrase_tokens[index : index + size])
+                if len(phrase) >= 7 and phrase in text:
+                    score += 0.28
+                    break
+        if SynthesisService._is_definition_query(query) and any(
+            cue in text
+            for cue in (
+                " is a ",
+                " is an ",
+                " means ",
+                " refers ",
+                " called ",
+                " defined as ",
+                " assumes ",
+                " consists of ",
+            )
+        ):
+            score += 0.18
+        if any(term in normalized_query for term in ("how", "work", "works", "process", "steps")) and any(
+            cue in text for cue in ("works by", "consists of", "uses", "algorithm", "process", "step")
+        ):
+            score += 0.14
+        if any(term in normalized_query for term in ("diagram", "figure", "image", "visual")) and any(
+            cue in text for cue in ("figure", "fig.", "diagram", "image", "caption", "visual")
+        ):
+            score += 0.12
+        if not any(term in normalized_query for term in ("example", "application", "use case")) and any(
+            cue in text
+            for cue in (
+                "one possible application",
+                "possible application",
+                "examples of applications",
+                "among many other",
+            )
+        ):
+            score -= 0.75
+        if SynthesisService._is_low_value_evidence_sentence(text[:900]):
+            score -= 0.22
+        return max(0.0, min(1.0, score))
 
     @staticmethod
     def _contains_citation_anchor(text: str) -> bool:

@@ -2,6 +2,29 @@
 
 Date: 2026-07-07
 
+## MegaSprint One Query-Category Eval Seed
+
+Date: 2026-07-09
+
+Dataset:
+
+```text
+data/processed/eval/query_agnostic_rag_categories.jsonl
+```
+
+Purpose:
+
+- Measure behavior by query type instead of mandatory hand-picked regression prompts.
+- Covers definitions, explanations, comparisons, procedures, limitations, image/diagram requests, summaries, exam answers, paper drafting, and unanswerable prompts.
+- Includes `answerability` labels so future full-query evaluation can separately score direct answers, partial evidence, and abstention correctness.
+
+Status:
+
+- Seed file added and smoke-tested with BM25 retrieval.
+- Current small-seed BM25 smoke result: MRR `1.000`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- This is not a broad accuracy claim; it only confirms that the category harness and literal labels are working.
+- Full metric confidence requires more real textbook/notes/paper labels.
+
 Dataset: `data/processed/eval/demo_academic_qa.jsonl`
 
 Sources:
