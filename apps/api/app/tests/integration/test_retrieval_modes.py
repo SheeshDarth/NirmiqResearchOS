@@ -37,9 +37,10 @@ def test_retrieval_modes_available_after_ingest(tmp_path: Path) -> None:
             )
         )
 
-        assert hybrid.meta["strategy"] == "phase1_hybrid"
-        assert bm25.meta["strategy"] == "phase1_bm25"
-        assert vector.meta["strategy"] == "phase1_vector"
+        assert hybrid.meta["strategy"] == "nirmiq_ehr_hybrid"
+        assert bm25.meta["strategy"] == "nirmiq_ehr_bm25"
+        assert vector.meta["strategy"] == "nirmiq_ehr_vector"
+        assert hybrid.meta["retrieval_method"] == "nirmiq_evidence_first_hierarchical_hybrid_rag"
 
 
 def test_query_can_scope_retrieval_to_selected_document(tmp_path: Path) -> None:

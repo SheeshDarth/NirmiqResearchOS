@@ -75,11 +75,11 @@ The harder real-world seed evaluation currently shows:
 
 After the first reliability slice:
 
-- BM25 MRR: approximately `0.781`.
-- BM25 Recall@8: approximately `0.875`.
-- Expected citation coverage: approximately `0.875`.
+- BM25 MRR: approximately `0.784`.
+- BM25 Recall@8: approximately `0.941`.
+- Expected citation coverage: approximately `0.941`.
 
-The first slice added deterministic query expansion, normalized eval matching, and retrieval noise penalties. It reached the initial MRR and Recall@8 targets on the current 16-sample real-world seed, but citation coverage still needs to reach at least `0.900` on a larger eval set.
+The first slice added deterministic query expansion, normalized eval matching, retrieval noise penalties, strict anchor rescue, and BM25-first routing for attached-source academic queries. It reaches the initial MRR, Recall@8, and citation coverage targets on the current 17-sample real-world seed, but the eval set must grow before claiming broad academic reliability.
 
 Interpretation:
 
@@ -275,6 +275,39 @@ Remaining problem:
 - Full-query coverage (`0.688`) still trails raw retrieval coverage (`0.750`).
 - BM25 still beats hybrid on the real-world seed.
 - The next reliability work is answer-used citation selection, eval expansion, and hybrid/BM25 routing, not GraphRAG.
+
+## 2026-07-09 MegaSprint One RAG Method Decision
+
+Chosen method:
+
+- **NIRMIQ Evidence-First Hierarchical Hybrid RAG**.
+- Detailed method document: [`docs/nirmiq_rag_method.md`](docs/nirmiq_rag_method.md).
+
+Why this is the right fit:
+
+- NIRMIQ must answer from uploaded academic material, not from general model memory.
+- It must stay offline-first and work on RTX 4050-class and low-end Linux hardware.
+- It must handle textbooks, lecture notes, scanned/OCR PDFs, research papers, question banks, and mixed-quality local files.
+- The current failure pattern is direct evidence being missed or buried, not simply the model being too small.
+
+Why alternatives are deferred:
+
+- Pure vector RAG can retrieve related passages that do not answer the question.
+- Pure BM25 is cheap and reliable but needs source-aware expansion and noise control.
+- GraphRAG is useful later for concept maps and paper synthesis, but too heavy before retrieval precision is fixed.
+- Agentic RAG can hide retrieval weakness behind extra steps; NIRMIQ first needs one trustworthy local pipeline.
+
+Implemented in this slice:
+
+- Retrieval method metadata now identifies `nirmiq_evidence_first_hierarchical_hybrid_rag`.
+- Section ranking and final evidence scoring use the original user query instead of judging everything against expanded keywords.
+- Anchor rescue promotes direct definitions, dates, privacy/OCR variants, and other high-value answer passages in legacy/no-section documents.
+- Default attached-source academic queries use BM25-first routing because the current real-world seed scores BM25 higher than hybrid for first evidence rank.
+- Unit tests cover direct-definition rescue so a real answer passage beats a loose index-like chunk.
+
+Current caveat:
+
+- Hybrid still trails BM25 on real-world academic evidence ranking, so vector/RRF tuning remains future work. Do not default to heavier models or GraphRAG until hybrid has measured gains over BM25-first retrieval.
 
 ## RAG Reliability Phase Roadmap
 

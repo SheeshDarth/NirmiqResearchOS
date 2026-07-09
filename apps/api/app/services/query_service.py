@@ -37,7 +37,12 @@ class QueryService:
         _ = await self._memory_service.get_summary(payload.session_id)
         intent = detect_query_intent(payload.query, payload.mode)
         response_mode = self._resolve_response_mode(payload.mode, intent)
-        retrieval_mode = self._resolve_retrieval_mode(payload.mode, payload.retrieval_mode)
+        retrieval_mode = self._resolve_retrieval_mode(
+            mode=payload.mode,
+            retrieval_mode=payload.retrieval_mode,
+            document_id=payload.document_id,
+            intent=intent,
+        )
         retrieval_profile = self._resolve_retrieval_profile(payload.retrieval_profile, intent)
         cached_response = self._cached_summary_response(
             payload=payload,
@@ -80,7 +85,8 @@ class QueryService:
         combined_meta = {
             **bundle.meta,
             **synthesis_meta,
-            "requested_retrieval_mode": retrieval_mode,
+            "requested_retrieval_mode": payload.retrieval_mode,
+            "effective_retrieval_mode": retrieval_mode,
             "retrieval_query_expanded": retrieval_query != payload.query,
             "requested_retrieval_profile": payload.retrieval_profile,
             "effective_retrieval_profile": retrieval_profile,
@@ -161,7 +167,8 @@ class QueryService:
                 "detected_intent": intent.intent,
                 "intent_confidence": intent.confidence,
                 "intent_route": "summary_cache_hit",
-                "requested_retrieval_mode": retrieval_mode,
+                "requested_retrieval_mode": payload.retrieval_mode,
+                "effective_retrieval_mode": retrieval_mode,
                 "requested_retrieval_profile": payload.retrieval_profile,
                 "effective_retrieval_profile": retrieval_profile,
                 "summary_profile": summary_profile,
@@ -335,10 +342,27 @@ class QueryService:
         return f"{query}\n\nImported questions:\n{question_text}"
 
     @staticmethod
-    def _resolve_retrieval_mode(mode: str, retrieval_mode: str) -> str:
+    def _resolve_retrieval_mode(
+        *,
+        mode: str,
+        retrieval_mode: str,
+        document_id: str | None,
+        intent: QueryIntent,
+    ) -> str:
         direct_mode = retrieval_mode.strip().lower()
-        if direct_mode in {"hybrid", "bm25", "vector"}:
+        if direct_mode in {"bm25", "vector"}:
             return direct_mode
+        if direct_mode == "hybrid":
+            if document_id and intent.intent in {
+                "summary",
+                "factual_lookup",
+                "compare",
+                "deep_research",
+                "paper_draft",
+                "exam",
+            }:
+                return "bm25"
+            return "hybrid"
         legacy_mode = mode.strip().lower()
         if legacy_mode in {"hybrid", "bm25", "vector"}:
             return legacy_mode

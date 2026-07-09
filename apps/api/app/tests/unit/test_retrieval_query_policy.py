@@ -15,6 +15,8 @@ def test_query_expansion_adds_privacy_terms() -> None:
     assert "personal" in expanded
     assert "information" in expanded
     assert "retention" in expanded
+    assert "sensive" in expanded
+    assert "retenon" in expanded
     assert "hyperparameters" not in expanded
 
 
@@ -76,6 +78,54 @@ def test_direct_evidence_score_prefers_answer_passage_over_loose_mention() -> No
     query = "Explain convolutional neural networks in detail"
 
     assert RetrievalService._chunk_answer_relevance(row=direct_row, query=query) > RetrievalService._chunk_answer_relevance(row=loose_row, query=query)
+
+
+def test_anchor_rescue_promotes_direct_definition_from_legacy_chunks() -> None:
+    chunks = [
+        {
+            "id": "loose",
+            "text": (
+                "Gaussian mixtures, Bayesian Gaussian mixtures, Bayesian information criterion, "
+                "beam search, Bellman equation, and other index entries."
+            ),
+            "heading": "Index",
+            "section_path": "Index",
+            "chunk_type": "body",
+        },
+        {
+            "id": "direct",
+            "text": (
+                "A Gaussian mixture model is a probabilistic model that assumes instances were "
+                "generated from a mixture of several Gaussian distributions with unknown parameters."
+            ),
+            "heading": "Gaussian Mixtures",
+            "section_path": "Chapter 9 / Gaussian Mixtures",
+            "chunk_type": "body",
+        },
+    ]
+
+    rescued = RetrievalService._anchor_rescue_candidate_ids(
+        query="What is a Gaussian mixture model?",
+        chunks=chunks,
+        existing_ids={"loose"},
+        limit=2,
+    )
+
+    assert rescued[0] == "direct"
+
+
+def test_exercise_question_chunks_are_noisy_for_explanations() -> None:
+    row = {
+        "text": (
+            "1. What is a Gaussian mixture? What tasks can you use it for? "
+            "2. Can you name two techniques to find the number of clusters?"
+        ),
+        "heading": "Exercises",
+        "section_path": "Exercises",
+        "chunk_type": "body",
+    }
+
+    assert RetrievalService._chunk_noise_penalty(row=row, query="What is a Gaussian mixture model?") > 0
 
 
 def test_section_ranking_boosts_exact_query_phrase_without_topic_specific_rule() -> None:

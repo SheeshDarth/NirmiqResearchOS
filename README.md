@@ -173,16 +173,20 @@ The golden demo is strong, and the harder real-world seed now shows measurable i
 | Real-world seed | BM25 MRR | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: |
 | Before reliability slice | 0.578 | 0.750 | 0.750 |
-| Current | 0.781 | 0.875 | 0.875 |
+| Current BM25-first | 0.784 | 0.941 | 0.941 |
 
-This means the first reliability slice reached the MRR and Recall@8 targets on the current 16-sample seed. Citation expected coverage improved but still needs to reach `0.900+` on a larger eval set before the project should claim production-grade academic accuracy.
+This means the current BM25-first reliability slice reaches the MRR, Recall@8, and citation coverage targets on the current 17-sample seed. The set is still small, so this is a serious progress signal, not a production-grade accuracy claim. Hybrid remains available, but BM25-first is the safest default for attached-source textbook questions until hybrid consistently beats it on larger real-world evals.
 
 The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
+
+Chosen RAG method: [`NIRMIQ Evidence-First Hierarchical Hybrid RAG`](docs/nirmiq_rag_method.md). This keeps BM25 as the offline backbone, uses section/page-first narrowing when metadata exists, treats vector search as optional support, rescues buried direct evidence in legacy documents, and verifies citations before showing a confident answer.
 
 Latest MegaSprint One reliability update:
 
 - Retrieval now uses document-aware expansion for acronyms and source terminology.
 - Candidate ranking includes an internal direct-evidence score so answerable passages beat loose mentions.
+- Legacy/no-section documents now get an anchor-rescue pass for direct definitions, dates, privacy/OCR variants, and exact answer cues.
+- Default attached-source academic queries route to BM25-first retrieval internally while vector/hybrid remains optional.
 - Broad index, glossary, backmatter, and example-list sections are penalized for explanatory questions.
 - Synthesis now separates direct evidence, weak related mentions, and true source misses.
 - Normal UI hides raw metadata and presents only the trust state plus optional source passages.
@@ -203,7 +207,7 @@ Acceptance targets:
 
 - Preserve Recall@8 at or above `0.850` as the eval set grows.
 - Preserve MRR at or above `0.700` as the eval set grows.
-- Improve expected citation coverage from `0.875` to at least `0.900`.
+- Preserve expected citation coverage at or above `0.900` as the eval set grows.
 - Preserve the golden demo results and the no-Ollama/no-Chroma fallback path.
 
 ## Workspaces
@@ -496,6 +500,7 @@ Details:
 
 - [Demo dataset](docs/demo_dataset.md)
 - [Retrieval evaluation results](docs/retrieval_eval_results.md)
+- [NIRMIQ RAG method](docs/nirmiq_rag_method.md)
 - [Benchmark report](docs/benchmark_report.md)
 - [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
 - [Engineering problem log and RAG Reliability roadmap](problems_faced.md)
@@ -513,8 +518,8 @@ Latest phrase-level real-world retrieval result:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 16 | 0.655 | 0.813 | 0.813 | 0.875 | 0.875 |
-| BM25 | 16 | 0.781 | 0.875 | 0.875 | 0.875 | 0.875 |
+| BM25 | 17 | 0.784 | 0.941 | 0.941 | 0.941 | 0.941 |
+| Hybrid | 17 | 0.698 | 0.882 | 0.941 | 0.941 | 0.941 |
 
 Run:
 

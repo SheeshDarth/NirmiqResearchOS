@@ -2706,3 +2706,57 @@ Launch paths:
 Tradeoff:
 
 - This updates the Windows desktop package only. A true Android APK requires a separate mobile packaging sprint using Capacitor/Tauri mobile/React Native or a dedicated Android shell.
+
+### Latest Update: MegaSprint One Custom RAG Method
+
+Date: 2026-07-09
+
+Decision:
+
+- NIRMIQ's best-fit retrieval architecture is **Evidence-First Hierarchical Hybrid RAG**, not pure vector RAG, always-on GraphRAG, or agentic RAG.
+- Source of truth: [`docs/nirmiq_rag_method.md`](docs/nirmiq_rag_method.md).
+
+Why:
+
+- The project must work offline, stay understandable, run on RTX 4050 and lower-end Linux devices, and answer from textbooks/notes/PDFs with citations.
+- The observed hallucination pattern is mostly weak evidence selection, not just model weakness.
+- The latest real-world misses came from legacy/no-section documents, OCR spelling noise, and direct answer passages being buried below broad index/application chunks.
+
+Implemented:
+
+- Retrieval metadata now identifies the method as `nirmiq_evidence_first_hierarchical_hybrid_rag`.
+- Strategy labels moved from `phase1_*` to `nirmiq_ehr_*`.
+- Section ranking now judges sections from the original user question instead of the expanded keyword cloud.
+- Candidate directness and noise scoring now use the original user question, while BM25 can still use deterministic expansion.
+- Added anchor rescue for direct definitions, dates, privacy/OCR variants, dimensionality phrases, and other answer-like passages buried in legacy/no-section documents.
+- Added internal BM25-first routing for default attached-source academic queries because current real-world evals show BM25 ranks textbook evidence more safely than hybrid.
+- Added unit coverage to prove a direct Gaussian mixture definition beats a loose index-like chunk.
+
+MegaSprint roadmap:
+
+1. MegaSprint One: Evidence Precision and Query-Agnostic RAG Reliability. Current sprint.
+2. MegaSprint Two: ChatGPT-grade UX simplification and mobile/laptop QA.
+3. MegaSprint Three: Academic workflows: Paper Lab, Exam Lab, diagrams, study guides, and source-grounded exports.
+4. MegaSprint Four: Local runtime optimization for RTX 4050, low-end Linux, Ollama profiles, quantization, and latency budgets.
+5. MegaSprint Five: Release, security, packaging, CI, screenshots/GIFs, privacy controls, and one-click setup.
+6. MegaSprint Six: NIRMIQ ecosystem bridge: Mirror memory, OS hooks, agents, and Echo integrations only after the standalone academic product is reliable.
+
+Completion target for MegaSprint One:
+
+- Recall@8 stays at or above `0.850` as real-world labels grow.
+- MRR stays at or above `0.700`.
+- Expected citation coverage reaches at least `0.900`.
+- Normal UI remains simple and hides raw metadata.
+- Weak evidence produces `Needs more evidence` or `Not found in sources`, not confident filler.
+
+Validation:
+
+- Backend tests: `74 passed`, `1` warning.
+- Web build: passed.
+- Query-category eval:
+  - BM25: MRR `0.950`, Recall@8 `1.000`, citation expected coverage `1.000`.
+  - Hybrid: MRR `0.850`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Real-world academic seed:
+  - BM25: MRR `0.784`, Recall@8 `0.941`, citation expected coverage `0.941`.
+  - Hybrid: MRR `0.698`, Recall@8 `0.941`, citation expected coverage `0.941`.
+- Current conclusion: BM25-first is the safest default for attached-source academic queries. Hybrid remains available but should not be the default until it ranks first evidence better on real-world labels.

@@ -101,7 +101,9 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 
 ## Retrieval Requirements
 
-- Use hybrid retrieval by default.
+- Use NIRMIQ Evidence-First Hierarchical Hybrid RAG as the default architecture. See [`docs/nirmiq_rag_method.md`](docs/nirmiq_rag_method.md).
+- Keep BM25 as the offline retrieval backbone.
+- Route default attached-source academic `hybrid` requests to BM25-first retrieval until hybrid beats BM25 on the real-world eval set.
 - Support `bm25`, `vector`, and `hybrid` modes.
 - Use retrieval profiles: `fast`, `balanced`, `precision`.
 - Route broad overview prompts to summary behavior.
@@ -109,6 +111,8 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Include debug metadata for evaluation and development.
 - Use deterministic intent routing to expand retrieval hints for summaries, comparisons, deep research, paper drafting, and exam workflows.
 - Use section-first retrieval for selected-document queries when heading/key-term metadata identifies a relevant region.
+- Use anchor rescue to promote buried direct evidence in legacy/no-section documents and OCR-noisy notes.
+- Score final candidate chunks against the original user query, not only the expanded retrieval query.
 - Preserve BM25-only retrieval as the offline and low-end fallback path.
 - Track chunk-selection reasons including lexical hit, vector hit, section match, quality score, rerank position, and final rank.
 - Apply a lightweight query/context relevance gate before General Chat synthesis so old corpus chunks do not create false grounded answers.

@@ -76,8 +76,10 @@
   - `context_chunks_used`
   - `max_chunks_per_document`
   - `diverse_documents`
-  - `strategy` (`phase1_hybrid|phase1_bm25|phase1_vector`)
+  - `strategy` (`nirmiq_ehr_hybrid|nirmiq_ehr_bm25|nirmiq_ehr_vector`)
+  - `retrieval_method` (`nirmiq_evidence_first_hierarchical_hybrid_rag`)
   - `requested_retrieval_mode`
+  - `effective_retrieval_mode`
   - `cache_hit`
   - `detected_intent`
   - `intent_confidence`

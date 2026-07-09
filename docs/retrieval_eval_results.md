@@ -77,17 +77,17 @@ Original baseline before the first reliability slice:
 - Recall@8: `0.750`.
 - Citation expected coverage: `0.750`.
 
-Current result after deterministic query expansion, normalized eval matching, and retrieval noise penalties:
+Current result after deterministic query expansion, normalized eval matching, retrieval noise penalties, strict anchor rescue, and BM25-first routing for attached-source academic questions:
 
-- BM25 MRR: `0.781`.
-- Recall@8: `0.875`.
-- Citation expected coverage: `0.875`.
+- BM25 MRR: `0.784`.
+- Recall@8: `0.941`.
+- Citation expected coverage: `0.941`.
 
-The first reliability slice reached the original MRR and Recall@8 targets on the 16-sample seed, but citation coverage still needs to reach `0.900+` on a larger eval set. The next fix should continue improving evidence precision rather than increasing model size, temperature, or context length.
+The current reliability slice reaches the original MRR, Recall@8, and citation coverage targets on the 17-sample seed. The seed is still small, so the next fix should grow labels and continue improving evidence precision rather than increasing model size, temperature, or context length.
 
 ## Real-World Academic Seed Results
 
-Date: 2026-07-07
+Date: 2026-07-09
 
 Dataset: `data/processed/eval/real_world_academic_seed.jsonl`
 
@@ -101,7 +101,7 @@ Note: these source PDFs are intentionally local/untracked because public reposit
 
 Scope:
 
-- 16 phrase-labeled questions.
+- 17 phrase-labeled questions.
 - Covers a real research paper, a full ML textbook PDF, and local GenAI notes.
 - Uses `source_file` labels plus `--auto-ingest-sources`, so document IDs do not need to be manually copied.
 
@@ -124,14 +124,14 @@ Results:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | nDCG@5 | nDCG@8 | Citation Expected Coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 16 | 0.655 | 0.813 | 0.813 | 0.875 | 0.463 | 0.463 | 0.476 | 0.875 |
-| BM25 | 16 | 0.781 | 0.875 | 0.875 | 0.875 | 0.544 | 0.544 | 0.544 | 0.875 |
+| BM25 | 17 | 0.784 | 0.941 | 0.941 | 0.941 | 0.555 | 0.555 | 0.555 | 0.941 |
+| Hybrid | 17 | 0.698 | 0.882 | 0.941 | 0.941 | 0.501 | 0.515 | 0.515 | 0.941 |
 
 Interpretation:
 
 - This result is intentionally more realistic and less polished than the golden demo score.
-- BM25 slightly beats hybrid on this seed set because Ollama embeddings are disabled in the low-memory/offline profile and exact academic terms dominate these labels.
-- Recall@8 and citation expected coverage at `0.875` show meaningful improvement, but the seed is still small and should grow before making broad academic accuracy claims.
+- BM25 beats hybrid on this seed set because exact academic terms dominate the current labels and vector support is not yet consistently improving first-rank evidence.
+- Recall@8 and citation expected coverage at `0.941` show meaningful improvement, but the seed is still small and should grow before making broad academic accuracy claims.
 
 Next tuning targets:
 

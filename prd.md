@@ -54,6 +54,7 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 - V4.2 local answer feedback: users can mark answers as `Good` or `Needs work` so bad responses become a local improvement dataset.
 - RAG Reliability Phase: selected-document queries gain textbook-aware section metadata and hidden retrieval diagnostics so the system can improve precision without exposing more controls to users.
 - Query-agnostic reliability: valid user questions are routed by intent/category and judged by direct source support, not by a small mandatory prompt list.
+- Chosen RAG method: NIRMIQ Evidence-First Hierarchical Hybrid RAG, documented in [`docs/nirmiq_rag_method.md`](docs/nirmiq_rag_method.md). Product behavior should feel simple to users while internally using section-first retrieval, BM25-first offline search, optional vector support, direct-evidence rescue, citation verification, and abstention.
 
 ## V4 Golden Demo Scope
 

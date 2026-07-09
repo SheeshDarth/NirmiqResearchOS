@@ -110,14 +110,14 @@ Updated on 2026-06-20 with actual local academic material:
   - `data/raw/attention_is_all_you_need.pdf`
   - `data/raw/uploads/Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-5b287bd745.pdf`
   - `data/raw/uploads/mod-5-gen-ai-708567b729.pdf`
-- Samples: 16 phrase-labeled QA items
+- Samples: 17 phrase-labeled QA items
 
 The source PDFs are local/untracked by design. Keep copyright-sensitive textbooks and personal notes out of Git; commit labels and metrics only.
 
 | Mode | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 0.655 | 0.813 | 0.813 | 0.875 | 0.875 |
-| BM25 | 0.781 | 0.875 | 0.875 | 0.875 | 0.875 |
+| BM25 | 0.784 | 0.941 | 0.941 | 0.941 | 0.941 |
+| Hybrid | 0.698 | 0.882 | 0.941 | 0.941 | 0.941 |
 
 Command:
 
@@ -130,4 +130,5 @@ Interpretation:
 
 - The golden demo remains the reviewer proof path.
 - The real-world seed is the accuracy-improvement benchmark.
-- The first reliability slice materially improved the 16-sample seed, but the set must grow before making broad launch-marketing claims.
+- The first reliability slice materially improved the real-world seed, but the set must grow before making broad launch-marketing claims.
+- BM25-first is currently the safer default for attached-source academic questions; hybrid stays available but needs more tuning before it should lead.

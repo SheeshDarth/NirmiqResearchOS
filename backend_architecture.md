@@ -84,10 +84,15 @@ This keeps the current frontend stable while addressing API-versioning readiness
 
 ### MegaSprint One Reliability Layer
 
-The latest reliability layer remains local-first and lightweight:
+The latest reliability layer remains local-first and lightweight. The chosen architecture is documented in [`docs/nirmiq_rag_method.md`](docs/nirmiq_rag_method.md) as **NIRMIQ Evidence-First Hierarchical Hybrid RAG**:
 
+- BM25 stays the offline retrieval backbone.
+- Section/page-first ranking narrows selected-document queries when metadata exists.
+- Optional vector retrieval and RRF help recall, but SQLite-confirmed active chunks remain the source of truth.
+- Default `hybrid` requests are internally routed to BM25-first retrieval for attached-source academic intents because current real-world metrics show BM25 ranks textbook evidence more safely.
+- Anchor rescue promotes buried direct evidence in legacy/no-section documents before synthesis.
 - Query expansion is deterministic and can derive acronym expansions from the selected document instead of relying only on global prompt rules.
-- Candidate priority includes an internal direct-evidence score so explanatory answers prefer passages that define, explain, compare, or support the requested subject.
+- Candidate priority includes an internal direct-evidence score against the original user question so explanatory answers prefer passages that define, explain, compare, or support the requested subject.
 - Backmatter/index/glossary/example-list passages receive stronger penalties for explanatory questions.
 - Synthesis receives direct-evidence metadata and fails closed when evidence is only weakly related or unrelated.
 - Public query request/response shapes remain stable; additional reliability fields stay inside optional debug metadata.
@@ -257,7 +262,7 @@ Evaluation:
 
 - `scripts/eval_retrieval.py` now supports `source_file` labels and `--auto-ingest-sources`.
 - `scripts/eval_real_world.ps1` evaluates real local academic material without manual document-id copying.
-- `data/processed/eval/real_world_academic_seed.jsonl` adds 16 phrase-labeled questions from the Transformer paper, an ML textbook PDF, and local GenAI notes.
+- `data/processed/eval/real_world_academic_seed.jsonl` adds 17 phrase-labeled questions from the Transformer paper, an ML textbook PDF, and local GenAI notes.
 
 Linux/low-end:
 

@@ -10,6 +10,33 @@ See [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md) for concrete 
 
 See [`answer_used_citation_backlog.md`](answer_used_citation_backlog.md) for cases where raw retrieval finds better evidence than the final answer-used citations.
 
+See [`nirmiq_rag_method.md`](nirmiq_rag_method.md) for the chosen RAG architecture: NIRMIQ Evidence-First Hierarchical Hybrid RAG.
+
+## 2026-07-09 MegaSprint One Method Lock
+
+Decision:
+
+- NIRMIQ should use Evidence-First Hierarchical Hybrid RAG for MegaSprint One.
+- BM25 remains the offline backbone.
+- Section/page-first retrieval is used when selected-document metadata exists.
+- Optional vector search and RRF support recall but do not replace SQLite-confirmed active chunks.
+- Anchor rescue handles legacy/no-section documents, OCR variants, and direct evidence buried below broad hits.
+- Final candidate scoring uses the original user query for directness and noise penalties, while deterministic expansion is limited to improving retrieval recall.
+- Attached-source academic queries route default `hybrid` requests to BM25-first retrieval because the current real-world eval shows BM25 ranks textbook evidence more safely than hybrid.
+
+Reason:
+
+- Recent failures were caused by weak evidence precision: broad chunks, index fragments, legacy documents without section metadata, and OCR spelling noise.
+- Heavier models, higher temperature, GraphRAG, or agents would not fix the root cause before retrieval is reliable.
+
+Verification:
+
+- Backend unit/integration tests: `74 passed`, `1` warning.
+- Web production build: passed.
+- Query-category eval: BM25 MRR `0.950`, Recall@8 `1.000`, citation expected coverage `1.000`; Hybrid MRR `0.850`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Real-world academic seed: BM25 MRR `0.784`, Recall@8 `0.941`, citation expected coverage `0.941`; Hybrid MRR `0.698`, Recall@8 `0.941`, citation expected coverage `0.941`.
+- A broad anchor-rescue boost was tested and rejected because it lowered real-world Recall@8 to `0.706`; the committed approach keeps rescue strict and targeted.
+
 ## 2026-07-09 MegaSprint One Query-Agnostic Reliability Slice
 
 Implemented:
@@ -72,7 +99,7 @@ Updated raw retrieval result:
 
 Interpretation:
 
-- The first slice reached the original MRR and Recall@8 targets on the current 16-sample seed.
+- The first slice reached the original MRR and Recall@8 targets on the initial 16-sample seed.
 - Expected citation coverage improved from `0.750` to `0.875`, but still needs to reach `0.900+` on a larger real-world eval set.
 - Remaining failures cluster around OCR/encoding noise and section-level overview retrieval.
 
@@ -480,12 +507,12 @@ Latest phrase-level retrieval metrics:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 17 | 0.675 | 0.824 | 0.824 | 0.882 | 0.882 |
-| BM25 | 17 | 0.794 | 0.882 | 0.882 | 0.882 | 0.882 |
+| BM25 | 17 | 0.784 | 0.941 | 0.941 | 0.941 | 0.941 |
+| Hybrid | 17 | 0.698 | 0.882 | 0.941 | 0.941 | 0.941 |
 
 Interpretation:
 
-- This is the current measured baseline for real local academic material after the Gaussian mixture definition fix.
+- This is the current measured baseline for real local academic material after the MegaSprint One method-lock tuning.
 - The project is demo-ready, but not yet production-perfect for arbitrary documents.
 - BM25 currently wins on this seed because exact academic phrase labels dominate and Ollama embeddings remain off in the low-memory profile.
 
@@ -525,7 +552,7 @@ Verification:
 - Live answer now cites the page 357 definition as `[1]`.
 - Citation verification: `supported`.
 - Real-world eval seed now includes this query as `textbook-ml-007`.
-- Updated 17-sample metrics: Hybrid Recall@8 `0.882`, BM25 Recall@8 `0.882`, BM25 MRR `0.794`.
+- Updated 17-sample metrics after method-lock tuning: Hybrid Recall@8 `0.941`, BM25 Recall@8 `0.941`, BM25 MRR `0.784`.
 - Backend suite: `66 passed, 1 warning`.
 - Compile check: `python -m compileall apps/api/app` passed.
 

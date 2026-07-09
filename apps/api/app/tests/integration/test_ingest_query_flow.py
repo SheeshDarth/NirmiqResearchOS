@@ -75,7 +75,8 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert isinstance(body["citations"][0]["score"], float)
         assert body["retrieval_meta"]["generation_backend"] in {"ollama", "fallback"}
         assert body["retrieval_meta"]["requested_retrieval_mode"] == "bm25"
-        assert body["retrieval_meta"]["strategy"] == "phase1_bm25"
+        assert body["retrieval_meta"]["strategy"] == "nirmiq_ehr_bm25"
+        assert body["retrieval_meta"]["retrieval_method"] == "nirmiq_evidence_first_hierarchical_hybrid_rag"
         assert body["retrieval_meta"]["max_chunks_per_document"] == 2
         assert body["retrieval_meta"]["grounding_state"] in {"strong", "moderate", "weak"}
         assert isinstance(body["retrieval_meta"]["grounding_summary"], str)

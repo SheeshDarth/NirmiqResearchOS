@@ -23,22 +23,22 @@ Original baseline before the first reliability slice:
 - BM25 Recall@8: `0.750`
 - BM25 expected citation coverage: `0.750`
 
-Current result after deterministic query expansion, normalized eval matching, and retrieval noise penalties:
+Current result after deterministic query expansion, normalized eval matching, retrieval noise penalties, strict anchor rescue, and BM25-first routing:
 
-- Hybrid MRR: `0.655`
-- Hybrid Recall@8: `0.875`
-- Hybrid expected citation coverage: `0.875`
-- BM25 MRR: `0.781`
-- BM25 Recall@8: `0.875`
-- BM25 expected citation coverage: `0.875`
+- BM25 MRR: `0.784`
+- BM25 Recall@8: `0.941`
+- BM25 expected citation coverage: `0.941`
+- Hybrid MRR: `0.698`
+- Hybrid Recall@8: `0.941`
+- Hybrid expected citation coverage: `0.941`
 
 Failure log summary:
 
-- Weak retrieval records: `5`
-- Hybrid records: `3`
-- BM25 records: `2`
-- Missed at 8: `4`
-- Late hit rank 7: `1`
+- Weak retrieval records: `3`
+- Hybrid records: `2`
+- BM25 records: `1`
+- Missed at 8: `2`
+- Late hit rank 5: `1`
 
 The failure log records both hard misses and late hits beyond rank 3, because late evidence is less likely to be used correctly during synthesis.
 
