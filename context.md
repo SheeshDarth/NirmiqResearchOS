@@ -2652,3 +2652,30 @@ Notes:
 - A dedicated Ollama/runtime monitor MCP was not available in the Codex install catalog. Runtime health should stay inside NIRMIQ as local `/health`, `/runtime`, and latency/memory diagnostics instead of depending on a separate cloud connector.
 - A dedicated SQLite MCP namespace did not expose in this session, but local SQLite inspection remains available through Python/Node and is sufficient for NIRMIQ's offline-first debugging workflow.
 - A hard restart of the Codex desktop app was not performed from inside the active session to avoid interrupting the work. The newly installed GitHub and Chrome tooling is already visible in this session; a manual close/reopen of Codex can still refresh the tool list if needed.
+
+### Latest Update: Windows Desktop Package Refresh
+
+Date: 2026-07-09
+
+Purpose:
+
+- Refresh the already-downloaded Windows desktop package with the latest chatbot-style UI changes.
+- Confirm whether an Android `.apk` target exists before packaging.
+
+Result:
+
+- No Android `.apk` target or existing `.apk` artifact was found in the repository.
+- The project currently supports a Windows Electron desktop package, not Android APK packaging.
+- `npm run build`: passed.
+- `npm.cmd run desktop:pack`: passed and refreshed `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
+- `npm.cmd run desktop:package`: passed and refreshed `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- Desktop and Start Menu shortcuts were recreated for NIRMIQ Desktop, Browser Preview, Golden Demo, and Stop.
+
+Launch paths:
+
+- Portable app: `C:\Nirmiq-researchOS\dist\desktop\NIRMIQ ResearchOS 0.1.0.exe`
+- Unpacked app: `C:\Nirmiq-researchOS\dist\desktop\win-unpacked\NIRMIQ ResearchOS.exe`
+
+Tradeoff:
+
+- This updates the Windows desktop package only. A true Android APK requires a separate mobile packaging sprint using Capacitor/Tauri mobile/React Native or a dedicated Android shell.
