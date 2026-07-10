@@ -37,9 +37,8 @@ import {
   type SessionTimelineResponse,
 } from "../lib/api-client";
 import { LocalLogin } from "../components/local-login";
-import { StudyGuideAnswer } from "../components/study-guide-answer";
-import { AnswerBody } from "../components/answer-body";
 import { ChatEmptyState } from "../components/chat-empty-state";
+import { ChatThread } from "../components/chat-thread";
 import { SourceEvidencePanel } from "../components/source-evidence-panel";
 import { ThreadHeader } from "../components/thread-header";
 import {
@@ -63,7 +62,6 @@ import {
   getGroundingLabel,
   getPaperLabArtifact,
   getTrustCopy,
-  getVerificationBadge,
   getVisibleChunks,
   modeLabel,
   previewText,
@@ -1069,94 +1067,20 @@ export default function Home() {
 
         <div className="thread-scroll">
           {queryHistory.length ? (
-            <div className="turn-list">
-              {queryHistory.map((run, index) => {
-                const runKey = run.timestamp;
-                const feedbackRating = savedFeedback[runKey];
-                return (
-                <article className="turn" key={runKey}>
-                  <div className="bubble user">
-                    <div className="message-meta">
-                      <span className="tiny">You</span>
-                    </div>
-                    <div className="answer">{run.query}</div>
-                  </div>
-                  <div className="bubble assistant">
-                    <div className="message-meta">
-                      <span className="tiny">NIRMIQ / {formatDate(run.timestamp)}</span>
-                      {getVerificationBadge(run.response) ? (
-                        <span className={cx("trust-badge", getVerificationBadge(run.response)?.className)}>
-                          {getVerificationBadge(run.response)?.label}
-                        </span>
-                      ) : null}
-                    </div>
-                    {run.mode === "study_guide" ? (
-                      <StudyGuideAnswer answer={run.response.answer} />
-                    ) : (
-                      <AnswerBody answer={run.response.answer} />
-                    )}
-                    <div className="trust-line">
-                      <span className={cx("trust-copy", run.response.grounded ? "sage" : "copper")}>
-                        {getTrustCopy(run.response)}
-                      </span>
-                      <button
-                        className="clear-link"
-                        onClick={() => {
-                          setQueryResult(run.response);
-                          setShowInspector(true);
-                          setDeepView("evidence");
-                        }}
-                        type="button"
-                      >
-                        Open Sources
-                      </button>
-                    </div>
-                    <div className="feedback-row" aria-label="Answer feedback">
-                      <span>{feedbackRating ? "Saved for local quality review" : "Was this useful?"}</span>
-                      <button
-                        className={cx("feedback-button", feedbackRating === "good" && "active")}
-                        disabled={busy !== "" || Boolean(feedbackRating)}
-                        onClick={() => onRateAnswer(run, runKey, "good")}
-                        type="button"
-                      >
-                        Good
-                      </button>
-                      <button
-                        className={cx("feedback-button", feedbackRating === "needs_work" && "active")}
-                        disabled={busy !== "" || Boolean(feedbackRating)}
-                        onClick={() => onRateAnswer(run, runKey, "needs_work")}
-                        type="button"
-                      >
-                        Needs work
-                      </button>
-                    </div>
-                    {run.response.citations.length ? (
-                      <details className="source-drawer">
-                        <summary>
-                          Sources used
-                          <span>{run.response.citations.length}</span>
-                        </summary>
-                        <div className="citation-row evidence-trail">
-                          {run.response.citations.slice(0, 6).map((citation, citationIndex) => (
-                            <button
-                              className={cx("citation-chip", citation.chunk_id === selectedChunkId && "active")}
-                              key={`${run.timestamp}-${citation.chunk_id}-${citationIndex}`}
-                              onClick={() => selectCitation(citation.document_id, citation.chunk_id)}
-                              type="button"
-                            >
-                              [{citationIndex + 1}]
-                              {citation.page_start ? ` page ${citation.page_start}` : ""}
-                            </button>
-                          ))}
-                        </div>
-                      </details>
-                    ) : null}
-                  </div>
-                </article>
-                );
-              })}
-              <div ref={chatEndRef} />
-            </div>
+            <ChatThread
+              busy={busy}
+              chatEndRef={chatEndRef}
+              onOpenSources={(response) => {
+                setQueryResult(response);
+                setShowInspector(true);
+                setDeepView("evidence");
+              }}
+              onRateAnswer={onRateAnswer}
+              onSelectCitation={selectCitation}
+              queryHistory={queryHistory}
+              savedFeedback={savedFeedback}
+              selectedChunkId={selectedChunkId}
+            />
           ) : (
             <ChatEmptyState
               busy={busy}

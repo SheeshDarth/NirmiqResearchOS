@@ -2855,3 +2855,28 @@ Tradeoff:
 
 - This is a structural UI maintainability slice, not a visual redesign or RAG behavior change.
 - The next useful split is the main chat turn list or composer, but those should be done carefully because they touch query submission and feedback behavior.
+
+### Latest Update: MegaSprint Two Chat Thread Split
+
+Date: 2026-07-11
+
+Purpose:
+
+- Continue the ChatGPT-grade UI architecture cleanup by separating answer rendering from page orchestration.
+- Keep RAG behavior, query submission, feedback saving, and citation selection unchanged.
+
+Implemented:
+
+- Added `apps/web/components/chat-thread.tsx` for user/assistant turns, readable answer body rendering, study-guide rendering, trust line, feedback buttons, and compact citation drawer.
+- Replaced the inline `queryHistory.map(...)` block in `apps/web/app/page.tsx` with the typed `ChatThread` component.
+- Preserved `Open Sources`, citation-chip selection, answer feedback, trust badges, and scroll-to-bottom behavior.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+- `page.tsx` reduced to `1569` lines.
+
+Tradeoff:
+
+- This is another structural UI slice, not a visual redesign.
+- Composer extraction is the next major component split, but it touches upload/query controls and should remain a careful separate change.

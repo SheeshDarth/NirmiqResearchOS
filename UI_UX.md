@@ -273,3 +273,24 @@ UX rationale:
 Verification:
 
 - `npm.cmd run build`: passed.
+
+## 2026-07-11 MegaSprint Two Chat Thread Component Split
+
+Goal:
+
+- Move answer rendering out of the page shell so the main UI becomes easier to simplify without breaking feedback or citations.
+
+Implemented:
+
+- Added `ChatThread` as a focused component for user bubbles, assistant answers, trust badges, source drawer chips, and answer feedback.
+- Kept `Open Sources` and citation jump behavior delegated back to the page so source inspection state remains centralized.
+- Reduced the main page file further, preparing for safer composer and source-drawer polish.
+
+UX rationale:
+
+- The answer area is the product's primary surface and deserves its own boundary.
+- Keeping the answer renderer isolated makes future readability improvements easier to review, test, and undo if needed.
+
+Verification:
+
+- `npm.cmd run build`: passed.

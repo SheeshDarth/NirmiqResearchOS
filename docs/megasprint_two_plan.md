@@ -230,3 +230,24 @@ Why this matters:
 
 - MegaSprint Two needs a cleaner component boundary before bigger UX edits.
 - Isolating the header reduces the chance of accidental query, retrieval, or feedback regressions while iterating on the visual shell.
+
+### 2026-07-11 Slice 7: Chat Thread Component
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Extracted the answer/thread renderer into `apps/web/components/chat-thread.tsx`.
+- Preserved user bubbles, assistant answers, trust badges, source drawer chips, citation jump behavior, and feedback buttons.
+- Reduced `apps/web/app/page.tsx` to `1569` lines.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- The main page now owns orchestration instead of also owning the detailed answer renderer.
+- This makes later answer readability and source-drawer polish safer because the chat-turn surface has its own component boundary.
