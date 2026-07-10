@@ -1060,8 +1060,8 @@ export default function Home() {
               </div>
             </div>
             <div className="thread-title compact">
-              <h1>Ask your documents</h1>
-              <p className="tiny">Local answers, source-backed when your material has evidence.</p>
+              <h1>Ask NIRMIQ</h1>
+              <p className="tiny">Local answers from your material, with sources when evidence exists.</p>
             </div>
             <div className="top-actions">
               <button className="button ghost" type="button" onClick={() => setShowLibrary((current) => !current)}>
@@ -1074,9 +1074,8 @@ export default function Home() {
           </div>
           <div className="route-strip">
             <span className="source-pill">{selectedDocument ? activeMaterialName : "No document selected"}</span>
-            <span className="tiny">
-              {activeWorkspaceLabel} mode. Ask naturally; sources and tools stay tucked away until you need them.
-            </span>
+            <span className="route-chip">{activeWorkspaceLabel}</span>
+            <span className="route-hint">sources stay tucked away until needed</span>
           </div>
         </header>
 
@@ -1248,7 +1247,7 @@ export default function Home() {
               <div className="source-status">
                 <span className={cx("source-dot", selectedDocument && "ok")} />
                 <div>
-                  <span className="source-label">Attached source</span>
+                  <span className="source-label">Using</span>
                   <strong>{selectedDocument ? activeMaterialName : "No material attached"}</strong>
                 </div>
               </div>
@@ -1272,9 +1271,9 @@ export default function Home() {
             </div>
             {composerCollapsed ? (
               <div className="composer-minimized">
-                Search box minimized. Click Ask to write the next question.
+                Composer minimized.
                 <button className="clear-link" onClick={() => setComposerCollapsed(false)} type="button">
-                  Ask
+                  Ask next
                 </button>
               </div>
             ) : (
@@ -1753,11 +1752,11 @@ export default function Home() {
               </div>
             ) : null}
 
-            <div className="panel">
-              <div className="section-head">
-                <h2>Source passages</h2>
-                <span className="tiny">{visibleChunks.length} shown</span>
-              </div>
+            <details className="panel source-passages-details">
+              <summary>
+                More source passages
+                <span>{visibleChunks.length} available</span>
+              </summary>
               <div className="chunk-list" style={{ marginTop: 10 }}>
                 {visibleChunks.length ? (
                   visibleChunks.map((chunk) => (
@@ -1785,7 +1784,7 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            </div>
+            </details>
           </section>
         ) : null}
 

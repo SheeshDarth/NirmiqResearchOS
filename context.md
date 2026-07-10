@@ -7,6 +7,35 @@ Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
+## Latest Session Update - 2026-07-10 MegaSprint Two Overnight Kickoff
+
+Objective: begin the overnight MegaSprint Two execution loop after closing MegaSprint One retrieval reliability.
+
+Implemented:
+
+- Created an active hourly heartbeat automation: `nirmiq-overnight-sprint`.
+- Started MegaSprint Two: ChatGPT-grade academic UX simplification.
+- Reduced the main chat header from a dashboard-like surface to a compact chat-first header.
+- Replaced route helper copy with small source/mode pills so the normal UI feels less crowded.
+- Slimmed the composer height, upload button, send button, and source cockpit spacing.
+- Changed minimized composer copy to a simple `Composer minimized / Ask next` flow.
+- Collapsed dense source passage lists behind `More source passages` in the Sources panel.
+- Adjusted assistant answer styling to feel calmer and more readable, closer to a chat answer than a heavy dashboard card.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Next overnight continuation:
+
+- Split `apps/web/app/page.tsx` into focused UI components only after this first shell cleanup is stable.
+- Continue with source drawer readability, mobile/laptop QA, and first-run/sample-paper guidance.
+- Preserve backend APIs, Paper Lab, Exam Lab, upload flow, and citation trust behavior.
+
+Current repo note:
+
+- `deep-research-report.md` remains intentionally untracked and untouched.
+
 ## Latest Session Update - 2026-07-10 MegaSprint One Final Tightening
 
 Objective: push MegaSprint One retrieval reliability further without overfitting or adding heavy local dependencies.

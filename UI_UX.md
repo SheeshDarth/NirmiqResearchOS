@@ -1,6 +1,6 @@
 # NIRMIQ UI/UX Specification
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 Note: the requested filename `UI/UX.md` is represented as `UI_UX.md` because Windows treats `/` as a path separator.
 
@@ -27,6 +27,27 @@ Normal users should not see:
 - Local file paths.
 - Reliability-gate reason codes.
 - Retrieval metadata unless a future developer mode is explicitly enabled.
+
+## MegaSprint Two UX Rule
+
+The main workspace should now behave like a focused academic chatbot:
+
+- Header stays compact and does not compete with the answer.
+- Composer is the primary control surface.
+- Upload, Library, Sources, and Tools are available but secondary.
+- Dense source passage lists stay collapsed by default.
+- Assistant answers use a calmer reading surface rather than a heavy dashboard card.
+- Route/mode information appears as small context pills, not a dashboard control strip.
+- The normal user should never need to understand retrieval mode, profile, chunk count, or ranking metadata to ask a good question.
+
+Slice 1 implementation:
+
+- Main header copy simplified to `Ask NIRMIQ`.
+- Long helper copy in the route strip replaced with compact source/mode state.
+- Composer spacing reduced so answers get more room.
+- Minimized composer copy simplified to `Composer minimized` and `Ask next`.
+- Source drawer now hides extra passages behind `More source passages`.
+- Web build passed after the update.
 
 ## Motion Direction
 

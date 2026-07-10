@@ -2,6 +2,33 @@
 
 Last updated: 2026-07-10
 
+## Sprint Progress
+
+### 2026-07-10 Slice 1: Chat Shell Declutter
+
+Status: implemented and web-build verified.
+
+Changes:
+
+- Compact main header copy and route strip.
+- Smaller source/mode pills instead of long helper text.
+- Slimmer composer, upload button, send button, and source cockpit.
+- Less dashboard-like assistant answer card styling.
+- Dense source passage list collapsed by default under `More source passages`.
+- Normal UI keeps metadata hidden; Sources remains available on demand.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Remaining:
+
+- Component split.
+- Source drawer copy/preview polish.
+- First-run/sample-paper path.
+- Mobile/laptop visual QA.
+- Screenshots/GIF refresh.
+
 ## Goal
 
 Make NIRMIQ feel like a simple academic chatbot first, while preserving Research, Chat, Paper Lab, Exam Lab, citations, local privacy, and deep inspection.
@@ -123,4 +150,3 @@ The user should not need to understand:
 5. Add first-run/sample-paper guidance.
 6. Run manual UI QA across common widths.
 7. Update screenshots/GIFs and README.
-

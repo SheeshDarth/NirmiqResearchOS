@@ -819,9 +819,9 @@ button.chunk-card:hover {
 .thread-top {
   align-items: stretch;
   display: grid;
-  gap: 10px;
+  gap: 6px;
   min-height: 0;
-  padding: 12px clamp(16px, 3vw, 34px);
+  padding: 10px clamp(16px, 3vw, 34px) 8px;
   border-bottom: 1px solid var(--nirmiq-border);
   background:
     linear-gradient(180deg, rgba(5, 6, 8, 0.88), rgba(5, 6, 8, 0.28)),
@@ -832,7 +832,7 @@ button.chunk-card:hover {
 .thread-bar {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -848,7 +848,7 @@ button.chunk-card:hover {
 .thread-title h1 {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: clamp(20px, 2.2vw, 30px);
+  font-size: clamp(18px, 1.9vw, 25px);
   font-weight: 900;
   letter-spacing: -0.055em;
   line-height: 1;
@@ -861,7 +861,7 @@ button.chunk-card:hover {
 .route-strip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
   overflow: hidden;
 }
@@ -871,20 +871,35 @@ button.chunk-card:hover {
   max-width: min(520px, 48vw);
   border: 1px solid rgba(109, 139, 116, 0.32);
   border-radius: 999px;
-  padding: 7px 12px;
+  padding: 5px 10px;
   background: rgba(109, 139, 116, 0.12);
   color: var(--nirmiq-text);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 850;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.route-strip .tiny {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.route-chip,
+.route-hint {
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
   white-space: nowrap;
+}
+
+.route-chip {
+  border: 1px solid rgba(184, 106, 60, 0.26);
+  padding: 5px 9px;
+  color: var(--nirmiq-accent-strong);
+  background: rgba(184, 106, 60, 0.07);
+}
+
+.route-hint {
+  overflow: hidden;
+  color: var(--nirmiq-text-subtle);
+  text-overflow: ellipsis;
 }
 
 .top-actions {
@@ -1004,7 +1019,7 @@ button.chunk-card:hover {
 .thread-scroll {
   overflow: auto;
   min-height: 0;
-  padding: 18px min(7vw, 96px);
+  padding: 22px min(8vw, 112px);
   scroll-behavior: smooth;
   scrollbar-gutter: stable;
 }
@@ -1085,12 +1100,12 @@ button.chunk-card:hover {
 
 .turn-list {
   display: grid;
-  gap: 24px;
+  gap: 28px;
 }
 
 .turn {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   animation: turnReveal 360ms var(--motion-curve) both;
 }
 
@@ -1119,9 +1134,13 @@ button.chunk-card:hover {
 
 .bubble.assistant {
   justify-self: start;
-  width: min(820px, 92%);
-  background: rgba(18, 22, 27, 0.72);
-  border-bottom-left-radius: 6px;
+  width: min(880px, 94%);
+  border-color: rgba(238, 244, 241, 0.055);
+  border-left-color: rgba(109, 139, 116, 0.36);
+  background:
+    linear-gradient(90deg, rgba(109, 139, 116, 0.045), transparent 46%),
+    rgba(9, 12, 15, 0.36);
+  border-bottom-left-radius: 12px;
   animation: answerSettle 420ms var(--motion-curve) both;
 }
 
@@ -1134,20 +1153,20 @@ button.chunk-card:hover {
 
 .structured-answer {
   display: grid;
-  gap: 9px;
-  max-width: 68ch;
+  gap: 10px;
+  max-width: 72ch;
   white-space: normal;
 }
 
 .structured-answer p {
   margin: 0;
-  font-size: 15.5px;
-  line-height: 1.72;
+  font-size: 15.8px;
+  line-height: 1.74;
 }
 
 .answer-heading {
   display: block;
-  margin-top: 10px;
+  margin-top: 12px;
   color: var(--nirmiq-accent-strong);
   font-family: var(--font-heading);
   font-size: 16px;
@@ -1420,7 +1439,7 @@ button.chunk-card:hover {
 }
 
 .composer-wrap {
-  padding: 8px min(5vw, 64px) 10px;
+  padding: 7px min(5vw, 64px) 9px;
   border-top: 1px solid var(--nirmiq-border);
   background: linear-gradient(180deg, rgba(7, 8, 7, 0.12), rgba(7, 8, 7, 0.84));
   transition:
@@ -1452,8 +1471,8 @@ button.chunk-card:hover {
   max-width: 980px;
   margin: 0 auto;
   border: 1px solid rgba(238, 244, 241, 0.075);
-  border-radius: 24px;
-  padding: 10px;
+  border-radius: 22px;
+  padding: 8px;
   overflow: hidden;
   background:
     linear-gradient(135deg, rgba(238, 244, 241, 0.026), transparent 44%),
@@ -1472,17 +1491,17 @@ button.chunk-card:hover {
 
 .composer-input-shell {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 92px;
+  grid-template-columns: 40px minmax(0, 1fr) 86px;
   align-items: end;
-  gap: 9px;
+  gap: 8px;
   animation: fadeIn var(--motion-base) var(--motion-curve) both;
 }
 
 .composer-card .textarea {
-  min-height: 50px;
-  max-height: 132px;
-  padding: 13px 14px;
-  border-radius: 16px;
+  min-height: 46px;
+  max-height: 118px;
+  padding: 12px 13px;
+  border-radius: 15px;
   line-height: 1.45;
 }
 
@@ -1491,8 +1510,8 @@ button.chunk-card:hover {
   gap: 7px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  padding: 0 2px 0 4px;
+  margin-bottom: 6px;
+  padding: 0 2px 0 3px;
   border: 0;
   border-radius: 15px;
   background: transparent;
@@ -1575,7 +1594,7 @@ button.chunk-card:hover {
   display: block;
   overflow: hidden;
   color: var(--nirmiq-text);
-  font-size: 12.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1646,8 +1665,8 @@ button.chunk-card:hover {
 
 .attach-button {
   display: grid;
-  width: 42px;
-  height: 50px;
+  width: 40px;
+  height: 46px;
   place-items: center;
   border: 1px solid var(--nirmiq-border-strong);
   border-radius: 16px;
@@ -1665,7 +1684,7 @@ button.chunk-card:hover {
 }
 
 .send-button {
-  min-height: 50px;
+  min-height: 46px;
   border: 1px solid rgba(184, 106, 60, 0.54);
   border-radius: 16px;
   background: linear-gradient(135deg, rgba(240, 180, 134, 0.96), rgba(109, 139, 116, 0.86));
@@ -1741,9 +1760,9 @@ button.chunk-card:hover {
 }
 
 .composer-tools {
-  margin-top: 10px;
+  margin-top: 8px;
   border-top: 1px solid rgba(238, 244, 241, 0.055);
-  padding-top: 8px;
+  padding-top: 6px;
 }
 
 .composer-tools[open] {
@@ -1770,6 +1789,34 @@ button.chunk-card:hover {
   line-height: 1.45;
   text-transform: uppercase;
   animation: compactDock 240ms var(--motion-curve) both;
+}
+
+.source-passages-details {
+  overflow: hidden;
+}
+
+.source-passages-details > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--nirmiq-text);
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 850;
+  list-style: none;
+}
+
+.source-passages-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.source-passages-details > summary span {
+  color: var(--nirmiq-text-subtle);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .composer-minimized::before {
