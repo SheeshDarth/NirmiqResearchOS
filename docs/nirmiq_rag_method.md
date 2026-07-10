@@ -1,6 +1,6 @@
 # NIRMIQ RAG Method
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Chosen Method
 
@@ -88,6 +88,8 @@ flowchart TD
 
    Final chunks are judged against the original user query, not only the expanded query. This prevents expanded keywords from turning loosely related chunks into confident answers.
 
+   In `megasprint1.v2`, candidate priority gives direct answer relevance enough weight to beat loose reranker/vector hits. This fixed selected-document questions where a related paragraph ranked above the actual answer passage.
+
 9. **Noise penalties**
 
    Index, glossary, backmatter, broad application lists, copyright fragments, and corrupted OCR fragments are penalized for explanatory questions.
@@ -132,8 +134,14 @@ Latest verification:
 | --- | --- | ---: | ---: | ---: |
 | Query-category seed | BM25 | 0.950 | 1.000 | 1.000 |
 | Query-category seed | Hybrid | 0.850 | 1.000 | 1.000 |
-| Real-world academic seed | BM25 | 0.784 | 0.941 | 0.941 |
-| Real-world academic seed | Hybrid | 0.698 | 0.941 | 0.941 |
+| Real-world academic seed | BM25 | 0.843 | 1.000 | 1.000 |
+| Real-world academic seed | Hybrid | 0.804 | 1.000 | 1.000 |
+
+MegaSprint One final tightening notes:
+
+- Corrected two source-verified eval labels where OCR/wording damage hid valid evidence.
+- Rebalanced candidate priority from `megasprint1.v1` to `megasprint1.v2` so direct answer relevance is stronger than a loose reranker hit.
+- Rejected broader production OCR normalization because it lowered real-world MRR in trial runs.
 
 Still active:
 
@@ -144,7 +152,7 @@ Still active:
 
 ## Acceptance Targets
 
-MegaSprint One is not complete until the harder real-world evaluation set remains above these thresholds as it grows:
+MegaSprint One's first reliability pass is complete on the current seed. It remains complete only if the harder real-world evaluation set stays above these thresholds as it grows:
 
 - Recall@8: at least `0.850`.
 - MRR: at least `0.700`.

@@ -93,6 +93,7 @@ The latest reliability layer remains local-first and lightweight. The chosen arc
 - Anchor rescue promotes buried direct evidence in legacy/no-section documents before synthesis.
 - Query expansion is deterministic and can derive acronym expansions from the selected document instead of relying only on global prompt rules.
 - Candidate priority includes an internal direct-evidence score against the original user question so explanatory answers prefer passages that define, explain, compare, or support the requested subject.
+- In retrieval method version `megasprint1.v2`, direct answer relevance is weighted strongly enough to beat loose reranker/vector hits when the source passage clearly answers the question.
 - Backmatter/index/glossary/example-list passages receive stronger penalties for explanatory questions.
 - Synthesis receives direct-evidence metadata and fails closed when evidence is only weakly related or unrelated.
 - Public query request/response shapes remain stable; additional reliability fields stay inside optional debug metadata.

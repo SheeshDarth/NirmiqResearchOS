@@ -3,7 +3,6 @@ import asyncio
 import json
 import re
 import sys
-import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -18,6 +17,7 @@ from app.core.config import get_settings
 from app.core.deps import AppContainer
 from app.api.schemas.ingest import IngestRequest
 from app.api.schemas.query import QueryRequest
+from app.domain.text_normalization import normalize_token_text
 
 
 @dataclass(slots=True)
@@ -400,32 +400,7 @@ def contains_citation_anchor(text: str) -> bool:
 
 
 def normalize_eval_text(text: str) -> str:
-    replacements = {
-        "\u2010": "-",
-        "\u2011": "-",
-        "\u2012": "-",
-        "\u2013": "-",
-        "\u2014": "-",
-        "\u2018": "'",
-        "\u2019": "'",
-        "\u201c": '"',
-        "\u201d": '"',
-        "\ufb01": "fi",
-        "\ufb02": "fl",
-        "â€“": "-",
-        "â€”": "-",
-        "â€œ": '"',
-        "â€": '"',
-        "â€™": "'",
-        "ï¬": "fi",
-        "ï¬‚": "fl",
-    }
-    normalized = unicodedata.normalize("NFKC", text).lower()
-    for needle, replacement in replacements.items():
-        normalized = normalized.replace(needle, replacement)
-    normalized = re.sub(r"[^a-z0-9+.#-]+", " ", normalized)
-    normalized = re.sub(r"\s+", " ", normalized).strip()
-    return normalized
+    return normalize_token_text(text)
 
 
 def first_id_rank(retrieved: list[str], expected: set[str]) -> int:

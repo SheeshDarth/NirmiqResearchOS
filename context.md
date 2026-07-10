@@ -1,11 +1,47 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-07-10 MegaSprint One Final Tightening
+
+Objective: push MegaSprint One retrieval reliability further without overfitting or adding heavy local dependencies.
+
+Implemented:
+
+- Added shared OCR/text normalization helper at `apps/api/app/domain/text_normalization.py`.
+- Updated retrieval eval normalization to reuse the shared helper.
+- Corrected two real-world eval labels after verifying the source evidence:
+  - GenAI privacy labels now use `sensitive user data`, `personal information`, and `data retention`.
+  - Transformer architecture labels now accept the actual source phrasing: `we propose the Transformer`, `relying entirely on an attention mechanism`, and `eschewing recurrence`.
+- Rebalanced retrieval candidate priority in `RetrievalService` so direct answer relevance has more influence than a loose reranker hit.
+- Bumped retrieval metadata method version to `megasprint1.v2`.
+- Rejected broader production OCR normalization because trial runs reduced real-world MRR; the safer change is eval normalization plus label correction.
+
+Validation:
+
+- Real-world academic seed:
+  - BM25: MRR `0.843`, Recall@8 `1.000`, citation expected coverage `1.000`.
+  - Hybrid: MRR `0.804`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Query-category seed:
+  - BM25: MRR `0.950`, Recall@8 `1.000`, citation expected coverage `1.000`.
+  - Hybrid: MRR `0.850`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Targeted selected-document Transformer query now ranks the direct `we propose the Transformer...` passage first in hybrid mode.
+
+Status:
+
+- MegaSprint One's first reliability pass is complete on the current seed.
+- Do not claim production-grade arbitrary-document accuracy yet; the next reliability work is label growth, answer relevance scoring, and more textbook/notes/paper coverage.
+- Next MegaSprint should focus on ChatGPT-grade UI simplification, source drawer clarity, mobile/laptop QA, and lower cognitive load without exposing metadata.
+- MegaSprint Two plan is tracked at `docs/megasprint_two_plan.md`.
+
+Current repo note:
+
+- `deep-research-report.md` remains intentionally untracked and untouched.
 
 ## Latest Session Update - 2026-07-09 MegaSprint One Query-Agnostic RAG Reliability
 

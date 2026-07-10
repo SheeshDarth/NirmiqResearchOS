@@ -103,7 +103,7 @@ Detailed report: `docs/retrieval_eval_results.md`.
 
 ## Real-World Seed Benchmark
 
-Updated on 2026-06-20 with actual local academic material:
+Updated on 2026-07-10 with actual local academic material:
 
 - Dataset: `data/processed/eval/real_world_academic_seed.jsonl`
 - Sources:
@@ -116,8 +116,8 @@ The source PDFs are local/untracked by design. Keep copyright-sensitive textbook
 
 | Mode | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| BM25 | 0.784 | 0.941 | 0.941 | 0.941 | 0.941 |
-| Hybrid | 0.698 | 0.882 | 0.941 | 0.941 | 0.941 |
+| BM25 | 0.843 | 1.000 | 1.000 | 1.000 | 1.000 |
+| Hybrid | 0.804 | 1.000 | 1.000 | 1.000 | 1.000 |
 
 Command:
 
@@ -131,4 +131,5 @@ Interpretation:
 - The golden demo remains the reviewer proof path.
 - The real-world seed is the accuracy-improvement benchmark.
 - The first reliability slice materially improved the real-world seed, but the set must grow before making broad launch-marketing claims.
-- BM25-first is currently the safer default for attached-source academic questions; hybrid stays available but needs more tuning before it should lead.
+- BM25 remains the safest offline backbone, while hybrid now performs better after direct-answer relevance was weighted more heavily during candidate ordering.
+- Two real-world labels were corrected because source-valid evidence was being missed by OCR/wording-damaged expected phrases.

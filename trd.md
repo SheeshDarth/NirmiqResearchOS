@@ -156,9 +156,10 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
   - Recall@8 `0.750`.
   - Citation expected coverage `0.750`.
 - Real-world eval labels grow from `16` to at least `40`.
-- Recall@8 improves to at least `0.850`.
-- MRR improves to at least `0.700`.
-- Expected citation coverage improves to at least `0.900`.
+- Current 17-sample MegaSprint One result: BM25 MRR `0.843`, Hybrid MRR `0.804`, Recall@8 `1.000`, expected citation coverage `1.000`.
+- Recall@8 remains at least `0.850` as the eval set grows.
+- MRR remains at least `0.700` as the eval set grows.
+- Expected citation coverage remains at least `0.900` as the eval set grows.
 - Debug retrieval metadata explains why each final chunk was selected.
 - No public `POST /query` request-body change.
 - No dependency on Chroma, reranker, Ollama, graph databases, or cloud APIs for baseline operation.

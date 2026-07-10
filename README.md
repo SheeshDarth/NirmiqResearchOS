@@ -173,9 +173,10 @@ The golden demo is strong, and the harder real-world seed now shows measurable i
 | Real-world seed | BM25 MRR | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: |
 | Before reliability slice | 0.578 | 0.750 | 0.750 |
-| Current BM25-first | 0.784 | 0.941 | 0.941 |
+| MegaSprint One final BM25 | 0.843 | 1.000 | 1.000 |
+| MegaSprint One final Hybrid | 0.804 | 1.000 | 1.000 |
 
-This means the current BM25-first reliability slice reaches the MRR, Recall@8, and citation coverage targets on the current 17-sample seed. The set is still small, so this is a serious progress signal, not a production-grade accuracy claim. Hybrid remains available, but BM25-first is the safest default for attached-source textbook questions until hybrid consistently beats it on larger real-world evals.
+This means the current reliability slice reaches the MRR, Recall@8, and citation coverage targets on the current 17-sample seed. The set is still small, so this is a serious progress signal, not a production-grade accuracy claim. BM25 remains the safest offline backbone, while hybrid is improving as a secondary signal instead of acting as the sole source of truth.
 
 The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
 
@@ -185,6 +186,8 @@ Latest MegaSprint One reliability update:
 
 - Retrieval now uses document-aware expansion for acronyms and source terminology.
 - Candidate ranking includes an internal direct-evidence score so answerable passages beat loose mentions.
+- Candidate priority was rebalanced so direct answer passages can outrank loosely related reranker hits.
+- The real-world eval labels were corrected where OCR/wording damage hid valid source evidence.
 - Legacy/no-section documents now get an anchor-rescue pass for direct definitions, dates, privacy/OCR variants, and exact answer cues.
 - Default attached-source academic queries route to BM25-first retrieval internally while vector/hybrid remains optional.
 - Broad index, glossary, backmatter, and example-list sections are penalized for explanatory questions.
@@ -501,6 +504,7 @@ Details:
 - [Demo dataset](docs/demo_dataset.md)
 - [Retrieval evaluation results](docs/retrieval_eval_results.md)
 - [NIRMIQ RAG method](docs/nirmiq_rag_method.md)
+- [MegaSprint Two UX plan](docs/megasprint_two_plan.md)
 - [Benchmark report](docs/benchmark_report.md)
 - [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
 - [Engineering problem log and RAG Reliability roadmap](problems_faced.md)
@@ -518,8 +522,8 @@ Latest phrase-level real-world retrieval result:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| BM25 | 17 | 0.784 | 0.941 | 0.941 | 0.941 | 0.941 |
-| Hybrid | 17 | 0.698 | 0.882 | 0.941 | 0.941 | 0.941 |
+| BM25 | 17 | 0.843 | 1.000 | 1.000 | 1.000 | 1.000 |
+| Hybrid | 17 | 0.804 | 1.000 | 1.000 | 1.000 | 1.000 |
 
 Run:
 

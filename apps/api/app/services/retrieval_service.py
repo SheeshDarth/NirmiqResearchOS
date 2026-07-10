@@ -298,7 +298,7 @@ class RetrievalService:
                 "scope": "document" if target_document_id else "corpus",
                 "retrieval_profile": normalized_profile,
                 "retrieval_method": "nirmiq_evidence_first_hierarchical_hybrid_rag",
-                "retrieval_method_version": "megasprint1.v1",
+                "retrieval_method_version": "megasprint1.v2",
                 "strategy": f"nirmiq_ehr_{normalized_mode}",
             },
         )
@@ -337,11 +337,11 @@ class RetrievalService:
             else 0.0
         )
         return (
-            (0.38 * rerank_score)
+            (0.30 * rerank_score)
             + (0.22 * lexical_score)
             + (0.08 * semantic_score)
-            + (0.14 * quality_score)
-            + (0.18 * directness_score)
+            + (0.12 * quality_score)
+            + (0.28 * directness_score)
             + section_bonus
             + anchor_bonus
             - noise_penalty

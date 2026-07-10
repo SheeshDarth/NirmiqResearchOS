@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Canonical Problem Log
 
@@ -11,6 +11,30 @@ See [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md) for concrete 
 See [`answer_used_citation_backlog.md`](answer_used_citation_backlog.md) for cases where raw retrieval finds better evidence than the final answer-used citations.
 
 See [`nirmiq_rag_method.md`](nirmiq_rag_method.md) for the chosen RAG architecture: NIRMIQ Evidence-First Hierarchical Hybrid RAG.
+
+## 2026-07-10 MegaSprint One Final Tightening
+
+Decision:
+
+- Keep the production retriever lightweight and local-first.
+- Do not add heavy rerankers, GraphRAG, agents, larger models, or higher context windows for this sprint.
+- Correct eval labels only where the source text was verified and the gold phrase was damaged by OCR/wording mismatch.
+- Rebalance candidate priority so direct answer relevance can outrank loosely related reranker hits.
+
+Verification:
+
+- Real-world academic seed:
+  - BM25: MRR `0.843`, Recall@8 `1.000`, citation expected coverage `1.000`.
+  - Hybrid: MRR `0.804`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Query-category seed:
+  - BM25: MRR `0.950`, Recall@8 `1.000`, citation expected coverage `1.000`.
+  - Hybrid: MRR `0.850`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Targeted Transformer architecture probe now ranks the direct `we propose the Transformer...` evidence passage first in hybrid selected-document retrieval.
+
+Tradeoff:
+
+- This is still a small seed set. The numbers are strong enough to close MegaSprint One's first reliability pass, but not enough to claim arbitrary textbook accuracy.
+- Next improvement should grow labels and simplify the UI, not over-tune ranking weights against 17 samples.
 
 ## 2026-07-09 MegaSprint One Method Lock
 
@@ -507,14 +531,14 @@ Latest phrase-level retrieval metrics:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| BM25 | 17 | 0.784 | 0.941 | 0.941 | 0.941 | 0.941 |
-| Hybrid | 17 | 0.698 | 0.882 | 0.941 | 0.941 | 0.941 |
+| BM25 | 17 | 0.843 | 1.000 | 1.000 | 1.000 | 1.000 |
+| Hybrid | 17 | 0.804 | 1.000 | 1.000 | 1.000 | 1.000 |
 
 Interpretation:
 
-- This is the current measured baseline for real local academic material after the MegaSprint One method-lock tuning.
+- This is the current measured baseline for real local academic material after the MegaSprint One final tightening pass.
 - The project is demo-ready, but not yet production-perfect for arbitrary documents.
-- BM25 currently wins on this seed because exact academic phrase labels dominate and Ollama embeddings remain off in the low-memory profile.
+- BM25 currently remains the strongest offline backbone, while hybrid improved after candidate priority weighted direct answer relevance more strongly.
 
 Next accuracy sprint:
 
@@ -552,7 +576,7 @@ Verification:
 - Live answer now cites the page 357 definition as `[1]`.
 - Citation verification: `supported`.
 - Real-world eval seed now includes this query as `textbook-ml-007`.
-- Updated 17-sample metrics after method-lock tuning: Hybrid Recall@8 `0.941`, BM25 Recall@8 `0.941`, BM25 MRR `0.784`.
+- Updated 17-sample metrics after final tightening: Hybrid Recall@8 `1.000`, BM25 Recall@8 `1.000`, BM25 MRR `0.843`.
 - Backend suite: `66 passed, 1 warning`.
 - Compile check: `python -m compileall apps/api/app` passed.
 

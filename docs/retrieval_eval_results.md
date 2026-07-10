@@ -1,10 +1,10 @@
 ﻿# Retrieval Evaluation Results
 
-Date: 2026-07-07
+Date: 2026-07-10
 
 ## MegaSprint One Query-Category Eval Seed
 
-Date: 2026-07-09
+Date: 2026-07-10
 
 Dataset:
 
@@ -77,17 +77,18 @@ Original baseline before the first reliability slice:
 - Recall@8: `0.750`.
 - Citation expected coverage: `0.750`.
 
-Current result after deterministic query expansion, normalized eval matching, retrieval noise penalties, strict anchor rescue, and BM25-first routing for attached-source academic questions:
+Current result after deterministic query expansion, normalized eval matching, retrieval noise penalties, strict anchor rescue, answer-directness priority, and corrected source-phrase labels:
 
-- BM25 MRR: `0.784`.
-- Recall@8: `0.941`.
-- Citation expected coverage: `0.941`.
+- BM25 MRR: `0.843`.
+- Hybrid MRR: `0.804`.
+- Recall@8: `1.000`.
+- Citation expected coverage: `1.000`.
 
 The current reliability slice reaches the original MRR, Recall@8, and citation coverage targets on the 17-sample seed. The seed is still small, so the next fix should grow labels and continue improving evidence precision rather than increasing model size, temperature, or context length.
 
 ## Real-World Academic Seed Results
 
-Date: 2026-07-09
+Date: 2026-07-10
 
 Dataset: `data/processed/eval/real_world_academic_seed.jsonl`
 
@@ -124,14 +125,15 @@ Results:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | nDCG@5 | nDCG@8 | Citation Expected Coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| BM25 | 17 | 0.784 | 0.941 | 0.941 | 0.941 | 0.555 | 0.555 | 0.555 | 0.941 |
-| Hybrid | 17 | 0.698 | 0.882 | 0.941 | 0.941 | 0.501 | 0.515 | 0.515 | 0.941 |
+| BM25 | 17 | 0.843 | 1.000 | 1.000 | 1.000 | 0.606 | 0.589 | 0.589 | 1.000 |
+| Hybrid | 17 | 0.804 | 1.000 | 1.000 | 1.000 | 0.570 | 0.567 | 0.567 | 1.000 |
 
 Interpretation:
 
 - This result is intentionally more realistic and less polished than the golden demo score.
-- BM25 beats hybrid on this seed set because exact academic terms dominate the current labels and vector support is not yet consistently improving first-rank evidence.
-- Recall@8 and citation expected coverage at `0.941` show meaningful improvement, but the seed is still small and should grow before making broad academic accuracy claims.
+- BM25 still leads hybrid on first-rank placement, but hybrid improved after candidate priority gave more weight to direct answer relevance.
+- Recall@8 and citation expected coverage at `1.000` show meaningful improvement, but the seed is still small and should grow before making broad academic accuracy claims.
+- Two labels were corrected because the retrieved source text was valid while the original expected phrase contained OCR/wording damage.
 
 Next tuning targets:
 
