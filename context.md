@@ -2930,3 +2930,27 @@ Tradeoff:
 
 - The opened drawer is slightly taller, but it is much more useful and remains collapsed by default.
 - The full Sources panel remains the deeper inspection surface for long excerpts and source context.
+
+### Latest Update: MegaSprint Two Responsive Source Polish
+
+Date: 2026-07-11
+
+Purpose:
+
+- Harden the latest source-preview drawer for narrow screens and laptop layouts.
+- Keep the composer and evidence preview readable without adding visible controls or metadata.
+
+Implemented:
+
+- Added `min-width: 0` and `overflow-wrap` guards for source preview cards/excerpts.
+- Added mobile-specific source preview spacing and stacked source metadata labels.
+- Added a minimum touch height for quick action buttons in wrapped source/composer action rows.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Tradeoff:
+
+- This is CSS-only responsive hardening, not a functional change.
+- Manual browser QA is still recommended for exact 375px/820px/1366px visual checks.

@@ -293,3 +293,24 @@ Why this matters:
 
 - Users can now verify why an answer is grounded without decoding small citation chips.
 - This improves trust and readability while preserving the simple chat-first interface.
+
+### 2026-07-11 Slice 10: Responsive Source Polish
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Hardened source preview cards against narrow-width overflow.
+- Stacked source preview metadata on mobile so page labels do not squeeze excerpts.
+- Improved wrapped quick-action touch height for composer/source controls.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- The new readable source drawer needs to work on laptop and mobile widths, not just desktop.
+- This keeps the chat flow usable while preserving the hidden-metadata design rule.

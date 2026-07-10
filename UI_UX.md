@@ -274,6 +274,27 @@ Verification:
 
 - `npm.cmd run build`: passed.
 
+## 2026-07-11 MegaSprint Two Responsive Source Polish
+
+Goal:
+
+- Make the readable source drawer and composer action rows safer on mobile and laptop widths.
+
+Implemented:
+
+- Added overflow guards for source preview cards and excerpts.
+- Stacked source preview metadata on narrow screens.
+- Increased wrapped quick-action touch height in mobile layouts.
+
+UX rationale:
+
+- Source previews are only useful if they stay readable when the user resizes the desktop app or tests on a phone-width viewport.
+- This keeps verification lightweight and readable without exposing raw retrieval metadata.
+
+Verification:
+
+- `npm.cmd run build`: passed.
+
 ## 2026-07-11 MegaSprint Two Source Drawer Readability
 
 Goal:
