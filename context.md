@@ -2830,3 +2830,28 @@ Validation:
   - BM25: MRR `0.784`, Recall@8 `0.941`, citation expected coverage `0.941`.
   - Hybrid: MRR `0.698`, Recall@8 `0.941`, citation expected coverage `0.941`.
 - Current conclusion: BM25-first is the safest default for attached-source academic queries. Hybrid remains available but should not be the default until it ranks first evidence better on real-world labels.
+
+### Latest Update: MegaSprint Two Thread Header Split
+
+Date: 2026-07-11
+
+Purpose:
+
+- Continue MegaSprint Two without changing backend behavior or retrieval quality.
+- Reduce `apps/web/app/page.tsx` size and make the ChatGPT-style shell easier to iterate safely.
+
+Implemented:
+
+- Added `apps/web/components/thread-header.tsx` for the chat thread top bar, brand lockup, Library toggle, Sources toggle, and compact route/source strip.
+- Replaced the inline header JSX in `apps/web/app/page.tsx` with the typed `ThreadHeader` component.
+- Preserved existing labels, toggle behavior, selected-source state, and source/library visibility behavior.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+- `page.tsx` reduced to `1645` lines.
+
+Tradeoff:
+
+- This is a structural UI maintainability slice, not a visual redesign or RAG behavior change.
+- The next useful split is the main chat turn list or composer, but those should be done carefully because they touch query submission and feedback behavior.

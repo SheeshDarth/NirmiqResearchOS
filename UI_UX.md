@@ -252,3 +252,24 @@ Remaining debt:
 - Split `apps/web/app/page.tsx` into focused components before the next major visual iteration.
 - Perform mobile visual QA and keyboard navigation QA.
 - Replace the current disclosure-based power tools with a cleaner drawer once the component split lands.
+
+## 2026-07-11 MegaSprint Two Header Component Split
+
+Goal:
+
+- Keep moving the interface toward a simpler ChatGPT-grade shell by separating UI structure from query orchestration.
+
+Implemented:
+
+- Added `ThreadHeader` as a focused component for brand, page title, Library toggle, Sources toggle, selected-source status, and compact route hint.
+- Preserved existing interaction copy and behavior so this remains a safe maintainability improvement.
+- Reduced the main page file size, making later UI simplification less risky.
+
+UX rationale:
+
+- The chat header is a stable visual boundary and should not live inside the same block as query history, feedback, composer, and retrieval state.
+- Smaller UI components make it easier to remove clutter without accidentally breaking upload, query, or citation behavior.
+
+Verification:
+
+- `npm.cmd run build`: passed.

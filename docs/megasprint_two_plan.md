@@ -207,3 +207,26 @@ The user should not need to understand:
 5. Add first-run/sample-paper guidance.
 6. Run manual UI QA across common widths.
 7. Update screenshots/GIFs and README.
+
+## Progress Log
+
+### 2026-07-11 Slice 6: Thread Header Component
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Extracted the chat thread header into `apps/web/components/thread-header.tsx`.
+- Kept the same Library and Sources toggles, active-source pill, workspace chip, and route hint.
+- Reduced `apps/web/app/page.tsx` to `1645` lines.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- MegaSprint Two needs a cleaner component boundary before bigger UX edits.
+- Isolating the header reduces the chance of accidental query, retrieval, or feedback regressions while iterating on the visual shell.

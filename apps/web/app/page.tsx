@@ -41,6 +41,7 @@ import { StudyGuideAnswer } from "../components/study-guide-answer";
 import { AnswerBody } from "../components/answer-body";
 import { ChatEmptyState } from "../components/chat-empty-state";
 import { SourceEvidencePanel } from "../components/source-evidence-panel";
+import { ThreadHeader } from "../components/thread-header";
 import {
   DEFAULT_SOURCE_PATH,
   GOLDEN_DEMO_QUESTIONS,
@@ -1056,36 +1057,15 @@ export default function Home() {
       </aside>
 
       <section className="study-thread">
-        <header className="thread-top">
-          <div className="thread-bar">
-            <div className="brand-lockup app">
-              <div className="brand-mark" aria-hidden="true">
-                <img alt="" src="/brand/nirmiq-ais-mark.svg" />
-              </div>
-              <div>
-                <strong>{PRODUCT_NAME}</strong>
-                <span>{PRODUCT_TAGLINE}</span>
-              </div>
-            </div>
-            <div className="thread-title compact">
-              <h1>Ask NIRMIQ</h1>
-              <p className="tiny">Local answers from your material, with sources when evidence exists.</p>
-            </div>
-            <div className="top-actions">
-              <button className="button ghost" type="button" onClick={() => setShowLibrary((current) => !current)}>
-                {showLibrary ? "Hide Library" : "Library"}
-              </button>
-              <button className="button ghost" type="button" onClick={() => setShowInspector((current) => !current)}>
-                {showInspector ? "Hide Sources" : "Sources"}
-              </button>
-            </div>
-          </div>
-          <div className="route-strip">
-            <span className="source-pill">{selectedDocument ? activeMaterialName : "No document selected"}</span>
-            <span className="route-chip">{activeWorkspaceLabel}</span>
-            <span className="route-hint">sources stay tucked away until needed</span>
-          </div>
-        </header>
+        <ThreadHeader
+          activeMaterialName={activeMaterialName}
+          activeWorkspaceLabel={activeWorkspaceLabel}
+          hasSelectedDocument={Boolean(selectedDocument)}
+          onToggleInspector={() => setShowInspector((current) => !current)}
+          onToggleLibrary={() => setShowLibrary((current) => !current)}
+          showInspector={showInspector}
+          showLibrary={showLibrary}
+        />
 
         <div className="thread-scroll">
           {queryHistory.length ? (
