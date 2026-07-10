@@ -58,6 +58,20 @@ Verification:
 
 - `npm.cmd run build` from `apps/web`: passed.
 
+### 2026-07-10 Slice 4: Source Evidence Component
+
+Status: implemented and web-build verified.
+
+Changes:
+
+- Extracted the evidence/source inspection UI into `apps/web/components/source-evidence-panel.tsx`.
+- Kept page-level retrieval state in `page.tsx`.
+- Preserved readable source cards, selected passage preview, and collapsed extra passages.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
 ## Goal
 
 Make NIRMIQ feel like a simple academic chatbot first, while preserving Research, Chat, Paper Lab, Exam Lab, citations, local privacy, and deep inspection.

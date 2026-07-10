@@ -40,6 +40,7 @@ import { LocalLogin } from "../components/local-login";
 import { StudyGuideAnswer } from "../components/study-guide-answer";
 import { AnswerBody } from "../components/answer-body";
 import { ChatEmptyState } from "../components/chat-empty-state";
+import { SourceEvidencePanel } from "../components/source-evidence-panel";
 import {
   DEFAULT_SOURCE_PATH,
   GOLDEN_DEMO_QUESTIONS,
@@ -1652,92 +1653,20 @@ export default function Home() {
         ) : null}
 
         {deepView === "evidence" ? (
-          <section className="tool-panel rail-section">
-            <div className="panel">
-              <div className="section-head">
-                <h2>{selectedDocumentDetail?.title || selectedDocument?.title || "No material selected"}</h2>
-                <button className="button ghost" type="button" onClick={onRefreshStatus} disabled={!documentId || busy !== ""}>
-                  Refresh
-                </button>
-              </div>
-              <p className="tiny">
-                {selectedDocument ? "Stored locally. Full path hidden for privacy." : "Select study material."}
-              </p>
-              <p className="copy source-status-copy">
-                {selectedDocument ? "Only answer-used passages are shown here. Technical ranking data stays hidden." : "Upload or select material to inspect source support."}
-              </p>
-            </div>
-
-            {latestCitations.length ? (
-              <div className="panel">
-                <div className="section-head">
-                  <h2>Answer citations</h2>
-                  <span className="chip copper">{latestCitations.length}</span>
-                </div>
-                <div className="timeline-list" style={{ marginTop: 10 }}>
-                  {latestCitations.slice(0, 6).map((citation, index) => (
-                    <button
-                      className={cx("material-card source-citation-card", citation.chunk_id === selectedChunkId && "active")}
-                      key={`${citation.chunk_id}-${index}`}
-                      onClick={() => selectCitation(citation.document_id, citation.chunk_id)}
-                      type="button"
-                    >
-                      <span className="material-title">Source {index + 1}</span>
-                      <span className="tiny">
-                        {citation.page_start ? `Page ${citation.page_start}` : "Page unknown"}
-                      </span>
-                      <span className="source-reason">Used in the answer</span>
-                      <span className="tiny">{previewText(citation.excerpt, 220)}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {selectedChunk ? (
-              <div className="chunk-card active">
-                <div className="chunk-head">
-                  <strong>Selected source passage</strong>
-                  <span className="chip">{selectedChunk.page_start ? `Page ${selectedChunk.page_start}` : "Page unknown"}</span>
-                </div>
-                <p className="chunk-text">{previewText(selectedChunk.text, 900)}</p>
-              </div>
-            ) : null}
-
-            <details className="panel source-passages-details">
-              <summary>
-                More source passages
-                <span>{visibleChunks.length} available</span>
-              </summary>
-              <div className="chunk-list" style={{ marginTop: 10 }}>
-                {visibleChunks.length ? (
-                  visibleChunks.map((chunk) => (
-                    <button
-                      className={cx(
-                        "chunk-card",
-                        chunk.id === selectedChunkId && "active",
-                        citedChunkIds.has(chunk.id) && "cited",
-                      )}
-                      key={chunk.id}
-                      onClick={() => setSelectedChunkId(chunk.id)}
-                      type="button"
-                    >
-                      <div className="chunk-head">
-                        <strong>Passage</strong>
-                        <span className="tiny">p.{chunk.page_start ?? "?"}-{chunk.page_end ?? "?"}</span>
-                      </div>
-                      <p className="chunk-text">{previewText(chunk.text, 330)}</p>
-                    </button>
-                  ))
-                ) : (
-                  <div className="chunk-card">
-                    <strong>No evidence preview yet</strong>
-                    <p className="copy">Ask a question or select material to inspect chunks.</p>
-                  </div>
-                )}
-              </div>
-            </details>
-          </section>
+          <SourceEvidencePanel
+            busy={busy}
+            citedChunkIds={citedChunkIds}
+            documentId={documentId}
+            hasSelectedDocument={Boolean(selectedDocument)}
+            latestCitations={latestCitations}
+            onRefreshStatus={onRefreshStatus}
+            onSelectChunk={setSelectedChunkId}
+            onSelectCitation={selectCitation}
+            selectedChunk={selectedChunk}
+            selectedChunkId={selectedChunkId}
+            selectedTitle={selectedDocumentDetail?.title || selectedDocument?.title || "No material selected"}
+            visibleChunks={visibleChunks}
+          />
         ) : null}
 
         {deepView === "context" ? (

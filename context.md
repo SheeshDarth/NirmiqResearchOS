@@ -24,10 +24,11 @@ Implemented:
 - Added a first-run three-step strip: upload material, ask naturally, verify sources.
 - Improved source citation cards so they read as `Source` cards with page and usage reason instead of raw evidence/chunk previews.
 - Started the frontend component split by extracting the onboarding/empty-state UI into `apps/web/components/chat-empty-state.tsx`.
+- Continued the component split by extracting the readable Sources evidence panel into `apps/web/components/source-evidence-panel.tsx`.
 
 Validation:
 
-- `npm.cmd run build` from `apps/web`: passed after all three UI slices.
+- `npm.cmd run build` from `apps/web`: passed after all four UI slices.
 
 Next overnight continuation:
 

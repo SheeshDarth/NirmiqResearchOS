@@ -62,6 +62,12 @@ Slice 3 implementation:
 - Main `page.tsx` keeps state orchestration, while the onboarding component owns first-run presentation.
 - Web build passed after the extraction.
 
+Slice 4 implementation:
+
+- Source inspection moved into `apps/web/components/source-evidence-panel.tsx`.
+- The source panel remains readable and user-facing: source title, page, usage reason, excerpt, selected passage, and collapsed extra passages.
+- Web build passed after the extraction.
+
 ## Motion Direction
 
 The V3.1 motion layer should communicate intelligence and state, not decoration. Motion is CSS-first and dependency-free to avoid making the local app heavy on CPU/GPU.
