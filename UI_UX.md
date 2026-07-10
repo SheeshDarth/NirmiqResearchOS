@@ -68,6 +68,13 @@ Slice 4 implementation:
 - The source panel remains readable and user-facing: source title, page, usage reason, excerpt, selected passage, and collapsed extra passages.
 - Web build passed after the extraction.
 
+Slice 5 implementation:
+
+- Small-screen layout now avoids inheriting desktop `100dvh`/hidden-overflow constraints.
+- Thread content can use normal page flow on mobile so long answers and the composer do not trap scrolling.
+- Route helper copy hides on narrow screens to reduce visual pressure.
+- Web build passed after the responsive guard.
+
 ## Motion Direction
 
 The V3.1 motion layer should communicate intelligence and state, not decoration. Motion is CSS-first and dependency-free to avoid making the local app heavy on CPU/GPU.

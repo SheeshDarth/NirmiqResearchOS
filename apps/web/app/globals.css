@@ -2265,6 +2265,9 @@ button.chunk-card:hover {
 @media (max-width: 820px) {
   .nirmiq-v2 {
     display: block;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
   }
 
   .landing-grid {
@@ -2278,7 +2281,17 @@ button.chunk-card:hover {
   .material-rail,
   .deep-rail,
   .study-thread {
+    height: auto;
     min-height: auto;
+  }
+
+  .study-thread {
+    overflow: visible;
+  }
+
+  .thread-scroll {
+    min-height: 48vh;
+    overflow: visible;
   }
 
   .thread-top,
@@ -2334,6 +2347,18 @@ button.chunk-card:hover {
   .composer-wrap {
     padding-left: 14px;
     padding-right: 14px;
+  }
+
+  .route-strip {
+    flex-wrap: wrap;
+  }
+
+  .route-hint {
+    display: none;
+  }
+
+  .source-pill {
+    max-width: 100%;
   }
 
   .bubble {

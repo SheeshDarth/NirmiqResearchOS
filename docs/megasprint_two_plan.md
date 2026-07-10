@@ -72,6 +72,20 @@ Verification:
 
 - `npm.cmd run build` from `apps/web`: passed.
 
+### 2026-07-10 Slice 5: Mobile Scroll Guard
+
+Status: implemented and web-build verified.
+
+Changes:
+
+- Small-screen layout now resets inherited desktop `height: 100dvh` behavior.
+- Mobile `.study-thread` and `.thread-scroll` use normal page flow so long responses are easier to read.
+- Route helper text hides on narrow screens to reduce header crowding.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
 ## Goal
 
 Make NIRMIQ feel like a simple academic chatbot first, while preserving Research, Chat, Paper Lab, Exam Lab, citations, local privacy, and deep inspection.
