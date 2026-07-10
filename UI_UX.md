@@ -274,6 +274,27 @@ Verification:
 
 - `npm.cmd run build`: passed.
 
+## 2026-07-11 MegaSprint Two Composer Component Split
+
+Goal:
+
+- Separate the bottom ask/upload composer from the page shell while keeping the product flow unchanged.
+
+Implemented:
+
+- Added `ChatComposer` for active material display, upload, textarea, ask button, minimized composer state, tools disclosure, workspace chips, and advanced settings.
+- Kept query execution, upload ingestion, workspace routing, source opening, and retrieval state owned by the page.
+- Reduced the main page file again, making future composer UX polish less risky.
+
+UX rationale:
+
+- The composer is the user's main control surface, so future improvements need a focused component boundary.
+- This split prepares for cleaner upload state, mobile sizing, and reduced visible control density without mixing those changes into RAG logic.
+
+Verification:
+
+- `npm.cmd run build`: passed.
+
 ## 2026-07-11 MegaSprint Two Chat Thread Component Split
 
 Goal:

@@ -37,6 +37,7 @@ import {
   type SessionTimelineResponse,
 } from "../lib/api-client";
 import { LocalLogin } from "../components/local-login";
+import { ChatComposer } from "../components/chat-composer";
 import { ChatEmptyState } from "../components/chat-empty-state";
 import { ChatThread } from "../components/chat-thread";
 import { SourceEvidencePanel } from "../components/source-evidence-panel";
@@ -47,7 +48,6 @@ import {
   GOLDEN_DEMO_SOURCES,
   PRODUCT_NAME,
   PRODUCT_TAGLINE,
-  RETRIEVAL_PROFILES,
   STUDY_MODES,
   WORKSPACE_SECTIONS,
   buildAnswerDiff,
@@ -1090,202 +1090,48 @@ export default function Home() {
           )}
         </div>
 
-        <form className={cx("composer-wrap", composerCollapsed && "collapsed")} ref={queryFormRef} onSubmit={onQuery}>
-          <div className="composer-card">
-            <input
-              accept=".pdf,.txt,.md,.markdown,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,image/*,application/pdf,text/*"
-              className="file-input"
-              onChange={onUploadFile}
-              ref={uploadInputRef}
-              type="file"
-            />
-            <div className="source-cockpit">
-              <div className="source-status">
-                <span className={cx("source-dot", selectedDocument && "ok")} />
-                <div>
-                  <span className="source-label">Using</span>
-                  <strong>{selectedDocument ? activeMaterialName : "No material attached"}</strong>
-                </div>
-              </div>
-              <div className="source-actions">
-                <button
-                  className="quick-action ghost"
-                  disabled={busy !== ""}
-                  onClick={() => uploadInputRef.current?.click()}
-                  type="button"
-                >
-                  Upload
-                </button>
-                <button
-                  className="quick-action ghost"
-                  onClick={() => setShowLibrary((current) => !current)}
-                  type="button"
-                >
-                  Library
-                </button>
-              </div>
-            </div>
-            {composerCollapsed ? (
-              <div className="composer-minimized">
-                Composer minimized.
-                <button className="clear-link" onClick={() => setComposerCollapsed(false)} type="button">
-                  Ask next
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="composer-input-shell">
-                  <button
-                    aria-label="Upload file or photo"
-                    className="attach-button"
-                    disabled={busy !== ""}
-                    onClick={() => uploadInputRef.current?.click()}
-                    type="button"
-                    title="Upload PDF, document, or photo"
-                  >
-                    +
-                  </button>
-                  <textarea
-                    className="textarea"
-                    ref={queryInputRef}
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    onKeyDown={onQueryKeyDown}
-                    placeholder={busy === "ingest" ? "Uploading and indexing your file..." : activePlaceholder}
-                  />
-                  <button className="send-button" disabled={!canQuery || busy !== ""} type="submit">
-                    {busy === "query" ? "Reading" : activeActionLabel}
-                  </button>
-                </div>
-                <details className="composer-tools">
-                  <summary>
-                    Tools
-                    <span>{activeWorkspaceLabel} / {modeLabel(studyMode)}</span>
-                  </summary>
-                  <div className="tool-strip" aria-label="NIRMIQ tools">
-                    {WORKSPACE_SECTIONS.map((section) => (
-                      <button
-                        className={cx("tool-chip", workspaceSection === section.value && "active")}
-                        data-testid={`workspace-${section.value}`}
-                        key={section.value}
-                        onClick={() => selectWorkspaceSection(section.value)}
-                        type="button"
-                        title={section.hint}
-                      >
-                        {section.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="source-actions expanded">
-                    {workspaceSection === "exam" ? (
-                      <button
-                        className="quick-action"
-                        disabled={busy !== ""}
-                        onClick={onGenerateExamPdf}
-                        type="button"
-                      >
-                        Custom PDF
-                      </button>
-                    ) : null}
-                    <button
-                      className="quick-action"
-                      disabled={!documentId || busy !== ""}
-                      onClick={onSummarizeSelectedSource}
-                      type="button"
-                    >
-                      Summarize
-                    </button>
-                    <button
-                      className="quick-action ghost"
-                      disabled={!currentRun || busy !== ""}
-                      onClick={onExportCurrentRun}
-                      type="button"
-                    >
-                      Export
-                    </button>
-                    <button
-                      className="quick-action ghost"
-                      onClick={() => {
-                        setShowInspector(true);
-                        setDeepView("evidence");
-                      }}
-                      type="button"
-                    >
-                      Sources
-                    </button>
-                    <button
-                      className="quick-action ghost"
-                      onClick={() => setComposerCollapsed(true)}
-                      type="button"
-                    >
-                      Minimize
-                    </button>
-                    <button className="quick-action ghost" type="button" onClick={clearThread}>
-                      New thread
-                    </button>
-                  </div>
-                  <details className="composer-settings compact-details">
-                    <summary>
-                      Advanced
-                      <span>optional</span>
-                    </summary>
-                    <div className="composer-meta">
-                      <label className="label">
-                        Thread
-                        <input className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
-                      </label>
-                      <label className="label">
-                        Route
-                        <select
-                          className="select"
-                          value={studyMode}
-                          onChange={(event) => setStudyMode(event.target.value as StudyMode)}
-                        >
-                          {availableModes.map((mode) => (
-                            <option key={mode.value} value={mode.value}>
-                              {mode.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="label">
-                        Retrieval
-                        <select
-                          className="select"
-                          value={retrievalMode}
-                          onChange={(event) => setRetrievalMode(event.target.value as RetrievalMode)}
-                        >
-                          <option value="hybrid">Hybrid</option>
-                          <option value="bm25">BM25</option>
-                          <option value="vector">Vector</option>
-                        </select>
-                      </label>
-                      <label className="label">
-                        Profile
-                        <select
-                          className="select"
-                          value={retrievalProfile}
-                          onChange={(event) => setRetrievalProfile(event.target.value as RetrievalProfile)}
-                        >
-                          {RETRIEVAL_PROFILES.map((profile) => (
-                            <option key={profile.value} value={profile.value}>
-                              {profile.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                  </details>
-                  <p className="composer-hint">
-                    {latestCitations.length
-                      ? `${latestCitations.length} evidence links ready. Open Sources to inspect citations.`
-                      : "Answers stay grounded in the selected study material when evidence is available."}
-                  </p>
-                </details>
-              </>
-            )}
-          </div>
-        </form>
+        <ChatComposer
+          activeActionLabel={activeActionLabel}
+          activeMaterialName={activeMaterialName}
+          activePlaceholder={activePlaceholder}
+          activeWorkspaceLabel={activeWorkspaceLabel}
+          availableModes={availableModes}
+          busy={busy}
+          canExportCurrentRun={Boolean(currentRun)}
+          canQuery={canQuery}
+          composerCollapsed={composerCollapsed}
+          documentId={documentId}
+          hasSelectedDocument={Boolean(selectedDocument)}
+          latestCitationCount={latestCitations.length}
+          onClearThread={clearThread}
+          onComposerCollapsedChange={setComposerCollapsed}
+          onExportCurrentRun={onExportCurrentRun}
+          onGenerateExamPdf={onGenerateExamPdf}
+          onOpenSources={() => {
+            setShowInspector(true);
+            setDeepView("evidence");
+          }}
+          onQuery={onQuery}
+          onQueryChange={setQuery}
+          onQueryKeyDown={onQueryKeyDown}
+          onRetrievalModeChange={setRetrievalMode}
+          onRetrievalProfileChange={setRetrievalProfile}
+          onSessionIdChange={setSessionId}
+          onShowLibrary={() => setShowLibrary((current) => !current)}
+          onStudyModeChange={setStudyMode}
+          onSummarizeSelectedSource={onSummarizeSelectedSource}
+          onUploadFile={onUploadFile}
+          onWorkspaceSectionChange={selectWorkspaceSection}
+          query={query}
+          queryFormRef={queryFormRef}
+          queryInputRef={queryInputRef}
+          retrievalMode={retrievalMode}
+          retrievalProfile={retrievalProfile}
+          sessionId={sessionId}
+          studyMode={studyMode}
+          uploadInputRef={uploadInputRef}
+          workspaceSection={workspaceSection}
+        />
       </section>
 
       <aside className="deep-rail">

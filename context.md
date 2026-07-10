@@ -2880,3 +2880,28 @@ Tradeoff:
 
 - This is another structural UI slice, not a visual redesign.
 - Composer extraction is the next major component split, but it touches upload/query controls and should remain a careful separate change.
+
+### Latest Update: MegaSprint Two Composer Split
+
+Date: 2026-07-11
+
+Purpose:
+
+- Continue the ChatGPT-grade shell cleanup by separating the upload/query composer from page orchestration.
+- Keep upload, query submission, summarize, source opening, workspace routing, advanced settings, and minimized composer behavior unchanged.
+
+Implemented:
+
+- Added `apps/web/components/chat-composer.tsx` for the bottom composer, file input, active-source cockpit, upload button, query textarea, send button, tools disclosure, workspace chips, summarize/export/source actions, and advanced route/retrieval controls.
+- Replaced the inline composer form in `apps/web/app/page.tsx` with the typed `ChatComposer` component.
+- Preserved existing callback ownership in the page so query execution, upload handling, and retrieval state do not move.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+- `page.tsx` reduced to `1415` lines.
+
+Tradeoff:
+
+- The prop surface is intentionally wide because the page still owns state and side effects.
+- The next UX step can now focus on composer clarity or mobile QA without mixing that work into retrieval/query orchestration.

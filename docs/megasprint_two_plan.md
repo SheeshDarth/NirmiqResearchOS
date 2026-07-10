@@ -251,3 +251,24 @@ Why this matters:
 
 - The main page now owns orchestration instead of also owning the detailed answer renderer.
 - This makes later answer readability and source-drawer polish safer because the chat-turn surface has its own component boundary.
+
+### 2026-07-11 Slice 8: Composer Component
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Extracted the bottom composer into `apps/web/components/chat-composer.tsx`.
+- Preserved upload, active-source display, ask/send, minimized state, workspace tools, summarize/export/source actions, and advanced route/retrieval controls.
+- Reduced `apps/web/app/page.tsx` to `1415` lines.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- The composer is the most sensitive UI surface because it owns upload, query submission, and mode routing.
+- Separating it creates a safer boundary for future upload-flow and mobile-composer polish without moving backend or retrieval behavior.
