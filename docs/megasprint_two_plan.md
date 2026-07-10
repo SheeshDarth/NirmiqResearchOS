@@ -29,6 +29,21 @@ Remaining:
 - Mobile/laptop visual QA.
 - Screenshots/GIF refresh.
 
+### 2026-07-10 Slice 2: First-Run And Source Card Clarity
+
+Status: implemented and web-build verified.
+
+Changes:
+
+- Added a simple first-run sequence: `Upload material -> Ask naturally -> Verify sources`.
+- Updated source citation cards to use user-facing `Source` language.
+- Added a compact `Used in the answer` reason pill on citations.
+- Kept detailed source passages behind collapsed inspection.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
 ## Goal
 
 Make NIRMIQ feel like a simple academic chatbot first, while preserving Research, Chat, Paper Lab, Exam Lab, citations, local privacy, and deep inspection.

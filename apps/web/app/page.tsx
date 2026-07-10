@@ -1174,6 +1174,11 @@ export default function Home() {
               <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
               <h2>What do you want to understand today?</h2>
               <p className="copy">Upload a PDF, select one document, then ask naturally. The technical trail stays hidden until you open Sources.</p>
+              <div className="first-run-steps" aria-label="How to use NIRMIQ">
+                <span><strong>1</strong> Upload material</span>
+                <span><strong>2</strong> Ask naturally</span>
+                <span><strong>3</strong> Verify sources</span>
+              </div>
               <div className="golden-path-panel">
                 <div>
                   <p className="eyebrow">Reviewer path</p>
@@ -1726,15 +1731,16 @@ export default function Home() {
                 <div className="timeline-list" style={{ marginTop: 10 }}>
                   {latestCitations.slice(0, 6).map((citation, index) => (
                     <button
-                      className={cx("material-card", citation.chunk_id === selectedChunkId && "active")}
+                      className={cx("material-card source-citation-card", citation.chunk_id === selectedChunkId && "active")}
                       key={`${citation.chunk_id}-${index}`}
                       onClick={() => selectCitation(citation.document_id, citation.chunk_id)}
                       type="button"
                     >
-                      <span className="material-title">Evidence {index + 1}</span>
+                      <span className="material-title">Source {index + 1}</span>
                       <span className="tiny">
                         {citation.page_start ? `Page ${citation.page_start}` : "Page unknown"}
                       </span>
+                      <span className="source-reason">Used in the answer</span>
                       <span className="tiny">{previewText(citation.excerpt, 220)}</span>
                     </button>
                   ))}

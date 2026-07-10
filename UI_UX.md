@@ -49,6 +49,13 @@ Slice 1 implementation:
 - Source drawer now hides extra passages behind `More source passages`.
 - Web build passed after the update.
 
+Slice 2 implementation:
+
+- First-run empty state now explains the core loop in three steps: upload, ask, verify.
+- Citation cards now use `Source` language and page references instead of feeling like internal chunks.
+- Each citation card includes a quiet `Used in the answer` reason pill.
+- Web build passed after the update.
+
 ## Motion Direction
 
 The V3.1 motion layer should communicate intelligence and state, not decoration. Motion is CSS-first and dependency-free to avoid making the local app heavy on CPU/GPU.

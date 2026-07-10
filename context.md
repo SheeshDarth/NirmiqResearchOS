@@ -21,10 +21,12 @@ Implemented:
 - Changed minimized composer copy to a simple `Composer minimized / Ask next` flow.
 - Collapsed dense source passage lists behind `More source passages` in the Sources panel.
 - Adjusted assistant answer styling to feel calmer and more readable, closer to a chat answer than a heavy dashboard card.
+- Added a first-run three-step strip: upload material, ask naturally, verify sources.
+- Improved source citation cards so they read as `Source` cards with page and usage reason instead of raw evidence/chunk previews.
 
 Validation:
 
-- `npm.cmd run build` from `apps/web`: passed.
+- `npm.cmd run build` from `apps/web`: passed after both UI slices.
 
 Next overnight continuation:
 
