@@ -56,6 +56,12 @@ Slice 2 implementation:
 - Each citation card includes a quiet `Used in the answer` reason pill.
 - Web build passed after the update.
 
+Slice 3 implementation:
+
+- Empty-state onboarding moved into `apps/web/components/chat-empty-state.tsx`.
+- Main `page.tsx` keeps state orchestration, while the onboarding component owns first-run presentation.
+- Web build passed after the extraction.
+
 ## Motion Direction
 
 The V3.1 motion layer should communicate intelligence and state, not decoration. Motion is CSS-first and dependency-free to avoid making the local app heavy on CPU/GPU.

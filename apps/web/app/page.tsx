@@ -39,6 +39,7 @@ import {
 import { LocalLogin } from "../components/local-login";
 import { StudyGuideAnswer } from "../components/study-guide-answer";
 import { AnswerBody } from "../components/answer-body";
+import { ChatEmptyState } from "../components/chat-empty-state";
 import {
   DEFAULT_SOURCE_PATH,
   GOLDEN_DEMO_QUESTIONS,
@@ -791,6 +792,12 @@ export default function Home() {
     window.requestAnimationFrame(() => queryInputRef.current?.focus());
   }
 
+  function applyEmptyStateSuggestion(section: WorkspaceSection, mode: StudyMode, value: string) {
+    selectWorkspaceSection(section);
+    setStudyMode(mode);
+    applySuggestion(value);
+  }
+
   function unlockLocalWorkspace() {
     const name = displayName.trim() || "Local Researcher";
     setDisplayName(name);
@@ -1170,72 +1177,11 @@ export default function Home() {
               <div ref={chatEndRef} />
             </div>
           ) : (
-            <section className="empty-state">
-              <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
-              <h2>What do you want to understand today?</h2>
-              <p className="copy">Upload a PDF, select one document, then ask naturally. The technical trail stays hidden until you open Sources.</p>
-              <div className="first-run-steps" aria-label="How to use NIRMIQ">
-                <span><strong>1</strong> Upload material</span>
-                <span><strong>2</strong> Ask naturally</span>
-                <span><strong>3</strong> Verify sources</span>
-              </div>
-              <div className="golden-path-panel">
-                <div>
-                  <p className="eyebrow">Reviewer path</p>
-                  <strong>Try the local golden demo</strong>
-                  <span>Seed corpus, locked prompts, citations, export, and source removal.</span>
-                </div>
-                <button className="button primary" type="button" onClick={onLoadGoldenDemo} disabled={busy !== ""}>
-                  {busy === "demo" ? "Loading..." : "Load demo"}
-                </button>
-              </div>
-              <div className="suggestions">
-                <button
-                  className="button ghost"
-                  onClick={() => {
-                    selectWorkspaceSection("research");
-                    setStudyMode("research");
-                    applySuggestion("Explain this topic simply from my study material.");
-                  }}
-                  type="button"
-                >
-                  Explain this topic simply
-                </button>
-                <button
-                  className="button ghost"
-                  onClick={() => {
-                    selectWorkspaceSection("exam");
-                    setStudyMode("exam_answer");
-                    applySuggestion("Make this into a 10-mark exam answer.");
-                  }}
-                  type="button"
-                >
-                  Make 10-mark exam answer
-                </button>
-                <button
-                  className="button ghost"
-                  onClick={() => {
-                    selectWorkspaceSection("research");
-                    setStudyMode("summary");
-                    applySuggestion("Summarize selected document.");
-                  }}
-                  type="button"
-                >
-                  Summarize selected document
-                </button>
-                <button
-                  className="button ghost"
-                  onClick={() => {
-                    selectWorkspaceSection("exam");
-                    setStudyMode("compare_concepts");
-                    applySuggestion("Compare concepts from my notes.");
-                  }}
-                  type="button"
-                >
-                  Compare concepts from my notes
-                </button>
-              </div>
-            </section>
+            <ChatEmptyState
+              busy={busy}
+              onLoadGoldenDemo={onLoadGoldenDemo}
+              onSuggestion={applyEmptyStateSuggestion}
+            />
           )}
         </div>
 

@@ -23,10 +23,11 @@ Implemented:
 - Adjusted assistant answer styling to feel calmer and more readable, closer to a chat answer than a heavy dashboard card.
 - Added a first-run three-step strip: upload material, ask naturally, verify sources.
 - Improved source citation cards so they read as `Source` cards with page and usage reason instead of raw evidence/chunk previews.
+- Started the frontend component split by extracting the onboarding/empty-state UI into `apps/web/components/chat-empty-state.tsx`.
 
 Validation:
 
-- `npm.cmd run build` from `apps/web`: passed after both UI slices.
+- `npm.cmd run build` from `apps/web`: passed after all three UI slices.
 
 Next overnight continuation:
 

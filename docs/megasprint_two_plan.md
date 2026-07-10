@@ -44,6 +44,20 @@ Verification:
 
 - `npm.cmd run build` from `apps/web`: passed.
 
+### 2026-07-10 Slice 3: Component Split Start
+
+Status: implemented and web-build verified.
+
+Changes:
+
+- Extracted empty-state onboarding into `apps/web/components/chat-empty-state.tsx`.
+- Kept page-level state in `page.tsx` and passed a small suggestion callback into the component.
+- Reduced inline JSX in `page.tsx` without touching backend APIs or query behavior.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
 ## Goal
 
 Make NIRMIQ feel like a simple academic chatbot first, while preserving Research, Chat, Paper Lab, Exam Lab, citations, local privacy, and deep inspection.
