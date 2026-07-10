@@ -272,3 +272,24 @@ Why this matters:
 
 - The composer is the most sensitive UI surface because it owns upload, query submission, and mode routing.
 - Separating it creates a safer boundary for future upload-flow and mobile-composer polish without moving backend or retrieval behavior.
+
+### 2026-07-11 Slice 9: Readable Answer Source Drawer
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Replaced tiny answer citation chips with compact source preview cards inside `ChatThread`.
+- Showed source number, page/page range, and a short citation excerpt while keeping raw metadata hidden.
+- Kept the cards collapsed by default and wired to the existing Sources panel jump behavior.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- Users can now verify why an answer is grounded without decoding small citation chips.
+- This improves trust and readability while preserving the simple chat-first interface.

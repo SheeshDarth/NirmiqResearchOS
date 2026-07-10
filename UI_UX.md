@@ -274,6 +274,27 @@ Verification:
 
 - `npm.cmd run build`: passed.
 
+## 2026-07-11 MegaSprint Two Source Drawer Readability
+
+Goal:
+
+- Let users inspect answer sources from the chat flow without making the default answer view feel technical.
+
+Implemented:
+
+- Replaced the compact citation-only drawer chips with source preview cards.
+- Each card shows source number, page/page range, and a short source excerpt.
+- Kept the drawer collapsed by default and retained the deeper Sources panel for exact passage inspection.
+
+UX rationale:
+
+- Trust cues are stronger when users can see a short source excerpt without leaving the answer.
+- The UI remains simple because detailed sources are still hidden until the user opens the drawer.
+
+Verification:
+
+- `npm.cmd run build`: passed.
+
 ## 2026-07-11 MegaSprint Two Composer Component Split
 
 Goal:

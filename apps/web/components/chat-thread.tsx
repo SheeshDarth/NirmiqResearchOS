@@ -8,6 +8,7 @@ import {
   formatDate,
   getTrustCopy,
   getVerificationBadge,
+  previewText,
 } from "../app/page-model";
 import { AnswerBody } from "./answer-body";
 import { StudyGuideAnswer } from "./study-guide-answer";
@@ -22,6 +23,12 @@ type ChatThreadProps = {
   savedFeedback: Record<string, AnswerFeedbackRating>;
   selectedChunkId: string;
 };
+
+function formatCitationPage(pageStart?: number | null, pageEnd?: number | null) {
+  if (!pageStart) return "Page not tagged";
+  if (pageEnd && pageEnd !== pageStart) return `Pages ${pageStart}-${pageEnd}`;
+  return `Page ${pageStart}`;
+}
 
 export function ChatThread({
   busy,
@@ -99,16 +106,25 @@ export function ChatThread({
                     Sources used
                     <span>{run.response.citations.length}</span>
                   </summary>
-                  <div className="citation-row evidence-trail">
-                    {run.response.citations.slice(0, 6).map((citation, citationIndex) => (
+                  <p className="source-drawer-hint">Tap a source to open the exact passage in Sources.</p>
+                  <div className="source-preview-list">
+                    {run.response.citations.slice(0, 4).map((citation, citationIndex) => (
                       <button
-                        className={cx("citation-chip", citation.chunk_id === selectedChunkId && "active")}
+                        aria-label={`Open source ${citationIndex + 1}, ${formatCitationPage(citation.page_start, citation.page_end)}`}
+                        className={cx("source-preview-card", citation.chunk_id === selectedChunkId && "active")}
                         key={`${run.timestamp}-${citation.chunk_id}-${citationIndex}`}
                         onClick={() => onSelectCitation(citation.document_id, citation.chunk_id)}
                         type="button"
                       >
-                        [{citationIndex + 1}]
-                        {citation.page_start ? ` page ${citation.page_start}` : ""}
+                        <span className="source-preview-meta">
+                          Source {citationIndex + 1}
+                          <span>{formatCitationPage(citation.page_start, citation.page_end)}</span>
+                        </span>
+                        <span className="source-preview-text">
+                          {citation.excerpt
+                            ? previewText(citation.excerpt, 220)
+                            : "Open Sources to inspect this supporting passage."}
+                        </span>
                       </button>
                     ))}
                   </div>

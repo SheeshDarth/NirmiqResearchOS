@@ -2905,3 +2905,28 @@ Tradeoff:
 
 - The prop surface is intentionally wide because the page still owns state and side effects.
 - The next UX step can now focus on composer clarity or mobile QA without mixing that work into retrieval/query orchestration.
+
+### Latest Update: MegaSprint Two Source Drawer Readability
+
+Date: 2026-07-11
+
+Purpose:
+
+- Make answer-level citations easier to inspect without opening the full Sources panel first.
+- Preserve the normal chat-first flow and avoid exposing raw retrieval metadata, scores, paths, or chunk ids.
+
+Implemented:
+
+- Replaced tiny citation-only chips inside `ChatThread` source drawers with compact source preview cards.
+- Each preview card shows a human label, page/page-range when available, and a short excerpt from the citation.
+- Tapping a card still opens the exact supporting passage in the Sources panel through the existing citation-selection callback.
+- Added focused CSS for `.source-preview-card`, `.source-preview-list`, and `.source-drawer-hint`.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Tradeoff:
+
+- The opened drawer is slightly taller, but it is much more useful and remains collapsed by default.
+- The full Sources panel remains the deeper inspection surface for long excerpts and source context.

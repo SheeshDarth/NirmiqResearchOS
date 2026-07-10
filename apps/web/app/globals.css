@@ -1457,9 +1457,84 @@ button.chunk-card:hover {
   background: rgba(109, 139, 116, 0.12);
 }
 
+.source-drawer-hint {
+  margin: -1px 11px 9px;
+  color: var(--nirmiq-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .source-drawer .citation-row {
   margin: 0;
   padding: 0 10px 10px;
+}
+
+.source-preview-list {
+  display: grid;
+  gap: 8px;
+  padding: 0 10px 11px;
+}
+
+.source-preview-card {
+  cursor: pointer;
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 11px;
+  text-align: left;
+  color: var(--nirmiq-text);
+  border: 1px solid rgba(238, 244, 241, 0.08);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(109, 139, 116, 0.09), rgba(5, 6, 8, 0.18)),
+    rgba(8, 10, 12, 0.58);
+  animation: chipReveal 260ms var(--motion-curve) both;
+  transition:
+    border-color var(--motion-fast) ease,
+    background var(--motion-fast) ease,
+    transform var(--motion-fast) var(--motion-curve);
+}
+
+.source-preview-card:hover,
+.source-preview-card:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(127, 227, 189, 0.36);
+  background:
+    linear-gradient(135deg, rgba(127, 227, 189, 0.12), rgba(5, 6, 8, 0.22)),
+    rgba(8, 10, 12, 0.66);
+}
+
+.source-preview-card.active {
+  border-color: rgba(184, 106, 60, 0.52);
+  background:
+    linear-gradient(135deg, rgba(184, 106, 60, 0.15), rgba(31, 78, 95, 0.1)),
+    rgba(8, 10, 12, 0.7);
+}
+
+.source-preview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--nirmiq-accent-strong);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.source-preview-meta span {
+  color: var(--nirmiq-text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.source-preview-text {
+  color: var(--nirmiq-text-muted);
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .citation-chip {
