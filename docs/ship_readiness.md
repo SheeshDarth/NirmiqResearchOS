@@ -98,11 +98,12 @@ Recommended proof assets:
 
 Current release gate status:
 
-- `npm.cmd run ship:check`: passed.
+- `npm.cmd run ship:check`: passed again after adding `desktop:smoke`.
 - Backend tests: `89 passed`, `1 warning`.
-- Web build: passed.
-- Publish smoke: passed.
-- Golden demo: passed, including unsupported-chat abstention.
+- API compile: passed.
+- Web build: passed, `/` first-load JS `117 kB`.
+- Publish smoke: passed with `indexed_documents=17`, `active_chunks=6601`, and `cloud_api_required=False`.
+- Golden demo: passed, including all grounded locked prompts and unsupported-chat abstention.
 - `npm.cmd run desktop:pack`: passed.
 - `npm.cmd run desktop:package`: passed and refreshed `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
 - `npm.cmd run desktop:smoke`: passed; API/web readiness and `cloud_api_required=false` were verified through the Electron shell.

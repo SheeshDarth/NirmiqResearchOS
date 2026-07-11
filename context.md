@@ -3358,3 +3358,28 @@ Release notes:
 - Electron Builder still reports that the default Electron icon is used because no committed `.ico`, `.png`, or `.svg` logo asset exists in source-controlled paths.
 - The portable EXE is unsigned. Code signing remains future release work, not an MVP blocker.
 - `deep-research-report.md` remains untracked and was intentionally preserved.
+
+### Latest Update: Post-Desktop-Smoke Ship Gate Rerun
+
+Date: 2026-07-12
+
+Purpose:
+
+- Confirm the full release gate still passes after adding the repeatable desktop smoke command.
+- Keep release evidence current before public/demo review.
+
+Validation:
+
+- `npm.cmd run ship:check`: passed.
+- Backend tests: `89 passed`, `1 warning`.
+- API compile: passed.
+- Web production build: passed. `/` first-load JS reported `117 kB`.
+- Publish smoke: passed. Readiness reported `indexed_documents=17`, `active_chunks=6601`, and `cloud_api_required=False`.
+- Golden demo: all four grounded locked prompts returned citations.
+- Abstention: unsupported query returned `grounded=False` and `citations=0`.
+- Scoped ship-check API and web processes were stopped after the run.
+
+Release notes:
+
+- This confirms the current `main` branch remains demo-shippable after the desktop smoke automation.
+- Remaining public polish is still visual: live screenshots/GIFs, branded desktop icon, and optional code signing.

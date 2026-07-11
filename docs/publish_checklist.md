@@ -205,18 +205,18 @@ python scripts/eval_retrieval.py --dataset data/processed/eval/qa_labels.jsonl -
 
 ## Latest Ship Gate Result
 
-Validated on 2026-07-11:
+Validated on 2026-07-12:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1
+npm.cmd run ship:check
 ```
 
 Result:
 
 - Backend unit/integration tests: `89 passed, 1 warning`.
 - API compile: passed.
-- Web production build: passed.
-- Publish smoke: passed.
+- Web production build: passed, `/` first-load JS `117 kB`.
+- Publish smoke: passed with `indexed_documents=17`, `active_chunks=6601`, and `cloud_api_required=False`.
 - Golden demo: Research, summary-style Research, Exam Lab, and Paper Lab returned grounded citations.
 - Golden demo unsupported Chat query: passed with `grounded=false` and `citations=0`.
 
