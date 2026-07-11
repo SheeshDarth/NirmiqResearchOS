@@ -420,3 +420,24 @@ UX rationale:
 Verification:
 
 - `npm.cmd run build`: passed.
+
+## 2026-07-11 MegaSprint Two Generation Status Polish
+
+Goal:
+
+- Improve perceived reliability while a local query is running.
+
+Implemented:
+
+- Added a temporary assistant pending bubble when NIRMIQ is generating an answer.
+- Added `aria-live="polite"` to announce the status without being disruptive.
+- Styled the state as a subtle assistant message rather than a dashboard notification.
+
+UX rationale:
+
+- Local-first RAG can take a moment, especially on lower-end devices, so the answer area needs visible progress.
+- Keeping the status inside the thread preserves the ChatGPT-like mental model: ask, wait in the conversation, receive answer.
+
+Verification:
+
+- `npm.cmd run build`: passed.

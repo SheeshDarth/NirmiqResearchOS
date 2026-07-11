@@ -134,6 +134,17 @@ export function ChatThread({
           </article>
         );
       })}
+      {busy === "query" ? (
+        <article className="turn pending-turn" aria-live="polite" aria-label="NIRMIQ is reading your sources">
+          <div className="bubble assistant pending">
+            <div className="message-meta">
+              <span className="tiny">NIRMIQ</span>
+              <span className="trust-badge sage">reading</span>
+            </div>
+            <p className="pending-copy">Reading your selected material and checking the sources...</p>
+          </div>
+        </article>
+      ) : null}
       <div ref={chatEndRef} />
     </div>
   );

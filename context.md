@@ -3025,3 +3025,27 @@ Tradeoff:
 
 - This is a CSS-only interaction polish pass and does not change layout, routing, RAG, or backend APIs.
 - The transform-based pressed state is intentionally subtle to avoid making the interface feel animated or distracting.
+
+### Latest Update: MegaSprint Two Generation Status Polish
+
+Date: 2026-07-11
+
+Purpose:
+
+- Make query execution feel clear in the chat area instead of only changing the send button label.
+- Improve first-run confidence by showing that NIRMIQ is reading local sources while a response is being generated.
+
+Implemented:
+
+- Added a temporary assistant pending bubble while `busy === "query"`.
+- Added `aria-live="polite"` so assistive technologies receive the status update without interrupting the user.
+- Styled the pending state as a quiet assistant bubble, keeping metadata hidden and avoiding new controls.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Tradeoff:
+
+- The chat thread briefly gains one extra visual bubble during generation, but it disappears after the answer is returned.
+- No backend, RAG, API, or persisted state behavior changed.

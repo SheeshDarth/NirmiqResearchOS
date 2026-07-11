@@ -377,3 +377,24 @@ Why this matters:
 
 - The simplified UI should feel reliable when clicked or tapped repeatedly.
 - Immediate press feedback helps the app feel more native without increasing complexity.
+
+### 2026-07-11 Slice 14: Generation Status Polish
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Added a temporary assistant pending bubble during query generation.
+- Added polite live-region semantics for the query-running state.
+- Kept the pending state concise and source-focused: `Reading your selected material and checking the sources...`.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- Users should not wonder whether the app froze after pressing Ask.
+- A small in-thread pending state makes NIRMIQ feel closer to a familiar chatbot while preserving the academic grounding model.

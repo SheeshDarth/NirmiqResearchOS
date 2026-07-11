@@ -1226,6 +1226,22 @@ button.chunk-card:hover {
   animation: answerSettle 420ms var(--motion-curve) both;
 }
 
+.bubble.pending {
+  width: auto;
+  max-width: min(520px, 92%);
+  border-color: rgba(109, 139, 116, 0.18);
+  background:
+    linear-gradient(90deg, rgba(109, 139, 116, 0.075), transparent 52%),
+    rgba(9, 12, 15, 0.44);
+}
+
+.pending-copy {
+  margin: 10px 0 0;
+  color: var(--nirmiq-text-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .answer {
   margin-top: 9px;
   white-space: pre-wrap;
