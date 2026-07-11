@@ -1384,10 +1384,10 @@ button.chunk-card:hover {
 }
 
 .feedback-button {
-  min-height: 25px;
+  min-height: 32px;
   border: 1px solid rgba(238, 244, 241, 0.09);
   border-radius: 999px;
-  padding: 4px 8px;
+  padding: 6px 10px;
   background: rgba(13, 17, 23, 0.48);
   color: var(--nirmiq-text-muted);
   cursor: pointer;
@@ -1791,6 +1791,7 @@ button.chunk-card:hover {
 
 .quick-action {
   cursor: pointer;
+  min-height: 32px;
   color: #120b07;
   background: linear-gradient(135deg, rgba(240, 180, 134, 0.92), rgba(109, 139, 116, 0.82));
   border-color: rgba(184, 106, 60, 0.42);
@@ -1995,13 +1996,14 @@ button.chunk-card:hover {
 }
 
 .clear-link {
+  min-height: 32px;
   border: 0;
   background: transparent;
   color: var(--nirmiq-text-subtle);
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 10px;
-  padding: 0;
+  padding: 6px 0;
   text-transform: uppercase;
 }
 

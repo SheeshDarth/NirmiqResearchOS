@@ -378,3 +378,24 @@ UX rationale:
 Verification:
 
 - `npm.cmd run build`: passed.
+
+## 2026-07-11 MegaSprint Two Interaction Comfort Polish
+
+Goal:
+
+- Make the compact chat shell easier to use on laptop and touch-width layouts without increasing visual complexity.
+
+Implemented:
+
+- Increased secondary action hit areas for feedback, source/composer quick actions, and clear-thread.
+- Kept controls visually compact and aligned with the current minimal NIRMIQ theme.
+- Preserved hidden metadata and the existing composer/source workflows.
+
+UX rationale:
+
+- Small controls make a simplified interface feel fragile even when the information architecture is correct.
+- Comfortable hit areas make the app feel calmer, more intentional, and more demo-ready.
+
+Verification:
+
+- `npm.cmd run build`: passed.

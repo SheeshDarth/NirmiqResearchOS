@@ -335,3 +335,24 @@ Why this matters:
 
 - Better retrieval still needs readable presentation; dense answer text can make correct answers feel worse than they are.
 - This keeps the normal chat flow calmer and easier to scan without exposing metadata.
+
+### 2026-07-11 Slice 12: Interaction Comfort Polish
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Increased answer feedback button hit areas.
+- Increased compact source/composer quick-action hit areas.
+- Improved the clear-thread control tap surface without exposing extra UI.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- A ChatGPT-grade UI is not only simpler visually; it must also be easy to operate repeatedly.
+- This reduces fiddly interactions while preserving the minimized metadata and chat-first layout.

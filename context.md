@@ -2978,3 +2978,27 @@ Tradeoff:
 
 - This is a CSS-only readability pass; answer correctness still depends on retrieval and synthesis quality.
 - Manual visual QA remains useful for long textbook answers and study-guide responses.
+
+### Latest Update: MegaSprint Two Interaction Comfort Polish
+
+Date: 2026-07-11
+
+Purpose:
+
+- Make the simplified chat-first UI easier to operate without adding new visible controls.
+- Improve secondary action touch comfort while keeping metadata hidden and the composer compact.
+
+Implemented:
+
+- Increased feedback button height and padding so `Good` / `Needs work` are less fiddly.
+- Increased composer/source quick-action hit area while preserving the compact pill style.
+- Added a safer clear-thread touch surface without changing the visible workflow.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Tradeoff:
+
+- The bottom composer is marginally taller in its expanded state, but still far smaller than earlier versions.
+- This is UI interaction hardening only; RAG behavior and backend APIs remain unchanged.
