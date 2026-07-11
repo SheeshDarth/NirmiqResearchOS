@@ -240,3 +240,14 @@ New Paper Lab requirements now satisfied:
 - Public query API request shape must remain stable.
 
 Validated with focused Paper Lab unit tests, query integration tests, API compile, and web build.
+
+## 2026-07-11 MegaSprint Three Exam Lab Requirements Update
+
+New technical requirements now satisfied:
+
+- Exam Lab must produce marks-aware answer structures for 2, 5, 10, and 15 mark answers.
+- Exam Lab fallback answers must remain extractive/source-grounded when local generation is unavailable or rejected.
+- Diagram-heavy exam answers must mention only available source diagrams or explicitly state that no source diagram is available.
+- Public query request shape must remain unchanged.
+
+Validated with synthesis unit tests, Exam Lab integration tests, ingest/query integration tests, and API compile.

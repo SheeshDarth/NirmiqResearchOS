@@ -216,3 +216,28 @@ Why this matters:
 
 - Paper Lab should help engineering students draft source-backed academic work, not overclaim from one dominant chunk or one source.
 - This prepares the next slices: stronger Paper Lab templates, Exam Lab marks-aware formats, diagram grounding, and study guides.
+
+### 2026-07-11 Block 3 Slice: Exam Lab Marks-Aware Answer Contract
+
+Status:
+
+- Completed and backend-verified.
+
+Implemented:
+
+- Added deterministic Exam Lab answer contracts for 2, 5, 10, and 15 mark answers.
+- Grounded prompts now include required answer sections and suggested evidence depth from the exam profile.
+- `exam_answer` fallback now produces a readable marks-ready answer from retrieved evidence only.
+- Diagram-heavy requests now get a source-diagram note when diagram context exists, or an honest unavailable note when it does not.
+- Unit tests cover the marks-aware fallback and contract clamping.
+
+Verification:
+
+- `python -m pytest apps/api/app/tests/unit/test_synthesis_faithfulness.py -q`: passed.
+- `python -m pytest apps/api/app/tests/integration/test_exam_lab_flow.py apps/api/app/tests/integration/test_ingest_query_flow.py -q`: passed.
+- `python -m compileall apps/api/app`: passed.
+
+Why this matters:
+
+- Exam Lab should not feel like generic chat in a different tab.
+- Marks-aware formatting helps students get direct, readable answers while preserving the source-only safety rule.

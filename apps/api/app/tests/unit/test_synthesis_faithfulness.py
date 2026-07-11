@@ -251,6 +251,65 @@ def test_fallback_list_answer_uses_compact_answer_contract() -> None:
     assert meta["citation_coverage"] >= 0.5
 
 
+def test_exam_answer_fallback_uses_marks_aware_contract() -> None:
+    service = SynthesisService(
+        settings=_settings(),
+        policy=RetrievalPolicy(min_grounding_score=0.1),
+        generator=FakeGenerator(""),  # type: ignore[arg-type]
+    )
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="exam-1",
+                document_id="doc-1",
+                text=(
+                    "Retrieval augmented generation combines search with grounded answer synthesis. "
+                    "The system retrieves relevant passages before generating an answer. "
+                    "Citations help verify where the answer came from. "
+                    "This reduces unsupported claims by keeping the answer tied to source evidence."
+                ),
+                score=1.0,
+                page_start=2,
+                page_end=2,
+                source="bm25",
+            )
+        ],
+        meta={},
+    )
+
+    answer, grounded, meta = asyncio.run(
+        service.synthesize(
+            query="Explain retrieval augmented generation as a 10 mark answer.",
+            bundle=bundle,
+            response_mode="exam_answer",
+            exam_profile={
+                "marks": 10,
+                "answer_style": "stepwise",
+                "content_type": "conceptual",
+            },
+        )
+    )
+
+    assert grounded is True
+    assert "Exam-ready answer (10 marks)" in answer
+    assert "Direct answer" in answer
+    assert "Key points" in answer
+    assert "Stepwise explanation" in answer
+    assert "[1]" in answer
+    assert meta["citation_coverage"] >= 0.6
+
+
+def test_exam_answer_contract_clamps_marks_and_changes_depth() -> None:
+    short_contract = SynthesisService._exam_answer_contract({"marks": 1})
+    long_contract = SynthesisService._exam_answer_contract({"marks": 25})
+
+    assert short_contract["marks"] == 2
+    assert short_contract["evidence_bullets"] == 2
+    assert long_contract["marks"] == 15
+    assert long_contract["evidence_bullets"] == 7
+    assert "Detailed explanation" in long_contract["sections"]
+
+
 def test_any_unsupported_cited_claim_forces_rewrite() -> None:
     generated = (
         "NIRMIQ uses grounded retrieval for academic documents. [1]\n"

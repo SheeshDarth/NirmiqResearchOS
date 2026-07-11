@@ -290,3 +290,16 @@ npm.cmd run build
 ```
 
 All commands passed on 2026-07-11.
+
+## 2026-07-11 MegaSprint Three Exam Lab Backend Update
+
+Exam Lab synthesis now has a deterministic marks-aware answer contract:
+
+- 2 mark answers prefer direct answer, two key points, and source note.
+- 5 mark answers add brief explanation.
+- 10 mark answers add explanation, diagram note when relevant, and conclusion.
+- 15 mark answers allow deeper explanation plus limitations or caveats when supported.
+- The contract is injected into grounded prompts and used by the local fallback path.
+- The fallback remains source-only and citation-aware; it does not add outside examples or invented diagrams.
+
+This keeps Exam Lab useful when Ollama is unavailable or when generation is rejected by faithfulness checks.

@@ -570,3 +570,14 @@ Started MegaSprint Three with Paper Lab guardrails:
 - Verified with focused backend tests, API compile, and web build.
 
 This keeps the project aligned with the local-first academic workflow direction without adding new dependencies or UI complexity.
+
+## 2026-07-11 MegaSprint Three Implementation Note: Exam Lab Contract
+
+Added marks-aware Exam Lab synthesis support:
+
+- `SynthesisService._exam_answer_contract` maps exam marks to deterministic answer sections and evidence depth.
+- `exam_answer` prompts now include the contract.
+- `exam_answer` fallback now creates source-grounded direct answers, key points, explanation, optional diagram note, conclusion, and source note.
+- Added unit tests for the fallback and contract behavior.
+
+The UI stays unchanged; this is a backend reliability improvement for academic workflow quality.

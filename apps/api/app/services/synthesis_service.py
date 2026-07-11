@@ -207,6 +207,7 @@ class SynthesisService:
                 query=query,
                 context_chunks=selected,
                 response_mode=response_mode,
+                exam_profile=exam_profile,
                 exam_context=exam_context,
             )
             used_fallback_answer = True
@@ -220,6 +221,7 @@ class SynthesisService:
                 query=query,
                 context_chunks=selected,
                 response_mode=response_mode,
+                exam_profile=exam_profile,
                 exam_context=exam_context,
             )
             fallback_verification = self._verify_cited_claims(generated, selected)
@@ -495,6 +497,7 @@ class SynthesisService:
         query: str,
         context_chunks: list[tuple[int, str]],
         response_mode: str = "research",
+        exam_profile: dict[str, object] | None = None,
         exam_context: dict[str, object] | None = None,
     ) -> str:
         mode = response_mode.strip().lower()
@@ -505,6 +508,13 @@ class SynthesisService:
             )
         if mode == "research_paper":
             return SynthesisService._fallback_research_paper(query=query, context_chunks=context_chunks)
+        if mode == "exam_answer":
+            return SynthesisService._fallback_exam_answer(
+                query=query,
+                context_chunks=context_chunks,
+                exam_profile=exam_profile,
+                exam_context=exam_context,
+            )
         if mode == "study_guide" and exam_context and exam_context.get("questions"):
             return SynthesisService._fallback_study_guide(context_chunks=context_chunks, exam_context=exam_context)
         if SynthesisService._is_list_or_algorithm_query(query):
@@ -568,7 +578,10 @@ class SynthesisService:
     def _mode_instruction(response_mode: str) -> str:
         mode = response_mode.strip().lower()
         if mode == "exam_answer":
-            return "Format as an exam-ready answer with definition, key points, and cited support."
+            return (
+                "Format as an exam-ready answer. Use the Exam Lab answer contract when provided. "
+                "Keep language simple, marks-aware, and cited. Do not add unsupported outside knowledge."
+            )
         if mode == "revision_notes":
             return "Format as compact revision notes with headings and high-yield bullets."
         if mode == "study_guide":
@@ -604,7 +617,8 @@ class SynthesisService:
     def _exam_instruction(exam_profile: dict[str, object] | None) -> str:
         if not exam_profile:
             return ""
-        marks = exam_profile.get("marks") or 10
+        contract = SynthesisService._exam_answer_contract(exam_profile)
+        marks = contract["marks"]
         answer_style = str(exam_profile.get("answer_style") or "exam-ready")
         content_type = str(exam_profile.get("content_type") or "conceptual")
         instructions = str(exam_profile.get("instructions") or "").strip()
@@ -613,12 +627,49 @@ class SynthesisService:
             f"- Target marks: {marks}",
             f"- Answer style: {answer_style}",
             f"- Content type: {content_type}",
+            "- Required answer contract:",
+            *[f"  - {section}" for section in contract["sections"]],
+            f"- Suggested evidence bullets: {contract['evidence_bullets']}",
             "- Use only retrieved source context; do not add outside textbook knowledge.",
             "- If diagrams are requested but no source diagram context is provided, say that no source diagram was available.",
         ]
         if instructions:
             parts.append(f"- Custom instructions: {instructions}")
         return "\n".join(parts)
+
+    @staticmethod
+    def _exam_answer_contract(exam_profile: dict[str, object] | None) -> dict[str, object]:
+        raw_marks = 10
+        if exam_profile:
+            try:
+                raw_marks = int(exam_profile.get("marks") or 10)
+            except (TypeError, ValueError):
+                raw_marks = 10
+        marks = min(max(raw_marks, 2), 15)
+        if marks <= 2:
+            sections = ["Direct answer", "Two key points", "Source note"]
+            evidence_bullets = 2
+        elif marks <= 5:
+            sections = ["Direct answer", "Key points", "Brief explanation", "Source note"]
+            evidence_bullets = 3
+        elif marks <= 10:
+            sections = ["Direct answer", "Key points", "Explanation", "Diagram note if relevant", "Conclusion"]
+            evidence_bullets = 5
+        else:
+            sections = [
+                "Direct answer",
+                "Key points",
+                "Detailed explanation",
+                "Diagram note if relevant",
+                "Limitations or caveats when supported",
+                "Conclusion",
+            ]
+            evidence_bullets = 7
+        return {
+            "marks": marks,
+            "sections": sections,
+            "evidence_bullets": evidence_bullets,
+        }
 
     @staticmethod
     def _exam_artifact_instruction(exam_context: dict[str, object] | None) -> str:
@@ -677,6 +728,69 @@ class SynthesisService:
                 sections.append(f"- D{index}: page {page}, {caption}.")
         else:
             sections.append("\nSource diagrams: no extracted diagram assets are available yet.")
+        return "\n".join(sections)
+
+    @staticmethod
+    def _fallback_exam_answer(
+        query: str,
+        context_chunks: list[tuple[int, str]],
+        exam_profile: dict[str, object] | None,
+        exam_context: dict[str, object] | None,
+    ) -> str:
+        contract = SynthesisService._exam_answer_contract(exam_profile)
+        marks = int(contract["marks"])
+        evidence_limit = int(contract["evidence_bullets"])
+        answer_style = str((exam_profile or {}).get("answer_style") or "exam-ready").lower()
+        query_terms = SynthesisService._query_terms(query)
+        evidence = SynthesisService._best_evidence_sentences(
+            context_chunks=context_chunks,
+            query_terms=query_terms,
+            limit=evidence_limit,
+        )
+        if not evidence:
+            return "I found related passages, but not enough direct evidence to generate a marks-ready answer safely."
+
+        sections = [f"Exam-ready answer ({marks} marks)"]
+        sections.append("\nDirect answer")
+        sections.append(f"- {evidence[0][1]} [{evidence[0][0]}]")
+
+        remaining = evidence[1:]
+        if remaining:
+            sections.append("\nKey points")
+            key_point_limit = 1 if marks <= 2 else 3 if marks <= 10 else 4
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in remaining[:key_point_limit])
+
+        if marks >= 5 and remaining:
+            explanation_items = remaining[2:] if len(remaining) > 2 else remaining[:2]
+            heading = "Stepwise explanation" if "step" in answer_style else "Explanation"
+            sections.append(f"\n{heading}")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in explanation_items[:3])
+
+        diagram_requested = bool(
+            re.search(r"\b(diagram|figure|image|visual)\b", query, flags=re.I)
+            or "diagram" in answer_style
+        )
+        if diagram_requested:
+            raw_diagrams = (exam_context or {}).get("diagrams") or []
+            diagrams = (
+                [item for item in raw_diagrams if isinstance(item, dict)]
+                if isinstance(raw_diagrams, list)
+                else []
+            )
+            sections.append("\nDiagram note")
+            if diagrams:
+                for index, item in enumerate(diagrams[:3], start=1):
+                    page = item.get("page_number") or "?"
+                    caption = item.get("caption") or "No caption detected"
+                    sections.append(f"- D{index}: page {page}, {caption}.")
+            else:
+                sections.append("- No source diagram was available from the uploaded material.")
+
+        if marks >= 10:
+            sections.append("\nConclusion")
+            sections.append(f"- {evidence[0][1]} [{evidence[0][0]}]")
+
+        sections.append("\nSource note\nOpen Sources to inspect the exact passages used.")
         return "\n".join(sections)
 
     @staticmethod

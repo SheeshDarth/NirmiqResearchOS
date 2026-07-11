@@ -3153,3 +3153,31 @@ Tradeoff:
 
 - Paper Lab may return fewer than eight evidence rows when the top-ranked evidence is dominated by one document and more diverse sources are available.
 - This is intentional: fewer diverse source-backed rows are safer than a fuller but overconfident matrix.
+
+### Latest Update: MegaSprint Three Exam Lab Marks-Aware Answers
+
+Date: 2026-07-11
+
+Purpose:
+
+- Continue MegaSprint Three by making Exam Lab answers more predictable, readable, and source-grounded.
+- Avoid relying on model creativity for exam structure when a deterministic local fallback can do the safer job.
+
+Implemented:
+
+- Added an Exam Lab answer contract for 2, 5, 10, and 15 mark answers.
+- Updated grounded prompts to instruct the local generator with the marks-aware contract.
+- Added a deterministic fallback formatter for `exam_answer` mode when generation is unavailable, empty, or rewritten for faithfulness.
+- The fallback uses retrieved evidence only and structures answers into direct answer, key points, explanation, diagram note when relevant, conclusion, and source note.
+- Added unit coverage for marks-aware fallback output and mark clamping.
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit/test_synthesis_faithfulness.py -q`: passed, `13 passed`.
+- `python -m pytest apps/api/app/tests/integration/test_exam_lab_flow.py apps/api/app/tests/integration/test_ingest_query_flow.py -q`: passed, `5 passed`, `1 warning`.
+- `python -m compileall apps/api/app`: passed.
+
+Tradeoff:
+
+- The fallback is intentionally extractive and may repeat a key source sentence in the conclusion.
+- This is safer than generating polished but unsupported exam filler, and can be improved later with stronger source-aware compression.
