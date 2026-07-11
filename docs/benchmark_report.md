@@ -133,3 +133,25 @@ Interpretation:
 - The first reliability slice materially improved the real-world seed, but the set must grow before making broad launch-marketing claims.
 - BM25 remains the safest offline backbone, while hybrid now performs better after direct-answer relevance was weighted more heavily during candidate ordering.
 - Two real-world labels were corrected because source-valid evidence was being missed by OCR/wording-damaged expected phrases.
+
+## 2026-07-11 Ship Gate Refresh
+
+Command:
+
+```powershell
+npm.cmd run ship:check
+```
+
+Result:
+
+- Backend unit/integration tests: `89 passed`, `1 warning`.
+- API compile: passed.
+- Web production build: passed.
+- Publish smoke: passed.
+- Golden demo: all four grounded demo queries returned citations.
+- Abstention check: unsupported general-chat prompt returned `grounded=false` and `citations=0`.
+
+Release-hardening note:
+
+- Golden Demo 02 privacy/runtime query required a targeted directness fix for local-first privacy controls before the ship gate passed.
+- The fix did not reduce global evidence thresholds.

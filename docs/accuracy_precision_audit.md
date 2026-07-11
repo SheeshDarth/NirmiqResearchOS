@@ -583,3 +583,20 @@ Verification:
 Next eval action:
 
 - Add similar definition queries for DBSCAN, k-means, PCA, overfitting, cross-validation, and gradient descent.
+
+## 2026-07-11 Release Hardening Ship Gate Fix
+
+A full `npm.cmd run ship:check` pass initially failed on Golden Demo 02 because the privacy/runtime query retrieved the correct document but was classified as weakly related. Root cause: privacy query expansion added broad security terms that diluted directness scoring for concrete local-first controls.
+
+Fix:
+
+- Added a narrow directness boost for local-first privacy controls such as local storage, trusted corpus roots, restricted local-path ingestion, file signatures, source removal, and no cloud/internet requirement.
+- Added a source-only privacy-control fallback answer so the demo returns concrete controls instead of generic local-first wording.
+- Added heading-noise cleanup for extracted Markdown evidence sentences.
+- Added focused unit tests for this regression.
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit/test_synthesis_query_terms.py -q`: passed, `8 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run ship:check`: passed with backend tests, web build, publish smoke, grounded golden demo checks, and unsupported-chat abstention.

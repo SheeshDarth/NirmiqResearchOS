@@ -93,3 +93,15 @@ Recommended proof assets:
 - Add chapter-wise summaries for long textbooks.
 - Add optional local log bundle export instead of cloud error tracking.
 - Add hosted-auth design only if public multi-user deployment becomes a goal.
+
+## 2026-07-11 Ship Gate Refresh
+
+Current release gate status:
+
+- `npm.cmd run ship:check`: passed.
+- Backend tests: `89 passed`, `1 warning`.
+- Web build: passed.
+- Publish smoke: passed.
+- Golden demo: passed, including unsupported-chat abstention.
+
+The project remains positioned as a local-first portfolio/demo MVP. Next release-hardening priorities are desktop smoke verification, README screenshots/GIFs, and retrieval eval refresh on the harder real-world seed.

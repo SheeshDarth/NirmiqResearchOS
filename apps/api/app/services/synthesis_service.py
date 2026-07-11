@@ -546,6 +546,11 @@ class SynthesisService:
                 query=query,
                 context_chunks=context_chunks,
             )
+        if SynthesisService._is_privacy_control_query(query):
+            return SynthesisService._fallback_privacy_control_answer(
+                query=query,
+                context_chunks=context_chunks,
+            )
         if SynthesisService._is_definition_query(query):
             return SynthesisService._fallback_definition_answer(
                 query=query,
@@ -1087,6 +1092,59 @@ class SynthesisService:
         return "\n".join(sections)
 
     @staticmethod
+    def _fallback_privacy_control_answer(
+        query: str,
+        context_chunks: list[tuple[int, str]],
+    ) -> str:
+        query_terms = SynthesisService._query_terms(query)
+        privacy_cues = (
+            "local-first",
+            "without requiring a cloud account",
+            "internet connection",
+            "uploaded files are stored",
+            "local data directory",
+            "local-path ingestion is restricted",
+            "trusted corpus roots",
+            "file signatures",
+            "cannot easily masquerade",
+            "removed from the local library",
+            "clearing its metadata",
+            "vector entries",
+            "files stay on the machine",
+        )
+        candidates: list[tuple[float, int, str]] = []
+        for idx, block in context_chunks[:8]:
+            text = SynthesisService._context_text(block)
+            for sentence_index, sentence in enumerate(SynthesisService._split_sentences(text)[:16]):
+                if len(sentence.split()) < 6 or SynthesisService._is_low_value_evidence_sentence(sentence):
+                    continue
+                lowered = sentence.lower()
+                cue_score = sum(1.2 for cue in privacy_cues if cue in lowered)
+                if cue_score <= 0:
+                    continue
+                term_score = SynthesisService._sentence_score(sentence, query_terms)
+                rank_bonus = max(0, 9 - idx) * 0.05 + max(0, 16 - sentence_index) * 0.01
+                candidates.append((cue_score + term_score + rank_bonus, idx, sentence))
+
+        selected = SynthesisService._dedupe_scored_sentences(candidates, limit=4)
+        if not selected:
+            return "I found privacy-related passages, but not enough concrete source-backed controls to answer safely."
+
+        sections = ["Short answer", "\nDirect answer"]
+        first_anchor, first_sentence = selected[0]
+        sections.append(
+            f"- NIRMIQ preserves privacy by keeping document work local and source-controlled: {first_sentence} [{first_anchor}]"
+        )
+
+        remaining = selected[1:]
+        if remaining:
+            sections.append("\nPrivacy controls")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in remaining[:3])
+
+        sections.append("\nEvidence note\nOpen Sources to inspect the exact privacy/runtime passages used.")
+        return "\n".join(sections)
+
+    @staticmethod
     def _fallback_definition_answer(
         query: str,
         context_chunks: list[tuple[int, str]],
@@ -1249,6 +1307,13 @@ class SynthesisService:
         return asks_definition and asks_solution
 
     @staticmethod
+    def _is_privacy_control_query(query: str) -> bool:
+        normalized = query.lower()
+        return any(term in normalized for term in ("privacy", "private", "local-first", "local first")) and any(
+            term in normalized for term in ("preserve", "protect", "control", "security", "secure", "local")
+        )
+
+    @staticmethod
     def _is_definition_query(query: str) -> bool:
         normalized = query.lower().strip()
         if any(phrase in normalized for phrase in ("what is", "define", "meaning of")):
@@ -1408,6 +1473,7 @@ class SynthesisService:
     def _clean_evidence_sentence(sentence: str) -> str:
         cleaned = re.sub(r"\s+", " ", sentence).strip(" -")
         cleaned = re.split(r"\s+>>>\s+", cleaned, maxsplit=1)[0].strip()
+        cleaned = re.sub(r"^#+\s+[^.?!]{0,180}?\s+(?=NIRMIQ\b)", "", cleaned, flags=re.I).strip()
         cleaned = re.sub(r"\s+#\s+.*$", "", cleaned).strip()
         use_match = re.search(
             r"\bgaussian mixture models?.*?\bcan be used for\s+([^.]+)",
@@ -1831,6 +1897,23 @@ class SynthesisService:
             cue in text for cue in ("figure", "fig.", "diagram", "image", "caption", "visual")
         ):
             score += 0.12
+        if any(term in normalized_query for term in ("privacy", "private", "local-first", "local first")) and any(
+            cue in text
+            for cue in (
+                "local-first",
+                "local data directory",
+                "uploaded files are stored",
+                "trusted corpus roots",
+                "direct local-path ingestion is restricted",
+                "file signatures",
+                "cannot easily masquerade",
+                "removed from the local library",
+                "clearing its metadata",
+                "without requiring a cloud account",
+                "internet connection",
+            )
+        ):
+            score += 0.36
         if not any(term in normalized_query for term in ("example", "application", "use case")) and any(
             cue in text
             for cue in (

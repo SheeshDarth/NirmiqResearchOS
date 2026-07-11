@@ -61,3 +61,60 @@ def test_context_relevance_marks_loose_mentions_as_weak_related() -> None:
     assert relevance["answer_relevance_state"] == "weak_related"
     assert relevance["direct_evidence_count"] == 0
 
+
+def test_context_relevance_treats_local_privacy_controls_as_direct_evidence() -> None:
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="privacy",
+                document_id="doc",
+                text=(
+                    "NIRMIQ is local-first. Uploaded files are stored under the local data directory. "
+                    "Direct local-path ingestion is restricted to trusted corpus roots, and a selected "
+                    "document can be removed from the local library, clearing its metadata and chunks."
+                ),
+                score=0.9,
+            )
+        ]
+    )
+
+    relevance = SynthesisService._context_relevance(
+        "How does NIRMIQ preserve local-first privacy during document work?",
+        bundle,
+    )
+
+    assert relevance["answer_relevance_state"] == "direct"
+    assert relevance["direct_evidence_count"] == 1
+
+
+def test_privacy_control_fallback_extracts_concrete_local_controls() -> None:
+    context_chunks = [
+        (
+            1,
+            "[1] doc=doc score=1.000 source=bm25 pages=1-1\n"
+            "NIRMIQ is local-first. Uploaded files are stored under the local data directory. "
+            "Direct local-path ingestion is restricted to trusted corpus roots, which prevents accidental indexing of private folders. "
+            "Uploaded file signatures are checked so a renamed file cannot easily masquerade as a PDF or image. "
+            "A selected document can be removed from the local library, clearing its metadata, chunks, and vector entries.",
+        )
+    ]
+
+    answer = SynthesisService._fallback_privacy_control_answer(
+        "How does NIRMIQ preserve local-first privacy during document work?",
+        context_chunks,
+    )
+
+    assert "Privacy controls" in answer
+    assert "local data directory" in answer
+    assert "trusted corpus roots" in answer
+    assert "file signatures" in answer
+    assert "[1]" in answer
+
+
+def test_clean_evidence_sentence_removes_golden_demo_heading_prefix() -> None:
+    cleaned = SynthesisService._clean_evidence_sentence(
+        "# Golden Demo Source 02: Offline Runtime And Privacy NIRMIQ is local-first."
+    )
+
+    assert cleaned == "NIRMIQ is local-first."
+

@@ -3293,3 +3293,34 @@ Verification baseline at closure:
 Next recommended sprint:
 
 - Release hardening and real-user QA: desktop smoke test, golden demo walkthrough, README screenshots/GIFs, public packaging notes, and measured retrieval eval refresh.
+
+### Latest Update: Release Hardening Ship Gate Fix
+
+Date: 2026-07-11
+
+Purpose:
+
+- Run the full publish/ship gate after MegaSprint Three closure.
+- Fix the only release-blocking failure without weakening golden-demo checks.
+
+Observed failure:
+
+- `npm.cmd run ship:check` initially failed because Golden Demo 02 returned no citations for: `How does NIRMIQ preserve local-first privacy during document work?`
+- Retrieval found the correct source, but answer relevance was classified as `weak_related` because the privacy query expansion included broad security terms that diluted direct evidence scoring.
+
+Implemented:
+
+- Added a narrow directness boost for local-first privacy controls when chunks mention concrete privacy mechanisms such as local storage, trusted corpus roots, restricted local-path ingestion, file signatures, deletion, or no cloud/internet requirement.
+- Added a source-only privacy-control fallback answer that extracts concrete local privacy controls instead of returning generic local-first wording.
+- Cleaned Markdown heading noise from extracted evidence sentences used in answers.
+- Added focused unit tests for privacy directness, privacy-control fallback output, and heading cleanup.
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit/test_synthesis_query_terms.py -q`: passed, `8 passed`.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run ship:check`: passed, `89 passed`, web build passed, publish smoke passed, golden demo passed, abstention passed.
+
+Tradeoff:
+
+- The scoring change is intentionally narrow to privacy/local-first control language; it does not lower global evidence thresholds.
