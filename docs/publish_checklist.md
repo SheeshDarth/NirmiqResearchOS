@@ -14,6 +14,7 @@ Full EOD ship check, execution-policy safe:
 
 ```powershell
 npm.cmd run ship:check
+npm.cmd run desktop:smoke
 ```
 
 Latest local verification:
@@ -223,6 +224,7 @@ Release-hardening refresh on 2026-07-12:
 
 - `npm.cmd run desktop:pack`: passed.
 - `npm.cmd run desktop:package`: passed.
+- `npm.cmd run desktop:smoke`: passed.
 - `npm.cmd run eval:demo`: passed.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\eval_real_world.ps1`: passed.
 - Real-world failure log currently has no active weak retrieval records on the 17-sample seed.

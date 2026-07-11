@@ -105,7 +105,8 @@ Current release gate status:
 - Golden demo: passed, including unsupported-chat abstention.
 - `npm.cmd run desktop:pack`: passed.
 - `npm.cmd run desktop:package`: passed and refreshed `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- `npm.cmd run desktop:smoke`: passed; API/web readiness and `cloud_api_required=false` were verified through the Electron shell.
 - `npm.cmd run eval:demo`: passed with MRR `0.983` and Recall@8 `1.000` for both Hybrid and BM25.
 - `scripts\eval_real_world.ps1`: passed with BM25 MRR `0.843`, Hybrid MRR `0.804`, Recall@8 `1.000`, and no active weak retrieval records.
 
-The project remains positioned as a local-first portfolio/demo MVP. Remaining release-hardening priorities are live README screenshots/GIFs, a larger real-world eval set, signed/icon-branded desktop packaging, and manual desktop-app smoke QA.
+The project remains positioned as a local-first portfolio/demo MVP. Remaining release-hardening priorities are live README screenshots/GIFs, a larger real-world eval set, signed/icon-branded desktop packaging, and manual visual QA inside the desktop window.

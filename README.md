@@ -362,6 +362,7 @@ cd C:\Nirmiq-researchOS
 npm.cmd run start
 npm.cmd run start:golden
 npm.cmd run desktop
+npm.cmd run desktop:smoke
 npm.cmd run ship:check
 ```
 
@@ -380,6 +381,15 @@ NIRMIQ Desktop.cmd
 ```
 
 The desktop shell starts the same local FastAPI and Next.js runtime, then opens NIRMIQ in an app window. It also includes menu shortcuts for runtime status, logs, VS Code, project files, `context.md`, the README, and debugging docs.
+
+Run the repeatable desktop smoke check:
+
+```powershell
+cd C:\Nirmiq-researchOS
+npm.cmd run desktop:smoke
+```
+
+This launches the Electron shell, waits for local API/web readiness, confirms NIRMIQ branding, verifies `cloud_api_required=false`, and then cleans up the smoke-started runtime.
 
 Run local preview:
 
@@ -565,6 +575,7 @@ Strongest EOD check:
 ```powershell
 cd C:\Nirmiq-researchOS
 npm.cmd run ship:check
+npm.cmd run desktop:smoke
 ```
 
 Windows double-click alternative:
@@ -573,7 +584,7 @@ Windows double-click alternative:
 NIRMIQ Ship Check.cmd
 ```
 
-This runs backend tests, API compile, frontend production build, local smoke check, and the golden demo.
+`ship:check` runs backend tests, API compile, frontend production build, local smoke check, and the golden demo. `desktop:smoke` separately validates the Electron shell startup path.
 
 If backend and frontend are already running and you only want the lightweight smoke:
 

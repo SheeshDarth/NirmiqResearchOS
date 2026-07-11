@@ -29,6 +29,14 @@ Launch the app:
 npm run desktop
 ```
 
+Run a repeatable desktop smoke check:
+
+```powershell
+npm run desktop:smoke
+```
+
+The smoke check launches the Electron shell, waits for local API/web readiness, verifies NIRMIQ branding and offline-first readiness, then stops only the runtime processes it started.
+
 Or double-click from the repository root:
 
 ```text
@@ -115,6 +123,7 @@ Validated on 2026-07-12:
 - `node --check apps\desktop\src\preload.js`: passed.
 - `npm.cmd run desktop:pack`: passed and generated `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
 - `npm.cmd run desktop:package`: passed and generated `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- `npm.cmd run desktop:smoke`: passed.
 - Portable artifact size: `71,251,901` bytes.
 - Unpacked app executable size: `180,849,664` bytes.
 

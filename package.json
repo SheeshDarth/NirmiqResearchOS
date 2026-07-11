@@ -13,6 +13,7 @@
     "desktop:dev": "npm --prefix apps/desktop run dev",
     "desktop:pack": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_desktop.ps1",
     "desktop:package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_desktop.ps1 -Portable",
+    "desktop:smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop_smoke.ps1",
     "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop_local.ps1",
     "build": "npm --prefix apps/web run build",
     "build:web": "npm --prefix apps/web run build",

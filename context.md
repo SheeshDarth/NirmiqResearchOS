@@ -3341,6 +3341,8 @@ Verification:
 - `node --check apps\desktop\src\preload.js`: passed.
 - `npm.cmd run desktop:pack`: passed.
 - `npm.cmd run desktop:package`: passed.
+- Added `scripts\desktop_smoke.ps1` and root command `npm.cmd run desktop:smoke`.
+- `npm.cmd run desktop:smoke`: passed. It launched the Electron shell, verified API/web readiness, confirmed the NIRMIQ web shell, verified `cloud_api_required=false`, and cleaned up smoke-started local processes.
 - Portable Windows app refreshed at `dist\desktop\NIRMIQ ResearchOS 0.1.0.exe` (`71,251,901` bytes).
 - Unpacked Windows app refreshed at `dist\desktop\win-unpacked\NIRMIQ ResearchOS.exe` (`180,849,664` bytes).
 - `npm.cmd run eval:demo`: passed on 30 samples. Hybrid and BM25 both reached MRR `0.983`, Recall@8 `1.000`, citation expected coverage `1.000`.

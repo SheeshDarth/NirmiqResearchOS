@@ -60,6 +60,14 @@ Create a portable Windows app:
 npm run desktop:package
 ```
 
+Run a smoke check:
+
+```powershell
+npm run desktop:smoke
+```
+
+The smoke check launches the Electron shell, verifies local API/web readiness, verifies the app shell, then cleans up the processes it started.
+
 Packaging requires desktop dependencies to be installed first. This sprint keeps the shell lightweight instead of bundling Python, Ollama, model files, SQLite, and Chroma into a fragile installer.
 
 The root packaging scripts redirect Electron Builder cache to `temp/electron-builder-cache` so Windows AppData permissions do not block local builds.
