@@ -282,6 +282,36 @@ export function previewText(value?: string | null, maxLength = 420): string {
   return normalized.length > maxLength ? `${normalized.slice(0, maxLength).trim()}...` : normalized;
 }
 
+export function sanitizeExportLabel(value?: string | null, fallback = "selected material"): string {
+  const normalized = (value || fallback).replace(/[\r\n\t]+/g, " ").trim() || fallback;
+  const pathSafeLabel = normalized.split(/[\\/]/).filter(Boolean).pop() || normalized;
+  return previewText(pathSafeLabel, 120);
+}
+
+export function exportSlug(value?: string | null, fallback = "nirmiq"): string {
+  return (
+    sanitizeExportLabel(value, fallback)
+      .toLowerCase()
+      .replace(/\.[a-z0-9]{1,8}$/i, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64) || fallback
+  );
+}
+
+export function exportTimestamp(value = new Date()): string {
+  return value.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+export function workspaceForMode(mode: StudyMode): WorkspaceSection {
+  if (mode === "general_chat") return "general";
+  if (mode === "research_paper") return "paper";
+  if (["exam_answer", "revision_notes", "important_questions", "compare_concepts", "study_guide"].includes(mode)) {
+    return "exam";
+  }
+  return "research";
+}
+
 export function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -355,6 +385,7 @@ export function getPaperLabArtifact(response: QueryResponse | null): PaperLabArt
 }
 
 export function buildPaperLabMarkdown(run: ChatRun, artifact: PaperLabArtifact | null, materialName: string): string {
+  const sourceLabel = sanitizeExportLabel(materialName, "selected material");
   const citations = run.response.citations
     .map((citation, index) => `- [${index + 1}] ${citation.page_start ? `Page ${citation.page_start}` : "Page unknown"}: ${previewText(citation.excerpt, 220)}`)
     .join("\n");
@@ -382,9 +413,12 @@ export function buildPaperLabMarkdown(run: ChatRun, artifact: PaperLabArtifact |
   return [
     `# NIRMIQ Paper Lab Draft`,
     "",
-    `Source: ${materialName}`,
+    `Source: ${sourceLabel}`,
     `Mode: ${modeLabel(run.mode)}`,
-    `Generated: ${formatDate(run.timestamp)}`,
+    `Generated: ${new Date(run.timestamp).toISOString()}`,
+    "",
+    "## Local-First Privacy Note",
+    "This export was generated locally from indexed source material. Full local file paths are intentionally omitted.",
     "",
     "## Draft",
     run.response.answer,
@@ -406,6 +440,7 @@ export function buildPaperLabMarkdown(run: ChatRun, artifact: PaperLabArtifact |
 }
 
 export function buildRunExportMarkdown(run: ChatRun, materialName: string): string {
+  const sourceLabel = sanitizeExportLabel(materialName, "selected material");
   const citations = run.response.citations
     .map((citation, index) => {
       const page = citation.page_start ? `page ${citation.page_start}` : "page unknown";
@@ -415,11 +450,15 @@ export function buildRunExportMarkdown(run: ChatRun, materialName: string): stri
   return [
     `# NIRMIQ Answer Export`,
     "",
-    `- Material: ${materialName}`,
+    `- Material: ${sourceLabel}`,
     `- Mode: ${modeLabel(run.mode)}`,
+    `- Workspace: ${workspaceForMode(run.mode)}`,
     `- Profile: ${run.profile}`,
     `- Exported: ${new Date().toISOString()}`,
     `- Trust: ${run.response.grounded ? "grounded" : "needs review"}`,
+    "",
+    "## Local-First Privacy Note",
+    "This export was generated locally from indexed source material. Full local file paths are intentionally omitted.",
     "",
     "## Question",
     run.query,
@@ -430,6 +469,17 @@ export function buildRunExportMarkdown(run: ChatRun, materialName: string): stri
     "## Citations",
     citations || "- No citations returned.",
   ].join("\n");
+}
+
+export function buildRunExportFilename(run: ChatRun, materialName: string, now = new Date()): string {
+  const section = exportSlug(workspaceForMode(run.mode), "workspace");
+  const mode = exportSlug(modeLabel(run.mode), "answer");
+  const source = exportSlug(materialName || run.source_title, "source");
+  return `nirmiq-${section}-${mode}-${source}-${exportTimestamp(now)}.md`;
+}
+
+export function buildThreadExportFilename(sessionId: string, now = new Date()): string {
+  return `nirmiq-thread-${exportSlug(sessionId, "session")}-${exportTimestamp(now)}.md`;
 }
 
 export function downloadTextFile(filename: string, content: string, mimeType = "text/markdown;charset=utf-8") {

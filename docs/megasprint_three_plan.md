@@ -291,3 +291,53 @@ Why this matters:
 
 - Students should not need to import a question bank before getting a useful study guide.
 - This improves offline usefulness while preserving the rule that answers must come from uploaded material.
+
+### 2026-07-11 Block 6 Slice: Export Polish
+
+Status:
+
+- Completed and verified.
+
+Implemented:
+
+- Added sanitized export labels for source names so full local paths are not shown in normal Markdown exports.
+- Answer export filenames now include workspace, mode, sanitized source title, and timestamp.
+- Thread export filenames now include sanitized session ID and timestamp.
+- Answer and Paper Lab exports include a Local-First Privacy Note.
+- Backend thread export privacy copy now explicitly says full local file paths are omitted.
+
+Verification:
+
+- `npm.cmd run build`: passed.
+- `python -m pytest apps/api/app/tests/integration/test_ingest_query_flow.py -q`: passed.
+- `python -m compileall apps/api/app`: passed.
+
+Why this matters:
+
+- Exported files should be useful outside the app without leaking local paths.
+- This closes the core MegaSprint Three workflow loop: ask, cite, inspect, and export safely.
+
+## MegaSprint Three Closure
+
+Status:
+
+- Core MegaSprint Three scope is complete as of 2026-07-11.
+
+Completed:
+
+- Block 1: Paper Lab workflow audit and guardrails.
+- Block 2: Paper Lab templates/grounding notes through artifact metadata and Markdown export.
+- Block 3: Exam Lab marks-aware answer formats.
+- Block 4: Diagram and image grounding.
+- Block 5: Study Guide Builder.
+- Block 6: Export Polish.
+
+Closure verification:
+
+- `python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q`: passed, `86 passed`, `1 warning`.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build`: passed.
+
+Next recommended sprint:
+
+- Release hardening and real-user QA: package smoke test, demo script screenshots, README public polish, and retrieval eval refresh.

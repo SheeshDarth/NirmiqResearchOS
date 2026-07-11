@@ -327,3 +327,15 @@ Study Guide generation now has a deterministic local builder:
 - Citation coverage treats guide helper text as structure rather than uncited factual claims.
 
 No new model dependency, cloud API, database, or public request shape was added.
+
+## 2026-07-11 MegaSprint Three Export Architecture Update
+
+Export handling now uses cleaner local artifact rules:
+
+- Frontend Markdown exports sanitize source labels before rendering them.
+- Answer export filenames include workspace, mode, sanitized source label, and timestamp.
+- Thread export filenames include sanitized session ID and timestamp.
+- Answer, Paper Lab, and thread exports include local-first privacy copy.
+- Full local file paths remain omitted from normal exports.
+
+No public API request change or new dependency was added.

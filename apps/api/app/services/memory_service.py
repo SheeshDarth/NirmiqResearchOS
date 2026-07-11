@@ -99,7 +99,7 @@ class MemoryService:
             [
                 "## Privacy Note",
                 "",
-                "This export was generated locally by NIRMIQ. It may contain user prompts, answers, and source excerpts.",
+                "This export was generated locally by NIRMIQ. It may contain user prompts, answers, and source excerpts. Full local file paths are intentionally omitted.",
             ]
         )
         return "\n".join(lines).rstrip() + "\n"

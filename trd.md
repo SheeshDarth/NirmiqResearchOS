@@ -275,3 +275,15 @@ New technical requirements now satisfied:
 - Normal UI should continue rendering guides through existing expandable cards.
 
 Validated with synthesis unit tests, Exam Lab integration tests, and API compile.
+
+## 2026-07-11 MegaSprint Three Export Requirements Update
+
+New technical requirements now satisfied:
+
+- Normal Markdown exports must not expose full local file paths.
+- Answer export filenames should be predictable and include workspace/mode/source/timestamp.
+- Thread export filenames should include sanitized session ID and timestamp.
+- Exports should include a local-first privacy note.
+- Existing export endpoints and UI controls should remain simple.
+
+Validated with web build, memory export integration test, and API compile.

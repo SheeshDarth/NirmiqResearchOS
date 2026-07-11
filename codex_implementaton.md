@@ -604,3 +604,14 @@ Added deterministic Study Guide fallback behavior:
 - Added unit and integration tests for question-bank and no-question-bank guide generation.
 
 This improves academic workflow usefulness without adding UI controls or heavy dependencies.
+
+## 2026-07-11 MegaSprint Three Implementation Note: Export Polish
+
+Added export polish helpers and privacy copy:
+
+- `sanitizeExportLabel`, `exportSlug`, and `exportTimestamp` centralize safe export labels and filenames.
+- `buildRunExportFilename` and `buildThreadExportFilename` create predictable local Markdown filenames.
+- Answer and Paper Lab Markdown builders now include a Local-First Privacy Note.
+- Thread Markdown export privacy copy now says full local paths are intentionally omitted.
+
+This improves external usability without adding new UI controls or backend complexity.

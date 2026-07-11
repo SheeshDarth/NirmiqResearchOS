@@ -52,7 +52,9 @@ import {
   WORKSPACE_SECTIONS,
   buildAnswerDiff,
   buildPaperLabMarkdown,
+  buildRunExportFilename,
   buildRunExportMarkdown,
+  buildThreadExportFilename,
   composerPlaceholder,
   cx,
   defaultModeForWorkspace,
@@ -560,8 +562,9 @@ export default function Home() {
       setError("Ask a question first, then export the answer and citations.");
       return;
     }
-    const filename = `nirmiq-answer-${new Date().toISOString().slice(0, 10)}.md`;
-    downloadTextFile(filename, buildRunExportMarkdown(currentRun, currentRun.source_title || activeMaterialName));
+    const materialName = currentRun.source_title || activeMaterialName;
+    const filename = buildRunExportFilename(currentRun, materialName);
+    downloadTextFile(filename, buildRunExportMarkdown(currentRun, materialName));
     setError("Answer exported locally as Markdown with citations.");
   }
 
@@ -597,7 +600,7 @@ export default function Home() {
     setError("");
     try {
       const markdown = await exportSessionMarkdown(sessionId.trim());
-      const filename = `nirmiq-thread-${sessionId.trim().replace(/[^a-z0-9_-]+/gi, "-").slice(0, 48)}.md`;
+      const filename = buildThreadExportFilename(sessionId.trim());
       downloadTextFile(filename, markdown);
       setError("Thread exported locally as Markdown.");
     } catch (err) {

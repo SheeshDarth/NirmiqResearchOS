@@ -3238,3 +3238,58 @@ Tradeoff:
 
 - Source-derived topic extraction is lexical and lightweight; it does not yet use a semantic topic model.
 - This is intentional for low-end/offline reliability and can be improved later with measured eval data.
+
+### Latest Update: MegaSprint Three Export Polish
+
+Date: 2026-07-11
+
+Purpose:
+
+- Complete MegaSprint Three export polish with predictable filenames, sanitized source labels, and local-first privacy notes.
+- Keep export behavior simple and frontend-driven; no new backend routes or dependencies.
+
+Implemented:
+
+- Added sanitized export labels so Markdown exports do not expose full local paths when a source path leaks into UI state.
+- Added predictable timestamped filenames for answer exports and thread exports.
+- Answer export filenames now include workspace, mode, sanitized source title, and timestamp.
+- Thread export filenames now include sanitized session ID and timestamp.
+- Answer and Paper Lab Markdown exports now include a Local-First Privacy Note.
+- Backend thread Markdown privacy note now explicitly states that full local file paths are intentionally omitted.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+- `python -m pytest apps/api/app/tests/integration/test_ingest_query_flow.py -q`: passed, `4 passed`, `1 warning`.
+- `python -m compileall apps/api/app`: passed.
+
+Tradeoff:
+
+- The backend `Content-Disposition` filename remains simple because the frontend download helper controls the actual browser filename.
+- This avoids unnecessary API churn while giving users cleaner local files.
+
+### Latest Update: MegaSprint Three Closed
+
+Date: 2026-07-11
+
+Status:
+
+- MegaSprint Three core scope is complete and verified.
+
+Completed blocks:
+
+- Paper Lab guardrails.
+- Marks-aware Exam Lab synthesis.
+- Diagram grounding.
+- Study Guide Builder.
+- Export polish.
+
+Verification baseline at closure:
+
+- Backend unit and integration tests: `86 passed`, `1 warning`.
+- API compile: passed.
+- Web production build: passed.
+
+Next recommended sprint:
+
+- Release hardening and real-user QA: desktop smoke test, golden demo walkthrough, README screenshots/GIFs, public packaging notes, and measured retrieval eval refresh.
