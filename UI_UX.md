@@ -399,3 +399,24 @@ UX rationale:
 Verification:
 
 - `npm.cmd run build`: passed.
+
+## 2026-07-11 MegaSprint Two Tap Feedback Polish
+
+Goal:
+
+- Improve perceived responsiveness without adding heavier animation or visual noise.
+
+Implemented:
+
+- Added `touch-action: manipulation` to primary interactive primitives.
+- Added subtle pressed-state transforms to buttons, source preview cards, workspace chips, feedback pills, and clear-link controls.
+- Kept reduced-motion support intact through the existing global reduced-motion rule.
+
+UX rationale:
+
+- ChatGPT-style interfaces feel calm partly because interactions respond immediately and predictably.
+- This strengthens the product feel while preserving NIRMIQ's minimal academic theme.
+
+Verification:
+
+- `npm.cmd run build`: passed.

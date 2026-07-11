@@ -356,3 +356,24 @@ Why this matters:
 
 - A ChatGPT-grade UI is not only simpler visually; it must also be easy to operate repeatedly.
 - This reduces fiddly interactions while preserving the minimized metadata and chat-first layout.
+
+### 2026-07-11 Slice 13: Tap Feedback Polish
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Added `touch-action: manipulation` for core interactive elements.
+- Added subtle pressed-state feedback to chat, source, composer, feedback, and workspace controls.
+- Kept the visual footprint unchanged and avoided adding new controls or metadata.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- The simplified UI should feel reliable when clicked or tapped repeatedly.
+- Immediate press feedback helps the app feel more native without increasing complexity.

@@ -72,6 +72,12 @@ summary {
   -webkit-tap-highlight-color: transparent;
 }
 
+button,
+a,
+summary {
+  touch-action: manipulation;
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -80,6 +86,21 @@ textarea:focus-visible,
 summary:focus-visible {
   outline: 2px solid rgba(184, 106, 60, 0.68);
   outline-offset: 3px;
+}
+
+.button:active:not(:disabled),
+.chip:active:not(:disabled),
+.tab:active:not(:disabled),
+.citation-chip:active:not(:disabled),
+.feedback-button:active:not(:disabled),
+.source-preview-card:active:not(:disabled),
+.quick-action:active:not(:disabled),
+.attach-button:active:not(:disabled),
+.send-button:active:not(:disabled),
+.tool-chip:active:not(:disabled),
+.section-button:active:not(:disabled),
+.clear-link:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
 }
 
 .nirmiq-v2 {

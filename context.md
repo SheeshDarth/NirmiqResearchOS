@@ -3002,3 +3002,26 @@ Tradeoff:
 
 - The bottom composer is marginally taller in its expanded state, but still far smaller than earlier versions.
 - This is UI interaction hardening only; RAG behavior and backend APIs remain unchanged.
+
+### Latest Update: MegaSprint Two Tap Feedback Polish
+
+Date: 2026-07-11
+
+Purpose:
+
+- Make the chat-first shell feel more responsive on touch devices and the desktop app wrapper.
+- Preserve the simple visual design while improving interaction feedback.
+
+Implemented:
+
+- Added `touch-action: manipulation` to buttons, links, and disclosure summaries.
+- Added consistent pressed-state feedback for primary buttons, quick actions, feedback buttons, source preview cards, workspace chips, and clear-link controls.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Tradeoff:
+
+- This is a CSS-only interaction polish pass and does not change layout, routing, RAG, or backend APIs.
+- The transform-based pressed state is intentionally subtle to avoid making the interface feel animated or distracting.
