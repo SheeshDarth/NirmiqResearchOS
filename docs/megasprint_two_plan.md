@@ -440,3 +440,25 @@ Why this matters:
 
 - ChatGPT-grade UI needs to feel stable in phone-width previews and desktop app wrappers.
 - This reduces the chance that the ask box or response area feels cramped near system edges.
+
+### 2026-07-11 MegaSprint Two Closure
+
+Status:
+
+- Closed and build-verified.
+
+Completion summary:
+
+- Chat shell simplified around the answer thread and compact composer.
+- Header, chat thread, and composer were split into focused components.
+- Answer readability, source drawer readability, mobile/source responsiveness, tap feedback, generation status, composer status, and safe-area behavior were polished.
+- Raw retrieval metadata remains hidden from normal UI.
+- Trust state and source inspection remain accessible without dominating the experience.
+
+Final verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Next sprint:
+
+- MegaSprint Three starts from `docs/megasprint_three_plan.md` and focuses on Paper Lab, Exam Lab, diagrams, study guides, and source-grounded exports.

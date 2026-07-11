@@ -505,6 +505,7 @@ Details:
 - [Retrieval evaluation results](docs/retrieval_eval_results.md)
 - [NIRMIQ RAG method](docs/nirmiq_rag_method.md)
 - [MegaSprint Two UX plan](docs/megasprint_two_plan.md)
+- [MegaSprint Three academic workflow plan](docs/megasprint_three_plan.md)
 - [Benchmark report](docs/benchmark_report.md)
 - [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
 - [Engineering problem log and RAG Reliability roadmap](problems_faced.md)

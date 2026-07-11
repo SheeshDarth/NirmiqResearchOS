@@ -169,3 +169,15 @@ Pause and ask for direction if any of these happen:
 - Show local-first privacy statement.
 - Mention known RAG Reliability Phase targets honestly.
 
+
+## 2026-07-11 Sprint Boundary Update
+
+MegaSprint Two is now closed after the chat-first UI simplification, source drawer, answer readability, composer, responsive, and accessibility polish slices were build-verified.
+
+Next active sprint:
+
+- MegaSprint Three: Academic workflow depth.
+- Plan: `docs/megasprint_three_plan.md`.
+- Focus: Paper Lab, Exam Lab, diagram grounding, study guides, and source-grounded exports.
+
+Priority order changes from UI shell polish to academic workflow correctness while keeping the UI simple.
