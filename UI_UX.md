@@ -274,6 +274,27 @@ Verification:
 
 - `npm.cmd run build`: passed.
 
+## 2026-07-11 MegaSprint Two Answer Readability Polish
+
+Goal:
+
+- Make source-grounded answers feel easier to read and less dense without changing backend behavior.
+
+Implemented:
+
+- Reduced answer line measure and refined paragraph rhythm.
+- Added stronger first-paragraph emphasis and clearer heading hierarchy.
+- Improved bullet indentation and mobile answer sizing.
+
+UX rationale:
+
+- NIRMIQ's answers should feel like a clear academic assistant, not a block of extracted text.
+- Presentation cannot fix weak retrieval, but it can make good evidence-backed answers much easier to trust and scan.
+
+Verification:
+
+- `npm.cmd run build`: passed.
+
 ## 2026-07-11 MegaSprint Two Responsive Source Polish
 
 Goal:

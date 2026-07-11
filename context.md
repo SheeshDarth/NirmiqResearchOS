@@ -2954,3 +2954,27 @@ Tradeoff:
 
 - This is CSS-only responsive hardening, not a functional change.
 - Manual browser QA is still recommended for exact 375px/820px/1366px visual checks.
+
+### Latest Update: MegaSprint Two Answer Readability Polish
+
+Date: 2026-07-11
+
+Purpose:
+
+- Make generated answers easier to read without changing answer content, RAG behavior, or backend APIs.
+- Keep the chat surface simple and avoid adding metadata or new controls.
+
+Implemented:
+
+- Tightened the structured answer measure from `72ch` to `68ch`.
+- Improved paragraph spacing, first-paragraph emphasis, heading hierarchy, bullet indentation, and mobile answer sizing.
+- Added safer text wrapping for long academic terms or citation-heavy sentences.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Tradeoff:
+
+- This is a CSS-only readability pass; answer correctness still depends on retrieval and synthesis quality.
+- Manual visual QA remains useful for long textbook answers and study-guide responses.

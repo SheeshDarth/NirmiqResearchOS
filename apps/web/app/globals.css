@@ -1214,31 +1214,45 @@ button.chunk-card:hover {
 
 .structured-answer {
   display: grid;
-  gap: 10px;
-  max-width: 72ch;
+  gap: 11px;
+  max-width: 68ch;
   white-space: normal;
+  text-wrap: pretty;
 }
 
 .structured-answer p {
   margin: 0;
-  font-size: 15.8px;
-  line-height: 1.74;
+  color: rgba(238, 244, 241, 0.9);
+  font-size: 16px;
+  line-height: 1.76;
+  overflow-wrap: anywhere;
+}
+
+.structured-answer > p:first-of-type:not(.answer-bullet) {
+  color: var(--nirmiq-text);
+  font-size: 16.5px;
+  line-height: 1.72;
 }
 
 .answer-heading {
   display: block;
-  margin-top: 12px;
+  margin-top: 14px;
   color: var(--nirmiq-accent-strong);
   font-family: var(--font-heading);
-  font-size: 16px;
-  letter-spacing: -0.03em;
+  font-size: 17px;
+  letter-spacing: -0.035em;
+  line-height: 1.25;
+}
+
+.answer-heading:first-child {
+  margin-top: 0;
 }
 
 .answer-bullet {
   position: relative;
-  padding-left: 18px;
+  padding-left: 20px;
   color: var(--nirmiq-text);
-  line-height: 1.65;
+  line-height: 1.68;
 }
 
 .answer-bullet::before {
@@ -1253,7 +1267,7 @@ button.chunk-card:hover {
 }
 
 .answer-gap {
-  height: 5px;
+  height: 3px;
 }
 
 .study-guide-cards {
@@ -2461,6 +2475,20 @@ button.chunk-card:hover {
   .source-preview-text {
     font-size: 12.5px;
     line-height: 1.6;
+  }
+
+  .structured-answer {
+    max-width: 100%;
+  }
+
+  .structured-answer p,
+  .structured-answer > p:first-of-type:not(.answer-bullet) {
+    font-size: 15.5px;
+    line-height: 1.72;
+  }
+
+  .answer-heading {
+    font-size: 16px;
   }
 
   .bubble {

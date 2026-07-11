@@ -314,3 +314,24 @@ Why this matters:
 
 - The new readable source drawer needs to work on laptop and mobile widths, not just desktop.
 - This keeps the chat flow usable while preserving the hidden-metadata design rule.
+
+### 2026-07-11 Slice 11: Answer Readability Polish
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Tightened answer line length and improved structured answer spacing.
+- Added clearer first-paragraph, heading, and bullet styling.
+- Added mobile-specific answer font sizing and wrapping guards.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- Better retrieval still needs readable presentation; dense answer text can make correct answers feel worse than they are.
+- This keeps the normal chat flow calmer and easier to scan without exposing metadata.
