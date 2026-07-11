@@ -10,29 +10,29 @@
       "mode": "hybrid",
       "samples": 17,
       "target_level": "phrase",
-      "mrr": 0.6750700280112045,
-      "recall@3": 0.8235294117647058,
-      "recall@5": 0.8235294117647058,
-      "recall@8": 0.8823529411764706,
-      "ndcg@3": 0.4771642806385973,
-      "ndcg@5": 0.4771642806385973,
-      "ndcg@8": 0.48918677461439053,
+      "mrr": 0.803921568627451,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@8": 1.0,
+      "ndcg@3": 0.5701838872823112,
+      "ndcg@5": 0.567295097206958,
+      "ndcg@8": 0.567295097206958,
       "citation_presence_rate": 1.0,
-      "citation_expected_coverage": 0.8823529411764706
+      "citation_expected_coverage": 1.0
     },
     "bm25": {
       "mode": "bm25",
       "samples": 17,
       "target_level": "phrase",
-      "mrr": 0.7941176470588235,
-      "recall@3": 0.8823529411764706,
-      "recall@5": 0.8823529411764706,
-      "recall@8": 0.8823529411764706,
-      "ndcg@3": 0.5529755180254637,
-      "ndcg@5": 0.5529755180254637,
-      "ndcg@8": 0.5529755180254637,
+      "mrr": 0.8431372549019607,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@8": 1.0,
+      "ndcg@3": 0.6056342112439933,
+      "ndcg@5": 0.5893240096348729,
+      "ndcg@8": 0.5893240096348729,
       "citation_presence_rate": 1.0,
-      "citation_expected_coverage": 0.8823529411764706
+      "citation_expected_coverage": 1.0
     }
   }
 }

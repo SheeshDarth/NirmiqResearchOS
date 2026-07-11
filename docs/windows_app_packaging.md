@@ -1,6 +1,6 @@
 # NIRMIQ Windows App Packaging
 
-Last updated: 2026-06-20
+Last updated: 2026-07-12
 
 ## Current Recommendation
 
@@ -109,12 +109,14 @@ The shortcut script creates separate entries for normal browser preview, golden-
 
 ## Latest Packaging Validation
 
-Validated on 2026-06-20:
+Validated on 2026-07-12:
 
-- `npm.cmd run desktop:pack`: passed and generated `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
 - `node --check apps\desktop\src\main.js`: passed.
 - `node --check apps\desktop\src\preload.js`: passed.
-- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1`: passed.
+- `npm.cmd run desktop:pack`: passed and generated `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
+- `npm.cmd run desktop:package`: passed and generated `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- Portable artifact size: `71,251,901` bytes.
+- Unpacked app executable size: `180,849,664` bytes.
 
 Hardening notes:
 
@@ -122,6 +124,8 @@ Hardening notes:
 - Portable builds also inspect `PORTABLE_EXECUTABLE_DIR` and `PORTABLE_EXECUTABLE_FILE` to find the repository root.
 - Desktop-launched child process IDs are mirrored under `temp\runtime` so `scripts\stop_local.ps1` can clean them up reliably.
 - Packaging and startup scripts now exit non-zero when npm/native commands fail.
+- Current package uses the default Electron icon because no source-controlled icon asset is available yet.
+- Current portable package is unsigned; code signing is future release work.
 
 ## Full Windows Installer Later
 

@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 
 ## Canonical Problem Log
 
@@ -600,3 +600,24 @@ Validation:
 - `python -m pytest apps/api/app/tests/unit/test_synthesis_query_terms.py -q`: passed, `8 passed`.
 - `python -m compileall apps/api/app`: passed.
 - `npm.cmd run ship:check`: passed with backend tests, web build, publish smoke, grounded golden demo checks, and unsupported-chat abstention.
+
+## 2026-07-12 Release Hardening Eval Refresh
+
+Commands:
+
+```powershell
+npm.cmd run eval:demo
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\eval_real_world.ps1
+```
+
+Results:
+
+- Demo retrieval eval: 30 samples, Hybrid MRR `0.983`, BM25 MRR `0.983`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Real-world retrieval eval: 17 samples, Hybrid MRR `0.804`, BM25 MRR `0.843`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- `data/processed/eval/real_world_retrieval_failures.jsonl` contains no active weak retrieval records after the refresh.
+
+Interpretation:
+
+- The measured retrieval layer is currently healthy on the committed demo set and the small real-world seed.
+- This is still not a broad production accuracy claim; the next accuracy work is expanding labels and testing more textbook, notes, scanned-PDF, exam, and paper cases.
+- BM25 remains the safest offline backbone for attached-source academic queries, with hybrid treated as a secondary signal unless future metrics show stronger first-rank placement.

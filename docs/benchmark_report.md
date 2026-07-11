@@ -103,7 +103,7 @@ Detailed report: `docs/retrieval_eval_results.md`.
 
 ## Real-World Seed Benchmark
 
-Updated on 2026-07-10 with actual local academic material:
+Updated on 2026-07-12 with actual local academic material:
 
 - Dataset: `data/processed/eval/real_world_academic_seed.jsonl`
 - Sources:
@@ -133,6 +133,7 @@ Interpretation:
 - The first reliability slice materially improved the real-world seed, but the set must grow before making broad launch-marketing claims.
 - BM25 remains the safest offline backbone, while hybrid now performs better after direct-answer relevance was weighted more heavily during candidate ordering.
 - Two real-world labels were corrected because source-valid evidence was being missed by OCR/wording-damaged expected phrases.
+- The 2026-07-12 refresh produced no active weak retrieval records in `data/processed/eval/real_world_retrieval_failures.jsonl`.
 
 ## 2026-07-11 Ship Gate Refresh
 

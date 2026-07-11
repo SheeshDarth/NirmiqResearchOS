@@ -198,7 +198,7 @@ Latest MegaSprint One reliability update:
 
 What is being improved next:
 
-- Grow real-world eval labels from `16` to at least `40`.
+- Grow real-world eval labels from `17` to at least `40`.
 - Convert saved `Needs work` feedback into local eval candidates.
 - Expand the query-agnostic category eval set with real textbook, notes, paper, and exam cases.
 - Continue improving textbook-aware retrieval metadata: chapter, section, heading, page range, captions, definitions, and key terms.
@@ -525,6 +525,8 @@ Latest phrase-level real-world retrieval result:
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | BM25 | 17 | 0.843 | 1.000 | 1.000 | 1.000 | 1.000 |
 | Hybrid | 17 | 0.804 | 1.000 | 1.000 | 1.000 | 1.000 |
+
+Latest refresh: 2026-07-12. The current failure log contains no active weak retrieval records on this 17-sample seed.
 
 Run:
 

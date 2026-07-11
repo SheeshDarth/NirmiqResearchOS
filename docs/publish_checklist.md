@@ -204,7 +204,7 @@ python scripts/eval_retrieval.py --dataset data/processed/eval/qa_labels.jsonl -
 
 ## Latest Ship Gate Result
 
-Validated on 2026-06-20:
+Validated on 2026-07-11:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1
@@ -212,12 +212,20 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1
 
 Result:
 
-- Backend unit/integration tests: `41 passed, 1 warning`.
+- Backend unit/integration tests: `89 passed, 1 warning`.
 - API compile: passed.
-- Web production build: passed, `/` first-load JS about `115 kB`.
+- Web production build: passed.
 - Publish smoke: passed.
 - Golden demo: Research, summary-style Research, Exam Lab, and Paper Lab returned grounded citations.
 - Golden demo unsupported Chat query: passed with `grounded=false` and `citations=0`.
+
+Release-hardening refresh on 2026-07-12:
+
+- `npm.cmd run desktop:pack`: passed.
+- `npm.cmd run desktop:package`: passed.
+- `npm.cmd run eval:demo`: passed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\eval_real_world.ps1`: passed.
+- Real-world failure log currently has no active weak retrieval records on the 17-sample seed.
 
 Current known release debt:
 

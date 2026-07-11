@@ -1,6 +1,6 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
@@ -3324,3 +3324,35 @@ Validation:
 Tradeoff:
 
 - The scoring change is intentionally narrow to privacy/local-first control language; it does not lower global evidence thresholds.
+
+### Latest Update: Release Hardening Packaging And Eval Refresh
+
+Date: 2026-07-12
+
+Purpose:
+
+- Continue release hardening after MegaSprint Three closure.
+- Verify the Windows desktop package path.
+- Refresh retrieval evidence on both demo and harder real-world eval sets.
+
+Verification:
+
+- `node --check apps\desktop\src\main.js`: passed.
+- `node --check apps\desktop\src\preload.js`: passed.
+- `npm.cmd run desktop:pack`: passed.
+- `npm.cmd run desktop:package`: passed.
+- Portable Windows app refreshed at `dist\desktop\NIRMIQ ResearchOS 0.1.0.exe` (`71,251,901` bytes).
+- Unpacked Windows app refreshed at `dist\desktop\win-unpacked\NIRMIQ ResearchOS.exe` (`180,849,664` bytes).
+- `npm.cmd run eval:demo`: passed on 30 samples. Hybrid and BM25 both reached MRR `0.983`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\eval_real_world.ps1`: passed on 17 real-world samples.
+- Real-world retrieval refresh:
+  - Hybrid: MRR `0.804`, Recall@8 `1.000`, citation expected coverage `1.000`.
+  - BM25: MRR `0.843`, Recall@8 `1.000`, citation expected coverage `1.000`.
+  - `data\processed\eval\real_world_retrieval_failures.jsonl` now contains no active weak retrieval records.
+
+Release notes:
+
+- The desktop EXE is a release artifact under ignored `dist\desktop`; it is not committed to Git.
+- Electron Builder still reports that the default Electron icon is used because no committed `.ico`, `.png`, or `.svg` logo asset exists in source-controlled paths.
+- The portable EXE is unsigned. Code signing remains future release work, not an MVP blocker.
+- `deep-research-report.md` remains untracked and was intentionally preserved.

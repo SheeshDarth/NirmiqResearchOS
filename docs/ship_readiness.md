@@ -94,7 +94,7 @@ Recommended proof assets:
 - Add optional local log bundle export instead of cloud error tracking.
 - Add hosted-auth design only if public multi-user deployment becomes a goal.
 
-## 2026-07-11 Ship Gate Refresh
+## 2026-07-12 Release Hardening Refresh
 
 Current release gate status:
 
@@ -103,5 +103,9 @@ Current release gate status:
 - Web build: passed.
 - Publish smoke: passed.
 - Golden demo: passed, including unsupported-chat abstention.
+- `npm.cmd run desktop:pack`: passed.
+- `npm.cmd run desktop:package`: passed and refreshed `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
+- `npm.cmd run eval:demo`: passed with MRR `0.983` and Recall@8 `1.000` for both Hybrid and BM25.
+- `scripts\eval_real_world.ps1`: passed with BM25 MRR `0.843`, Hybrid MRR `0.804`, Recall@8 `1.000`, and no active weak retrieval records.
 
-The project remains positioned as a local-first portfolio/demo MVP. Next release-hardening priorities are desktop smoke verification, README screenshots/GIFs, and retrieval eval refresh on the harder real-world seed.
+The project remains positioned as a local-first portfolio/demo MVP. Remaining release-hardening priorities are live README screenshots/GIFs, a larger real-world eval set, signed/icon-branded desktop packaging, and manual desktop-app smoke QA.

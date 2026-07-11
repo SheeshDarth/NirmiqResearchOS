@@ -1,6 +1,6 @@
 # Answer-Used Citation Backlog
 
-Last updated: 2026-07-07
+Last updated: 2026-07-12
 
 Source files:
 
@@ -13,14 +13,14 @@ Purpose: track where raw retrieval finds evidence, but the final answer/citation
 
 ## Current Snapshot
 
-Raw retrieval after the first reliability slice:
+Raw retrieval after the 2026-07-12 release-hardening refresh:
 
 | Mode | MRR | Recall@8 | Citation expected coverage | Weak records |
 | --- | ---: | ---: | ---: | ---: |
-| Hybrid | 0.655 | 0.875 | 0.875 | 3 |
-| BM25 | 0.781 | 0.875 | 0.875 | 2 |
+| Hybrid | 0.804 | 1.000 | 1.000 | 0 |
+| BM25 | 0.843 | 1.000 | 1.000 | 0 |
 
-Full-query answer path after synthesis query-term expansion:
+Full-query answer path after synthesis query-term expansion, not rerun in the 2026-07-12 packaging/eval refresh:
 
 | Mode | MRR | Recall@8 | Citation expected coverage | Weak records |
 | --- | ---: | ---: | ---: | ---: |
@@ -29,14 +29,14 @@ Full-query answer path after synthesis query-term expansion:
 
 Interpretation:
 
-- Raw retrieval improved substantially.
-- The final answer/citation layer now matches raw BM25 citation coverage on the current 16-sample seed.
-- Hybrid full-query still trails hybrid raw retrieval slightly, so answer-used citation selection remains active work.
-- The next broad accuracy gain should come from a larger eval set and the remaining OCR/section-overview failures, not model escalation.
+- Raw retrieval is currently healthy on the 17-sample seed.
+- The full-query answer/citation layer still needs a separate refresh before closing this backlog.
+- Hybrid full-query previously trailed raw retrieval, so answer-used citation selection remains active work until revalidated.
+- The next broad accuracy gain should come from a larger eval set and full-query citation selection, not model escalation.
 
-## Current Full-Query Misses
+## Last Full-Query Misses
 
-The current full-query failure log contains `5` missed-at-8 records:
+The last full-query failure log contains `5` missed-at-8 records:
 
 - `paper-transformer-001`
 - `paper-transformer-004`
@@ -77,7 +77,7 @@ Fix direction:
 
 ## Next Fix Order
 
-1. Expand the real-world eval set from `16` toward `40`.
+1. Expand the real-world eval set from `17` toward `40`.
 2. Add OCR/mojibake normalization during parsing so privacy/safety notes are easier to retrieve and cite.
 3. Improve fallback sentence scoring for hybrid mode when the best evidence is below the first cited chunk.
-4. Re-run full-query eval and target citation expected coverage from `0.875` to `0.900+`.
+4. Re-run full-query eval and target citation expected coverage at or above `0.900`.

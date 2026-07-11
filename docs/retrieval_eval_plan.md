@@ -37,7 +37,7 @@ Baseline before reliability work:
 - Start with local textbooks, lecture notes, papers, and exam PDFs.
 - Use `data/processed/eval/query_agnostic_rag_categories.jsonl` as the first query-category seed instead of mandatory hand-picked regression prompts.
 - Cover definitions, explanations, comparisons, procedures, limitations, image/diagram requests, summaries, exam answers, paper drafting, and unanswerable prompts.
-- Grow the real-world eval labels from `16` to at least `40` in the first reliability pass.
+- Grow the real-world eval labels from `17` to at least `40` in the first reliability pass.
 - Convert repeated `Needs work` feedback into candidate eval records.
 - Build 40-80 manually labeled QA pairs with expected source chunks, pages, or evidence phrases.
 - Store labels in local JSONL under `data/processed/eval/`.

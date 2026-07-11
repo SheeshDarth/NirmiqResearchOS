@@ -1,10 +1,10 @@
 ﻿# Retrieval Evaluation Results
 
-Date: 2026-07-10
+Date: 2026-07-12
 
 ## MegaSprint One Query-Category Eval Seed
 
-Date: 2026-07-10
+Date: 2026-07-12
 
 Dataset:
 
@@ -118,6 +118,8 @@ The real-world script now also writes weak retrieval records to:
 ```text
 data/processed/eval/real_world_retrieval_failures.jsonl
 ```
+
+Latest refresh note: the 2026-07-12 run produced no active weak retrieval records on the current 17-sample seed.
 
 Human-readable analysis lives in [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md).
 
