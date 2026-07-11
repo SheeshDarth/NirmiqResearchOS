@@ -3074,3 +3074,28 @@ Tradeoff:
 
 - The composer text changes more often during busy states, but this is intentional clarity and does not add new controls.
 - No backend, RAG, public API, or persisted state behavior changed.
+
+### Latest Update: MegaSprint Two Safe-Area Responsive Polish
+
+Date: 2026-07-11
+
+Purpose:
+
+- Make the chat-first shell safer on mobile-width views, browser chrome, and desktop app wrappers.
+- Prevent the bottom composer and thread gutters from crowding device safe areas without changing the product flow.
+
+Implemented:
+
+- Added safe-area-aware horizontal padding to the chat thread scroll area.
+- Added safe-area-aware bottom and side padding to the composer wrapper.
+- Preserved the compact collapsed composer behavior while respecting bottom safe-area insets.
+- Kept this as CSS-only UI hardening with no new controls or metadata.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Tradeoff:
+
+- On devices with non-zero safe-area insets, the composer may gain a little extra breathing room.
+- No backend, RAG, public API, or persisted state behavior changed.

@@ -462,3 +462,24 @@ UX rationale:
 Verification:
 
 - `npm.cmd run build`: passed.
+
+## 2026-07-11 MegaSprint Two Safe-Area Responsive Polish
+
+Goal:
+
+- Improve responsive comfort without altering the simplified chat interface.
+
+Implemented:
+
+- Added safe-area-aware side gutters to the chat scroll region.
+- Added safe-area-aware side and bottom padding to the composer wrapper.
+- Preserved the compact/minimized composer behavior.
+
+UX rationale:
+
+- The composer is the primary action surface, so it must not collide with browser/app chrome or mobile safe areas.
+- This keeps the app feeling calm and native while staying visually minimal.
+
+Verification:
+
+- `npm.cmd run build`: passed.

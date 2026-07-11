@@ -419,3 +419,24 @@ Why this matters:
 
 - Uploading and indexing can take time locally, and users need to know the app is working.
 - This improves first-run confidence while keeping the ChatGPT-like composer compact.
+
+### 2026-07-11 Slice 16: Safe-Area Responsive Polish
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Added safe-area-aware padding to the chat thread and composer.
+- Protected the compact bottom composer from OS/browser chrome crowding.
+- Kept layout, controls, metadata visibility, and backend behavior unchanged.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- ChatGPT-grade UI needs to feel stable in phone-width previews and desktop app wrappers.
+- This reduces the chance that the ask box or response area feels cramped near system edges.
