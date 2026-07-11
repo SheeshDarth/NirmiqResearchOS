@@ -3049,3 +3049,28 @@ Tradeoff:
 
 - The chat thread briefly gains one extra visual bubble during generation, but it disappears after the answer is returned.
 - No backend, RAG, API, or persisted state behavior changed.
+
+### Latest Update: MegaSprint Two Composer Status Clarity
+
+Date: 2026-07-11
+
+Purpose:
+
+- Make the bottom composer clearly communicate local workflow state during upload, indexing, demo loading, and answer generation.
+- Reduce user uncertainty without adding another visible panel or exposing metadata.
+
+Implemented:
+
+- Derived compact composer status labels from existing `busy` state: `Uploading`, `Reading`, `Loading`, or `Using`.
+- Replaced the static `Using` label with live source/status text such as `Indexing your upload...` and `Checking selected sources...`.
+- Added `aria-live="polite"` to the composer source status.
+- Added a subtle working dot style for active upload/query/demo states.
+
+Validation:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Tradeoff:
+
+- The composer text changes more often during busy states, but this is intentional clarity and does not add new controls.
+- No backend, RAG, public API, or persisted state behavior changed.

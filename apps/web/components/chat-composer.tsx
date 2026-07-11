@@ -97,6 +97,19 @@ export function ChatComposer({
   workspaceSection,
 }: ChatComposerProps) {
   const requestUpload = () => uploadInputRef.current?.click();
+  const sourceStatusLabel =
+    busy === "ingest" ? "Uploading" : busy === "query" ? "Reading" : busy === "demo" ? "Loading" : "Using";
+  const sourceStatusText =
+    busy === "ingest"
+      ? "Indexing your upload..."
+      : busy === "query"
+        ? "Checking selected sources..."
+        : busy === "demo"
+          ? "Preparing demo material..."
+          : hasSelectedDocument
+            ? activeMaterialName
+            : "No material attached";
+  const sourceDotState = busy === "ingest" || busy === "query" || busy === "demo" ? "working" : hasSelectedDocument ? "ok" : "";
 
   return (
     <form className={cx("composer-wrap", composerCollapsed && "collapsed")} ref={queryFormRef} onSubmit={onQuery}>
@@ -109,11 +122,11 @@ export function ChatComposer({
           type="file"
         />
         <div className="source-cockpit">
-          <div className="source-status">
-            <span className={cx("source-dot", hasSelectedDocument && "ok")} />
+          <div className="source-status" aria-live="polite">
+            <span className={cx("source-dot", sourceDotState)} />
             <div>
-              <span className="source-label">Using</span>
-              <strong>{hasSelectedDocument ? activeMaterialName : "No material attached"}</strong>
+              <span className="source-label">{sourceStatusLabel}</span>
+              <strong>{sourceStatusText}</strong>
             </div>
           </div>
           <div className="source-actions">

@@ -441,3 +441,24 @@ UX rationale:
 Verification:
 
 - `npm.cmd run build`: passed.
+
+## 2026-07-11 MegaSprint Two Composer Status Clarity
+
+Goal:
+
+- Make local upload/query state obvious from the composer itself.
+
+Implemented:
+
+- Composer now shows `Uploading`, `Reading`, `Loading`, or `Using` based on existing busy state.
+- Status text explains the current action in plain language without file paths, scores, or debug metadata.
+- Added a subtle working dot and polite live-region semantics.
+
+UX rationale:
+
+- A local-first app can feel broken if indexing or generation takes a few seconds with no clear status.
+- The composer is the user's main control surface, so it should calmly explain what is happening.
+
+Verification:
+
+- `npm.cmd run build`: passed.

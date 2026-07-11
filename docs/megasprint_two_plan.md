@@ -398,3 +398,24 @@ Why this matters:
 
 - Users should not wonder whether the app froze after pressing Ask.
 - A small in-thread pending state makes NIRMIQ feel closer to a familiar chatbot while preserving the academic grounding model.
+
+### 2026-07-11 Slice 15: Composer Status Clarity
+
+Status:
+
+- Completed and build-verified.
+
+Implemented:
+
+- Added live composer status labels for upload, query, demo loading, and normal source selection.
+- Added polite live-region semantics to the composer source status.
+- Added a subtle working source dot for active local operations.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.
+
+Why this matters:
+
+- Uploading and indexing can take time locally, and users need to know the app is working.
+- This improves first-run confidence while keeping the ChatGPT-like composer compact.

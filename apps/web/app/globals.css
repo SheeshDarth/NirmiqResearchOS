@@ -1771,6 +1771,12 @@ button.chunk-card:hover {
   animation: sourceReadyPulse 900ms var(--motion-curve) 1;
 }
 
+.source-dot.working {
+  background: var(--nirmiq-accent-strong);
+  box-shadow: 0 0 0 4px rgba(184, 106, 60, 0.14);
+  animation: sourceReadyPulse 900ms var(--motion-curve) infinite;
+}
+
 .source-label {
   display: block;
   color: var(--nirmiq-text-subtle);
