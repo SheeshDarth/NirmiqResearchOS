@@ -315,3 +315,15 @@ Diagram/image requests now follow the same local-first evidence rule as text ans
 - Citation coverage treats diagram availability notes as metadata/source notes rather than unsupported answer claims.
 
 No new storage engine, model dependency, or public API request change was added.
+
+## 2026-07-11 MegaSprint Three Study Guide Backend Update
+
+Study Guide generation now has a deterministic local builder:
+
+- Question-bank guides rank imported questions by retrieved source overlap and marks weight.
+- Source-only guides derive high-yield questions from repeated source terms and retrieved topic density.
+- Study-guide fallback output uses `Q1.` headings so the existing frontend can render expandable cards.
+- Selected-document guide requests can use document-scope fallback evidence when the user asks a generic guide prompt.
+- Citation coverage treats guide helper text as structure rather than uncited factual claims.
+
+No new model dependency, cloud API, database, or public request shape was added.

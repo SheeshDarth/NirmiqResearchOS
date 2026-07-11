@@ -56,6 +56,7 @@ def _is_claim_like(sentence: str) -> bool:
             "if you want",
             "open sources",
             "where this came from",
+            "why this matters",
             "study takeaway",
             "trust note",
             "diagram note",

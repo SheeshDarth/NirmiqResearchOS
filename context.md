@@ -3210,3 +3210,31 @@ Tradeoff:
 
 - This slice references extracted/source diagram assets but does not interpret image contents.
 - That is intentional for local-first reliability; deeper image understanding should wait until there is a measured offline vision path.
+
+### Latest Update: MegaSprint Three Study Guide Builder
+
+Date: 2026-07-11
+
+Purpose:
+
+- Continue MegaSprint Three by making Study Guide generation useful with or without an imported question bank.
+- Keep the output source-grounded, readable, and compatible with the existing expandable study-guide UI.
+
+Implemented:
+
+- `study_guide` mode now always routes to the study-guide fallback when local generation is unavailable or rejected.
+- Imported question banks are ranked by overlap with retrieved source evidence and marks weight.
+- When no question bank exists, NIRMIQ derives high-yield study questions from repeated source terms and retrieved topic density.
+- Study-guide sections now include `Q1.` style headings, concise evidence bullets, and clear evidence warnings when support is missing.
+- Selected-document study guides may proceed from one readable document-scope fallback chunk even when the generic guide query has low BM25 score.
+- Citation coverage now treats `Why this matters` helper lines as structure, not uncited claims.
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit/test_synthesis_faithfulness.py apps/api/app/tests/integration/test_exam_lab_flow.py -q`: passed, `20 passed`, `1 warning`.
+- `python -m compileall apps/api/app`: passed.
+
+Tradeoff:
+
+- Source-derived topic extraction is lexical and lightweight; it does not yet use a semantic topic model.
+- This is intentional for low-end/offline reliability and can be improved later with measured eval data.

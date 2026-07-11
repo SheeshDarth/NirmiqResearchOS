@@ -97,6 +97,41 @@ def test_exam_lab_profile_question_bank_and_diagram_contracts(tmp_path: Path) ->
         assert "No source diagram was available" in diagram_query_body["answer"]
         assert diagram_query_body["retrieval_meta"]["exam_context"]["diagram_count"] == 0
 
+        guide_sample = tmp_path / "guide_notes.txt"
+        guide_sample.write_text(
+            (
+                "Retrieval quality depends on matching queries to relevant chunks. "
+                "Grounded synthesis uses citations to keep answers tied to evidence. "
+                "When evidence is weak, the system should abstain instead of hallucinating."
+            ),
+            encoding="utf-8",
+        )
+        guide_ingest_response = client.post(
+            "/ingest",
+            json={"source_path": str(guide_sample), "title": "Guide Notes", "mime_type": "text/plain"},
+        )
+        assert guide_ingest_response.status_code == 200
+        guide_document_id = guide_ingest_response.json()["document_id"]
+
+        source_topic_guide_response = client.post(
+            "/query",
+            json={
+                "session_id": "guide-session-no-bank",
+                "document_id": guide_document_id,
+                "query": "Generate a study guide from this material.",
+                "mode": "study_guide",
+                "retrieval_mode": "bm25",
+                "retrieval_profile": "precision",
+                "debug": True,
+            },
+        )
+        assert source_topic_guide_response.status_code == 200
+        source_topic_guide_body = source_topic_guide_response.json()
+        assert source_topic_guide_body["grounded"] is True
+        assert "Study guide" in source_topic_guide_body["answer"]
+        assert "Q1." in source_topic_guide_body["answer"]
+        assert "No imported questions" not in source_topic_guide_body["answer"]
+
         diagram_response = client.post(
             "/exam/diagrams/extract",
             json={"document_id": document_id, "force": True},

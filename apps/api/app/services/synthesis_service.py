@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 
 from app.adapters.llm.generator import Generator
 from app.core.config import Settings
@@ -126,7 +127,10 @@ class SynthesisService:
         )
         context_relevance = self._context_relevance(query=relevance_query, bundle=bundle)
         strict_relevance_required = response_mode.strip().lower() == "general_chat" or not overview_query
-        low_score_overview = grounding_state == "weak" and overview_query and citation_count >= 2
+        low_score_overview = grounding_state == "weak" and overview_query and (
+            citation_count >= 2
+            or (response_mode.strip().lower() == "study_guide" and citation_count >= 1)
+        )
         if low_score_overview:
             grounding_state = "moderate"
         answer_relevance_state = str(context_relevance.get("answer_relevance_state") or "unknown")
@@ -511,6 +515,12 @@ class SynthesisService:
         exam_context: dict[str, object] | None = None,
     ) -> str:
         mode = response_mode.strip().lower()
+        if mode == "study_guide":
+            return SynthesisService._fallback_study_guide(
+                query=query,
+                context_chunks=context_chunks,
+                exam_context=exam_context or {"questions": [], "diagrams": []},
+            )
         if SynthesisService._is_document_overview_query(query, response_mode):
             return SynthesisService._fallback_document_summary(
                 query=query,
@@ -525,8 +535,6 @@ class SynthesisService:
                 exam_profile=exam_profile,
                 exam_context=exam_context,
             )
-        if mode == "study_guide" and exam_context and exam_context.get("questions"):
-            return SynthesisService._fallback_study_guide(context_chunks=context_chunks, exam_context=exam_context)
         if SynthesisService._is_list_or_algorithm_query(query):
             return SynthesisService._fallback_list_answer(
                 query=query,
@@ -712,23 +720,39 @@ class SynthesisService:
 
     @staticmethod
     def _fallback_study_guide(
-        context_chunks: list[tuple[int, str]], exam_context: dict[str, object]
+        query: str,
+        context_chunks: list[tuple[int, str]],
+        exam_context: dict[str, object],
     ) -> str:
         questions = [item for item in exam_context.get("questions", []) if isinstance(item, dict)]
         diagrams = [item for item in exam_context.get("diagrams", []) if isinstance(item, dict)]
-        if not questions:
-            return "Study guide from the retrieved passages:\n- No imported questions were available."
+        guide_items = (
+            SynthesisService._rank_question_bank_items(questions, context_chunks=context_chunks)
+            if questions
+            else SynthesisService._source_topic_study_questions(query=query, context_chunks=context_chunks)
+        )
+        if not guide_items:
+            return "Study guide from the retrieved passages:\n- The retrieved passages did not contain enough readable source text to build a safe study guide."
 
-        sections = ["Study guide from imported questions and retrieved passages:"]
-        for index, item in enumerate(questions[:8], start=1):
+        title = (
+            "Study guide from imported questions and retrieved passages:"
+            if questions
+            else "Study guide from retrieved source topics:"
+        )
+        sections = [title]
+        for index, item in enumerate(guide_items[:8], start=1):
             question = str(item.get("question") or f"Question {index}")
             marks = item.get("marks")
-            terms = SynthesisService._query_terms(question)
-            evidence = SynthesisService._best_evidence_sentences(context_chunks, terms, limit=2)
+            raw_terms = item.get("terms")
+            terms = set(raw_terms) if isinstance(raw_terms, set) else SynthesisService._query_terms(question)
+            evidence = SynthesisService._best_evidence_sentences(context_chunks, terms, limit=3)
             mark_label = f" ({marks} marks)" if marks else ""
-            sections.append(f"\nQ{index}. {question}{mark_label}")
+            importance = item.get("importance")
+            importance_label = f" - {importance}" if importance else ""
+            sections.append(f"\nQ{index}. {question}{mark_label}{importance_label}")
             if evidence:
-                sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in evidence)
+                sections.append("- Why this matters: this topic appears in the retrieved source material and has direct supporting evidence.")
+                sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in evidence[:3])
             else:
                 sections.append("- The retrieved passages did not contain enough readable support for this question.")
 
@@ -741,6 +765,119 @@ class SynthesisService:
         else:
             sections.append("\nSource diagrams: no extracted diagram assets are available yet.")
         return "\n".join(sections)
+
+    @staticmethod
+    def _rank_question_bank_items(
+        questions: list[dict[str, object]],
+        *,
+        context_chunks: list[tuple[int, str]],
+    ) -> list[dict[str, object]]:
+        scored: list[tuple[float, int, dict[str, object]]] = []
+        combined_text = " ".join(SynthesisService._context_text(block).lower() for _, block in context_chunks[:8])
+        for index, item in enumerate(questions[:40]):
+            question = str(item.get("question") or "").strip()
+            if not question:
+                continue
+            terms = SynthesisService._query_terms(question)
+            overlap = sum(1 for term in terms if term in combined_text)
+            marks = item.get("marks")
+            try:
+                marks_score = min(int(marks or 0), 15) / 15
+            except (TypeError, ValueError):
+                marks_score = 0.0
+            score = overlap + marks_score
+            enriched = {
+                **item,
+                "terms": terms,
+                "importance": "question-bank priority" if overlap else "question-bank item",
+            }
+            scored.append((score, -index, enriched))
+        return [item for _, _, item in sorted(scored, key=lambda row: (row[0], row[1]), reverse=True)[:12]]
+
+    @staticmethod
+    def _source_topic_study_questions(
+        *,
+        query: str,
+        context_chunks: list[tuple[int, str]],
+    ) -> list[dict[str, object]]:
+        topic_counts: Counter[str] = Counter()
+        topic_pages: dict[str, set[int]] = {}
+        generic = {
+            "answer",
+            "chapter",
+            "data",
+            "example",
+            "examples",
+            "figure",
+            "figures",
+            "image",
+            "images",
+            "introduction",
+            "learning",
+            "material",
+            "model",
+            "models",
+            "page",
+            "problem",
+            "section",
+            "source",
+            "study",
+            "system",
+            "training",
+        }
+        query_terms = SynthesisService._query_terms(query)
+        for anchor, block in context_chunks[:10]:
+            text = SynthesisService._context_text(block)
+            tokens = [
+                token
+                for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{3,}", text.lower())
+                if token not in _QUERY_STOPWORDS and token not in generic
+            ]
+            for token in tokens:
+                if len(token) < 4 or token.isdigit():
+                    continue
+                topic_counts[token] += 1 + (2 if token in query_terms else 0)
+                topic_pages.setdefault(token, set()).add(anchor)
+
+            for phrase in re.findall(r"\b[A-Z][A-Za-z0-9+-]+(?:\s+[A-Z][A-Za-z0-9+-]+){0,3}\b", text):
+                normalized = phrase.strip().lower()
+                if len(normalized.split()) > 4 or normalized in generic:
+                    continue
+                if any(part.lower() in _QUERY_STOPWORDS for part in normalized.split()):
+                    continue
+                topic_counts[normalized] += 2
+                topic_pages.setdefault(normalized, set()).add(anchor)
+
+        ranked_topics = [
+            topic
+            for topic, _ in sorted(
+                topic_counts.items(),
+                key=lambda item: (len(topic_pages.get(item[0], set())), item[1], len(item[0])),
+                reverse=True,
+            )
+            if topic_counts[topic] >= 2
+        ]
+
+        questions: list[dict[str, object]] = []
+        seen_roots: set[str] = set()
+        for topic in ranked_topics:
+            root = topic.lower().rstrip("s")
+            if root in seen_roots:
+                continue
+            seen_roots.add(root)
+            display_topic = " ".join(part.capitalize() if part.isupper() else part for part in topic.split())
+            question = f"Explain {display_topic} using the source material."
+            questions.append(
+                {
+                    "question": question,
+                    "marks": None,
+                    "terms": SynthesisService._query_terms(question) | {topic.lower()},
+                    "importance": "high-yield source topic",
+                }
+            )
+            if len(questions) >= 8:
+                break
+        return questions
 
     @staticmethod
     def _fallback_exam_answer(
@@ -1852,7 +1989,7 @@ class SynthesisService:
     @staticmethod
     def _is_document_overview_query(query: str, response_mode: str) -> bool:
         mode = response_mode.strip().lower()
-        if mode == "summary":
+        if mode in {"summary", "study_guide"}:
             return True
         normalized = query.strip().lower()
         if not normalized:

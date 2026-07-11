@@ -266,3 +266,28 @@ Why this matters:
 
 - Diagram requests were a hallucination risk because generic language models can imply visuals exist.
 - NIRMIQ now grounds visual references in extracted local assets or abstains clearly.
+
+### 2026-07-11 Block 5 Slice: Study Guide Builder
+
+Status:
+
+- Completed and backend-verified.
+
+Implemented:
+
+- Study Guide mode now has a deterministic fallback builder for both imported question banks and source-only material.
+- Imported questions are ranked by source overlap and marks weight.
+- Source-only guides derive high-yield questions from repeated retrieved terms and topic density.
+- The output remains compatible with the existing expandable `Q1.` card parser.
+- Generic selected-document guide requests can proceed from readable document-scope fallback evidence instead of being blocked by zero BM25 score.
+- Citation coverage ignores structural `Why this matters` helper lines.
+
+Verification:
+
+- `python -m pytest apps/api/app/tests/unit/test_synthesis_faithfulness.py apps/api/app/tests/integration/test_exam_lab_flow.py -q`: passed.
+- `python -m compileall apps/api/app`: passed.
+
+Why this matters:
+
+- Students should not need to import a question bank before getting a useful study guide.
+- This improves offline usefulness while preserving the rule that answers must come from uploaded material.

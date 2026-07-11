@@ -592,3 +592,15 @@ Added lightweight source-grounded diagram behavior:
 - Added unit and integration tests for missing diagrams, available diagram notes, and local path redaction.
 
 This keeps diagram support useful without adding heavy vision models or cluttering the UI.
+
+## 2026-07-11 MegaSprint Three Implementation Note: Study Guide Builder
+
+Added deterministic Study Guide fallback behavior:
+
+- `study_guide` mode now routes through the study-guide builder before generic summary fallback.
+- Added ranking for imported question-bank items using source overlap and marks weight.
+- Added source-topic question generation from retrieved text when no question bank exists.
+- Added selected-document low-score allowance for study-guide overview requests with at least one readable chunk.
+- Added unit and integration tests for question-bank and no-question-bank guide generation.
+
+This improves academic workflow usefulness without adding UI controls or heavy dependencies.

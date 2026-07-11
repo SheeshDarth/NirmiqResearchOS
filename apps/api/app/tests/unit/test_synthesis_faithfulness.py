@@ -378,6 +378,86 @@ def test_missing_diagram_note_overrides_unsupported_diagram_wording() -> None:
     assert "No source diagram was available" in answer
 
 
+def test_study_guide_fallback_derives_topics_without_question_bank() -> None:
+    service = SynthesisService(
+        settings=_settings(),
+        policy=RetrievalPolicy(min_grounding_score=0.1),
+        generator=FakeGenerator(""),  # type: ignore[arg-type]
+    )
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="guide-1",
+                document_id="doc-1",
+                text=(
+                    "Retrieval augmented generation combines retrieval with grounded synthesis. "
+                    "Grounded synthesis uses retrieved passages to keep answers tied to evidence. "
+                    "Citation coverage helps students verify which source passages support an answer."
+                ),
+                score=1.0,
+                page_start=4,
+                page_end=4,
+                source="bm25",
+            ),
+            RetrievedChunk(
+                chunk_id="guide-2",
+                document_id="doc-1",
+                text=(
+                    "Retrieval quality depends on matching the query to relevant chunks. "
+                    "When evidence is weak, the system should abstain instead of hallucinating."
+                ),
+                score=0.9,
+                page_start=5,
+                page_end=5,
+                source="bm25",
+            ),
+        ],
+        meta={},
+    )
+
+    answer, grounded, meta = asyncio.run(
+        service.synthesize(
+            query="Generate a comprehensive study guide from this material.",
+            bundle=bundle,
+            response_mode="study_guide",
+            exam_context={"questions": [], "diagrams": []},
+        )
+    )
+
+    assert grounded is True
+    assert "Study guide from retrieved source topics" in answer
+    assert "Q1." in answer
+    assert "Why this matters" in answer
+    assert "No imported questions" not in answer
+    assert meta["citation_coverage"] >= 0.6
+
+
+def test_question_bank_study_guide_prioritizes_supported_questions() -> None:
+    context_chunks = [
+        (
+            1,
+            "[1] doc=doc-1 score=1.000 source=bm25 pages=1-1\n"
+            "Retrieval augmented generation retrieves evidence before grounded synthesis. "
+            "Citation coverage helps verify answers.",
+        )
+    ]
+    guide = SynthesisService._fallback_study_guide(
+        query="Generate a study guide.",
+        context_chunks=context_chunks,
+        exam_context={
+            "questions": [
+                {"question": "Explain unrelated payment analytics.", "marks": 10},
+                {"question": "Explain retrieval augmented generation.", "marks": 5},
+            ],
+            "diagrams": [],
+        },
+    )
+
+    assert "Q1. Explain retrieval augmented generation." in guide
+    assert "question-bank priority" in guide
+    assert "Citation coverage" in guide or "retrieves evidence" in guide
+
+
 def test_diagram_request_references_available_source_diagrams() -> None:
     service = SynthesisService(
         settings=_settings(),

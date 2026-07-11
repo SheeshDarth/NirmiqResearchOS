@@ -263,3 +263,15 @@ New technical requirements now satisfied:
 - The implementation must remain lightweight and offline-first.
 
 Validated with synthesis unit tests, Exam Lab integration tests, and API compile.
+
+## 2026-07-11 MegaSprint Three Study Guide Requirements Update
+
+New technical requirements now satisfied:
+
+- Study Guide mode must work with imported question banks and with source-only material.
+- Source-only guides must derive questions from uploaded/retrieved content rather than generic templates.
+- Imported question-bank items should be prioritized by source support and marks weight.
+- Broad selected-document study-guide requests may use document-scope fallback chunks safely.
+- Normal UI should continue rendering guides through existing expandable cards.
+
+Validated with synthesis unit tests, Exam Lab integration tests, and API compile.
