@@ -3124,3 +3124,32 @@ Next sprint focus:
 - Improve academic workflows without reintroducing UI complexity.
 - Keep every paper/exam/study-guide output source-grounded or honestly abstaining.
 - Avoid cloud dependencies, GraphRAG, heavy agents, or new databases.
+
+### Latest Update: MegaSprint Three Paper Lab Guardrails
+
+Date: 2026-07-11
+
+Purpose:
+
+- Start MegaSprint Three with academic-workflow guardrails before adding deeper Paper Lab and Exam Lab features.
+- Make Paper Lab exports more trustworthy without adding UI controls or changing public API request shapes.
+
+Implemented:
+
+- Added source-diverse Paper Lab evidence selection so one document does not dominate the artifact when multiple sources are available.
+- Added Paper Lab `source_diversity`, academic `guardrails`, and reusable `section_templates` metadata.
+- Added Source Grounding Notes to Paper Lab Markdown export with source diversity and safe drafting reminders.
+- Added unit coverage for balanced evidence, diversity-preserving selection, and single-source warnings.
+- Added integration coverage to confirm Paper Lab guardrails are returned through `/query` debug metadata.
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit/test_paper_lab.py -q`: passed, `3 passed`.
+- `python -m pytest apps/api/app/tests/integration/test_ingest_query_flow.py -q`: passed, `4 passed`, `1 warning`.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build` from `apps/web`: passed.
+
+Tradeoff:
+
+- Paper Lab may return fewer than eight evidence rows when the top-ranked evidence is dominated by one document and more diverse sources are available.
+- This is intentional: fewer diverse source-backed rows are safer than a fuller but overconfident matrix.

@@ -63,6 +63,13 @@ export type PaperLabMatrixRow = {
 export type PaperLabArtifact = {
   source_count?: number;
   evidence_count?: number;
+  source_diversity?: {
+    unique_documents?: number;
+    dominant_document_share?: number;
+    status?: string;
+  };
+  guardrails?: string[];
+  section_templates?: Record<string, string[]>;
   outline?: string[];
   related_work_matrix?: PaperLabMatrixRow[];
   citation_clusters?: Record<string, PaperLabMatrixRow[]>;
@@ -362,6 +369,15 @@ export function buildPaperLabMarkdown(run: ChatRun, artifact: PaperLabArtifact |
         )
         .join("\n")
     : "| Evidence | - | - | No matrix returned. | - |";
+  const diversity = artifact?.source_diversity;
+  const groundingNotes = [
+    diversity
+      ? `- Source diversity: ${diversity.unique_documents ?? 0} document(s), dominant share ${Math.round((diversity.dominant_document_share ?? 0) * 100)}%, status ${diversity.status ?? "unknown"}.`
+      : "- Source diversity: unavailable.",
+    ...(artifact?.guardrails?.length
+      ? artifact.guardrails.slice(0, 5).map((guardrail) => `- ${guardrail}`)
+      : ["- Use only source-backed claims and verify citations before submission."]),
+  ].join("\n");
 
   return [
     `# NIRMIQ Paper Lab Draft`,
@@ -380,6 +396,9 @@ export function buildPaperLabMarkdown(run: ChatRun, artifact: PaperLabArtifact |
     "| Claim Area | Evidence | Page | Use In Paper | Excerpt |",
     "| --- | ---: | ---: | --- | --- |",
     matrix,
+    "",
+    "## Source Grounding Notes",
+    groundingNotes,
     "",
     "## Citations",
     citations || "- No citations returned.",

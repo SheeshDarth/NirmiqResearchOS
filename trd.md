@@ -228,3 +228,15 @@ Validation commands:
 npm.cmd run compile:api
 npm.cmd run build
 ```
+
+## 2026-07-11 MegaSprint Three Technical Requirements Update
+
+New Paper Lab requirements now satisfied:
+
+- Paper Lab artifacts should prefer source diversity over a fuller but source-dominated evidence matrix.
+- Paper Lab artifacts should include source-diversity metadata for academic workflow decisions.
+- Paper Lab exports should include human-readable grounding notes rather than raw scores, chunk IDs, or local paths.
+- Academic drafting helpers must warn against invented papers, authors, results, diagrams, or references.
+- Public query API request shape must remain stable.
+
+Validated with focused Paper Lab unit tests, query integration tests, API compile, and web build.

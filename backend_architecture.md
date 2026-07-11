@@ -269,3 +269,24 @@ Linux/low-end:
 
 - `scripts/start_local.sh` and `scripts/stop_local.sh` provide a browser-preview path for Linux.
 - Low-end mode keeps Ollama generation/embeddings/reranker disabled by default, preserving BM25 plus extractive fallback behavior.
+
+## 2026-07-11 MegaSprint Three Backend Update
+
+Academic workflow guardrails were added for Paper Lab:
+
+- `build_paper_lab_artifact` now prefers source-diverse retrieved evidence when multiple documents are available.
+- Paper Lab debug metadata now includes source diversity, academic guardrails, and reusable section templates.
+- The frontend Paper Lab Markdown export consumes those guardrails as human-readable Source Grounding Notes.
+- Public `/query` request shape is unchanged.
+- Normal chat UI remains unchanged and raw metadata remains hidden from the main answer flow.
+
+Verification:
+
+```powershell
+python -m pytest apps/api/app/tests/unit/test_paper_lab.py -q
+python -m pytest apps/api/app/tests/integration/test_ingest_query_flow.py -q
+python -m compileall apps/api/app
+npm.cmd run build
+```
+
+All commands passed on 2026-07-11.

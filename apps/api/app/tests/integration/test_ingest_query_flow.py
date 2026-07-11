@@ -192,6 +192,9 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert paper_body["retrieval_meta"]["effective_retrieval_profile"] == "precision"
         assert paper_body["retrieval_meta"]["paper_lab"]["evidence_count"] >= 1
         assert paper_body["retrieval_meta"]["paper_lab"]["related_work_matrix"]
+        assert paper_body["retrieval_meta"]["paper_lab"]["source_diversity"]["unique_documents"] >= 1
+        assert paper_body["retrieval_meta"]["paper_lab"]["guardrails"]
+        assert "related_work" in paper_body["retrieval_meta"]["paper_lab"]["section_templates"]
 
         timeline_response = client.get("/memory/integration-session/timeline")
         assert timeline_response.status_code == 200

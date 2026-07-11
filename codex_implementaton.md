@@ -558,3 +558,15 @@ Validation:
 Tradeoff:
 
 - The current package target is Windows desktop. Android APK support is intentionally not added yet because it needs separate mobile packaging decisions and would distract from the local-first Windows demo path.
+
+## 2026-07-11 MegaSprint Three Implementation Note
+
+Started MegaSprint Three with Paper Lab guardrails:
+
+- Added source-diverse evidence selection in `apps/api/app/domain/paper_lab.py`.
+- Added guardrails and section templates to Paper Lab artifacts.
+- Added Paper Lab Source Grounding Notes to the web Markdown export helper.
+- Added unit and integration tests for the new behavior.
+- Verified with focused backend tests, API compile, and web build.
+
+This keeps the project aligned with the local-first academic workflow direction without adding new dependencies or UI complexity.

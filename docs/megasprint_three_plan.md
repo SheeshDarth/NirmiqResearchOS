@@ -189,3 +189,30 @@ Workflow checks:
 - No new heavy dependencies are introduced.
 - Build and focused backend verification pass before pushing.
 
+
+## Sprint Progress
+
+### 2026-07-11 Block 1 Slice: Paper Lab Guardrails
+
+Status:
+
+- Completed and verified.
+
+Implemented:
+
+- Paper Lab now selects evidence with source diversity in mind instead of blindly using the first eight chunks.
+- Paper Lab artifacts now include `source_diversity`, `guardrails`, and `section_templates` for safer academic drafting.
+- Paper Lab Markdown export now includes Source Grounding Notes with diversity status and safe drafting reminders.
+- Unit and integration coverage were added for the new artifact behavior.
+
+Verification:
+
+- `python -m pytest apps/api/app/tests/unit/test_paper_lab.py -q`: passed.
+- `python -m pytest apps/api/app/tests/integration/test_ingest_query_flow.py -q`: passed.
+- `python -m compileall apps/api/app`: passed.
+- `npm.cmd run build`: passed.
+
+Why this matters:
+
+- Paper Lab should help engineering students draft source-backed academic work, not overclaim from one dominant chunk or one source.
+- This prepares the next slices: stronger Paper Lab templates, Exam Lab marks-aware formats, diagram grounding, and study guides.
