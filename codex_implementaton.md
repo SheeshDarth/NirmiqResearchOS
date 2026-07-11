@@ -581,3 +581,14 @@ Added marks-aware Exam Lab synthesis support:
 - Added unit tests for the fallback and contract behavior.
 
 The UI stays unchanged; this is a backend reliability improvement for academic workflow quality.
+
+## 2026-07-11 MegaSprint Three Implementation Note: Diagram Grounding
+
+Added lightweight source-grounded diagram behavior:
+
+- `QueryService` now loads diagram context for selected-document visual requests.
+- `SynthesisService` now sanitizes diagram context, references source diagrams as D1/D2 with page/caption, and states when no source diagram is available.
+- `citation_coverage` ignores diagram availability/source-note lines when computing answer citation coverage.
+- Added unit and integration tests for missing diagrams, available diagram notes, and local path redaction.
+
+This keeps diagram support useful without adding heavy vision models or cluttering the UI.

@@ -3181,3 +3181,32 @@ Tradeoff:
 
 - The fallback is intentionally extractive and may repeat a key source sentence in the conclusion.
 - This is safer than generating polished but unsupported exam filler, and can be improved later with stronger source-aware compression.
+
+### Latest Update: MegaSprint Three Diagram Grounding
+
+Date: 2026-07-11
+
+Purpose:
+
+- Continue MegaSprint Three by making diagram/image requests source-grounded instead of visually hallucinated.
+- Keep the first pass lightweight with existing local diagram metadata only; no vision model, cloud OCR, GraphRAG, or new database.
+
+Implemented:
+
+- Normal selected-document queries now load diagram context when the user asks for diagrams, figures, images, or visuals.
+- Diagram context passed to synthesis now uses stable asset IDs, pages, and captions instead of full local file paths.
+- Grounded synthesis now appends a compact Diagram note when diagrams are requested.
+- If source diagrams exist, the answer references D1/D2-style page/caption pointers.
+- If no source diagram exists, the answer explicitly says no source diagram was available from the uploaded material.
+- Citation coverage now treats diagram availability notes as source notes rather than uncited factual claims.
+- Added unit and integration coverage for missing diagrams, available diagram references, and local path redaction.
+
+Validation:
+
+- `python -m pytest apps/api/app/tests/unit/test_synthesis_faithfulness.py apps/api/app/tests/integration/test_exam_lab_flow.py -q`: passed, `18 passed`, `1 warning`.
+- `python -m compileall apps/api/app`: passed.
+
+Tradeoff:
+
+- This slice references extracted/source diagram assets but does not interpret image contents.
+- That is intentional for local-first reliability; deeper image understanding should wait until there is a measured offline vision path.

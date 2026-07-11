@@ -214,6 +214,11 @@ class SynthesisService:
         else:
             generated = self._anchor_uncited_sentences(generated, selected)
 
+        generated = self._with_diagram_grounding_note(
+            answer=generated,
+            query=query,
+            exam_context=exam_context,
+        )
         verification = self._verify_cited_claims(generated, selected)
         answer_rewritten = False
         if self._should_rewrite_for_faithfulness(verification):
@@ -222,6 +227,11 @@ class SynthesisService:
                 context_chunks=selected,
                 response_mode=response_mode,
                 exam_profile=exam_profile,
+                exam_context=exam_context,
+            )
+            generated = self._with_diagram_grounding_note(
+                answer=generated,
+                query=query,
                 exam_context=exam_context,
             )
             fallback_verification = self._verify_cited_claims(generated, selected)
@@ -472,7 +482,7 @@ class SynthesisService:
         context = "\n\n".join(block for _, block in context_blocks)
         mode_instruction = SynthesisService._mode_instruction(response_mode)
         exam_instruction = SynthesisService._exam_instruction(exam_profile)
-        artifact_instruction = SynthesisService._exam_artifact_instruction(exam_context)
+        artifact_instruction = SynthesisService._exam_artifact_instruction(exam_context, query=query)
         return (
             "You are NIRMIQ local research assistant.\n"
             "Use ONLY the context below. Do not invent facts.\n"
@@ -672,7 +682,7 @@ class SynthesisService:
         }
 
     @staticmethod
-    def _exam_artifact_instruction(exam_context: dict[str, object] | None) -> str:
+    def _exam_artifact_instruction(exam_context: dict[str, object] | None, *, query: str = "") -> str:
         if not exam_context:
             return ""
         questions = exam_context.get("questions") or []
@@ -693,9 +703,11 @@ class SynthesisService:
                     continue
                 page = item.get("page_number") or "?"
                 caption = item.get("caption") or "No caption detected"
-                path = item.get("image_path")
-                parts.append(f"- D{index}: page {page}, {caption}, local path: {path}")
+                asset_id = item.get("id") or f"D{index}"
+                parts.append(f"- D{index}: asset {asset_id}, page {page}, {caption}")
             parts.append("When useful, mention diagram IDs like D1 with page numbers instead of inventing drawings.")
+        elif SynthesisService._is_diagram_request(query):
+            parts.append("Source diagrams: no extracted diagram assets are available for this selected document.")
         return "\n".join(parts)
 
     @staticmethod
@@ -771,12 +783,7 @@ class SynthesisService:
             or "diagram" in answer_style
         )
         if diagram_requested:
-            raw_diagrams = (exam_context or {}).get("diagrams") or []
-            diagrams = (
-                [item for item in raw_diagrams if isinstance(item, dict)]
-                if isinstance(raw_diagrams, list)
-                else []
-            )
+            diagrams = SynthesisService._diagram_context_items(exam_context)
             sections.append("\nDiagram note")
             if diagrams:
                 for index, item in enumerate(diagrams[:3], start=1):
@@ -792,6 +799,59 @@ class SynthesisService:
 
         sections.append("\nSource note\nOpen Sources to inspect the exact passages used.")
         return "\n".join(sections)
+
+    @staticmethod
+    def _with_diagram_grounding_note(
+        *,
+        answer: str,
+        query: str,
+        exam_context: dict[str, object] | None,
+    ) -> str:
+        if not SynthesisService._is_diagram_request(query):
+            return answer
+        lowered_answer = answer.lower()
+
+        diagrams = SynthesisService._diagram_context_items(exam_context)
+        if not diagrams:
+            already_honest = (
+                "no source diagram" in lowered_answer
+                or "no extracted diagram" in lowered_answer
+                or ("diagram" in lowered_answer and "not available" in lowered_answer)
+                or ("diagram" in lowered_answer and "unavailable" in lowered_answer)
+            )
+            if already_honest:
+                return answer
+            return "\n".join(
+                [
+                    answer.rstrip(),
+                    "",
+                    "Diagram note",
+                    "- No source diagram was available from the uploaded material.",
+                ]
+            ).strip()
+
+        if "diagram note" in lowered_answer or "source diagram" in lowered_answer:
+            return answer
+
+        lines = [answer.rstrip(), "", "Diagram note"]
+        for index, item in enumerate(diagrams[:3], start=1):
+            page = item.get("page_number") or "?"
+            caption = item.get("caption") or "No caption detected"
+            lines.append(f"- D{index}: source diagram on page {page}, {caption}.")
+        return "\n".join(lines).strip()
+
+    @staticmethod
+    def _diagram_context_items(exam_context: dict[str, object] | None) -> list[dict[str, object]]:
+        if not exam_context:
+            return []
+        raw_diagrams = exam_context.get("diagrams") or []
+        if not isinstance(raw_diagrams, list):
+            return []
+        return [item for item in raw_diagrams if isinstance(item, dict)]
+
+    @staticmethod
+    def _is_diagram_request(query: str) -> bool:
+        return bool(re.search(r"\b(diagram|diagrams|figure|figures|image|images|visual|visuals)\b", query, re.I))
 
     @staticmethod
     def _best_evidence_sentences(

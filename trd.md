@@ -251,3 +251,15 @@ New technical requirements now satisfied:
 - Public query request shape must remain unchanged.
 
 Validated with synthesis unit tests, Exam Lab integration tests, ingest/query integration tests, and API compile.
+
+## 2026-07-11 MegaSprint Three Diagram Requirements Update
+
+New technical requirements now satisfied:
+
+- Diagram/image/figure requests must use extracted local diagram metadata when available.
+- Synthesis must not expose full local diagram file paths in prompts or normal answers.
+- Missing diagram assets must be stated plainly instead of invented.
+- Diagram availability notes should not reduce citation coverage scores as uncited factual claims.
+- The implementation must remain lightweight and offline-first.
+
+Validated with synthesis unit tests, Exam Lab integration tests, and API compile.

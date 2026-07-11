@@ -310,6 +310,120 @@ def test_exam_answer_contract_clamps_marks_and_changes_depth() -> None:
     assert "Detailed explanation" in long_contract["sections"]
 
 
+def test_diagram_request_adds_honest_missing_diagram_note() -> None:
+    service = SynthesisService(
+        settings=_settings(),
+        policy=RetrievalPolicy(min_grounding_score=0.1),
+        generator=FakeGenerator("CNNs use convolutional layers for image recognition. [1]"),  # type: ignore[arg-type]
+    )
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="cnn-1",
+                document_id="doc-1",
+                text="CNNs use convolutional layers for image recognition and visual perception tasks.",
+                score=1.0,
+                page_start=7,
+                page_end=7,
+                source="bm25",
+            )
+        ],
+        meta={},
+    )
+
+    answer, grounded, meta = asyncio.run(
+        service.synthesize(
+            query="Explain CNNs for image recognition and include image references.",
+            bundle=bundle,
+            response_mode="research",
+            exam_context={"questions": [], "diagrams": []},
+        )
+    )
+
+    assert grounded is True
+    assert "Diagram note" in answer
+    assert "No source diagram was available" in answer
+    assert meta["citation_coverage"] >= 1.0
+
+
+def test_diagram_context_uses_asset_ids_without_local_paths() -> None:
+    instruction = SynthesisService._exam_artifact_instruction(
+        {
+            "questions": [],
+            "diagrams": [
+                {
+                    "id": "asset-123",
+                    "page_number": 9,
+                    "caption": "Figure 2. CNN architecture",
+                    "image_path": "C:\\Users\\Siddharth\\private\\figure.png",
+                }
+            ],
+        },
+        query="include diagram references",
+    )
+
+    assert "asset-123" in instruction
+    assert "page 9" in instruction
+    assert "CNN architecture" in instruction
+    assert "C:\\Users\\Siddharth" not in instruction
+
+
+def test_missing_diagram_note_overrides_unsupported_diagram_wording() -> None:
+    answer = SynthesisService._with_diagram_grounding_note(
+        answer="CNNs are often shown with a source diagram. [1]",
+        query="Explain CNNs with a source diagram.",
+        exam_context={"questions": [], "diagrams": []},
+    )
+
+    assert "No source diagram was available" in answer
+
+
+def test_diagram_request_references_available_source_diagrams() -> None:
+    service = SynthesisService(
+        settings=_settings(),
+        policy=RetrievalPolicy(min_grounding_score=0.1),
+        generator=FakeGenerator("CNNs use convolutional layers for image recognition. [1]"),  # type: ignore[arg-type]
+    )
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="cnn-1",
+                document_id="doc-1",
+                text="CNNs use convolutional layers for image recognition and visual perception tasks.",
+                score=1.0,
+                page_start=7,
+                page_end=7,
+                source="bm25",
+            )
+        ],
+        meta={},
+    )
+
+    answer, grounded, _ = asyncio.run(
+        service.synthesize(
+            query="Explain CNNs for image recognition and include figure references.",
+            bundle=bundle,
+            response_mode="research",
+            exam_context={
+                "questions": [],
+                "diagrams": [
+                    {
+                        "id": "asset-123",
+                        "page_number": 9,
+                        "caption": "Figure 2. CNN architecture",
+                        "image_path": "C:\\Users\\Siddharth\\private\\figure.png",
+                    }
+                ],
+            },
+        )
+    )
+
+    assert grounded is True
+    assert "D1: source diagram on page 9" in answer
+    assert "CNN architecture" in answer
+    assert "C:\\Users\\Siddharth" not in answer
+
+
 def test_any_unsupported_cited_claim_forces_rewrite() -> None:
     generated = (
         "NIRMIQ uses grounded retrieval for academic documents. [1]\n"

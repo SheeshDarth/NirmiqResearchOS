@@ -46,6 +46,7 @@ def _is_claim_like(sentence: str) -> bool:
         "key points",
         "evidence note",
         "useful caveats / details",
+        "diagram note",
     }:
         return False
     if lowered.startswith(
@@ -57,12 +58,17 @@ def _is_claim_like(sentence: str) -> bool:
             "where this came from",
             "study takeaway",
             "trust note",
+            "diagram note",
+            "source diagram",
             "source diagrams",
+            "no source diagram",
             "the retrieved passages did not contain enough",
         )
     ):
         return False
     if re.match(r"^q\d+\.", lowered):
+        return False
+    if re.match(r"^d\d+:\s*(source diagram|page|figure|diagram)", lowered):
         return False
     return True
 

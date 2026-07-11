@@ -80,6 +80,23 @@ def test_exam_lab_profile_question_bank_and_diagram_contracts(tmp_path: Path) ->
         assert query_body["retrieval_meta"]["exam_context"]["question_count"] == 2
         assert query_body["retrieval_meta"]["exam_context"]["diagram_count"] == 0
 
+        diagram_query_response = client.post(
+            "/query",
+            json={
+                "session_id": "exam-session",
+                "document_id": document_id,
+                "query": "Explain retrieval augmented generation and include diagram references.",
+                "mode": "research",
+                "retrieval_mode": "bm25",
+                "retrieval_profile": "precision",
+                "debug": True,
+            },
+        )
+        assert diagram_query_response.status_code == 200
+        diagram_query_body = diagram_query_response.json()
+        assert "No source diagram was available" in diagram_query_body["answer"]
+        assert diagram_query_body["retrieval_meta"]["exam_context"]["diagram_count"] == 0
+
         diagram_response = client.post(
             "/exam/diagrams/extract",
             json={"document_id": document_id, "force": True},

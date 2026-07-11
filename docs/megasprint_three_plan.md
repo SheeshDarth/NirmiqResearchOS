@@ -241,3 +241,28 @@ Why this matters:
 
 - Exam Lab should not feel like generic chat in a different tab.
 - Marks-aware formatting helps students get direct, readable answers while preserving the source-only safety rule.
+
+### 2026-07-11 Block 4 Slice: Diagram Grounding
+
+Status:
+
+- Completed and backend-verified.
+
+Implemented:
+
+- Diagram/image/figure requests now load selected-document diagram context even outside Exam Lab.
+- Diagram context passed to synthesis now includes asset IDs, page numbers, dimensions, and captions, but not full local paths.
+- Answers now get a compact Diagram note when the user asks for visual references.
+- If source diagrams exist, answers refer to D1/D2-style source diagram references with pages and captions.
+- If no diagram assets exist, answers state that no source diagram was available from the uploaded material.
+- Citation coverage was adjusted so diagram availability notes do not count as uncited factual claims.
+
+Verification:
+
+- `python -m pytest apps/api/app/tests/unit/test_synthesis_faithfulness.py apps/api/app/tests/integration/test_exam_lab_flow.py -q`: passed.
+- `python -m compileall apps/api/app`: passed.
+
+Why this matters:
+
+- Diagram requests were a hallucination risk because generic language models can imply visuals exist.
+- NIRMIQ now grounds visual references in extracted local assets or abstains clearly.

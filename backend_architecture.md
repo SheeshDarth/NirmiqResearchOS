@@ -303,3 +303,15 @@ Exam Lab synthesis now has a deterministic marks-aware answer contract:
 - The fallback remains source-only and citation-aware; it does not add outside examples or invented diagrams.
 
 This keeps Exam Lab useful when Ollama is unavailable or when generation is rejected by faithfulness checks.
+
+## 2026-07-11 MegaSprint Three Diagram Grounding Update
+
+Diagram/image requests now follow the same local-first evidence rule as text answers:
+
+- Query orchestration loads diagram context when a selected-document query asks for diagrams, figures, images, or visuals.
+- Synthesis context exposes diagram asset IDs, pages, and captions instead of local file paths.
+- Synthesis appends a deterministic Diagram note when visuals are requested.
+- Missing diagram assets produce an explicit unavailable note rather than a fabricated visual reference.
+- Citation coverage treats diagram availability notes as metadata/source notes rather than unsupported answer claims.
+
+No new storage engine, model dependency, or public API request change was added.

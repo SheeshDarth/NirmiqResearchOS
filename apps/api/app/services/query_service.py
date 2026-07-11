@@ -271,7 +271,9 @@ class QueryService:
         return to_citations(cited_chunks)
 
     def _build_exam_context(self, payload: QueryRequest, intent: QueryIntent) -> dict[str, object]:
-        if not payload.document_id or not self._uses_exam_context(payload.mode, intent):
+        if not payload.document_id:
+            return {"questions": [], "diagrams": []}
+        if not self._uses_exam_context(payload.mode, intent) and not self._is_diagram_request(payload.query):
             return {"questions": [], "diagrams": []}
         questions = self._sqlite_repo.list_question_bank_items(payload.document_id)[:12]
         diagrams = self._sqlite_repo.list_diagram_assets(payload.document_id)[:8]
@@ -286,8 +288,8 @@ class QueryService:
             ],
             "diagrams": [
                 {
+                    "id": str(row["id"]),
                     "page_number": row.get("page_number"),
-                    "image_path": str(row["image_path"]),
                     "caption": row.get("caption"),
                     "width": row.get("width"),
                     "height": row.get("height"),
@@ -416,6 +418,10 @@ class QueryService:
             "important_questions",
             "study_guide",
         }
+
+    @staticmethod
+    def _is_diagram_request(query: str) -> bool:
+        return bool(re.search(r"\b(diagram|diagrams|figure|figures|image|images|visual|visuals)\b", query, re.I))
 
     def _augment_selected_summary_bundle(
         self,
