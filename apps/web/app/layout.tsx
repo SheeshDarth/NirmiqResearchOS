@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "NIRMIQ ResearchOS",
+  title: "NIRMIQ Academic Intelligence",
   description: "ChatGPT-like local study intelligence for grounded documents, citations, papers, and exams",
   icons: {
     icon: "/brand/nirmiq-ais-mark.svg",

@@ -466,7 +466,6 @@ export default function Home() {
         ].slice(-12),
       );
       setQuery("");
-      setComposerCollapsed(true);
       try {
         await loadSessionState(response.session_id);
       } catch (err) {
@@ -848,6 +847,132 @@ export default function Home() {
   return (
     <main className={cx("nirmiq-v2", showLibrary && "library-open", showInspector && "inspector-open")}>
       <aside className="material-rail">
+        <div className="sidebar-simple">
+          <header className="sidebar-head">
+            <div className="brand-lockup">
+              <div className="brand-mark" aria-hidden="true">
+                <img alt="" src="/brand/nirmiq-ais-mark.svg" />
+              </div>
+              <div>
+                <strong>{PRODUCT_NAME}</strong>
+                <span>{PRODUCT_TAGLINE}</span>
+              </div>
+            </div>
+            <button aria-label="Close navigation" className="sidebar-close" onClick={() => setShowLibrary(false)} type="button">
+              Close
+            </button>
+          </header>
+
+          <button className="sidebar-primary-action" onClick={clearThread} type="button">
+            <span>+</span>
+            New conversation
+          </button>
+
+          <nav className="sidebar-nav" aria-label="NIRMIQ workspaces">
+            {WORKSPACE_SECTIONS.map((section) => (
+              <button
+                className={cx("sidebar-nav-button", workspaceSection === section.value && "active")}
+                key={section.value}
+                onClick={() => {
+                  selectWorkspaceSection(section.value);
+                  setShowLibrary(false);
+                  window.requestAnimationFrame(() => queryInputRef.current?.focus());
+                }}
+                type="button"
+              >
+                <strong>{section.label}</strong>
+                <span>{section.hint}</span>
+              </button>
+            ))}
+          </nav>
+
+          <section className="sidebar-library">
+            <div className="sidebar-section-head">
+              <span>Library</span>
+              <button disabled={busy !== ""} onClick={() => uploadInputRef.current?.click()} type="button">
+                Upload
+              </button>
+            </div>
+            <div className="sidebar-material-list">
+              {documents.length ? (
+                documents.map((item) => (
+                  <button
+                    className={cx("sidebar-material", item.id === documentId && "active")}
+                    key={item.id}
+                    onClick={() => {
+                      selectDocument(item);
+                      setShowLibrary(false);
+                    }}
+                    type="button"
+                  >
+                    <span>{item.title || "Untitled material"}</span>
+                    <small>{item.status === "indexed" ? "Ready" : item.status}</small>
+                  </button>
+                ))
+              ) : (
+                <button className="sidebar-empty-upload" onClick={() => uploadInputRef.current?.click()} type="button">
+                  Upload your first source
+                </button>
+              )}
+            </div>
+          </section>
+
+          <details className="sidebar-advanced">
+            <summary>Local tools and privacy</summary>
+            <div className="sidebar-advanced-body">
+              <button className="sidebar-tool-row" disabled={busy !== ""} onClick={onHealthCheck} type="button">
+                <span>Local runtime</span>
+                <small>{health}</small>
+              </button>
+              <button className="sidebar-tool-row" disabled={busy !== ""} onClick={onLoadGoldenDemo} type="button">
+                <span>Load reviewer demo</span>
+                <small>offline</small>
+              </button>
+
+              <details className="sidebar-path-ingest">
+                <summary>Index a local path</summary>
+                <form onSubmit={onIngest}>
+                  <label className="label">
+                    File path
+                    <input className="input" value={sourcePath} onChange={(event) => setSourcePath(event.target.value)} />
+                  </label>
+                  <label className="label">
+                    Title
+                    <input className="input" value={title} onChange={(event) => setTitle(event.target.value)} />
+                  </label>
+                  <button className="button" disabled={!canIngest || busy !== ""} type="submit">Index path</button>
+                </form>
+              </details>
+
+              <button className="sidebar-tool-row" disabled={busy !== ""} onClick={onExportThread} type="button">
+                <span>Export conversation</span>
+              </button>
+              <button className="sidebar-tool-row" disabled={busy !== ""} onClick={onClearSession} type="button">
+                <span>Clear conversation</span>
+              </button>
+              {selectedDocument ? (
+                <button className="sidebar-tool-row danger" disabled={busy !== ""} onClick={onDeleteSelectedDocument} type="button">
+                  <span>Remove selected source</span>
+                </button>
+              ) : null}
+              <button
+                className="sidebar-tool-row danger"
+                disabled={busy !== "" || documents.length === 0}
+                onClick={onPurgeDocuments}
+                type="button"
+              >
+                <span>Clear indexed material</span>
+              </button>
+              <div className="sidebar-legal">
+                <a href="/privacy_policy.md" target="_blank" rel="noreferrer">Privacy</a>
+                <a href="/terms_conditions.md" target="_blank" rel="noreferrer">Terms</a>
+                <a href="/security.md" target="_blank" rel="noreferrer">Security</a>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div className="legacy-sidebar-content" hidden>
         <section className="identity-card">
           <div className="brand-lockup">
             <div className="brand-mark" aria-hidden="true">
@@ -1055,7 +1180,20 @@ export default function Home() {
             <a href="/security.md" target="_blank" rel="noreferrer">Security</a>
           </div>
         </section>
+        </div>
       </aside>
+
+      {showLibrary || showInspector ? (
+        <button
+          aria-label="Close open panel"
+          className="drawer-scrim"
+          onClick={() => {
+            setShowLibrary(false);
+            setShowInspector(false);
+          }}
+          type="button"
+        />
+      ) : null}
 
       <section className="study-thread">
         <ThreadHeader
@@ -1079,15 +1217,12 @@ export default function Home() {
                 setDeepView("evidence");
               }}
               onRateAnswer={onRateAnswer}
-              onSelectCitation={selectCitation}
               queryHistory={queryHistory}
               savedFeedback={savedFeedback}
-              selectedChunkId={selectedChunkId}
             />
           ) : (
             <ChatEmptyState
-              busy={busy}
-              onLoadGoldenDemo={onLoadGoldenDemo}
+              hasSelectedDocument={Boolean(selectedDocument)}
               onSuggestion={applyEmptyStateSuggestion}
             />
           )}

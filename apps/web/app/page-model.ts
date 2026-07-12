@@ -86,7 +86,7 @@ export type GoldenDemoQuestion = {
 
 export const DEFAULT_SOURCE_PATH = "C:\\Nirmiq-researchOS\\data\\raw\\attention_is_all_you_need.pdf";
 export const PRODUCT_NAME = "NIRMIQ";
-export const PRODUCT_TAGLINE = "ResearchOS";
+export const PRODUCT_TAGLINE = "Academic Intelligence";
 export const PRODUCT_DESCRIPTION = "ChatGPT-like local study intelligence for grounded documents, citations, papers, and exams.";
 
 export const WORKSPACE_SECTIONS: Array<{
@@ -96,8 +96,8 @@ export const WORKSPACE_SECTIONS: Array<{
 }> = [
   {
     value: "research",
-    label: "Auto",
-    hint: "Route from your question.",
+    label: "Research",
+    hint: "Ask or analyze uploaded material.",
   },
   {
     value: "general",
@@ -106,12 +106,12 @@ export const WORKSPACE_SECTIONS: Array<{
   },
   {
     value: "paper",
-    label: "Paper",
+    label: "Paper Lab",
     hint: "Draft with citations.",
   },
   {
     value: "exam",
-    label: "Exam",
+    label: "Exam Lab",
     hint: "Marks-ready help.",
   },
 ];

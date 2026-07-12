@@ -483,3 +483,37 @@ UX rationale:
 Verification:
 
 - `npm.cmd run build`: passed.
+# MegaSprint Two Recovery - 2026-07-12
+
+The previous MegaSprint Two implementation improved component boundaries but failed visual acceptance because the same dashboard-like information architecture remained visible.
+
+The active interface direction is now:
+
+- One chat canvas is the product home.
+- Navigation and the document library live in an overlay left drawer.
+- Sources, Paper Lab tools, and Exam Lab tools live in an overlay right drawer.
+- Research, Chat, Paper Lab, and Exam Lab use one compact composer mode selector.
+- Upload remains directly accessible from the composer.
+- Answers render as readable assistant content, not bordered dashboard cards.
+- Normal answers show only a compact trust state, source count when available, and copy action.
+- Dates, chunk counts, paths, retrieval methods, model metadata, and reviewer controls stay out of the normal chat flow.
+- Golden Demo and destructive local-data controls remain available under advanced local tools.
+- The composer stays available after an answer and is never minimized automatically.
+
+Visual language:
+
+- Near-black neutral surfaces with restrained copper and sage accents.
+- Typography and whitespace establish hierarchy; color is not used as decoration.
+- Motion is limited to drawer transitions, loading state, and answer arrival.
+- Drawers overlay the chat instead of reducing the response width.
+- Desktop and mobile both preserve one primary vertical scroll region.
+
+Acceptance requires a user-visible review, not only `npm run build`.
+
+Current recovery verification:
+
+- Desktop main shell inspected visually at 1426x922.
+- Navigation/library drawer overlays the conversation and has an independent material list scroll.
+- Source drawer overlays the right side and keeps the answer canvas intact.
+- Header and composer remain fixed while the central response region owns vertical scrolling.
+- Production bundle remains approximately `117 kB` first-load JavaScript.

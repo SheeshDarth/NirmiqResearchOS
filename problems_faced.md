@@ -384,3 +384,22 @@ The next reliability phase should aim for:
 - `context.md` should record this as the start of the RAG Reliability Phase.
 - `docs/accuracy_precision_audit.md` should reference this file as the canonical problem-and-roadmap source.
 - Future implementation commits should update this file whenever a major problem is fixed, deferred, or newly discovered.
+# UI Acceptance Failure: Component Split Without Information-Architecture Change
+
+Date: 2026-07-12
+
+Observed problem:
+
+- MegaSprint Two was marked complete even though the user saw no meaningful visual change.
+
+Cause:
+
+- Engineering progress focused on extracting React components and polishing existing styles.
+- The visible three-rail dashboard, duplicated controls, metadata density, and card-heavy answer presentation remained.
+- Automated build verification did not test whether the interface matched the intended chatbot experience.
+
+Prevention:
+
+- UI sprint closure now requires manual rendered review and user acceptance.
+- Component refactors must be evaluated separately from visible information-architecture changes.
+- The normal interface must preserve one primary task, one primary scroll region, and progressive disclosure for advanced controls.

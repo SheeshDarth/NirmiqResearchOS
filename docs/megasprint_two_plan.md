@@ -445,7 +445,7 @@ Why this matters:
 
 Status:
 
-- Closed and build-verified.
+- Superseded. Build verification passed, but user-facing visual acceptance failed on 2026-07-12.
 
 Completion summary:
 
@@ -462,3 +462,42 @@ Final verification:
 Next sprint:
 
 - MegaSprint Three starts from `docs/megasprint_three_plan.md` and focuses on Paper Lab, Exam Lab, diagrams, study guides, and source-grounded exports.
+
+### 2026-07-12 Acceptance Failure And Recovery
+
+Status:
+
+- Reopened pending user acceptance.
+
+Why the original closure failed:
+
+- Component extraction reduced file coupling but preserved the same visible three-rail information architecture.
+- Workspace modes, reviewer/demo controls, source status, retrieval tools, and answer metadata still competed with the conversation.
+- The source and library rails reduced the response canvas instead of behaving like optional drawers.
+- Assistant answers still looked like dashboard cards rather than a readable chatbot conversation.
+- Build success was incorrectly treated as UX acceptance.
+
+Recovery implemented:
+
+- Replaced the shrinking three-column workspace with one full-height chat canvas and overlay drawers.
+- Reduced the header to navigation, active context, and one source/workspace action.
+- Consolidated Research, Chat, Paper Lab, and Exam Lab into one mode selector beside the composer.
+- Rebuilt the composer around attach, message, send, mode, and one progressive-disclosure menu.
+- Removed automatic composer minimization after every answer.
+- Removed dates, technical labels, inline source cards, and persistent feedback controls from the normal answer surface.
+- Kept one compact trust cue, optional Sources action, copy, and hidden feedback menu.
+- Moved Golden Demo, local-path ingestion, runtime checks, export, purge, and privacy links into the advanced sidebar area.
+- Preserved Paper Lab, Exam Lab, source inspection, uploads, exports, retrieval settings, and all backend contracts.
+
+Verification:
+
+- Next.js production build: passed.
+- Windows desktop smoke: passed.
+- Manual desktop visual QA: main chat shell, navigation drawer, source drawer, overlay scrim, and composer rendered correctly.
+- First-load JavaScript remains approximately `117 kB`.
+- Full ship gate: passed with `100` backend tests, production build, publish smoke, golden demo, and unsupported-query abstention.
+- Rebuilt desktop package: `dist/desktop/NIRMIQ Academic Intelligence 0.1.0.exe`.
+
+Acceptance rule:
+
+- MegaSprint Two remains reopened until the user reviews the redesigned desktop UI. A green build alone cannot close this sprint.

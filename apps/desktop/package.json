@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "author": "Siddharth P",
-  "description": "Windows desktop shell for the local-first NIRMIQ ResearchOS runtime.",
+  "description": "Windows desktop shell for the local-first NIRMIQ Academic Intelligence runtime.",
   "main": "src/main.js",
   "scripts": {
     "start": "electron --in-process-gpu --disable-gpu-sandbox --disable-gpu-compositing --disable-gpu-rasterization --disable-accelerated-2d-canvas --disable-features=UseSkiaRenderer,Vulkan,CanvasOopRasterization .",
@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "ai.nirmiq.researchos",
-    "productName": "NIRMIQ ResearchOS",
+    "productName": "NIRMIQ Academic Intelligence",
     "directories": {
       "output": "../../dist/desktop"
     },

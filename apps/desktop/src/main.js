@@ -299,7 +299,7 @@ function createMainWindow() {
     height: 940,
     minWidth: 1100,
     minHeight: 740,
-    title: "NIRMIQ ResearchOS Desktop",
+    title: "NIRMIQ Academic Intelligence",
     backgroundColor: "#111418",
     show: false,
     webPreferences: {

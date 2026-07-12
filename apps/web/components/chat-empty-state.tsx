@@ -1,63 +1,67 @@
-import type { BusyState, StudyMode, WorkspaceSection } from "../app/page-model";
+import type { StudyMode, WorkspaceSection } from "../app/page-model";
 
 type ChatEmptyStateProps = {
-  busy: BusyState;
-  onLoadGoldenDemo: () => void;
+  hasSelectedDocument: boolean;
   onSuggestion: (section: WorkspaceSection, mode: StudyMode, query: string) => void;
 };
 
-export function ChatEmptyState({ busy, onLoadGoldenDemo, onSuggestion }: ChatEmptyStateProps) {
+const suggestions: Array<{
+  label: string;
+  mode: StudyMode;
+  query: string;
+  section: WorkspaceSection;
+}> = [
+  {
+    label: "Explain a concept",
+    mode: "research",
+    query: "Explain the main concept clearly and cite the relevant passages.",
+    section: "research",
+  },
+  {
+    label: "Summarize the source",
+    mode: "summary",
+    query: "Summarize this document with its main ideas, methods, findings, and limitations.",
+    section: "research",
+  },
+  {
+    label: "Compare ideas",
+    mode: "compare_concepts",
+    query: "Compare the key ideas in this material and explain the differences clearly.",
+    section: "exam",
+  },
+  {
+    label: "Draft with citations",
+    mode: "research_paper",
+    query: "Draft a concise related-work section using evidence from the selected material.",
+    section: "paper",
+  },
+];
+
+export function ChatEmptyState({ hasSelectedDocument, onSuggestion }: ChatEmptyStateProps) {
   return (
     <section className="empty-state">
-      <p className="eyebrow">Upload. Understand. Verify. Learn.</p>
-      <h2>What do you want to understand today?</h2>
-      <p className="copy">
-        Upload a PDF, select one document, then ask naturally. The technical trail stays hidden until you open Sources.
-      </p>
-      <div className="first-run-steps" aria-label="How to use NIRMIQ">
-        <span><strong>1</strong> Upload material</span>
-        <span><strong>2</strong> Ask naturally</span>
-        <span><strong>3</strong> Verify sources</span>
+      <div className="empty-mark" aria-hidden="true">
+        <img alt="" src="/brand/nirmiq-ais-mark.svg" />
       </div>
-      <div className="golden-path-panel">
-        <div>
-          <p className="eyebrow">Reviewer path</p>
-          <strong>Try the local golden demo</strong>
-          <span>Seed corpus, locked prompts, citations, export, and source removal.</span>
-        </div>
-        <button className="button primary" type="button" onClick={onLoadGoldenDemo} disabled={busy !== ""}>
-          {busy === "demo" ? "Loading..." : "Load demo"}
-        </button>
+      <div className="empty-copy">
+        <h1>{hasSelectedDocument ? "What should we find in this source?" : "Ask your material anything"}</h1>
+        <p>
+          {hasSelectedDocument
+            ? "Ask naturally. NIRMIQ will answer from the selected material and show sources only when you open them."
+            : "Attach a PDF, document, or image from the composer. Your material and answers stay on this device."}
+        </p>
       </div>
-      <div className="suggestions">
-        <button
-          className="button ghost"
-          onClick={() => onSuggestion("research", "research", "Explain this topic simply from my study material.")}
-          type="button"
-        >
-          Explain this topic simply
-        </button>
-        <button
-          className="button ghost"
-          onClick={() => onSuggestion("exam", "exam_answer", "Make this into a 10-mark exam answer.")}
-          type="button"
-        >
-          Make 10-mark exam answer
-        </button>
-        <button
-          className="button ghost"
-          onClick={() => onSuggestion("research", "summary", "Summarize selected document.")}
-          type="button"
-        >
-          Summarize selected document
-        </button>
-        <button
-          className="button ghost"
-          onClick={() => onSuggestion("exam", "compare_concepts", "Compare concepts from my notes.")}
-          type="button"
-        >
-          Compare concepts from my notes
-        </button>
+      <div className="suggestions" aria-label="Suggested prompts">
+        {suggestions.map((suggestion) => (
+          <button
+            className="suggestion-button"
+            key={suggestion.label}
+            onClick={() => onSuggestion(suggestion.section, suggestion.mode, suggestion.query)}
+            type="button"
+          >
+            {suggestion.label}
+          </button>
+        ))}
       </div>
     </section>
   );

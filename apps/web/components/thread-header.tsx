@@ -1,4 +1,4 @@
-import { PRODUCT_NAME, PRODUCT_TAGLINE } from "../app/page-model";
+import { PRODUCT_NAME } from "../app/page-model";
 
 type ThreadHeaderProps = {
   activeMaterialName: string;
@@ -10,6 +10,14 @@ type ThreadHeaderProps = {
   showLibrary: boolean;
 };
 
+function MenuIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
+}
+
 export function ThreadHeader({
   activeMaterialName,
   activeWorkspaceLabel,
@@ -19,35 +27,47 @@ export function ThreadHeader({
   showInspector,
   showLibrary,
 }: ThreadHeaderProps) {
+  const inspectorLabel =
+    activeWorkspaceLabel === "Paper Lab"
+      ? "Paper tools"
+      : activeWorkspaceLabel === "Exam Lab"
+        ? "Exam tools"
+        : showInspector
+          ? "Close sources"
+          : "Sources";
+
   return (
     <header className="thread-top">
       <div className="thread-bar">
-        <div className="brand-lockup app">
-          <div className="brand-mark" aria-hidden="true">
-            <img alt="" src="/brand/nirmiq-ais-mark.svg" />
-          </div>
-          <div>
+        <button
+          aria-expanded={showLibrary}
+          aria-label={showLibrary ? "Close navigation" : "Open navigation"}
+          className="header-icon-button"
+          onClick={onToggleLibrary}
+          type="button"
+        >
+          <MenuIcon />
+        </button>
+
+        <div className="header-context">
+          <div className="header-brand-line">
+            <img alt="" aria-hidden="true" src="/brand/nirmiq-ais-mark.svg" />
             <strong>{PRODUCT_NAME}</strong>
-            <span>{PRODUCT_TAGLINE}</span>
+            <span>{activeWorkspaceLabel}</span>
           </div>
+          <p title={hasSelectedDocument ? activeMaterialName : undefined}>
+            {hasSelectedDocument ? activeMaterialName : "No source attached"}
+          </p>
         </div>
-        <div className="thread-title compact">
-          <h1>Ask NIRMIQ</h1>
-          <p className="tiny">Local answers from your material, with sources when evidence exists.</p>
-        </div>
-        <div className="top-actions">
-          <button className="button ghost" type="button" onClick={onToggleLibrary}>
-            {showLibrary ? "Hide Library" : "Library"}
-          </button>
-          <button className="button ghost" type="button" onClick={onToggleInspector}>
-            {showInspector ? "Hide Sources" : "Sources"}
-          </button>
-        </div>
-      </div>
-      <div className="route-strip">
-        <span className="source-pill">{hasSelectedDocument ? activeMaterialName : "No document selected"}</span>
-        <span className="route-chip">{activeWorkspaceLabel}</span>
-        <span className="route-hint">sources stay tucked away until needed</span>
+
+        <button
+          aria-expanded={showInspector}
+          className="header-source-button"
+          onClick={onToggleInspector}
+          type="button"
+        >
+          {inspectorLabel}
+        </button>
       </div>
     </header>
   );

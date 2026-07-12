@@ -3547,3 +3547,43 @@ Verification:
 - Publish smoke and all golden demo grounded/abstention cases: passed.
 - Windows desktop smoke: passed after removing the old forced low-memory launcher override.
 - Desktop and Linux launchers now respect profile selection instead of overriding profile defaults.
+# Latest Session Update - 2026-07-12 MegaSprint Two UI Recovery
+
+Trigger:
+
+- User correctly reported that MegaSprint Two had failed because the rendered UI looked effectively unchanged.
+
+Root cause:
+
+- The sprint mostly split `page.tsx` into components and polished existing cards.
+- It did not replace the three-rail dashboard information architecture, duplicate controls, or metadata-heavy answer surface.
+- Build completion was incorrectly used as the closure criterion without user visual acceptance.
+
+Recovery delivered:
+
+- Replaced the shrinking three-column workspace with a single ChatGPT-style chat canvas.
+- Converted Library and Sources into overlay drawers with a dismissible scrim.
+- Rebuilt the header, empty state, conversation turns, answer actions, and composer.
+- Consolidated Research, Chat, Paper Lab, and Exam Lab into one composer mode selector.
+- Kept uploads directly in the composer and moved advanced/reviewer/privacy actions behind progressive disclosure.
+- Removed automatic composer collapse after answers.
+- Updated visible branding to `NIRMIQ Academic Intelligence` in the web title, desktop title, desktop package name, and local legal pages.
+- Preserved all backend API calls and Paper Lab, Exam Lab, citation, export, document, and local-data capabilities.
+
+Visual QA:
+
+- Main desktop chat shell rendered as a clean single canvas.
+- Left navigation/library drawer rendered as an overlay without shrinking the conversation.
+- Right source drawer rendered as an overlay with readable source inspection.
+- Composer remained compact and attached to the bottom of the chat canvas.
+- The Computer Use screenshot check confirmed the redesign is visibly different.
+
+Verification so far:
+
+- `npm.cmd run build` from `apps/web`: passed.
+- `npm.cmd run desktop:smoke`: passed.
+- Full `npm.cmd run ship:check`: passed with `100 passed`, `1 warning`.
+- Publish smoke, all golden demo routes, citations, and unsupported-query abstention passed.
+- Windows package rebuilt as `dist\desktop\NIRMIQ Academic Intelligence 0.1.0.exe`.
+- Final packaged window title verified as `NIRMIQ Academic Intelligence`.
+- MegaSprint Two is reopened and must remain open until user visual acceptance.

@@ -5,10 +5,8 @@ import {
   type BusyState,
   type ChatRun,
   cx,
-  formatDate,
   getTrustCopy,
   getVerificationBadge,
-  previewText,
 } from "../app/page-model";
 import { AnswerBody } from "./answer-body";
 import { StudyGuideAnswer } from "./study-guide-answer";
@@ -18,16 +16,17 @@ type ChatThreadProps = {
   chatEndRef: RefObject<HTMLDivElement | null>;
   onOpenSources: (response: QueryResponse) => void;
   onRateAnswer: (run: ChatRun, runKey: string, rating: AnswerFeedbackRating) => void;
-  onSelectCitation: (documentId: string, chunkId: string) => void;
   queryHistory: ChatRun[];
   savedFeedback: Record<string, AnswerFeedbackRating>;
-  selectedChunkId: string;
 };
 
-function formatCitationPage(pageStart?: number | null, pageEnd?: number | null) {
-  if (!pageStart) return "Page not tagged";
-  if (pageEnd && pageEnd !== pageStart) return `Pages ${pageStart}-${pageEnd}`;
-  return `Page ${pageStart}`;
+function CopyIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <rect height="13" rx="2" width="13" x="8" y="8" />
+      <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+    </svg>
+  );
 }
 
 export function ChatThread({
@@ -35,10 +34,8 @@ export function ChatThread({
   chatEndRef,
   onOpenSources,
   onRateAnswer,
-  onSelectCitation,
   queryHistory,
   savedFeedback,
-  selectedChunkId,
 }: ChatThreadProps) {
   return (
     <div className="turn-list">
@@ -50,98 +47,76 @@ export function ChatThread({
         return (
           <article className="turn" key={runKey}>
             <div className="bubble user">
-              <div className="message-meta">
-                <span className="tiny">You</span>
-              </div>
               <div className="answer">{run.query}</div>
             </div>
-            <div className="bubble assistant">
-              <div className="message-meta">
-                <span className="tiny">NIRMIQ / {formatDate(run.timestamp)}</span>
-                {verificationBadge ? (
-                  <span className={cx("trust-badge", verificationBadge.className)}>
-                    {verificationBadge.label}
-                  </span>
-                ) : null}
+
+            <div className="assistant-message">
+              <div className="assistant-avatar" aria-hidden="true">
+                <img alt="" src="/brand/nirmiq-ais-mark.svg" />
               </div>
-              {run.mode === "study_guide" ? (
-                <StudyGuideAnswer answer={run.response.answer} />
-              ) : (
-                <AnswerBody answer={run.response.answer} />
-              )}
-              <div className="trust-line">
-                <span className={cx("trust-copy", run.response.grounded ? "sage" : "copper")}>
-                  {getTrustCopy(run.response)}
-                </span>
-                <button
-                  className="clear-link"
-                  onClick={() => onOpenSources(run.response)}
-                  type="button"
-                >
-                  Open Sources
-                </button>
-              </div>
-              <div className="feedback-row" aria-label="Answer feedback">
-                <span>{feedbackRating ? "Saved for local quality review" : "Was this useful?"}</span>
-                <button
-                  className={cx("feedback-button", feedbackRating === "good" && "active")}
-                  disabled={busy !== "" || Boolean(feedbackRating)}
-                  onClick={() => onRateAnswer(run, runKey, "good")}
-                  type="button"
-                >
-                  Good
-                </button>
-                <button
-                  className={cx("feedback-button", feedbackRating === "needs_work" && "active")}
-                  disabled={busy !== "" || Boolean(feedbackRating)}
-                  onClick={() => onRateAnswer(run, runKey, "needs_work")}
-                  type="button"
-                >
-                  Needs work
-                </button>
-              </div>
-              {run.response.citations.length ? (
-                <details className="source-drawer">
-                  <summary>
-                    Sources used
-                    <span>{run.response.citations.length}</span>
-                  </summary>
-                  <p className="source-drawer-hint">Tap a source to open the exact passage in Sources.</p>
-                  <div className="source-preview-list">
-                    {run.response.citations.slice(0, 4).map((citation, citationIndex) => (
+              <div className="assistant-content">
+                {run.mode === "study_guide" ? (
+                  <StudyGuideAnswer answer={run.response.answer} />
+                ) : (
+                  <AnswerBody answer={run.response.answer} />
+                )}
+
+                <div className="answer-actions">
+                  {verificationBadge ? (
+                    <span className={cx("trust-badge", verificationBadge.className)} title={getTrustCopy(run.response)}>
+                      {verificationBadge.label}
+                    </span>
+                  ) : null}
+                  {run.response.citations.length ? (
+                    <button className="answer-action" onClick={() => onOpenSources(run.response)} type="button">
+                      Sources <span>{run.response.citations.length}</span>
+                    </button>
+                  ) : null}
+                  <button
+                    aria-label="Copy answer"
+                    className="answer-icon-action"
+                    onClick={() => void navigator.clipboard.writeText(run.response.answer)}
+                    title="Copy answer"
+                    type="button"
+                  >
+                    <CopyIcon />
+                  </button>
+                  <details className="answer-more">
+                    <summary>Feedback</summary>
+                    <div className="feedback-popover">
+                      <span>{feedbackRating ? "Saved locally" : "Was this useful?"}</span>
                       <button
-                        aria-label={`Open source ${citationIndex + 1}, ${formatCitationPage(citation.page_start, citation.page_end)}`}
-                        className={cx("source-preview-card", citation.chunk_id === selectedChunkId && "active")}
-                        key={`${run.timestamp}-${citation.chunk_id}-${citationIndex}`}
-                        onClick={() => onSelectCitation(citation.document_id, citation.chunk_id)}
+                        className={cx("feedback-button", feedbackRating === "good" && "active")}
+                        disabled={busy !== "" || Boolean(feedbackRating)}
+                        onClick={() => onRateAnswer(run, runKey, "good")}
                         type="button"
                       >
-                        <span className="source-preview-meta">
-                          Source {citationIndex + 1}
-                          <span>{formatCitationPage(citation.page_start, citation.page_end)}</span>
-                        </span>
-                        <span className="source-preview-text">
-                          {citation.excerpt
-                            ? previewText(citation.excerpt, 220)
-                            : "Open Sources to inspect this supporting passage."}
-                        </span>
+                        Helpful
                       </button>
-                    ))}
-                  </div>
-                </details>
-              ) : null}
+                      <button
+                        className={cx("feedback-button", feedbackRating === "needs_work" && "active")}
+                        disabled={busy !== "" || Boolean(feedbackRating)}
+                        onClick={() => onRateAnswer(run, runKey, "needs_work")}
+                        type="button"
+                      >
+                        Needs work
+                      </button>
+                    </div>
+                  </details>
+                </div>
+              </div>
             </div>
           </article>
         );
       })}
+
       {busy === "query" ? (
         <article className="turn pending-turn" aria-live="polite" aria-label="NIRMIQ is reading your sources">
-          <div className="bubble assistant pending">
-            <div className="message-meta">
-              <span className="tiny">NIRMIQ</span>
-              <span className="trust-badge sage">reading</span>
+          <div className="assistant-message pending">
+            <div className="assistant-avatar" aria-hidden="true">
+              <img alt="" src="/brand/nirmiq-ais-mark.svg" />
             </div>
-            <p className="pending-copy">Reading your selected material and checking the sources...</p>
+            <p className="pending-copy">Reading the selected material and checking the evidence...</p>
           </div>
         </article>
       ) : null}
