@@ -518,6 +518,7 @@ Details:
 - [NIRMIQ RAG method](docs/nirmiq_rag_method.md)
 - [MegaSprint Two UX plan](docs/megasprint_two_plan.md)
 - [MegaSprint Three academic workflow plan](docs/megasprint_three_plan.md)
+- [MegaSprint Four local runtime plan](docs/megasprint_four_plan.md)
 - [Benchmark report](docs/benchmark_report.md)
 - [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
 - [Engineering problem log and RAG Reliability roadmap](problems_faced.md)
@@ -539,6 +540,14 @@ Latest phrase-level real-world retrieval result:
 | Hybrid | 17 | 0.804 | 1.000 | 1.000 | 1.000 | 1.000 |
 
 Latest refresh: 2026-07-12. The current failure log contains no active weak retrieval records on this 17-sample seed.
+
+Measure the active local runtime without sending data to a cloud service:
+
+```powershell
+npm run benchmark:runtime
+```
+
+Use `NIRMIQ_RUNTIME_PROFILE=auto`, `balanced`, `low_memory`, or `cpu_offline` to select coherent runtime defaults. Normal users do not need to configure individual model or retrieval variables.
 
 Run:
 

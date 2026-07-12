@@ -20,6 +20,7 @@
   - `cloud_api_required: false`
   - `external_provider_enabled: false`
   - `primary_inference: "local_offline"`
+  - `runtime_profile: "balanced"|"low_memory"|"cpu_offline"`
   - `low_memory_mode: boolean`
   - `ollama_runtime: object`
   - `notes: string`
@@ -94,6 +95,7 @@
 - `RETRIEVAL_MIN_GROUNDING_SCORE` determines abstention threshold.
 - `RETRIEVAL_MAX_CHUNKS_PER_DOCUMENT` limits repeated chunks from the same source during final rerank.
 - `LOW_MEMORY_MODE=true` keeps the local runtime optimized for consumer GPUs.
+- `NIRMIQ_RUNTIME_PROFILE=auto|balanced|low_memory|cpu_offline` applies coherent local defaults; explicit tuning variables still override the selected profile.
 - `OLLAMA_KEEP_ALIVE`, `OLLAMA_NUM_CTX`, `OLLAMA_NUM_PREDICT`, `OLLAMA_NUM_GPU`, `OLLAMA_NUM_THREAD`, and `OLLAMA_EMBED_BATCH_SIZE` tune Ollama memory pressure without changing public APIs.
 
 ### `GET /ingest/{document_id}`

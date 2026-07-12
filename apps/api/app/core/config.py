@@ -4,8 +4,11 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from app.core.runtime_profiles import resolve_runtime_profile
+
 
 class Settings(BaseModel):
+    runtime_profile: str
     api_host: str
     api_port: int
     web_allowed_origins: list[str]
@@ -63,7 +66,9 @@ class Settings(BaseModel):
             for part in os.getenv("LOCAL_INGEST_ALLOWED_ROOTS", allowed_roots_default).split(",")
             if part.strip()
         ]
+        runtime_profile = resolve_runtime_profile(os.getenv("NIRMIQ_RUNTIME_PROFILE", "auto"))
         return cls(
+            runtime_profile=runtime_profile.name,
             api_host=os.getenv("API_HOST", "127.0.0.1"),
             api_port=int(os.getenv("API_PORT", "8000")),
             web_allowed_origins=[
@@ -94,17 +99,33 @@ class Settings(BaseModel):
             reranker_model=os.getenv("RERANKER_MODEL", "bge-reranker-base"),
             generator_model_default=os.getenv("GENERATOR_MODEL_DEFAULT", "phi3:mini"),
             generator_model_code=os.getenv("GENERATOR_MODEL_CODE", "deepseek-coder:6.7b"),
-            use_ollama_generation=os.getenv("USE_OLLAMA_GENERATION", "true").lower() == "true",
-            use_ollama_embeddings=os.getenv("USE_OLLAMA_EMBEDDINGS", "true").lower() == "true",
-            use_ollama_reranker=os.getenv("USE_OLLAMA_RERANKER", "false").lower() == "true",
+            use_ollama_generation=cls._env_bool(
+                "USE_OLLAMA_GENERATION", runtime_profile.use_ollama_generation
+            ),
+            use_ollama_embeddings=cls._env_bool(
+                "USE_OLLAMA_EMBEDDINGS", runtime_profile.use_ollama_embeddings
+            ),
+            use_ollama_reranker=cls._env_bool(
+                "USE_OLLAMA_RERANKER", runtime_profile.use_ollama_reranker
+            ),
             ollama_timeout_seconds=float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120.0")),
-            low_memory_mode=os.getenv("LOW_MEMORY_MODE", "true").lower() == "true",
-            ollama_keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "45s"),
-            ollama_num_ctx=int(os.getenv("OLLAMA_NUM_CTX", "3072")),
-            ollama_num_predict=int(os.getenv("OLLAMA_NUM_PREDICT", "512")),
+            low_memory_mode=cls._env_bool("LOW_MEMORY_MODE", runtime_profile.low_memory_mode),
+            ollama_keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", runtime_profile.ollama_keep_alive),
+            ollama_num_ctx=int(os.getenv("OLLAMA_NUM_CTX", str(runtime_profile.ollama_num_ctx))),
+            ollama_num_predict=int(
+                os.getenv("OLLAMA_NUM_PREDICT", str(runtime_profile.ollama_num_predict))
+            ),
             ollama_num_gpu=cls._optional_int(os.getenv("OLLAMA_NUM_GPU")),
             ollama_num_thread=cls._optional_int(os.getenv("OLLAMA_NUM_THREAD")),
-            ollama_embed_batch_size=max(1, int(os.getenv("OLLAMA_EMBED_BATCH_SIZE", "8"))),
+            ollama_embed_batch_size=max(
+                1,
+                int(
+                    os.getenv(
+                        "OLLAMA_EMBED_BATCH_SIZE",
+                        str(runtime_profile.ollama_embed_batch_size),
+                    )
+                ),
+            ),
             generator_temperature_grounded=float(os.getenv("GENERATOR_TEMPERATURE_GROUNDED", "0.15")),
             generator_temperature_long_context=float(os.getenv("GENERATOR_TEMPERATURE_LONG_CONTEXT", "0.85")),
             retrieval_k_bm25=int(os.getenv("RETRIEVAL_K_BM25", "20")),
@@ -113,8 +134,15 @@ class Settings(BaseModel):
             retrieval_k_rerank=int(os.getenv("RETRIEVAL_K_RERANK", "8")),
             retrieval_rrf_k=int(os.getenv("RETRIEVAL_RRF_K", "60")),
             retrieval_max_chunks_per_document=int(os.getenv("RETRIEVAL_MAX_CHUNKS_PER_DOCUMENT", "2")),
-            retrieval_enable_vector=os.getenv("RETRIEVAL_ENABLE_VECTOR", "true").lower() == "true",
-            retrieval_max_context_tokens=int(os.getenv("RETRIEVAL_MAX_CONTEXT_TOKENS", "2400")),
+            retrieval_enable_vector=cls._env_bool(
+                "RETRIEVAL_ENABLE_VECTOR", runtime_profile.retrieval_enable_vector
+            ),
+            retrieval_max_context_tokens=int(
+                os.getenv(
+                    "RETRIEVAL_MAX_CONTEXT_TOKENS",
+                    str(runtime_profile.retrieval_max_context_tokens),
+                )
+            ),
             retrieval_min_grounding_score=float(os.getenv("RETRIEVAL_MIN_GROUNDING_SCORE", "0.15")),
             memory_snapshot_interval_messages=int(os.getenv("MEMORY_SNAPSHOT_INTERVAL_MESSAGES", "6")),
             memory_snapshot_window_messages=int(os.getenv("MEMORY_SNAPSHOT_WINDOW_MESSAGES", "12")),
@@ -125,6 +153,13 @@ class Settings(BaseModel):
         if raw_value is None or not raw_value.strip():
             return None
         return int(raw_value)
+
+    @staticmethod
+    def _env_bool(name: str, default: bool) -> bool:
+        raw_value = os.getenv(name)
+        if raw_value is None:
+            return default
+        return raw_value.strip().lower() == "true"
 
 
 @lru_cache

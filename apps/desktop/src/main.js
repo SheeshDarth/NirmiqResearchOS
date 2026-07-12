@@ -245,7 +245,6 @@ async function startRuntime() {
         API_DIR,
         {
           PYTHONPATH: API_DIR,
-          LOW_MEMORY_MODE: "true",
         },
       );
     }

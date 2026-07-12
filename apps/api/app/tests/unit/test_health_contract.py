@@ -27,7 +27,10 @@ def test_readiness_endpoint_returns_demo_state() -> None:
     assert body["cloud_api_required"] is False
     assert body["external_provider_enabled"] is False
     assert body["primary_inference"] == "local_offline"
-    assert body["low_memory_mode"] is True
+    assert body["runtime_profile"] in {"balanced", "low_memory", "cpu_offline"}
+    assert isinstance(body["low_memory_mode"], bool)
+    if body["runtime_profile"] in {"low_memory", "cpu_offline"}:
+        assert body["low_memory_mode"] is True
     assert body["ollama_runtime"]["keep_alive"]
     assert body["ollama_runtime"]["num_ctx"] <= 4096
     assert body["ollama_runtime"]["num_predict"] <= 1024

@@ -32,6 +32,7 @@ async def readiness_check(container: AppContainer = Depends(get_container)) -> d
         "cloud_api_required": False,
         "external_provider_enabled": False,
         "primary_inference": "local_offline",
+        "runtime_profile": settings.runtime_profile,
         "low_memory_mode": settings.low_memory_mode,
         "ollama_runtime": {
             "keep_alive": settings.ollama_keep_alive,

@@ -3504,3 +3504,46 @@ Review notes:
 
 - The remaining untracked `deep-research-report.md` is intentionally preserved and was not included in cleanup.
 - The line-ending warnings shown by Git are Windows normalization warnings, not whitespace errors.
+
+# Latest Session Update - 2026-07-12 MegaSprint Four Started
+
+Objective: begin local runtime optimization without changing the public query API or adding UI complexity.
+
+Implemented first slice:
+
+- Added internal `auto`, `balanced`, `low_memory`, and `cpu_offline` runtime policies.
+- Preserved explicit environment overrides for advanced local tuning.
+- Added bounded, cross-platform `npm run benchmark:runtime` readiness/query measurements.
+- Exposed only the active profile through readiness diagnostics; no new normal-user controls were added.
+- Added `docs/megasprint_four_plan.md` with measurable latency, RAM, VRAM, offline, and accuracy guardrails.
+- Kept Linux startup conservative with `cpu_offline` defaults while Windows desktop uses automatic profile selection.
+
+UI ownership:
+
+- MegaSprint Two completed the main ChatGPT-grade UI simplification.
+- MegaSprint Five owns final desktop/mobile visual QA, screenshots, release polish, and packaging presentation.
+
+Next MegaSprint Four block:
+
+- Run representative cold/warm benchmarks for BM25 fallback and Ollama generation.
+- Measure process RAM and RTX 4050 VRAM with bounded probes.
+- Optimize model residency only after the baseline identifies the actual bottleneck.
+
+First baseline observation:
+
+- Windows 11, RTX 4050 Laptop GPU with 6 GiB VRAM, 20 logical CPUs.
+- Balanced readiness median: `18.81 ms` across five calls; the first Ollama availability probe took about `2.05 s`.
+- One grounded BM25 query took `56.47 s`, returned three citations, and used local Ollama.
+- Major latency contributor found: `phi3:mini` was absent, so the runtime cold-loaded an installed Mistral 7B fallback.
+- Tested an installed Qwen 4B fallback: `63.98 s`, empty usable generation, deterministic fallback answer. The selector experiment was reverted.
+- Next model comparison must use the intended Qwen 2.5 3B instruct or Phi-3 Mini model and separate cold-load latency from warm generation latency.
+
+Verification:
+
+- Focused runtime/profile tests: `10 passed`, `1 warning`.
+- Full `npm.cmd run ship:check`: passed.
+- Backend suite: `100 passed`, `1 warning`.
+- Next.js production build: passed, first-load JavaScript `117 kB`.
+- Publish smoke and all golden demo grounded/abstention cases: passed.
+- Windows desktop smoke: passed after removing the old forced low-memory launcher override.
+- Desktop and Linux launchers now respect profile selection instead of overriding profile defaults.
