@@ -26,6 +26,16 @@ def test_synthesis_query_terms_expand_privacy_language() -> None:
     assert "retention" in terms
 
 
+def test_synthesis_query_terms_expand_fact_checking_language() -> None:
+    terms = SynthesisService._query_terms(
+        "What does the module recommend for fact-checking and verification?"
+    )
+
+    assert "trusted" in terms
+    assert "retrieval" in terms
+    assert "fallback" in terms
+
+
 def test_context_relevance_uses_acronym_expansion_from_retrieved_context() -> None:
     bundle = RetrievalBundle(
         chunks=[
@@ -87,6 +97,30 @@ def test_context_relevance_treats_local_privacy_controls_as_direct_evidence() ->
     assert relevance["direct_evidence_count"] == 1
 
 
+def test_context_relevance_normalizes_ocr_glyphs_before_scoring() -> None:
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="fact-checking",
+                document_id="doc",
+                text=(
+                    "Fact-Checking and VerificaƟon. Cross-check outputs with trusted sources. "
+                    "Use retrieval-based methods and return fallback responses if uncertain."
+                ),
+                score=0.9,
+            )
+        ]
+    )
+
+    relevance = SynthesisService._context_relevance(
+        "What does the module recommend for fact-checking and verification?",
+        bundle,
+    )
+
+    assert relevance["answer_relevance_state"] == "direct"
+    assert relevance["direct_evidence_count"] == 1
+
+
 def test_privacy_control_fallback_extracts_concrete_local_controls() -> None:
     context_chunks = [
         (
@@ -109,6 +143,62 @@ def test_privacy_control_fallback_extracts_concrete_local_controls() -> None:
     assert "trusted corpus roots" in answer
     assert "file signatures" in answer
     assert "[1]" in answer
+
+
+def test_privacy_control_fallback_handles_general_document_controls() -> None:
+    context_chunks = [
+        (
+            1,
+            "[1] doc=doc score=1.000 source=bm25 pages=26-26\n"
+            "Privacy Protection  Avoid storing sensiƟve user data  Mask personal informaƟon (PII) "
+            " Use encrypƟon and secure APIs  Limit data retenƟon.",
+        )
+    ]
+
+    answer = SynthesisService._fallback_privacy_control_answer(
+        "What privacy protections are listed for generative AI workflows?",
+        context_chunks,
+    )
+
+    assert "sensitive user data" in answer.lower()
+    assert "personal information" in answer.lower()
+    assert "encryption" in answer.lower()
+    assert "data retention" in answer.lower()
+    assert "NIRMIQ preserves privacy" not in answer
+    assert "[1]" in answer
+
+
+def test_textbook_outline_is_not_filtered_as_backmatter_noise() -> None:
+    outline = (
+        "Part I, The Fundamentals of Machine Learning, covers the following topics: "
+        "framing the problem and looking at the big picture, preparing data, selecting a model, "
+        "tuning hyperparameters using cross-validation, and handling underfitting and overfitting."
+    )
+
+    assert SynthesisService._is_low_value_evidence_sentence(outline) is False
+
+
+def test_fallback_prefers_direct_cross_validation_outline_over_generic_workflow_text() -> None:
+    answer = SynthesisService._fallback_answer(
+        query="How does the book describe cross-validation in the machine learning workflow?",
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1.000 source=bm25 pages=44-44\n"
+                "Model-based learning builds a model from examples and uses it to make predictions.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=0.900 source=bm25 pages=8-8\n"
+                "Part I covers the following topics: selecting a model and tuning hyperparameters "
+                "using cross-validation, then handling underfitting and overfitting.",
+            ),
+        ],
+        response_mode="research",
+    )
+
+    assert "selecting a model and tuning hyperparameters using cross-validation" in answer.lower()
+    assert "[2]" in answer
 
 
 def test_clean_evidence_sentence_removes_golden_demo_heading_prefix() -> None:

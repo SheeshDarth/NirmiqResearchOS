@@ -175,8 +175,10 @@ The golden demo is strong, and the harder real-world seed now shows measurable i
 | Before reliability slice | 0.578 | 0.750 | 0.750 |
 | MegaSprint One final BM25 | 0.843 | 1.000 | 1.000 |
 | MegaSprint One final Hybrid | 0.804 | 1.000 | 1.000 |
+| Full-query BM25 answer path | 0.882 | 1.000 | 1.000 |
+| Full-query Hybrid answer path | 0.882 | 1.000 | 1.000 |
 
-This means the current reliability slice reaches the MRR, Recall@8, and citation coverage targets on the current 17-sample seed. The set is still small, so this is a serious progress signal, not a production-grade accuracy claim. BM25 remains the safest offline backbone, while hybrid is improving as a secondary signal instead of acting as the sole source of truth.
+This means both raw retrieval and the answer-used citation path reach the current Recall@8 and citation-coverage targets on the 17-sample seed. The set is still small, so this is a serious progress signal, not a production-grade accuracy claim. BM25 remains the safest offline backbone, while hybrid is improving as a secondary signal instead of acting as the sole source of truth.
 
 The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
 

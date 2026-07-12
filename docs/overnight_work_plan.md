@@ -1,6 +1,6 @@
 # NIRMIQ Overnight Work Plan
 
-Last updated: 2026-07-07
+Last updated: 2026-07-12
 
 Purpose: keep NIRMIQ moving through a focused overnight sprint without increasing product complexity. The priority is demo reliability, answer accuracy, and a clean ChatGPT-like experience.
 
@@ -25,6 +25,15 @@ By the end of the sprint, NIRMIQ should feel like a serious local academic intel
 - Keep the UI simple, calm, and chatbot-first.
 
 ## Current Baseline
+
+Release-hardening status on 2026-07-12:
+
+- Raw retrieval, 17 samples: Hybrid MRR `0.804`, BM25 MRR `0.843`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Full-query answer path, 17 samples: Hybrid and BM25 MRR `0.882`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Current full-query failure backlog: `0` records.
+- Next accuracy work: grow the real-world seed and test abstention/partial evidence; do not tune against the 17 samples further.
+
+Historical baseline before the reliability work:
 
 Known real-world retrieval baseline before the next reliability pass:
 
@@ -181,3 +190,21 @@ Next active sprint:
 - Focus: Paper Lab, Exam Lab, diagram grounding, study guides, and source-grounded exports.
 
 Priority order changes from UI shell polish to academic workflow correctness while keeping the UI simple.
+
+## 2026-07-12 Release-Hardening Checkpoint
+
+The release gate is green again after fixing the Windows PowerShell child-process exit-code capture in `scripts/ship_check.ps1`.
+
+Completed:
+
+- Isolated backend test runtime paths from production SQLite, Chroma, upload, and parse-cache paths.
+- Delegated API tests from `ship_check.ps1` to `test_api.ps1`.
+- Ran the Next.js build through a bounded native process wrapper with logs in `temp\runtime`.
+- Bound the process handle before `WaitForExit()` so PowerShell reliably exposes the child exit code.
+
+Verification:
+
+- `npm.cmd run ship:check`: passed.
+- Backend: `95 passed`, `1 warning`.
+- Web production build: passed.
+- Publish smoke and golden demo: passed.

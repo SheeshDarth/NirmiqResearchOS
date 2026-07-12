@@ -35,7 +35,7 @@ def detect_query_intent(query: str, mode: str) -> QueryIntent:
         return QueryIntent("compare", 0.88, "comparison_grounded")
     if normalized_mode == "general_chat":
         return QueryIntent("general_chat", 0.8, "local_chat")
-    if _has_any(tokens, {"what", "why", "how", "when", "where", "define", "explain"}):
+    if _has_any(tokens, {"what", "which", "who", "why", "how", "when", "where", "define", "explain"}):
         return QueryIntent("factual_lookup", 0.68, "default_grounded_retrieval")
     return QueryIntent("unanswerable_or_unclear", 0.45, "abstain_if_weak")
 

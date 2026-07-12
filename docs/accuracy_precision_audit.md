@@ -621,3 +621,38 @@ Interpretation:
 - The measured retrieval layer is currently healthy on the committed demo set and the small real-world seed.
 - This is still not a broad production accuracy claim; the next accuracy work is expanding labels and testing more textbook, notes, scanned-PDF, exam, and paper cases.
 - BM25 remains the safest offline backbone for attached-source academic queries, with hybrid treated as a secondary signal unless future metrics show stronger first-rank placement.
+
+## 2026-07-12 Full-Query Citation Reliability Closure
+
+Observed gap:
+
+- Raw retrieval reached Recall@8 and expected citation coverage `1.000`, while the complete answer path initially preserved expected evidence for only `0.765` of the refreshed 17-sample seed.
+- Four unique questions failed in both modes: a textbook outline, a cross-validation workflow question, and two OCR-heavy GenAI safety/privacy questions.
+
+Root causes:
+
+- Synthesis relevance and directness checks used unnormalized OCR text even though retrieval evaluation normalized common PDF glyphs.
+- The backmatter-noise heuristic rejected a legitimate textbook roadmap because it contained many comma-separated items.
+- Privacy fallback synthesis recognized NIRMIQ-specific local controls but not general source controls such as PII masking, encryption, secure APIs, and data retention.
+- The intent router did not classify `which` questions as factual lookups.
+
+Fixes:
+
+- Normalize OCR text before synthesis relevance checks, directness scoring, acronym extraction, sentence splitting, and evidence formatting.
+- Preserve chapter/part roadmap and learning-objective outlines while retaining index-noise penalties.
+- Generalize source-only privacy-control extraction and add deterministic fact-checking retrieval terms.
+- Add focused regression tests for all four failure classes without changing public APIs or lowering evidence thresholds.
+
+Results:
+
+| Mode | Samples | MRR | Recall@8 | Citation expected coverage | Grounded response rate | Failure records |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Hybrid | 17 | 0.882 | 1.000 | 1.000 | 1.000 | 0 |
+| BM25 | 17 | 0.882 | 1.000 | 1.000 | 1.000 | 0 |
+
+Verification:
+
+- Focused backend tests: `45 passed`.
+- Full backend suite: `95 passed`, `1 warning`.
+- API compile check: passed with a workspace-local bytecode cache.
+- The next reliability step is dataset expansion and abstention evaluation, not further tuning against this small seed.

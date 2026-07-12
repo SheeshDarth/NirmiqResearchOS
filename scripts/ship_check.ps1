@@ -8,9 +8,8 @@ $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $runtimeDir = Join-Path $root "temp\runtime"
 New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
-$pytestRunId = [guid]::NewGuid().ToString("N")
-$pytestTempDir = Join-Path $root "temp\pytest-runs\$pytestRunId\tmp"
-$pytestCacheDir = Join-Path $root "temp\pytest-runs\$pytestRunId\cache"
+$verificationRunId = [guid]::NewGuid().ToString("N")
+$compileCacheDir = Join-Path $root "temp\pytest-runs\$verificationRunId\compile-cache"
 
 function Repair-PathEnvironment {
     $pathValue = [System.Environment]::GetEnvironmentVariable("Path", "Process")
@@ -97,8 +96,58 @@ function Invoke-NativeChecked {
     }
 }
 
+function Stop-ScopedProcessTree {
+    param([int]$TargetProcessId)
+    $children = Get-CimInstance Win32_Process -Filter "ParentProcessId = $TargetProcessId" -ErrorAction SilentlyContinue
+    foreach ($child in $children) {
+        Stop-ScopedProcessTree -TargetProcessId $child.ProcessId
+    }
+    Stop-Process -Id $TargetProcessId -Force -ErrorAction SilentlyContinue
+}
+
+function Invoke-BoundedNativeProcess {
+    param(
+        [string]$Name,
+        [string]$FilePath,
+        [string[]]$Arguments,
+        [string]$WorkingDirectory,
+        [int]$TimeoutSeconds = 300
+    )
+    $outLog = Join-Path $runtimeDir "$Name.ship.out.log"
+    $errLog = Join-Path $runtimeDir "$Name.ship.err.log"
+    $process = Start-Process `
+        -FilePath $FilePath `
+        -ArgumentList $Arguments `
+        -WorkingDirectory $WorkingDirectory `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $outLog `
+        -RedirectStandardError $errLog `
+        -PassThru
+    $null = $process.Handle
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        Stop-ScopedProcessTree -TargetProcessId $process.Id
+        throw "$Name exceeded the ${TimeoutSeconds}s release budget. See $outLog and $errLog."
+    }
+    $process.WaitForExit()
+    $process.Refresh()
+    $exitCode = $process.ExitCode
+    Get-Content $outLog -ErrorAction SilentlyContinue
+    Get-Content $errLog -ErrorAction SilentlyContinue
+    if ($null -eq $exitCode) {
+        throw "$Name completed but did not expose an exit code. See $outLog and $errLog."
+    }
+    if ($exitCode -ne 0) {
+        throw "$Name failed with exit code $exitCode."
+    }
+}
+
 Repair-PathEnvironment
 $npm = (Get-Command npm.cmd -ErrorAction Stop).Source
+$node = (Get-Command node.exe -ErrorAction Stop).Source
+$nextBuildCli = Join-Path $root "apps\web\node_modules\next\dist\bin\next"
+if (-not (Test-Path -LiteralPath $nextBuildCli)) {
+    throw "Next.js build CLI not found: $nextBuildCli"
+}
 
 $started = @()
 $apiBase = "http://127.0.0.1:8000"
@@ -112,24 +161,12 @@ try {
     }
 
     if (-not $SkipTests) {
+        Invoke-CheckedScript (Join-Path $PSScriptRoot "test_api.ps1")
         Push-Location $root
         try {
-            $env:PYTHONPATH = "apps/api"
-            $env:TEMP = $pytestTempDir
-            $env:TMP = $env:TEMP
-            $env:TMPDIR = $env:TEMP
-            $env:USE_OLLAMA_GENERATION = "false"
-            $env:USE_OLLAMA_EMBEDDINGS = "false"
-            $env:USE_OLLAMA_RERANKER = "false"
-            $env:LOW_MEMORY_MODE = "true"
-            $env:SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS = "true"
-            New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
-            New-Item -ItemType Directory -Force -Path $pytestCacheDir | Out-Null
-            Invoke-NativeChecked "Backend tests" {
-                python -m pytest apps/api/app/tests/unit apps/api/app/tests/integration -q -o "cache_dir=$pytestCacheDir"
-            }
+            New-Item -ItemType Directory -Force -Path $compileCacheDir | Out-Null
             Invoke-NativeChecked "API compile" {
-                python -m compileall apps/api/app
+                python -X "pycache_prefix=$compileCacheDir" -m compileall -q apps/api/app
             }
         } finally {
             Pop-Location
@@ -137,14 +174,12 @@ try {
     }
 
     if (-not $SkipBuild) {
-        Push-Location (Join-Path $root "apps\web")
-        try {
-            Invoke-NativeChecked "Web build" {
-                & $npm run build
-            }
-        } finally {
-            Pop-Location
-        }
+        Invoke-BoundedNativeProcess `
+            -Name "web-build" `
+            -FilePath $node `
+            -Arguments @($nextBuildCli, "build") `
+            -WorkingDirectory (Join-Path $root "apps\web") `
+            -TimeoutSeconds 300
     }
 
     if (-not (Test-LocalPort 8000)) {

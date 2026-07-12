@@ -9,7 +9,7 @@ Source files:
 - `data/processed/eval/real_world_retrieval_metrics.json`
 - `data/processed/eval/real_world_retrieval_failures.jsonl`
 
-Purpose: track where raw retrieval finds evidence, but the final answer/citation path fails to use the best evidence.
+Purpose: retain the history of cases where raw retrieval found evidence but the final answer/citation path failed to use it, and monitor regressions as the eval set grows.
 
 ## Current Snapshot
 
@@ -20,64 +20,62 @@ Raw retrieval after the 2026-07-12 release-hardening refresh:
 | Hybrid | 0.804 | 1.000 | 1.000 | 0 |
 | BM25 | 0.843 | 1.000 | 1.000 | 0 |
 
-Full-query answer path after synthesis query-term expansion, not rerun in the 2026-07-12 packaging/eval refresh:
+Full-query answer path after the 2026-07-12 OCR, outline, and fallback-synthesis reliability fix:
 
 | Mode | MRR | Recall@8 | Citation expected coverage | Weak records |
 | --- | ---: | ---: | ---: | ---: |
-| Hybrid | 0.646 | 0.813 | 0.813 | 3 |
-| BM25 | 0.667 | 0.875 | 0.875 | 2 |
+| Hybrid | 0.882 | 1.000 | 1.000 | 0 |
+| BM25 | 0.882 | 1.000 | 1.000 | 0 |
 
 Interpretation:
 
-- Raw retrieval is currently healthy on the 17-sample seed.
-- The full-query answer/citation layer still needs a separate refresh before closing this backlog.
-- Hybrid full-query previously trailed raw retrieval, so answer-used citation selection remains active work until revalidated.
-- The next broad accuracy gain should come from a larger eval set and full-query citation selection, not model escalation.
+- Raw retrieval and answer-used citation selection are currently healthy on the 17-sample seed.
+- The previous answer-layer misses are resolved without lowering the evidence gate or adding a larger model.
+- This closes the current seed backlog, not the broader accuracy program; the next confidence gain must come from more diverse labels.
 
-## Last Full-Query Misses
+## Resolved Full-Query Misses
 
-The last full-query failure log contains `5` missed-at-8 records:
+Before the reliability fix, the refreshed run exposed these four unique questions in both modes:
 
-- `paper-transformer-001`
-- `paper-transformer-004`
+- `textbook-ml-001`
+- `textbook-ml-003`
+- `notes-genai-003`
 - `notes-genai-004`
 
-Some samples fail in both `hybrid` and `bm25`, so the unique question count is smaller than the record count.
+The current failure file is empty. These cases now preserve the expected answer-used evidence.
 
-## Likely Causes
+## Resolved Causes
 
-### 1. Final Citations Do Not Always Match Top Retrieved Evidence
+### 1. OCR Was Normalized During Evaluation But Not Synthesis
 
-The answer layer returns only answer-used citations. This is correct for trust, but it means the synthesis/fallback layer must choose the strongest evidence, not just any retrieved evidence.
+PDF glyphs such as `Ɵ` prevented synthesis relevance checks from recognizing words such as `verification`, `sensitive`, `information`, and `retention` even though retrieval found the right chunk.
 
-Fix direction:
+Fix shipped:
 
-- Score candidate evidence sentences against the user query and expected answer type.
-- Prefer answer sentences from chunks with high lexical overlap, section match, and low noise penalty.
-- Keep the public citations limited to actually used chunks.
+- Normalize OCR text before context relevance, directness scoring, acronym extraction, sentence splitting, and fallback synthesis.
+- Keep stored source text and public API shapes unchanged.
 
-### 2. Fallback Synthesis Still Uses Broad Sentences
+### 2. Textbook Outlines Were Mistaken For Index Noise
 
-Fallback synthesis is safer than hallucinating, but it can select broad context sentences when a narrower answer sentence exists lower in the context.
+The comma-density heuristic correctly rejected many backmatter fragments but also rejected legitimate chapter roadmaps and `covers the following topics` passages.
 
-Fix direction:
+Fix shipped:
 
-- Add answer-mode-aware sentence scoring.
-- Boost sentences containing expansion terms and direct query terms.
-- Penalize metadata/index/reference sentences during fallback sentence selection.
+- Preserve outline passages with roadmap, part, chapter, and learning-objective cues.
+- Treat `which` and `who` questions as factual lookups.
 
-### 3. Summary And Overview Logic Can Hide Specific Evidence
+### 3. Privacy Fallback Was Product-Specific
 
-Some questions are broad enough that the generated answer may cite overview chunks while the expected phrase lives in a more specific chunk.
+The previous privacy fallback recognized NIRMIQ local-runtime controls but not general document controls such as PII masking, encryption, secure APIs, and retention limits.
 
-Fix direction:
+Fix shipped:
 
-- For selected-document queries, retain a small "precision evidence" pool beside the broad context pool.
-- Let final citation selection pull from precision evidence even when the answer is structured as a summary.
+- Generalize privacy-control extraction and remove hard-coded product claims from document answers.
+- Add deterministic fact-checking terms for trusted sources, retrieval, fallback, and uncertainty.
 
 ## Next Fix Order
 
-1. Expand the real-world eval set from `17` toward `40`.
-2. Add OCR/mojibake normalization during parsing so privacy/safety notes are easier to retrieve and cite.
-3. Improve fallback sentence scoring for hybrid mode when the best evidence is below the first cited chunk.
-4. Re-run full-query eval and target citation expected coverage at or above `0.900`.
+1. Expand the real-world eval set from `17` toward `40` across textbooks, notes, papers, and scanned PDFs.
+2. Add explicit unanswerable and partial-evidence labels to measure abstention correctness.
+3. Improve formatting of long outline passages without changing citation faithfulness.
+4. Keep this full-query eval in the release gate and investigate any non-empty failure log before shipping.

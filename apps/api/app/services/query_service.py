@@ -9,6 +9,7 @@ from app.domain.citations import to_citations
 from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.paper_lab import build_paper_lab_artifact
 from app.domain.query_intent import QueryIntent, detect_query_intent
+from app.domain.text_normalization import normalize_ocr_text
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
 from app.services.synthesis_service import SynthesisService
@@ -631,6 +632,9 @@ class QueryService:
                     "dbscan",
                 }
             )
+        normalized_query = query.lower()
+        if any(phrase in normalized_query for phrase in ("fact-check", "fact check", "verification", "verify")):
+            terms.update({"trusted", "source", "retrieval", "rag", "fallback", "uncertain", "cross-check"})
         for phrase in RetrievalService._query_phrases(query):
             terms.update(phrase.split())
         return terms
@@ -662,6 +666,8 @@ class QueryService:
             hints.extend(["limitations", "assumptions", "tradeoffs", "failure cases"])
         if {"image", "images", "diagram", "diagrams", "figure", "figures", "visual"} & tokens:
             hints.extend(["image", "figure", "diagram", "visual", "caption"])
+        if any(phrase in normalized for phrase in ("fact-check", "fact check", "verification", "verify")):
+            hints.extend(["trusted sources", "retrieval-based", "RAG", "fallback response", "uncertain"])
         deduped: list[str] = []
         seen: set[str] = set()
         for hint in hints:
@@ -672,7 +678,7 @@ class QueryService:
 
     @staticmethod
     def _factual_seed_score(row: dict[str, object], query: str, focus_terms: set[str]) -> float:
-        text = str(row.get("text") or "").lower()
+        text = normalize_ocr_text(str(row.get("text") or "")).lower()
         if not text:
             return 0.0
         text_terms = set(re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", text))
@@ -686,7 +692,7 @@ class QueryService:
         directness_score = RetrievalService._chunk_answer_relevance(row=row, query=query)
         query_phrases = RetrievalService._query_phrases(query)
         metadata = " ".join(
-            str(row.get(key) or "").lower()
+            normalize_ocr_text(str(row.get(key) or "")).lower()
             for key in ("heading", "section_path", "chunk_type")
         )
         combined = f"{metadata} {text[:2200]}"

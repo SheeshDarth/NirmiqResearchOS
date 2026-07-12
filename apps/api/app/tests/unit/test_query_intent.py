@@ -37,3 +37,10 @@ def test_intent_router_detects_exam_language_without_exam_mode() -> None:
 def test_intent_router_detects_general_chat_mode() -> None:
     intent = detect_query_intent("Can you help me think?", "general_chat")
     assert intent.intent == "general_chat"
+
+
+def test_intent_router_treats_which_question_as_factual_lookup() -> None:
+    intent = detect_query_intent("Which topics does Part I of this textbook cover?", "research")
+
+    assert intent.intent == "factual_lookup"
+    assert intent.route == "default_grounded_retrieval"

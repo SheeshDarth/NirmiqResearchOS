@@ -145,7 +145,7 @@ Next tuning targets:
 
 ## Full-Query Real-World Evaluation
 
-Date: 2026-07-06
+Date: 2026-07-12
 
 Command:
 
@@ -168,15 +168,16 @@ Results:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 16 | 0.646 | 0.813 | 0.813 | 0.813 | 0.813 | 0.938 | 0.063 |
-| BM25 | 16 | 0.667 | 0.875 | 0.875 | 0.875 | 0.875 | 0.938 | 0.063 |
+| Hybrid | 17 | 0.882 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.000 |
+| BM25 | 17 | 0.882 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.000 |
 
 Interpretation:
 
-- The answer layer is no longer as broken as the truncated-preview metric suggested.
-- BM25 full-query coverage now matches raw BM25 retrieval coverage on this seed.
-- Hybrid full-query still trails raw hybrid retrieval slightly, so answer-used citation selection remains active reliability work.
-- The new evidence reliability gate blocks low-citation-coverage answers instead of always returning `grounded=true`.
+- OCR normalization now runs before synthesis relevance checks and evidence extraction.
+- Legitimate textbook outlines are no longer discarded by the backmatter/index-noise filter.
+- Generic privacy and fact-checking controls now use source-specific fallback synthesis rather than product-specific wording.
+- Both full-query modes preserve expected evidence for every answerable sample in the current seed.
+- The evidence reliability gate remains unchanged; the improvement comes from better evidence interpretation, not a weaker abstention threshold.
 
 ## Metrics Definitions
 

@@ -3434,3 +3434,73 @@ Remaining visual polish:
 - Optional short GIF.
 - Optional compare-answer screenshot.
 - Branded desktop icon and code signing remain separate packaging work.
+
+### Latest Update: Full-Query RAG Reliability Closure
+
+Date: 2026-07-12
+
+Purpose:
+
+- Revalidate the complete answer, grounding, and answer-used citation path after raw retrieval reached its release target.
+- Fix evidence loss without weakening abstention safeguards or adding cloud/model dependencies.
+
+Initial refreshed result:
+
+- Hybrid and BM25 full-query MRR: `0.647`.
+- Recall@8 and citation expected coverage: `0.765`.
+- Four unique questions failed in both modes: `textbook-ml-001`, `textbook-ml-003`, `notes-genai-003`, and `notes-genai-004`.
+
+Root causes and implementation:
+
+- Added OCR normalization before synthesis relevance, directness, acronym, sentence, and fallback-evidence processing.
+- Prevented legitimate textbook roadmaps/outlines from being classified as backmatter noise.
+- Classified `which` and `who` questions as factual lookups.
+- Added deterministic fact-checking expansion for trusted sources, retrieval, fallback, and uncertainty.
+- Generalized privacy fallback synthesis to support document controls such as sensitive-data avoidance, PII masking, encryption, secure APIs, and retention limits.
+- Preserved the existing evidence reliability gate and public API shapes.
+
+Final evaluation:
+
+- Full-query Hybrid: MRR `0.882`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Full-query BM25: MRR `0.882`, Recall@8 `1.000`, citation expected coverage `1.000`.
+- Grounded response rate: `1.000` on this answerable 17-sample seed.
+- `data\processed\eval\real_world_full_query_failures.jsonl` contains no active failure records.
+
+Verification:
+
+- Focused tests: `45 passed`.
+- Full backend tests: `95 passed`, `1 warning`.
+- `python -X pycache_prefix=temp\compile-cache -m compileall -q apps\api\app`: passed.
+
+Tradeoffs and next action:
+
+- The seed remains too small for a production-wide accuracy claim; avoid tuning further against these same 17 questions.
+- Expand to at least 40 diverse labels, including scanned PDFs, partial-evidence prompts, and unanswerable questions.
+- Long outline passages are now accurate but can still be formatted more compactly in a later presentation-only pass.
+
+### Latest Update: Release Gate Sandbox/Exit-Code Cleanup
+
+Date: 2026-07-12
+
+Purpose:
+
+- Resolve the repeated local verification failure where the web build completed successfully but `ship:check` reported that the child process did not expose an exit code.
+- Keep verification isolated from user/project runtime data so test runs do not touch production SQLite, Chroma, upload, or parse-cache paths.
+
+Implemented:
+
+- Updated `scripts\ship_check.ps1` to run the Next.js build through a bounded native process wrapper and bind the process handle before waiting for exit.
+- Kept child process logs in `temp\runtime` for diagnosis when a bounded command fails.
+- Delegated backend tests to `scripts\test_api.ps1` so release checks use the same isolated pytest/runtime path as direct API test runs.
+- Updated `apps\api\app\tests\conftest.py` to force isolated test paths even if the caller has production data paths in the environment.
+
+Verification:
+
+- `npm.cmd run ship:check`: passed.
+- Included checks: backend unit/integration tests, API compile, web production build, publish smoke, golden demo, and unsupported-query abstention.
+- Backend result inside ship gate: `95 passed`, `1 warning`.
+
+Review notes:
+
+- The remaining untracked `deep-research-report.md` is intentionally preserved and was not included in cleanup.
+- The line-ending warnings shown by Git are Windows normalization warnings, not whitespace errors.

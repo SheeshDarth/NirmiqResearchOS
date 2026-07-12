@@ -6,6 +6,7 @@ from app.core.config import Settings
 from app.domain.citation_coverage import citation_coverage
 from app.domain.models import RetrievalBundle
 from app.domain.retrieval_policy import RetrievalPolicy
+from app.domain.text_normalization import normalize_ocr_text
 
 
 _QUERY_STOPWORDS = {
@@ -1111,35 +1112,42 @@ class SynthesisService:
             "clearing its metadata",
             "vector entries",
             "files stay on the machine",
+            "sensitive user data",
+            "personal information",
+            "pii",
+            "mask personal",
+            "data masking",
+            "encryption",
+            "secure api",
+            "data retention",
+            "access control",
         )
         candidates: list[tuple[float, int, str]] = []
         for idx, block in context_chunks[:8]:
             text = SynthesisService._context_text(block)
             for sentence_index, sentence in enumerate(SynthesisService._split_sentences(text)[:16]):
-                if len(sentence.split()) < 6 or SynthesisService._is_low_value_evidence_sentence(sentence):
+                if SynthesisService._is_low_value_evidence_sentence(sentence):
                     continue
                 lowered = sentence.lower()
                 cue_score = sum(1.2 for cue in privacy_cues if cue in lowered)
-                if cue_score <= 0:
+                if cue_score <= 0 or len(sentence.split()) < 3:
                     continue
                 term_score = SynthesisService._sentence_score(sentence, query_terms)
                 rank_bonus = max(0, 9 - idx) * 0.05 + max(0, 16 - sentence_index) * 0.01
                 candidates.append((cue_score + term_score + rank_bonus, idx, sentence))
 
-        selected = SynthesisService._dedupe_scored_sentences(candidates, limit=4)
+        selected = SynthesisService._dedupe_scored_sentences(candidates, limit=5, min_words=3)
         if not selected:
             return "I found privacy-related passages, but not enough concrete source-backed controls to answer safely."
 
         sections = ["Short answer", "\nDirect answer"]
         first_anchor, first_sentence = selected[0]
-        sections.append(
-            f"- NIRMIQ preserves privacy by keeping document work local and source-controlled: {first_sentence} [{first_anchor}]"
-        )
+        sections.append(f"- The source recommends this privacy control: {first_sentence} [{first_anchor}]")
 
         remaining = selected[1:]
         if remaining:
             sections.append("\nPrivacy controls")
-            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in remaining[:3])
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in remaining[:4])
 
         sections.append("\nEvidence note\nOpen Sources to inspect the exact privacy/runtime passages used.")
         return "\n".join(sections)
@@ -1260,12 +1268,13 @@ class SynthesisService:
         scored: list[tuple[float, int, str]],
         *,
         limit: int,
+        min_words: int = 6,
     ) -> list[tuple[int, str]]:
         selected: list[tuple[int, str]] = []
         seen: set[str] = set()
         for _, idx, sentence in sorted(scored, key=lambda item: item[0], reverse=True):
             sentence = SynthesisService._clean_evidence_sentence(sentence)
-            if len(sentence.split()) < 6 or SynthesisService._is_low_value_evidence_sentence(sentence):
+            if len(sentence.split()) < min_words or SynthesisService._is_low_value_evidence_sentence(sentence):
                 continue
             normalized = re.sub(r"\W+", "", sentence.lower())[:120]
             if normalized in seen:
@@ -1452,6 +1461,16 @@ class SynthesisService:
             return True
         comma_fragments = [fragment.strip() for fragment in re.split(r"[,;]", sentence) if fragment.strip()]
         compact_fragment_count = sum(1 for fragment in comma_fragments if 2 <= len(fragment.split()) <= 6)
+        outline_cues = (
+            "covers the following topics",
+            "roadmap",
+            "part i",
+            "part ii",
+            "chapter covers",
+            "learning objectives",
+        )
+        if any(cue in lowered for cue in outline_cues):
+            return False
         index_markers = (
             "beam search",
             "bellman",
@@ -1592,11 +1611,13 @@ class SynthesisService:
     def _context_text(block: str) -> str:
         lines = block.splitlines()
         text = " ".join(lines[1:] if len(lines) > 1 else lines)
-        return re.sub(r"\s+", " ", text).strip()
+        return re.sub(r"\s+", " ", normalize_ocr_text(text)).strip()
 
     @staticmethod
     def _split_sentences(text: str) -> list[str]:
-        normalized = re.sub(r"\n+", " ", text)
+        normalized = normalize_ocr_text(text)
+        normalized = re.sub(r"[\u2022\uf0b7\u25aa\u25e6]+", ". ", normalized)
+        normalized = re.sub(r"\n+", " ", normalized)
         return [
             sentence.strip(" -")
             for sentence in re.split(r"(?<=[.!?])\s+", normalized)
@@ -1649,6 +1670,8 @@ class SynthesisService:
             terms.update({"selecting", "model", "tuning", "hyperparameters", "validation", "kfold", "fold"})
         if "privacy" in normalized or "sensitive" in normalized:
             terms.update({"sensitive", "personal", "information", "pii", "mask", "masking", "encryption", "secure", "retention"})
+        if any(phrase in normalized for phrase in ("fact-check", "fact check", "verification", "verify")):
+            terms.update({"trusted", "sources", "retrieval", "rag", "fallback", "uncertain", "cross-check"})
         return terms
 
     @staticmethod
@@ -1692,7 +1715,8 @@ class SynthesisService:
         )
         context_terms: set[str] = set()
         for chunk in bundle.chunks[:5]:
-            context_terms.update(re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", chunk.text.lower()))
+            normalized_text = normalize_ocr_text(chunk.text).lower()
+            context_terms.update(re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", normalized_text))
 
         matched_terms = sorted(
             term
@@ -1830,7 +1854,7 @@ class SynthesisService:
             return set()
         expansions: set[str] = set()
         for chunk in bundle.chunks[:8]:
-            block = chunk.text[:1800]
+            block = normalize_ocr_text(chunk.text[:1800])
             for acronym in acronyms:
                 patterns = (
                     re.compile(
@@ -1854,7 +1878,7 @@ class SynthesisService:
 
     @staticmethod
     def _chunk_directness_score(*, query: str, chunk_text: str, query_terms: set[str]) -> float:
-        text = chunk_text.lower()
+        text = normalize_ocr_text(chunk_text).lower()
         words = set(re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", text))
         matched = {
             term
