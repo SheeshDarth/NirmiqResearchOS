@@ -643,6 +643,14 @@ The golden path proves:
 - Local Markdown export of answer plus citations.
 - Selected source removal as the privacy/purge moment.
 
+Latest verified walkthrough:
+
+- `npm.cmd run ship:check`: passed on 2026-07-12.
+- `npm.cmd run desktop:smoke`: passed on 2026-07-12.
+- Golden demo grounded prompts returned citations.
+- Unsupported prompt returned `grounded=false` and `citations=0`.
+- Desktop shell verified local API/web readiness and `cloud_api_required=false`.
+
 Primary demo docs:
 
 - [Golden demo script](docs/demo_script.md)

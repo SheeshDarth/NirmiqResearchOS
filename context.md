@@ -3383,3 +3383,22 @@ Release notes:
 
 - This confirms the current `main` branch remains demo-shippable after the desktop smoke automation.
 - Remaining public polish is still visual: live screenshots/GIFs, branded desktop icon, and optional code signing.
+
+### Latest Update: Demo Walkthrough Docs Refreshed
+
+Date: 2026-07-12
+
+Purpose:
+
+- Make reviewer-facing demo docs match the latest verified release evidence.
+- Avoid presenting screenshots/GIFs as complete when only the scripted demo proof has been verified.
+
+Updated:
+
+- `docs\demo_script.md`: added latest verified walkthrough result from `ship:check` and `desktop:smoke`.
+- `docs\demo_assets.md`: added non-visual proof status and screenshot refresh rule.
+- `README.md`: added latest verified walkthrough bullets under Golden Demo.
+
+Verification:
+
+- Documentation-only change after the latest green `npm.cmd run ship:check` and `npm.cmd run desktop:smoke`.

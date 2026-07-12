@@ -1,6 +1,6 @@
 # NIRMIQ Golden Demo Script
 
-Last updated: 2026-06-10
+Last updated: 2026-07-12
 
 ## Goal
 
@@ -108,6 +108,33 @@ Fail:
 - The app needs cloud/API access for the core demo.
 - The UI hides the response behind the composer.
 - The demo requires unexplained backend internals to make sense.
+
+## Latest Verified Walkthrough
+
+Validated on 2026-07-12 with:
+
+```powershell
+npm.cmd run ship:check
+npm.cmd run desktop:smoke
+```
+
+Result:
+
+- Backend tests: `89 passed`, `1 warning`.
+- API compile: passed.
+- Web production build: passed.
+- Publish smoke: passed with `cloud_api_required=False`.
+- Golden demo indexing: passed for all four bundled local sources.
+- Research prompt: passed with grounded citations.
+- Summary-style research prompt: passed with grounded citations.
+- Exam Lab prompt: passed with grounded citations.
+- Paper Lab prompt: passed with grounded citations.
+- Unsupported query: passed with `grounded=False` and `citations=0`.
+- Desktop smoke: passed through the Electron shell and cleaned up smoke-started runtime processes.
+
+Current demo limitation:
+
+- Live screenshots/GIFs still need to be captured from the current UI before public README polish is complete.
 
 ## Fallback Plan
 
