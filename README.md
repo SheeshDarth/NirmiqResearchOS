@@ -559,12 +559,18 @@ Committed visual asset:
 
 - `docs/assets/nirmiq-demo-flow.svg`
 
-Recommended public README assets:
+Live UI captures from the verified golden-demo path:
 
-- Upload PDF.
-- Ask grounded question.
-- Open citation trail.
+![NIRMIQ chat start](docs/assets/01-chat-start.png)
+
+![NIRMIQ grounded answer](docs/assets/02-grounded-answer.png)
+
+![NIRMIQ citation trail](docs/assets/03-citation-trail.png)
+
+Remaining recommended public README assets:
+
 - Compare answer runs.
+- Optional GIF: upload -> ask -> citation trail.
 
 Capture checklist: [Demo assets guide](docs/demo_assets.md).
 

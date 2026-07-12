@@ -1183,6 +1183,8 @@ button.chunk-card:hover {
 .turn-list {
   display: grid;
   gap: 28px;
+  width: min(920px, 100%);
+  margin: 0 auto;
 }
 
 .turn {

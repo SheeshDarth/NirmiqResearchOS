@@ -5,32 +5,32 @@ NIRMIQ ResearchOS is screenshot-ready, but screenshots should be regenerated aft
 Recommended GitHub assets:
 
 0. `docs/assets/nirmiq-demo-flow.svg` - committed visual flow diagram for README polish.
-1. `docs/assets/01-upload-pdf.png` - Upload or load the sample PDF.
-2. `docs/assets/02-ask-grounded-question.png` - Ask a document-grounded question.
-3. `docs/assets/03-citation-trail.png` - Open Deep Research and show source chunks/citations.
-4. `docs/assets/04-compare-answers.png` - Show answer comparison or query diff.
-5. `docs/assets/nirmiq-demo.gif` - 20-30 second flow: load demo dataset, ask question, inspect citation.
+1. `docs/assets/01-chat-start.png` - Start state with the golden-demo source selected.
+2. `docs/assets/02-grounded-answer.png` - Grounded answer with visible citations and trust state.
+3. `docs/assets/03-citation-trail.png` - Source drawer with answer-used passages and hidden full paths.
+4. `docs/assets/04-compare-answers.png` - Optional future asset for answer comparison/query diff.
+5. `docs/assets/nirmiq-demo.gif` - Optional 20-30 second flow: load demo dataset, ask question, inspect citation.
 
 Suggested capture flow:
 
 ```powershell
 cd C:\Nirmiq-researchOS
-.\scripts\start_local.ps1 -OpenBrowser
-.\scripts\load_demo_dataset.ps1
+.\scripts\run_local.ps1 -GoldenDemo -OpenBrowser
 ```
 
 Then in the app:
 
-1. Select `NIRMIQ Demo - RAG Reference Notes`.
-2. Ask: `How does NIRMIQ reduce hallucinations?`
-3. Open the Deep Research panel.
-4. Click an evidence chip.
-5. Capture the answer and citation trail.
+1. Select or load the golden demo source.
+2. Ask a locked demo prompt such as `Draft a related work paragraph comparing generic chatbots and document-grounded academic assistants.`
+3. Capture the answer with the `Verified` trust cue and citations visible.
+4. Open `Sources`.
+5. Capture the source drawer with answer-used passages and hidden full paths.
 
 Current note:
 
 - `docs/assets/nirmiq-demo-flow.svg` is committed as a lightweight visual proof path.
-- Actual UI screenshots/GIFs still need to be captured from a live browser after final visual QA.
+- Live UI screenshots for chat start, grounded answer, and citation trail are committed.
+- A short GIF and compare-answer screenshot remain optional public-polish assets.
 - The README links this checklist so contributors know exactly which assets to capture before publishing.
 
 ## Latest Non-Visual Proof

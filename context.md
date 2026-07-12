@@ -3402,3 +3402,35 @@ Updated:
 Verification:
 
 - Documentation-only change after the latest green `npm.cmd run ship:check` and `npm.cmd run desktop:smoke`.
+
+### Latest Update: README Screenshot Capture And Chat Centering
+
+Date: 2026-07-12
+
+Purpose:
+
+- Close part of the public README/demo asset gap with real screenshots from the live golden-demo path.
+- Improve readability by centering the conversation column on wide screens.
+
+Implemented:
+
+- Added a centered `920px` max-width to `.turn-list` so user and assistant turns no longer anchor awkwardly to the left on wide displays.
+- Captured live golden-demo screenshots:
+  - `docs\assets\01-chat-start.png`
+  - `docs\assets\02-grounded-answer.png`
+  - `docs\assets\03-citation-trail.png`
+- Updated README and demo asset docs to embed/reference the new screenshots.
+
+Verification:
+
+- Live browser check confirmed the conversation column is centered at `920px`.
+- Live source drawer check confirmed the source rail is visible at `356px` and shows answer-used passages.
+- `npm.cmd run stop`: cleaned up the local API/web preview after capture.
+- `npm.cmd run build`: passed.
+- `npm.cmd run desktop:smoke`: passed and cleaned up smoke-started local processes.
+
+Remaining visual polish:
+
+- Optional short GIF.
+- Optional compare-answer screenshot.
+- Branded desktop icon and code signing remain separate packaging work.

@@ -77,17 +77,16 @@ docker compose -f docker-compose.local.yml config
 
 Recommended proof assets:
 
-- Screenshot: login/home.
-- Screenshot: upload/index ready.
+- Screenshot: chat start/golden source ready.
 - Screenshot: grounded answer with citations.
-- Screenshot: Evidence Trail chunk focus.
+- Screenshot: Evidence Trail/source drawer.
 - Screenshot: Paper Lab draft package.
 - Screenshot: Exam Lab answer/custom PDF.
 - GIF: upload -> ask -> citation trail.
 
 ## Remaining Ship Debt
 
-- Capture README screenshots/GIFs.
+- Keep README screenshots current after UI changes and capture an optional GIF.
 - Add real engineering/textbook labels beyond the current 30-question synthetic demo set.
 - Add optional uploaded-source-file purge after safe file ownership checks.
 - Add chapter-wise summaries for long textbooks.
