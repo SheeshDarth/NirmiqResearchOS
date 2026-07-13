@@ -3640,3 +3640,40 @@ Tradeoffs:
 - Phi-3 is slower than Qwen 2.5 3B on this RTX 4050, but has simpler redistribution terms for a publishable default.
 - Ollama remains optional; deterministic cited synthesis and BM25 continue to work offline on low-end/CPU-only systems.
 - The small benchmark is a hardware-specific baseline, not a universal quality or latency claim.
+
+## MegaSprint Four Block 3 - Local Model Scheduling
+
+Implemented:
+
+- Added one shared cancellation-safe operation gate inside `OllamaClient`.
+- Serialized local generation and embedding operations to prevent VRAM contention and avoid avoidable model churn during simultaneous ingestion/query activity.
+- Kept health/model-list probes outside the model-operation gate so readiness remains responsive.
+- Preserved balanced `45s`, low-memory `15s`, and CPU-offline `0s` residency policies.
+- Added tests proving generation and embeddings never overlap and a cancelled waiting request does not leak operation capacity.
+
+Tradeoff:
+
+- Simultaneous local model requests now queue instead of running in parallel. For a solo-user, 6 GiB VRAM system this improves stability and predictable memory use at the cost of throughput that the product does not currently need.
+
+## MegaSprint Four Blocks 4-5 - Offline Portability And Budgets
+
+Verified:
+
+- A separate Windows `cpu_offline` API reported low-memory mode and no cloud requirement.
+- The CPU-offline query path returned a grounded answer with two citations in approximately `70 ms` using BM25 plus deterministic synthesis.
+- `scripts/start_local.sh` and `scripts/stop_local.sh` pass Bash syntax validation.
+- A true Linux runtime smoke still requires an actual Linux host or Linux CI; Windows Bash syntax is not presented as equivalent evidence.
+
+Release-budget decision:
+
+- Enhanced runtime benchmark output with advisory profile-aware checks for warm readiness, warm generated-query latency, API RSS, and GPU memory.
+- Kept hardware-sensitive latency/memory checks advisory until repeated cross-device baselines exist.
+- Preserved hard ship-gate failures for backend correctness, production build, local readiness, grounded golden routes, citation presence, and unsupported-query abstention.
+
+MegaSprint Four Windows closure verification:
+
+- Focused scheduling/budget tests: `13 passed`.
+- Final full ship gate: `105 passed`, `1 warning`.
+- Production web build remained `117 kB` first-load JavaScript.
+- Publish smoke, grounded golden routes, citations, and unsupported-query abstention passed.
+- Core MegaSprint Four implementation is complete on Windows; only a true Linux-host smoke remains as cross-platform evidence follow-up.

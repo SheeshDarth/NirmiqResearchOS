@@ -3,6 +3,7 @@ import asyncio
 from app.adapters.llm.embedder import Embedder
 from app.adapters.llm.generator import Generator
 from app.adapters.llm.ollama_client import OllamaClient
+from scripts.runtime_benchmark import assess_runtime_budgets
 
 
 def test_ollama_generate_uses_bounded_runtime_options() -> None:
@@ -116,3 +117,97 @@ def test_generator_prefers_small_phi_model_before_installed_seven_b_model() -> N
     assert fake.generated_with == "phi3:mini"
     assert generator.last_model_used == "phi3:mini"
     assert generator.last_model_fallback is True
+
+
+def test_ollama_client_serializes_generation_and_embedding_operations() -> None:
+    client = OllamaClient(base_url="http://127.0.0.1:11434")
+    active_operations = 0
+    peak_operations = 0
+
+    async def fake_post_json(path: str, payload: dict[str, object]) -> dict[str, object]:
+        nonlocal active_operations, peak_operations
+        active_operations += 1
+        peak_operations = max(peak_operations, active_operations)
+        await asyncio.sleep(0.01)
+        active_operations -= 1
+        if path == "/api/generate":
+            return {"response": "grounded answer"}
+        return {"embeddings": [[1.0, 0.0]]}
+
+    client._post_json = fake_post_json  # type: ignore[method-assign]
+
+    async def exercise_client() -> tuple[str, list[list[float]]]:
+        generated, embeddings = await asyncio.gather(
+            client.generate(prompt="Use evidence.", model="phi3:mini"),
+            client.embed(texts=["source text"], model="nomic-embed-text"),
+        )
+        return generated, embeddings
+
+    answer, vectors = asyncio.run(exercise_client())
+
+    assert answer == "grounded answer"
+    assert vectors == [[1.0, 0.0]]
+    assert peak_operations == 1
+
+
+def test_cancelled_ollama_waiter_does_not_leak_operation_capacity() -> None:
+    client = OllamaClient(base_url="http://127.0.0.1:11434")
+    first_started = asyncio.Event()
+    release_first = asyncio.Event()
+
+    async def fake_post_json(path: str, payload: dict[str, object]) -> dict[str, object]:
+        if not first_started.is_set():
+            first_started.set()
+            await release_first.wait()
+        return {"response": "grounded answer"}
+
+    client._post_json = fake_post_json  # type: ignore[method-assign]
+
+    async def exercise_cancellation() -> str:
+        first = asyncio.create_task(client.generate(prompt="first", model="phi3:mini"))
+        await first_started.wait()
+        waiting = asyncio.create_task(client.generate(prompt="cancel me", model="phi3:mini"))
+        await asyncio.sleep(0)
+        waiting.cancel()
+        try:
+            await waiting
+        except asyncio.CancelledError:
+            pass
+        release_first.set()
+        await first
+        return await client.generate(prompt="after cancellation", model="phi3:mini")
+
+    answer = asyncio.run(exercise_cancellation())
+
+    assert answer == "grounded answer"
+
+
+def test_runtime_budget_assessment_passes_measured_balanced_values() -> None:
+    assessment = assess_runtime_budgets(
+        {
+            "runtime": {"profile": "balanced"},
+            "readiness_warm_latency": {"p95_ms": 26.72},
+            "query_warm_latency": {"median_ms": 5_182.0},
+            "api_rss_after_bytes": 147 * 1024**2,
+            "gpu_after": [{"memory_used_mib": 2474}],
+        }
+    )
+
+    assert assessment["status"] == "pass"
+    assert assessment["enforcement"] == "advisory"
+    assert all(check["passed"] for check in assessment["checks"])
+
+
+def test_runtime_budget_assessment_warns_without_failing_execution() -> None:
+    assessment = assess_runtime_budgets(
+        {
+            "runtime": {"profile": "low_memory"},
+            "readiness_warm_latency": {"p95_ms": 900.0},
+            "query_warm_latency": {"median_ms": 50_000.0},
+            "api_rss_after_bytes": 1200 * 1024**2,
+        }
+    )
+
+    assert assessment["status"] == "warn"
+    assert assessment["enforcement"] == "advisory"
+    assert any(not check["passed"] for check in assessment["checks"])

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -31,6 +32,9 @@ class OllamaClient:
         self._model_cache_ttl = timedelta(seconds=30)
         self._last_model_check: datetime | None = None
         self._last_model_result: list[str] = []
+        # A single local model operation avoids VRAM contention and model churn
+        # between ingestion embeddings and answer generation on laptop GPUs.
+        self._operation_gate = asyncio.Semaphore(1)
 
     async def is_available(self) -> bool:
         now = datetime.now(timezone.utc)
@@ -82,12 +86,17 @@ class OllamaClient:
             "keep_alive": self._keep_alive,
             "options": self._generation_options(temperature=temperature),
         }
-        response = await self._post_json("/api/generate", payload)
+        async with self._operation_gate:
+            response = await self._post_json("/api/generate", payload)
         return str(response.get("response", ""))
 
     async def embed(self, texts: list[str], model: str) -> list[list[float]]:
         if not texts:
             return []
+        async with self._operation_gate:
+            return await self._embed_unlocked(texts=texts, model=model)
+
+    async def _embed_unlocked(self, texts: list[str], model: str) -> list[list[float]]:
         # Prefer batch embed endpoint when available.
         payload = {"model": model, "input": texts, "keep_alive": self._keep_alive}
         try:

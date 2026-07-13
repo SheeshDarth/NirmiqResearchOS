@@ -131,6 +131,66 @@ def process_rss_bytes(process_id: int | None) -> int | None:
         ctypes.windll.kernel32.CloseHandle(handle)  # type: ignore[attr-defined]
 
 
+def assess_runtime_budgets(result: dict[str, Any]) -> dict[str, Any]:
+    """Evaluate measured values without making hardware variance a hard failure."""
+    runtime = result.get("runtime") or {}
+    profile = str(runtime.get("profile") or "balanced")
+    low_resource = profile in {"low_memory", "cpu_offline"}
+    checks: list[dict[str, Any]] = []
+
+    def add_check(name: str, actual: float | int | None, maximum: float | int, unit: str) -> None:
+        if actual is None:
+            return
+        checks.append(
+            {
+                "name": name,
+                "actual": round(float(actual), 2),
+                "maximum": maximum,
+                "unit": unit,
+                "passed": float(actual) <= float(maximum),
+            }
+        )
+
+    readiness = result.get("readiness_warm_latency") or result.get("readiness_latency") or {}
+    add_check(
+        "warm_readiness_p95",
+        readiness.get("p95_ms"),
+        750 if low_resource else 500,
+        "ms",
+    )
+
+    query = result.get("query_warm_latency") or result.get("query_latency") or {}
+    add_check(
+        "warm_generated_query_median",
+        query.get("median_ms"),
+        45_000 if low_resource else 25_000,
+        "ms",
+    )
+
+    rss_bytes = result.get("api_rss_after_bytes")
+    add_check(
+        "api_rss",
+        rss_bytes / (1024**2) if isinstance(rss_bytes, int) else None,
+        1024 if low_resource else 1536,
+        "MiB",
+    )
+
+    gpu_after = result.get("gpu_after") or []
+    if not low_resource and gpu_after:
+        used_values = [gpu.get("memory_used_mib") for gpu in gpu_after if isinstance(gpu, dict)]
+        numeric_used = [value for value in used_values if isinstance(value, (int, float))]
+        add_check("gpu_memory_used", max(numeric_used) if numeric_used else None, 5632, "MiB")
+
+    return {
+        "profile": profile,
+        "status": "pass" if checks and all(check["passed"] for check in checks) else (
+            "warn" if checks else "not_measured"
+        ),
+        "enforcement": "advisory",
+        "checks": checks,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Benchmark the local NIRMIQ runtime without cloud calls.")
     parser.add_argument("--api-base", default="http://127.0.0.1:8000")
@@ -209,6 +269,7 @@ def main() -> int:
 
     result["gpu_after"] = gpu_snapshot()
     result["api_rss_after_bytes"] = process_rss_bytes(args.api_pid)
+    result["budget_assessment"] = assess_runtime_budgets(result)
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(result, indent=2), encoding="utf-8")

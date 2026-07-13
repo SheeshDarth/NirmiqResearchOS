@@ -4,6 +4,8 @@
 
 Make NIRMIQ predictable on an RTX 4050, low-memory laptops, CPU-only Windows, and low-end Linux without weakening retrieval, citations, or offline operation.
 
+Current status: core implementation and Windows verification complete. A real Linux-host smoke test remains the only cross-platform validation follow-up.
+
 ## Scope
 
 1. Establish repeatable startup, readiness, query-latency, RAM, and VRAM baselines.
@@ -99,21 +101,39 @@ Verification:
 
 ### Block 3: Model Residency And Scheduling
 
-- Ensure embedding and generation work cannot create uncontrolled model churn.
-- Add bounded concurrency and cancellation around local generation.
-- Validate Ollama keep-alive behavior for each profile.
+Status: implementation complete; representative concurrency tests are green.
+
+- A shared cancellation-safe operation gate serializes generation and embedding calls through the local Ollama adapter.
+- Ingestion embeddings and answer generation can no longer load or execute concurrently against the same laptop GPU from one API process.
+- Cancelling a waiting model request releases no capacity and does not block the next local request.
+- Existing profile keep-alive values remain `45s` balanced, `15s` low-memory, and `0s` CPU-offline.
+- No public query shape, UI control, or new dependency was introduced.
+- Focused scheduling and budget tests: `13 passed`.
 
 ### Block 4: Cross-Platform Hardening
 
-- Verify CPU-only Windows and Linux startup.
-- Validate path, OCR, SQLite, Chroma-optional, and shutdown behavior.
-- Document hardware-specific recommendations without making them mandatory.
+Status: Windows CPU-offline path complete; Linux script validation complete; real Linux-host smoke remains release follow-up.
+
+- A separate `cpu_offline` API returned a grounded, two-citation answer in approximately `70 ms` using BM25 and deterministic synthesis.
+- Readiness reported low-memory mode, no cloud requirement, and no Ollama generation dependency.
+- Linux start/stop scripts pass Bash syntax validation on Windows.
+- Existing tests cover path, SQLite, Chroma-optional, OCR-adapter, and cleanup behavior; desktop smoke covers Windows shutdown cleanup.
+- Do not claim a full Linux runtime pass until the app is exercised on an actual Linux host or Linux CI runner.
 
 ### Block 5: Release Enforcement
 
-- Add stable budgets to the ship gate only after repeatable baselines exist.
-- Fail on accuracy regressions; warn on noisy local-hardware latency variance.
-- Publish benchmark results and remaining constraints.
+Status: advisory budget reporting complete; hard latency enforcement intentionally deferred.
+
+- Runtime benchmark JSON now reports pass/warn checks for warm readiness, warm generated-query latency, API RSS, and GPU memory when measured.
+- Hardware-sensitive budgets remain advisory until repeated baselines exist across Windows, CPU-only, and Linux hosts.
+- Accuracy, build, golden grounded routes, citation presence, and abstention remain hard ship-gate requirements.
+- The representative benchmark results and model-license tradeoffs are documented above and in `docs/local_model_optimization.md`.
+
+Final Windows release verification:
+
+- Full ship gate: `105 passed`, production web build passed, local publish smoke passed, all golden routes passed, and unsupported-query abstention passed.
+- First-load JavaScript remained `117 kB`.
+- Local inference remained optional and `cloud_api_required=false`.
 
 ## Out Of Scope
 
