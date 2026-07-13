@@ -63,10 +63,13 @@ class RetrievalService:
             chunks=all_active_chunks,
             sections=active_sections,
         )
-        document_query_expansion_terms = list(document_acronym_expansion_terms)
-        for term in self._document_topic_terms(query=query, sections=active_sections):
-            if term not in document_query_expansion_terms:
-                document_query_expansion_terms.append(term)
+        if document_acronym_expansion_terms:
+            document_query_expansion_terms = list(document_acronym_expansion_terms)
+        else:
+            document_query_expansion_terms = self._document_topic_terms(
+                query=query,
+                sections=active_sections,
+            )
         query_expansion_terms = self._query_expansion_terms(query)
         for term in document_query_expansion_terms:
             if term not in query_expansion_terms:
@@ -592,12 +595,19 @@ class RetrievalService:
         chunks: list[dict[str, object]],
         sections: list[dict[str, object]],
     ) -> list[str]:
+        acronym_expansions = RetrievalService._document_acronym_expansions(
+            query=query,
+            chunks=chunks,
+            sections=sections,
+        )
+        if acronym_expansions:
+            # Exact acronym expansion is already a strong document-local subject
+            # signal. Adding every key term from the first matching section causes
+            # circular drift into broad application/index sections.
+            return acronym_expansions[:24]
+
         expansions: list[str] = []
         seen: set[str] = set()
-        for term in RetrievalService._document_acronym_expansions(query=query, chunks=chunks, sections=sections):
-            if term not in seen:
-                expansions.append(term)
-                seen.add(term)
         for term in RetrievalService._document_topic_terms(query=query, sections=sections):
             if term not in seen:
                 expansions.append(term)

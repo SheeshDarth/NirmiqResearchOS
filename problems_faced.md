@@ -1,12 +1,33 @@
 # Problems Faced And RAG Reliability Roadmap
 
-Last updated: 2026-07-09
+Last updated: 2026-07-13
 
 This is the canonical engineering problem log for NIRMIQ ResearchOS. It documents what has failed, what is still failing, what may fail later, and how the next RAG Reliability Phase should resolve the core retrieval and hallucination issues.
 
 The main conclusion is simple:
 
 > The model hallucinates mostly because retrieval is not yet precise enough on large academic documents. If the right evidence does not enter context, the local model is forced to guess.
+
+## 2026-07-13 Grounded Answer Intelligence Gap
+
+Latest diagnosis:
+
+- Good retrieval is necessary but not sufficient. NIRMIQ could retrieve a relevant chapter and still assemble a poor answer from index entries, neighboring concepts, or disconnected sentences.
+- Presentation requests such as `in detail` and `with image references` could contaminate the evidence query.
+- Exact acronyms could expand into the right long form and then drift again through broad section key terms.
+- The faithfulness layer treated an answer as all supported or all rejected, so one weak claim could replace a useful explanation with a rigid extractive response.
+- Ollama thinking-capable models could spend the bounded prediction budget on hidden reasoning and return no visible answer.
+
+Repair direction:
+
+- Plan each answer deterministically from the query's subject, type, depth, and requested elements.
+- Project a clean evidence query while preserving the original query for final relevance scoring.
+- Lock exact document-derived acronym expansion.
+- Generate one coherent local answer from direct evidence.
+- Verify each cited claim jointly against its cited passages.
+- Remove only unsupported claims when the remaining response is coherent; otherwise use extractive fallback or abstain.
+
+This is tracked as [MegaSprint One, Block B](docs/megasprint_one_answer_intelligence_plan.md). The remaining risk is eval breadth: current gains are measured on a small seed and must be challenged with at least 40 diverse real academic queries.
 
 ## 2026-07-09 MegaSprint One Reliability Update
 

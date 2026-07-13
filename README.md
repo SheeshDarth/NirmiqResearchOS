@@ -88,9 +88,9 @@ Hybrid retrieval
 BM25 plus optional vector search
 Reciprocal Rank Fusion
 Reranking and context packing
-Citation mapping
-Grounded answer generation
-Citation coverage and verification
+Query-specific answer planning
+Grounded local synthesis
+Claim-level citation verification and repair
 Student-friendly response
 ```
 
@@ -194,9 +194,17 @@ Latest MegaSprint One reliability update:
 - Default attached-source academic queries route to BM25-first retrieval internally while vector/hybrid remains optional.
 - Broad index, glossary, backmatter, and example-list sections are penalized for explanatory questions.
 - Synthesis now separates direct evidence, weak related mentions, and true source misses.
+- A deterministic answer planner now identifies the requested subject, answer type, depth, and elements such as examples, comparisons, limitations, or diagram references.
+- Exact source-derived acronym meanings lock query expansion so broad index/application terms cannot pull retrieval away from the requested concept.
+- The local model now receives a query-specific answer contract and is told to connect evidence instead of copying disconnected fragments.
+- Faithfulness handling now removes unsupported claims selectively and uses extractive fallback only when the repaired answer is not coherent.
 - Normal UI hides raw metadata and presents only the trust state plus optional source passages.
 
-## Next Phase: RAG Reliability
+## Current Priority: Grounded Answer Intelligence
+
+The first retrieval reliability block proved that the right passages can rank well on the current seed. The active priority is now the second half of the same problem: turn those passages into a coherent answer tailored to the user's exact question.
+
+This work belongs to **MegaSprint One, Block B**, not the UI sprint. It is documented in [`docs/megasprint_one_answer_intelligence_plan.md`](docs/megasprint_one_answer_intelligence_plan.md).
 
 What is being improved next:
 
@@ -207,6 +215,8 @@ What is being improved next:
 - Improve section/page-first retrieval before chunk ranking.
 - Keep BM25-only fallback fully usable for offline and low-end devices.
 - Track chunk-selection reasons, section candidates, citation coverage, unsupported claims, latency, and memory behavior.
+- Measure answer relevance, completeness, claim faithfulness, readability, and abstention correctness separately from retrieval rank.
+- Reject answers that are merely related to the topic but do not explain what the user asked.
 
 Acceptance targets:
 
@@ -313,8 +323,9 @@ Model strategy:
 - Local-first inference.
 - RTX 4050-friendly constraints.
 - Low VRAM preference.
-- Recommended local generator: MIT-licensed `phi3:mini`; NIRMIQ remains usable without it through deterministic cited synthesis.
-- Optional research-speed profile: `qwen2.5:3b`, with its separate Qwen model license reviewed by the user.
+- Balanced local generator: Apache-2.0 `qwen3.5:4b`, with Ollama thinking disabled so the bounded output budget produces the visible answer.
+- Low-memory local generator: MIT-licensed `phi3:mini`.
+- `qwen2.5` is explicit opt-in only because the installed artifact carries a separate non-commercial research license.
 - Optional `nomic-embed-text` embeddings and coding-specific models are never required for the offline fallback path.
 
 ## Architecture
@@ -359,11 +370,13 @@ cd C:\Nirmiq-researchOS
 .\scripts\bootstrap.ps1
 ```
 
-For fluent local generation on Windows/RTX 4050-class hardware, install the recommended MIT-licensed model once:
+For fluent local generation on Windows/RTX 4050-class hardware, install the balanced Apache-2.0 model once:
 
 ```powershell
-ollama pull phi3:mini
+ollama pull qwen3.5:4b
 ```
+
+For lower-memory hardware, use `ollama pull phi3:mini` and set `NIRMIQ_RUNTIME_PROFILE=low_memory`.
 
 Ollama is optional. If it or the model is unavailable, NIRMIQ keeps the same local document workflow and uses deterministic cited synthesis instead of making a cloud call.
 
@@ -526,6 +539,7 @@ Details:
 - [Demo dataset](docs/demo_dataset.md)
 - [Retrieval evaluation results](docs/retrieval_eval_results.md)
 - [NIRMIQ RAG method](docs/nirmiq_rag_method.md)
+- [MegaSprint One grounded answer intelligence plan](docs/megasprint_one_answer_intelligence_plan.md)
 - [MegaSprint Two UX plan](docs/megasprint_two_plan.md)
 - [MegaSprint Three academic workflow plan](docs/megasprint_three_plan.md)
 - [MegaSprint Four local runtime plan](docs/megasprint_four_plan.md)

@@ -83,6 +83,10 @@ class OllamaClient:
             "model": model,
             "prompt": prompt,
             "stream": False,
+            # NIRMIQ needs the bounded answer text, not a hidden reasoning trace.
+            # Thinking-capable models can otherwise spend the entire prediction
+            # budget in `thinking` and return an empty `response`.
+            "think": False,
             "keep_alive": self._keep_alive,
             "options": self._generation_options(temperature=temperature),
         }

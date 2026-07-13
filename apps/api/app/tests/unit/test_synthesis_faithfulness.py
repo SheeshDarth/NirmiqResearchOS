@@ -93,6 +93,37 @@ def test_supported_cited_generation_is_preserved() -> None:
     assert meta["unsupported_claims"] == []
 
 
+def test_mixed_generation_prunes_only_unsupported_claim() -> None:
+    generated = (
+        "Direct answer\n"
+        "NIRMIQ uses grounded retrieval for academic documents. [1]\n\n"
+        "Explanation\n"
+        "NIRMIQ also uses local citation-aware synthesis for academic documents. [1]\n"
+        "It also operates an interplanetary payment network. [1]"
+    )
+    service = SynthesisService(
+        settings=_settings(),
+        policy=RetrievalPolicy(min_grounding_score=0.1),
+        generator=FakeGenerator(generated),  # type: ignore[arg-type]
+    )
+
+    answer, grounded, meta = asyncio.run(
+        service.synthesize(
+            query="How does NIRMIQ answer academic questions?",
+            bundle=_bundle(),
+            response_mode="research",
+        )
+    )
+
+    assert grounded is True
+    assert "grounded retrieval" in answer.lower()
+    assert "citation-aware synthesis" in answer.lower()
+    assert "interplanetary" not in answer.lower()
+    assert meta["answer_repair_mode"] == "claim_pruned"
+    assert meta["answer_rewritten_for_faithfulness"] is True
+    assert meta["citation_verification_state"] == "supported"
+
+
 def test_uncited_generated_sentences_are_anchored_to_best_context() -> None:
     generated = "NIRMIQ uses grounded retrieval and citation-aware synthesis for academic documents."
     service = SynthesisService(
@@ -113,6 +144,61 @@ def test_uncited_generated_sentences_are_anchored_to_best_context() -> None:
     assert answer.endswith("[1]")
     assert meta["citation_coverage"] == 1.0
     assert meta["citation_verification_state"] == "supported"
+
+
+def test_claim_can_be_supported_jointly_by_multiple_citations() -> None:
+    verification = SynthesisService._verify_cited_claims(
+        (
+            "CNN architectures combine convolutional layers with pooling layers "
+            "to build visual feature representations. [1] [2]"
+        ),
+        [
+            (1, "[1] pages=1-1\nCNN architectures use convolutional layers to learn visual features."),
+            (2, "[2] pages=2-2\nPooling layers reduce feature-map dimensions in CNN architectures."),
+        ],
+    )
+
+    assert verification["state"] == "supported"
+    assert verification["unsupported_claims"] == []
+
+
+def test_joint_citations_do_not_approve_unrelated_claims() -> None:
+    verification = SynthesisService._verify_cited_claims(
+        "CNNs operate an interplanetary payment network. [1] [2]",
+        [
+            (1, "[1] pages=1-1\nCNNs use convolutional layers for visual feature extraction."),
+            (2, "[2] pages=2-2\nPooling layers reduce feature-map dimensions."),
+        ],
+    )
+
+    assert verification["state"] == "unsupported"
+    assert len(verification["unsupported_claims"]) == 1
+
+
+def test_claim_repair_removes_uncited_orphan_fragments() -> None:
+    answer = (
+        "Direct answer\n"
+        "Random forests average many decision trees to improve stability. [1]\n"
+        "They operate an interplanetary payment network. [1]\n"
+        "- Although the validation error remains lower vs."
+    )
+    verification = {
+        "state": "unsupported",
+        "cited_claims_checked": 2,
+        "unsupported_claims": [
+            {
+                "claim": "They operate an interplanetary payment network. [1]",
+                "anchors": [1],
+                "support_score": 0.1,
+            }
+        ],
+    }
+
+    repaired = SynthesisService._remove_unsupported_claims(answer, verification)
+
+    assert "interplanetary" not in repaired
+    assert "validation error remains lower vs" not in repaired
+    assert "average many decision trees" in repaired
 
 
 def test_synthesis_reports_only_answer_cited_context_chunks() -> None:

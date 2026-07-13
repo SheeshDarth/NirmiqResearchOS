@@ -1,6 +1,6 @@
 # NIRMIQ RAG Method
 
-Last updated: 2026-07-10
+Last updated: 2026-07-13
 
 ## Chosen Method
 
@@ -36,9 +36,9 @@ Agentic RAG is not the first move:
 
 ```mermaid
 flowchart TD
-    A["User asks a natural question"] --> B["Intent + subject extraction"]
+    A["User asks a natural question"] --> B["Answer plan: intent, subject, depth, requested elements"]
     B --> C["Selected document / source scope"]
-    C --> D["Document-aware query expansion"]
+    C --> D["Evidence query projection + document-aware expansion"]
     D --> E["Section/page candidate ranking when metadata exists"]
     E --> F["BM25 lexical retrieval"]
     E --> G["Optional vector retrieval"]
@@ -47,24 +47,25 @@ flowchart TD
     H --> I["Anchor rescue for buried direct evidence"]
     I --> J["Direct-evidence scoring + noise penalties"]
     J --> K["Context packing"]
-    K --> L["Grounded synthesis or extractive fallback"]
-    L --> M["Citation verification + trust state"]
-    M --> N["Simple answer UI"]
+    K --> L["Query-shaped local synthesis"]
+    L --> M["Joint cited-claim verification"]
+    M --> N["Selective claim repair or extractive fallback"]
+    N --> O["Simple answer UI"]
 ```
 
 ## Retrieval Layers
 
-1. **Intent and subject extraction**
+1. **Answer planning**
 
-   The system detects whether the prompt is a definition, explanation, summary, comparison, paper-draft request, exam request, general chat, or unclear/unanswerable query.
+   The system detects the subject, answer type, requested depth, and optional elements such as examples, applications, limitations, steps, equations, or diagram references. This plan shapes both retrieval and synthesis without adding another model call.
 
 2. **Document-scoped retrieval**
 
    If the user has an attached source, retrieval is scoped to that source first. This avoids unrelated corpus chunks leaking into the answer.
 
-3. **Document-aware expansion**
+3. **Evidence query projection and document-aware expansion**
 
-   Query expansion is deterministic and local. It uses source terms, acronyms, headings, OCR variants, and academic wording patterns. It does not call a cloud model to rewrite queries.
+   Query projection removes presentation-only wording while preserving clean prompts. Expansion is deterministic and local. It uses source terms, acronyms, headings, OCR variants, and academic wording patterns. An exact document-derived acronym meaning locks expansion so broad neighboring section terms cannot cause topic drift. It does not call a cloud model to rewrite queries.
 
 4. **Section-first retrieval**
 
@@ -94,9 +95,9 @@ flowchart TD
 
    Index, glossary, backmatter, broad application lists, copyright fragments, and corrupted OCR fragments are penalized for explanatory questions.
 
-10. **Answer safety**
+10. **Query-shaped synthesis and answer safety**
 
-    If evidence is direct, NIRMIQ answers simply with paragraph citations. If evidence is weak, it says more evidence is needed. If the answer is not in the source, it abstains.
+    If evidence is direct, NIRMIQ asks one small local model to connect it into the structure requested by the user. Cited claims are verified against all cited passages jointly. Unsupported claims are pruned individually when the remainder stays coherent; otherwise the system uses source-only extractive fallback. If evidence is weak, it says more evidence is needed. If the answer is not in the source, it abstains.
 
 ## Public UX Rule
 
@@ -116,6 +117,11 @@ The normal UI should not show:
 - Raw retrieval metadata.
 
 ## Current MegaSprint One Status
+
+MegaSprint One is split into two reliability blocks:
+
+- Block A, evidence retrieval: complete on the current seed.
+- Block B, grounded answer intelligence: reopened and prioritized; first implementation slice complete.
 
 Implemented:
 
@@ -147,8 +153,10 @@ Still active:
 
 - More real-world eval labels from textbooks, notes, papers, and exam material.
 - Better section detection for scanned PDFs and noisy OCR.
-- Better answer shaping for broad conceptual questions.
+- Automated answer relevance, completeness, readability, faithfulness, and abstention scoring.
 - Measuring answer relevance, citation faithfulness, abstention correctness, latency, and memory use across query categories.
+
+Block B details and closure criteria are tracked in [`megasprint_one_answer_intelligence_plan.md`](megasprint_one_answer_intelligence_plan.md).
 
 ## Acceptance Targets
 

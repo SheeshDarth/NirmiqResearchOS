@@ -5,6 +5,7 @@ from app.core.runtime_profiles import resolve_runtime_profile
 
 
 PROFILE_ENV_KEYS = (
+    "GENERATOR_MODEL_DEFAULT",
     "LOW_MEMORY_MODE",
     "USE_OLLAMA_GENERATION",
     "USE_OLLAMA_EMBEDDINGS",
@@ -27,6 +28,7 @@ def test_auto_profile_uses_low_memory_defaults_below_twelve_gib() -> None:
     profile = resolve_runtime_profile("auto", total_memory_bytes=8 * 1024**3)
 
     assert profile.name == "low_memory"
+    assert profile.generator_model_default == "phi3:mini"
     assert profile.ollama_num_ctx == 2048
     assert profile.retrieval_enable_vector is False
 
@@ -35,6 +37,7 @@ def test_auto_profile_uses_balanced_defaults_at_twelve_gib_or_more() -> None:
     profile = resolve_runtime_profile("auto", total_memory_bytes=16 * 1024**3)
 
     assert profile.name == "balanced"
+    assert profile.generator_model_default == "qwen3.5:4b"
     assert profile.ollama_num_ctx == 3072
     assert profile.retrieval_enable_vector is True
 
@@ -59,6 +62,7 @@ def test_explicit_environment_values_override_profile(monkeypatch: pytest.Monkey
     monkeypatch.setenv("USE_OLLAMA_EMBEDDINGS", "true")
     monkeypatch.setenv("RETRIEVAL_ENABLE_VECTOR", "true")
     monkeypatch.setenv("OLLAMA_NUM_CTX", "2560")
+    monkeypatch.setenv("GENERATOR_MODEL_DEFAULT", "custom:3b")
 
     settings = Settings.from_env()
 
@@ -66,6 +70,7 @@ def test_explicit_environment_values_override_profile(monkeypatch: pytest.Monkey
     assert settings.use_ollama_embeddings is True
     assert settings.retrieval_enable_vector is True
     assert settings.ollama_num_ctx == 2560
+    assert settings.generator_model_default == "custom:3b"
 
 
 def test_unknown_profile_fails_with_actionable_message() -> None:

@@ -62,8 +62,9 @@ Tradeoff: answers become more extractive and less conversational, but they stay 
 
 For RTX 4050-class hardware, prefer small quantized Ollama models:
 
-- Publishable default: `phi3:mini` (MIT license)
-- Faster opt-in research model: `qwen2.5:3b` (Qwen license; review its terms before redistribution or commercial use)
+- Balanced default: `qwen3.5:4b` (Apache 2.0 license)
+- Low-memory default: `phi3:mini` (MIT license)
+- Explicit-only research model: `qwen2.5:3b` (the installed Qwen Research License is non-commercial)
 - Coding-heavy academic queries: `deepseek-coder:6.7b` only when needed
 - Embeddings: `nomic-embed-text`
 
@@ -73,13 +74,30 @@ Representative Windows/RTX 4050 measurements on the same grounded textbook query
 - `qwen2.5:3b`: `8.90 s` cold, `5.18 s` warm.
 - Accidental Mistral 7B fallback: `56.47 s` cold.
 
-Install the publishable default once:
+These older three measurements used the same Gaussian-mixture query. The Qwen 3.5 figures below are live end-to-end acceptance timings on different prompts and should not be treated as a direct speed comparison.
+
+Install the balanced default once:
+
+```powershell
+ollama pull qwen3.5:4b
+```
+
+Ollama generation sends `think=false`. This is required for thinking-capable models under NIRMIQ's bounded prediction budget; otherwise a model can spend the budget on hidden reasoning and return an empty visible response.
+
+Use the low-memory profile with Phi-3 when RAM, VRAM, or latency stability requires it:
 
 ```powershell
 ollama pull phi3:mini
+$env:NIRMIQ_RUNTIME_PROFILE="low_memory"
 ```
 
-NIRMIQ still works through deterministic cited synthesis when Ollama or this model is unavailable.
+Live answer-intelligence acceptance checks on 2026-07-13 used `qwen3.5:4b` against the selected 2,842-chunk textbook. They are not controlled model benchmarks, but they validate the end-to-end path:
+
+- CNN explanation: approximately `24.8 s` cold; coherent cited answer after unsupported-claim pruning.
+- Gaussian mixture model: approximately `19.9 s`; query-specific definition and mechanism.
+- Random-forest comparison: approximately `20.3 s`; coherent comparison after orphan-fragment repair.
+
+NIRMIQ still works through deterministic cited synthesis when Ollama or the selected model is unavailable.
 
 Ollama-distributed small models are generally provided as quantized local artifacts. If importing your own GGUF, prefer Q4-class variants such as `Q4_K_M` before trying larger Q5/Q6 variants.
 

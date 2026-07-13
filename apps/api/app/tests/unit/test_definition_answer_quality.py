@@ -81,3 +81,27 @@ def test_fallback_definition_answer_uses_definition_not_index_fragment() -> None
     assert "generated from a mixture" in answer.lower()
     assert "beam search" not in answer.lower()
     assert "Direct answer" in answer
+
+
+def test_fallback_definition_prefers_subject_called_definition() -> None:
+    context_chunks = [
+        (
+            1,
+            "[1] doc=doc score=1.0 source=bm25 pages=20-20\n"
+            "Constraining a model to make it simpler and reduce the risk of overfitting is called regularization.",
+        ),
+        (
+            2,
+            "[2] doc=doc score=0.9 source=bm25 pages=30-30\n"
+            "Ridge regression, also called Tikhonov regularization, is a regularized version of linear regression.",
+        ),
+    ]
+
+    answer = SynthesisService._fallback_definition_answer(
+        query="What is regularization in the context of reducing overfitting?",
+        context_chunks=context_chunks,
+        response_mode="research",
+    )
+
+    assert "Constraining a model to make it simpler" in answer
+    assert "Direct answer\n- Ridge regression" not in answer

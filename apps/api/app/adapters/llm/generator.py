@@ -5,17 +5,16 @@ class Generator:
     """Generator with Ollama path and deterministic offline fallback."""
 
     _preferred_generation_models = (
+        "qwen3.5:4b",
         "phi3:mini",
-        "qwen2.5:3b",
-        "qwen2.5:3b-instruct",
         "llama3.2:3b",
         "gemma2:2b",
         "mistral:7b-instruct-q4_K_M",
-        "qwen3.5:4b",
         "deepseek-r1:8b",
         "deepseek-coder:6.7b",
     )
     _non_generation_model_terms = ("embed", "rerank", "nomic", "bge")
+    _explicit_only_model_terms = ("qwen2.5",)
 
     def __init__(
         self,
@@ -80,6 +79,9 @@ class Generator:
 
         for installed in installed_models:
             lowered = installed.lower()
-            if not any(term in lowered for term in self._non_generation_model_terms):
+            if (
+                not any(term in lowered for term in self._non_generation_model_terms)
+                and not any(term in lowered for term in self._explicit_only_model_terms)
+            ):
                 return installed
         return requested_model

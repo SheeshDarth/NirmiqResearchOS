@@ -7,6 +7,48 @@ Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
+## Latest Session Update - 2026-07-13 Grounded Answer Intelligence
+
+Priority decision:
+
+- Reopened MegaSprint One as Block B: Grounded Answer Intelligence.
+- Retrieval metrics alone do not prove that NIRMIQ understands a query or presents a useful answer.
+- UI and release polish remain downstream until evidence is converted into a coherent, query-shaped, claim-supported response.
+
+Observed failure:
+
+- Valid textbook prompts such as `explain CNN` could retrieve related terminology but return index fragments, RNN/CNN side notes, or unrelated applications as a `Verified` answer.
+- The previous all-or-nothing faithfulness rewrite often replaced otherwise useful local-model prose with a rigid extractive template.
+- Thinking-capable `qwen3.5:4b` consumed the bounded output budget in hidden reasoning and returned empty visible text when Ollama thinking was not disabled.
+
+Implemented:
+
+- Added `AnswerPlan` for deterministic subject, answer type, depth, and requested-element detection.
+- Added safe evidence-query projection that removes presentation wrappers without rewriting clean queries.
+- Locked document-derived acronym expansion to the exact long form to prevent circular topic drift.
+- Added a query-specific local-generation contract that forbids index-fragment dumping and unsupported mechanism inference.
+- Changed faithfulness handling from whole-answer replacement to joint citation verification plus selective unsupported-claim pruning.
+- Rejected naked citation anchors, orphan headings, and uncited partial fragments after repair.
+- Kept extractive fallback and abstention as fail-closed paths.
+- Set the balanced runtime generator to Apache-2.0 `qwen3.5:4b`, retained MIT `phi3:mini` for low-memory mode, and made non-commercial `qwen2.5` explicit-only.
+- Added `think=false` to Ollama generation so the visible answer receives the bounded token budget.
+
+Verification:
+
+- Final backend unit/integration suite: `126 passed`, `1 warning`.
+- API compile check: passed.
+- Next.js production build: passed; first-load JavaScript remained `117 kB`.
+- Real-world retrieval seed: BM25 MRR `0.868`, Hybrid MRR `0.828`, Recall@8 `1.000`, expected citation coverage `1.000`.
+- Real-world full-query seed: MRR `0.902` in BM25 and hybrid, Recall@8 `1.000`, expected citation coverage `1.000`.
+- Live selected-textbook checks produced coherent answers for CNN, Gaussian mixture models, and a random-forest comparison; unsupported quantum teleportation abstained.
+
+Tradeoffs and remaining work:
+
+- This remains one local generation pass plus deterministic verification; no agents, graph database, cloud call, or second model pass was added.
+- The 17-query real-world set is too small to claim arbitrary-query reliability.
+- Block B remains active until the answer-quality set grows to at least 40 diverse cases and separately measures relevance, completeness, faithfulness, readability, and abstention.
+- Detailed plan: `docs/megasprint_one_answer_intelligence_plan.md`.
+
 ## Latest Session Update - 2026-07-13 Acronym And Evidence-Relevance Repair
 
 Observed failure:

@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-07-12
+Last updated: 2026-07-13
 
 ## Canonical Problem Log
 
@@ -11,6 +11,36 @@ See [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md) for concrete 
 See [`answer_used_citation_backlog.md`](answer_used_citation_backlog.md) for cases where raw retrieval finds better evidence than the final answer-used citations.
 
 See [`nirmiq_rag_method.md`](nirmiq_rag_method.md) for the chosen RAG architecture: NIRMIQ Evidence-First Hierarchical Hybrid RAG.
+
+See [`megasprint_one_answer_intelligence_plan.md`](megasprint_one_answer_intelligence_plan.md) for the active query-understanding, synthesis, claim-repair, and answer-quality closure block.
+
+## 2026-07-13 Grounded Answer Intelligence Audit
+
+Finding:
+
+- Previous retrieval scores measured whether expected evidence appeared in the result set; they did not guarantee that the final response explained the requested concept.
+- Live CNN failures exposed answer assembly, acronym drift, and all-or-nothing faithfulness repair as separate failure points.
+
+Implemented controls:
+
+- Deterministic answer planning and safe evidence-query projection.
+- Exact document-acronym expansion lock.
+- Query-specific local synthesis instructions.
+- Joint multi-citation claim verification.
+- Selective unsupported-claim pruning with coherence and citation-coverage checks.
+- Safe extractive fallback and abstention.
+- Ollama `think=false` for visible bounded output.
+
+Current verification:
+
+- Retrieval-only real-world seed: BM25 MRR `0.868`, Hybrid MRR `0.828`, Recall@8 `1.000`, expected citation coverage `1.000`.
+- Full-query real-world seed: MRR `0.902` in both modes, Recall@8 `1.000`, expected citation coverage `1.000`.
+- Live selected-textbook probes for CNN, Gaussian mixture models, and random forests returned coherent cited answers after unsupported-claim repair.
+- An unsupported quantum-teleportation probe abstained.
+
+Limit:
+
+- Seventeen real-world labels are not enough to claim arbitrary-query accuracy. The next gate is at least 40 diverse answer-quality cases with separate relevance, completeness, faithfulness, readability, and abstention measures.
 
 ## 2026-07-10 MegaSprint One Final Tightening
 

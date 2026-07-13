@@ -1,6 +1,6 @@
 # NIRMIQ Technical Requirements Document
 
-Last updated: 2026-07-09
+Last updated: 2026-07-13
 
 ## Project
 
@@ -110,12 +110,17 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 - Use document-scoped fallback when a selected document exists and broad prompts retrieve low lexical scores.
 - Include debug metadata for evaluation and development.
 - Use deterministic intent routing to expand retrieval hints for summaries, comparisons, deep research, paper drafting, and exam workflows.
+- Build a deterministic answer plan for subject, answer type, requested depth, and optional requested elements without changing the public query request.
+- Remove presentation-only wrappers from the evidence query while preserving the original prompt for direct-answer relevance scoring.
+- Lock exact document-derived acronym meanings before adding broader section-topic expansion.
 - Use section-first retrieval for selected-document queries when heading/key-term metadata identifies a relevant region.
 - Use anchor rescue to promote buried direct evidence in legacy/no-section documents and OCR-noisy notes.
 - Score final candidate chunks against the original user query, not only the expanded retrieval query.
 - Preserve BM25-only retrieval as the offline and low-end fallback path.
 - Track chunk-selection reasons including lexical hit, vector hit, section match, quality score, rerank position, and final rank.
 - Apply a lightweight query/context relevance gate before General Chat synthesis so old corpus chunks do not create false grounded answers.
+- Verify each cited claim against all passages cited by that claim; do not equate citation presence with support.
+- Remove unsupported claims selectively only when the remaining answer is coherent and sufficiently cited; otherwise use source-only fallback or abstain.
 - Apply Exam Lab relevance against imported question-bank text for study-guide/important-question flows.
 - Paper drafting responses should expose deterministic paper-structure metadata without adding another generation pass.
 - Avoid graph databases in V3 unless the measured baseline proves SQLite concept graph expansion is insufficient.

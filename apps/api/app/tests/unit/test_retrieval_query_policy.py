@@ -127,6 +127,34 @@ def test_document_acronym_expansion_drives_section_ranking() -> None:
     assert ranked[0]["section_id"] == "cnn"
 
 
+def test_acronym_expansion_does_not_drift_into_broad_section_terms() -> None:
+    sections = [
+        {
+            "id": "applications",
+            "heading": "Examples of Applications",
+            "section_path": "Examples of Applications",
+            "key_terms_json": '["cnns","purchases","regression","transformers","applications"]',
+        }
+    ]
+    chunks = [
+        {
+            "text": "Convolutional neural networks (CNNs) are used for image recognition.",
+            "heading": "Convolutional Neural Networks",
+            "section_path": "Chapter 14",
+        }
+    ]
+
+    terms = RetrievalService._document_aware_expansion_terms(
+        query="Explain CNNs",
+        chunks=chunks,
+        sections=sections,
+    )
+
+    assert terms == ["convolutional", "neural", "networks"]
+    assert "applications" not in terms
+    assert "purchases" not in terms
+
+
 def test_direct_evidence_score_prefers_answer_passage_over_loose_mention() -> None:
     direct_row = {
         "text": "Convolutional neural networks use convolutional layers to detect visual patterns in images.",

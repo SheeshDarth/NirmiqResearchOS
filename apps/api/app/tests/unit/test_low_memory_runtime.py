@@ -32,6 +32,7 @@ def test_ollama_generate_uses_bounded_runtime_options() -> None:
     assert isinstance(payload, dict)
     assert payload["keep_alive"] == "30s"
     assert payload["model"] == "phi3:mini"
+    assert payload["think"] is False
     options = payload["options"]
     assert isinstance(options, dict)
     assert options == {
@@ -65,7 +66,7 @@ def test_embedder_batches_ollama_embeddings_to_reduce_memory_pressure() -> None:
     assert embedder.last_backend == "ollama"
 
 
-def test_generator_uses_installed_instruct_model_when_default_is_missing() -> None:
+def test_generator_prefers_installed_balanced_model_when_default_is_missing() -> None:
     class FakeOllama:
         def __init__(self) -> None:
             self.generated_with: str | None = None
@@ -86,10 +87,10 @@ def test_generator_uses_installed_instruct_model_when_default_is_missing() -> No
     answer = asyncio.run(generator.answer(prompt="Answer with citations.", temperature=0.1))
 
     assert answer == "Grounded answer. [1]"
-    assert fake.generated_with == "mistral:7b-instruct-q4_K_M"
+    assert fake.generated_with == "qwen3.5:4b"
     assert generator.last_backend == "ollama"
     assert generator.last_model_requested == "phi3:mini"
-    assert generator.last_model_used == "mistral:7b-instruct-q4_K_M"
+    assert generator.last_model_used == "qwen3.5:4b"
     assert generator.last_model_fallback is True
 
 
@@ -117,6 +118,31 @@ def test_generator_prefers_small_phi_model_before_installed_seven_b_model() -> N
     assert fake.generated_with == "phi3:mini"
     assert generator.last_model_used == "phi3:mini"
     assert generator.last_model_fallback is True
+
+
+def test_generator_does_not_silently_fallback_to_noncommercial_qwen25() -> None:
+    class FakeOllama:
+        def __init__(self) -> None:
+            self.generated_with: str | None = None
+
+        async def is_available(self) -> bool:
+            return True
+
+        async def list_models(self) -> list[str]:
+            return ["qwen2.5:3b"]
+
+        async def generate(self, prompt: str, model: str, temperature: float = 0.0) -> str:
+            self.generated_with = model
+            return ""
+
+    fake = FakeOllama()
+    generator = Generator(ollama_client=fake, default_model="qwen3.5:4b", use_ollama=True)  # type: ignore[arg-type]
+
+    answer = asyncio.run(generator.answer(prompt="Use evidence.", temperature=0.1))
+
+    assert answer == ""
+    assert fake.generated_with == "qwen3.5:4b"
+    assert generator.last_backend == "fallback"
 
 
 def test_ollama_client_serializes_generation_and_embedding_operations() -> None:

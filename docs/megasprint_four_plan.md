@@ -76,7 +76,7 @@ First Windows/RTX 4050 observation:
 - Balanced-profile warm readiness is fast, but the first measured grounded BM25 query took `56.5 s`.
 - The requested `phi3:mini` model was not installed, so the legacy fallback order selected a 7B model before an available 4B model.
 - A trial that preferred the installed Qwen 4B model took `64.0 s` and produced no usable answer text, so faithfulness handling fell back to deterministic synthesis. The selector change was rejected rather than shipping a benchmark-only regression.
-- The next model test should use the intended Qwen 2.5 3B instruct or Phi-3 Mini runtime, then compare cold and warm runs before changing defaults.
+- Follow-up diagnosis found that Ollama thinking had consumed the bounded output budget. Disabling thinking produced visible grounded text, allowing Qwen 3.5 4B to be reconsidered safely in the later answer-intelligence pass.
 
 Measured model comparison on 2026-07-13 using the same selected 2,842-chunk textbook, BM25 retrieval, and `What is a Gaussian mixture model?`:
 
@@ -85,12 +85,15 @@ Measured model comparison on 2026-07-13 using the same selected 2,842-chunk text
 | Mistral 7B fallback | Q4_K_M, 4.4 GB | `56.47 s` | not recorded | yes | citations present | Reject as automatic small-device fallback |
 | Qwen 2.5 3B | Q4_K_M, 1.9 GB | `8.90 s` | `5.18 s` | yes | `1.00` | Fast opt-in research profile; Qwen-license disclosure required |
 | Phi-3 Mini | Q4_0, 2.2 GB | `29.32 s` | `10.69 s` | yes | `0.75` | Keep as MIT-licensed publishable default |
+| Qwen 3.5 4B | local quantized Ollama artifact | `24.8 s` on CNN acceptance query | not recorded | yes | `1.00` after repair | Balanced default; Apache 2.0 and `think=false` required |
 
 Implementation decision:
 
-- Keep `phi3:mini` as the default because it is MIT licensed and explicitly intended for commercial and research use.
+- The earlier decision to keep `phi3:mini` as the universal default is superseded by the measured MegaSprint One Block B answer-intelligence pass.
+- Use Apache-2.0 `qwen3.5:4b` for the balanced profile and MIT `phi3:mini` for the low-memory profile.
+- Send `think=false` for Ollama generation so thinking-capable models return visible answer text within the bounded prediction budget.
 - Move small 3B/2B models ahead of Mistral 7B in automatic fallback order.
-- Do not silently distribute or promote Qwen 2.5 3B without its model-license disclosure, even though it is materially faster on this machine.
+- Do not silently select Qwen 2.5 3B; the locally installed artifact carries a non-commercial research license and remains explicit-only.
 - Benchmark output now separates first/cold and warm query samples and can record API RSS and NVIDIA GPU memory without extra Python dependencies.
 
 Verification:

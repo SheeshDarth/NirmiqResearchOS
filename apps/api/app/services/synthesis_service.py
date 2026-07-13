@@ -3,6 +3,7 @@ from collections import Counter
 
 from app.adapters.llm.generator import Generator
 from app.core.config import Settings
+from app.domain.answer_intelligence import AnswerPlan, build_answer_plan
 from app.domain.citation_coverage import citation_coverage
 from app.domain.models import RetrievalBundle
 from app.domain.retrieval_policy import RetrievalPolicy
@@ -120,12 +121,23 @@ class SynthesisService:
         exam_profile: dict[str, object] | None = None,
         exam_context: dict[str, object] | None = None,
     ) -> tuple[str, bool, dict[str, object]]:
+        answer_plan = build_answer_plan(
+            query=query,
+            response_mode=response_mode,
+            exam_profile=exam_profile,
+        )
+        answer_plan_meta = {
+            "answer_plan_type": answer_plan.answer_type,
+            "answer_plan_depth": answer_plan.depth,
+            "answer_plan_subject": answer_plan.subject,
+            "answer_plan_requested_elements": list(answer_plan.requested_elements),
+        }
         top_grounding_score = max((float(chunk.score) for chunk in bundle.chunks), default=0.0)
         citation_count = len(bundle.chunks)
         grounding_state = self._grounding_state(top_grounding_score, citation_count)
         overview_query = self._is_document_overview_query(query, response_mode)
         relevance_query = self._relevance_query(
-            query=query,
+            query=answer_plan.evidence_query(query),
             response_mode=response_mode,
             exam_context=exam_context,
         )
@@ -153,6 +165,7 @@ class SynthesisService:
                     "grounding_summary": "retrieved evidence was unrelated to the query",
                     "document_overview_request": overview_query,
                     "low_score_overview_allowed": low_score_overview,
+                    **answer_plan_meta,
                     **context_relevance,
                 },
             )
@@ -171,6 +184,7 @@ class SynthesisService:
                     "grounding_summary": "retrieved evidence was not direct enough",
                     "document_overview_request": overview_query,
                     "low_score_overview_allowed": low_score_overview,
+                    **answer_plan_meta,
                     **context_relevance,
                 },
             )
@@ -187,6 +201,7 @@ class SynthesisService:
                     "grounding_summary": "weak evidence - no answer generated",
                     "document_overview_request": overview_query,
                     "low_score_overview_allowed": low_score_overview,
+                    **answer_plan_meta,
                     **context_relevance,
                 },
             )
@@ -198,6 +213,7 @@ class SynthesisService:
             response_mode=response_mode,
             exam_profile=exam_profile,
             exam_context=exam_context,
+            answer_plan=answer_plan,
         )
         generation_temperature = self._generation_temperature(
             response_mode=response_mode,
@@ -229,27 +245,42 @@ class SynthesisService:
         )
         verification = self._verify_cited_claims(generated, selected)
         answer_rewritten = False
+        answer_repair_mode = "none"
         if self._should_rewrite_for_faithfulness(verification):
-            generated = self._fallback_answer(
-                query=query,
-                context_chunks=selected,
-                response_mode=response_mode,
-                exam_profile=exam_profile,
-                exam_context=exam_context,
-            )
-            generated = self._with_diagram_grounding_note(
-                answer=generated,
-                query=query,
-                exam_context=exam_context,
-            )
-            fallback_verification = self._verify_cited_claims(generated, selected)
-            verification = {
-                **fallback_verification,
-                "original_unsupported_claims": verification["unsupported_claims"],
-                "original_cited_claims_checked": verification["cited_claims_checked"],
-            }
-            answer_rewritten = True
-            used_fallback_answer = True
+            original_verification = verification
+            repaired = self._remove_unsupported_claims(generated, verification)
+            repaired_verification = self._verify_cited_claims(repaired, selected)
+            if self._is_usable_claim_repair(repaired, repaired_verification):
+                generated = repaired
+                verification = {
+                    **repaired_verification,
+                    "original_unsupported_claims": original_verification["unsupported_claims"],
+                    "original_cited_claims_checked": original_verification["cited_claims_checked"],
+                }
+                answer_rewritten = True
+                answer_repair_mode = "claim_pruned"
+            else:
+                generated = self._fallback_answer(
+                    query=query,
+                    context_chunks=selected,
+                    response_mode=response_mode,
+                    exam_profile=exam_profile,
+                    exam_context=exam_context,
+                )
+                generated = self._with_diagram_grounding_note(
+                    answer=generated,
+                    query=query,
+                    exam_context=exam_context,
+                )
+                fallback_verification = self._verify_cited_claims(generated, selected)
+                verification = {
+                    **fallback_verification,
+                    "original_unsupported_claims": original_verification["unsupported_claims"],
+                    "original_cited_claims_checked": original_verification["cited_claims_checked"],
+                }
+                answer_rewritten = True
+                answer_repair_mode = "extractive_fallback"
+                used_fallback_answer = True
 
         coverage_meta = citation_coverage(generated)
         citation_context_meta = self._citation_context_meta(
@@ -286,6 +317,7 @@ class SynthesisService:
                     "grounding_summary": "evidence reliability gate blocked the answer",
                     "document_overview_request": overview_query,
                     "low_score_overview_allowed": low_score_overview,
+                    **answer_plan_meta,
                     **context_relevance,
                     "exam_profile_used": bool(exam_profile),
                     "exam_context_used": bool(
@@ -299,6 +331,7 @@ class SynthesisService:
                     "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
                     "original_unsupported_claims": verification.get("original_unsupported_claims", []),
                     "answer_rewritten_for_faithfulness": answer_rewritten,
+                    "answer_repair_mode": answer_repair_mode,
                     **citation_context_meta,
                     **evidence_gate,
                 },
@@ -317,6 +350,7 @@ class SynthesisService:
             "grounding_summary": self._grounding_summary(grounding_state, top_grounding_score, citation_count),
             "document_overview_request": overview_query,
             "low_score_overview_allowed": low_score_overview,
+            **answer_plan_meta,
             **context_relevance,
             "exam_profile_used": bool(exam_profile),
             "exam_context_used": bool(
@@ -330,6 +364,7 @@ class SynthesisService:
             "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
             "original_unsupported_claims": verification.get("original_unsupported_claims", []),
             "answer_rewritten_for_faithfulness": answer_rewritten,
+            "answer_repair_mode": answer_repair_mode,
             **citation_context_meta,
             **evidence_gate,
         }
@@ -486,11 +521,17 @@ class SynthesisService:
         response_mode: str = "research",
         exam_profile: dict[str, object] | None = None,
         exam_context: dict[str, object] | None = None,
+        answer_plan: AnswerPlan | None = None,
     ) -> str:
         context = "\n\n".join(block for _, block in context_blocks)
         mode_instruction = SynthesisService._mode_instruction(response_mode)
         exam_instruction = SynthesisService._exam_instruction(exam_profile)
         artifact_instruction = SynthesisService._exam_artifact_instruction(exam_context, query=query)
+        resolved_plan = answer_plan or build_answer_plan(
+            query=query,
+            response_mode=response_mode,
+            exam_profile=exam_profile,
+        )
         return (
             "You are NIRMIQ local research assistant.\n"
             "Use ONLY the context below. Do not invent facts.\n"
@@ -498,10 +539,13 @@ class SynthesisService:
             "Cite claims with [n] where n is the context block number.\n"
             "Prefer higher-scoring context blocks when multiple sources support the same claim.\n"
             "Answer the user's exact question, not a generic document summary.\n"
-            "Use this compact answer contract whenever possible: Short answer, Explanation, Key points, Source note.\n"
+            "First connect the relevant evidence into a coherent explanation; do not paste index entries or unrelated fragments.\n"
+            "Paraphrase for clarity while preserving the source's technical terms, numbers, and meaning.\n"
+            "Do not infer a mechanism from an analogy, biological inspiration, or historical background unless the context explicitly supports that mechanism.\n"
             "Use citation anchors at the end of paragraphs or bullets that rely on source evidence. Avoid citation spam.\n"
             "If the user asks for algorithms, examples, steps, or a list, answer as a concise list and cite each item.\n"
             "Keep paragraphs short and avoid dense textbook dumps.\n"
+            f"{resolved_plan.prompt_instruction()}\n"
             f"{mode_instruction}\n\n"
             f"{exam_instruction}\n"
             f"{artifact_instruction}\n"
@@ -1161,13 +1205,19 @@ class SynthesisService:
         context_chunks: list[tuple[int, str]],
         response_mode: str,
     ) -> str:
+        answer_plan = build_answer_plan(query=query, response_mode=response_mode)
+        requested_elements = set(answer_plan.requested_elements)
         query_terms = SynthesisService._query_terms(query)
+        subject_terms = {
+            token
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", answer_plan.subject.lower())
+            if token not in _QUERY_STOPWORDS and len(token) >= 4
+        }
         definition_cues = (
             " is a ",
             " is an ",
             " means ",
             " refers ",
-            " called ",
             "probabilistic model",
             "generative model",
             "assumes",
@@ -1248,6 +1298,10 @@ class SynthesisService:
                     base
                     + rank_bonus
                     + sum(1.0 for cue in definition_cues if cue in lowered)
+                    + SynthesisService._subject_called_definition_score(
+                        sentence=sentence,
+                        subject_terms=subject_terms,
+                    )
                     - boundary_penalty
                 )
                 if any(
@@ -1302,15 +1356,29 @@ class SynthesisService:
         if working_items:
             sections.append("\nHow it works")
             sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in working_items[:2])
-        if use_items:
+        if use_items and requested_elements & {"applications", "examples"}:
             sections.append("\nWhat it is used for")
             sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in use_items[:2])
-        if limit_items:
+        if limit_items and "limitations" in requested_elements:
             sections.append("\nLimitation")
             sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in limit_items[:1])
 
         sections.append("\nEvidence note\nOpen Sources to inspect the exact textbook passages used.")
         return "\n".join(sections)
+
+    @staticmethod
+    def _subject_called_definition_score(*, sentence: str, subject_terms: set[str]) -> float:
+        if not subject_terms:
+            return 0.0
+        lowered = sentence.lower()
+        for term in subject_terms:
+            escaped = re.escape(term)
+            if re.search(
+                rf"\b(?:is|are|was|were)\s+(?:also\s+)?(?:called|known\s+as)\s+{escaped}\b",
+                lowered,
+            ):
+                return 3.0
+        return 0.0
 
     @staticmethod
     def _dedupe_scored_sentences(
@@ -2105,11 +2173,16 @@ class SynthesisService:
             if len(claim_terms) < 3:
                 continue
             checked += 1
+            cited_contexts = [context_by_anchor[anchor] for anchor in anchors]
             support_scores = [
-                SynthesisService._claim_support_score(claim_terms, context_by_anchor[anchor])
-                for anchor in anchors
+                SynthesisService._claim_support_score(claim_terms, context_text)
+                for context_text in cited_contexts
             ]
-            best_score = max(support_scores) if support_scores else 0.0
+            combined_score = SynthesisService._claim_support_score(
+                claim_terms,
+                " ".join(cited_contexts),
+            )
+            best_score = max([combined_score, *support_scores]) if support_scores else combined_score
             matched_terms = int(round(best_score * len(claim_terms)))
             required_matches = max(3, int(len(claim_terms) * 0.5))
             if best_score < 0.55 or matched_terms < required_matches:
@@ -2131,6 +2204,108 @@ class SynthesisService:
             "cited_claims_checked": checked,
             "unsupported_claims": unsupported,
         }
+
+    @staticmethod
+    def _remove_unsupported_claims(answer: str, verification: dict[str, object]) -> str:
+        unsupported = verification.get("unsupported_claims")
+        if not isinstance(unsupported, list) or not unsupported:
+            return answer.strip()
+
+        fingerprints = [
+            SynthesisService._claim_fingerprint(str(item.get("claim") or ""))
+            for item in unsupported
+            if isinstance(item, dict) and item.get("claim")
+        ]
+        fingerprints = [fingerprint for fingerprint in fingerprints if fingerprint]
+        if not fingerprints:
+            return answer.strip()
+
+        repaired_lines: list[str] = []
+        for raw_line in answer.splitlines():
+            stripped = raw_line.strip()
+            if not stripped:
+                repaired_lines.append("")
+                continue
+            retained: list[str] = []
+            normalized_line = re.sub(
+                r"([.!?])[ \t]+((?:\[\d+\][ \t]*)+)",
+                r" \2\1",
+                stripped,
+            )
+            for sentence in SynthesisService._split_sentences(normalized_line):
+                if re.fullmatch(r"(?:\[\d+\]\s*)+", sentence.strip()):
+                    continue
+                fingerprint = SynthesisService._claim_fingerprint(sentence)
+                if fingerprint and any(
+                    SynthesisService._same_claim_fingerprint(fingerprint, unsupported_fingerprint)
+                    for unsupported_fingerprint in fingerprints
+                ):
+                    continue
+                if (
+                    not SynthesisService._contains_citation_anchor(sentence)
+                    and len(SynthesisService._claim_terms(sentence)) >= 3
+                    and not SynthesisService._looks_like_orphan_heading(sentence)
+                ):
+                    continue
+                retained.append(sentence)
+            if retained:
+                prefix = "- " if stripped.startswith("-") and not retained[0].startswith("-") else ""
+                repaired_lines.append(prefix + " ".join(retained))
+
+        while repaired_lines and not repaired_lines[-1].strip():
+            repaired_lines.pop()
+        if repaired_lines and SynthesisService._looks_like_orphan_heading(repaired_lines[-1]):
+            repaired_lines.pop()
+
+        compact: list[str] = []
+        blank = False
+        for line in repaired_lines:
+            if not line.strip():
+                if compact and not blank:
+                    compact.append("")
+                blank = True
+                continue
+            compact.append(line)
+            blank = False
+        return "\n".join(compact).strip()
+
+    @staticmethod
+    def _is_usable_claim_repair(answer: str, verification: dict[str, object]) -> bool:
+        coverage = citation_coverage(answer)
+        return bool(
+            answer.strip()
+            and len(answer.split()) >= 8
+            and SynthesisService._contains_citation_anchor(answer)
+            and verification.get("state") == "supported"
+            and int(verification.get("cited_claims_checked") or 0) >= 1
+            and float(coverage.get("citation_coverage") or 0.0) >= 0.75
+        )
+
+    @staticmethod
+    def _claim_fingerprint(value: str) -> str:
+        value = re.sub(r"\[\d+\]", " ", value.lower())
+        return " ".join(re.findall(r"[a-zA-Z0-9+-]+", value))
+
+    @staticmethod
+    def _same_claim_fingerprint(candidate: str, unsupported: str) -> bool:
+        if candidate in unsupported or unsupported in candidate:
+            return True
+        candidate_terms = set(candidate.split())
+        unsupported_terms = set(unsupported.split())
+        if not candidate_terms or not unsupported_terms:
+            return False
+        overlap = len(candidate_terms & unsupported_terms)
+        return overlap / max(len(candidate_terms), len(unsupported_terms)) >= 0.8
+
+    @staticmethod
+    def _looks_like_orphan_heading(line: str) -> bool:
+        stripped = re.sub(r"^[#*\s]+", "", line).strip()
+        return bool(
+            stripped
+            and not SynthesisService._contains_citation_anchor(stripped)
+            and len(stripped.split()) <= 6
+            and not re.search(r"[.!?]$", stripped)
+        )
 
     @staticmethod
     def _should_rewrite_for_faithfulness(verification: dict[str, object]) -> bool:

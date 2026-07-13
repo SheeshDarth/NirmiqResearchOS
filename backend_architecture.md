@@ -1,6 +1,6 @@
 # NIRMIQ Backend Architecture
 
-Last updated: 2026-07-09
+Last updated: 2026-07-13
 
 ## Overview
 
@@ -67,20 +67,22 @@ This keeps the current frontend stable while addressing API-versioning readiness
 
 1. Receive prompt, mode, retrieval mode, profile, and session id.
 2. Load session memory.
-3. Normalize and route prompt intent.
+3. Build an answer plan containing subject, answer type, requested depth, and optional requested elements.
 4. Return cached selected-document summary when the document hash/profile matches.
 5. Expand retrieval query internally for summary, factual lookup, comparison, paper, deep research, and exam intents.
-6. Retrieve candidates from BM25 and optional vector search.
+6. Project a clean evidence query and retrieve candidates from BM25 and optional vector search.
 7. When a selected document has section metadata, rank candidate sections/pages before chunk-level retrieval.
 8. Expand query terms from source-local acronym definitions and section/topic metadata when available.
 9. Fuse with RRF, score candidate chunks for direct answerability, and rerank/pack context.
-10. Generate grounded answer or abstain.
-11. Map final answer citation anchors back to the exact selected context chunks used during synthesis.
-12. Run the evidence reliability gate over citation coverage, answer-used citations, verification state, and direct evidence relevance.
-13. Compute citation coverage and compact trust metadata.
-14. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
-15. Persist user/assistant turns.
-16. Return answer, answer-used citations, optional debug metadata, and grounding state.
+10. Generate a query-shaped grounded answer or abstain.
+11. Verify cited claims jointly against their cited context, pruning only unsupported claims when a coherent answer remains.
+12. Use source-only extractive fallback when selective repair is not usable.
+13. Map final answer citation anchors back to the exact selected context chunks used during synthesis.
+14. Run the evidence reliability gate over citation coverage, answer-used citations, verification state, and direct evidence relevance.
+15. Compute citation coverage and compact trust metadata.
+16. Attach Paper Lab outline/matrix/clusters for paper-draft intent.
+17. Persist user/assistant turns.
+18. Return answer, answer-used citations, optional debug metadata, and grounding state.
 
 ### MegaSprint One Reliability Layer
 
@@ -97,6 +99,9 @@ The latest reliability layer remains local-first and lightweight. The chosen arc
 - Backmatter/index/glossary/example-list passages receive stronger penalties for explanatory questions.
 - Synthesis receives direct-evidence metadata and fails closed when evidence is only weakly related or unrelated.
 - Public query request/response shapes remain stable; additional reliability fields stay inside optional debug metadata.
+- A deterministic answer plan shapes evidence projection and synthesis without an extra LLM call.
+- Exact source-derived acronym expansion is locked before broad topic-term expansion to prevent circular query drift.
+- Faithfulness handling verifies jointly cited evidence and prunes unsupported claims before considering full extractive fallback.
 
 ### Answer Feedback
 
@@ -208,7 +213,9 @@ Updated query lifecycle:
 Model routing:
 
 - The generator now discovers installed Ollama models and records requested versus used model metadata.
-- `mistral:7b-instruct-q4_K_M` is preferred for answer text on this machine because `qwen3.5:4b` returned empty response text under the tested generation budget.
+- The earlier empty `qwen3.5:4b` result was traced to Ollama thinking consuming the bounded prediction budget, not to an unusable model artifact.
+- Balanced mode now prefers Apache-2.0 `qwen3.5:4b` with `think=false`; low-memory mode uses MIT `phi3:mini`.
+- Qwen 2.5 is excluded from automatic fallback and remains explicit-only because the installed artifact carries a non-commercial research license.
 - Embedding and reranking remain independently toggleable.
 
 Retrieval changes:
@@ -223,7 +230,7 @@ Retrieval changes:
 Trust behavior:
 
 - Generated answers are not trusted just because they have citations.
-- Unsupported specific claims trigger source-only rewrite.
+- Unsupported specific claims are pruned individually when the repaired answer remains coherent and sufficiently cited; otherwise they trigger source-only rewrite.
 - Stale `indexed` documents with no active chunks are surfaced as `needs_reindex` in the library API.
 
 ## 2026-06-20 Hardening Audit Update

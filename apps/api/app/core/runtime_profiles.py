@@ -8,6 +8,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class RuntimeProfile:
     name: str
+    generator_model_default: str
     low_memory_mode: bool
     use_ollama_generation: bool
     use_ollama_embeddings: bool
@@ -23,6 +24,7 @@ class RuntimeProfile:
 RUNTIME_PROFILES: dict[str, RuntimeProfile] = {
     "balanced": RuntimeProfile(
         name="balanced",
+        generator_model_default="qwen3.5:4b",
         low_memory_mode=False,
         use_ollama_generation=True,
         use_ollama_embeddings=True,
@@ -36,6 +38,7 @@ RUNTIME_PROFILES: dict[str, RuntimeProfile] = {
     ),
     "low_memory": RuntimeProfile(
         name="low_memory",
+        generator_model_default="phi3:mini",
         low_memory_mode=True,
         use_ollama_generation=True,
         use_ollama_embeddings=False,
@@ -49,6 +52,7 @@ RUNTIME_PROFILES: dict[str, RuntimeProfile] = {
     ),
     "cpu_offline": RuntimeProfile(
         name="cpu_offline",
+        generator_model_default="phi3:mini",
         low_memory_mode=True,
         use_ollama_generation=False,
         use_ollama_embeddings=False,

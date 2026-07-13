@@ -97,7 +97,10 @@ class Settings(BaseModel):
             ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
             embed_model=os.getenv("EMBED_MODEL", "nomic-embed-text"),
             reranker_model=os.getenv("RERANKER_MODEL", "bge-reranker-base"),
-            generator_model_default=os.getenv("GENERATOR_MODEL_DEFAULT", "phi3:mini"),
+            generator_model_default=os.getenv(
+                "GENERATOR_MODEL_DEFAULT",
+                runtime_profile.generator_model_default,
+            ),
             generator_model_code=os.getenv("GENERATOR_MODEL_CODE", "deepseek-coder:6.7b"),
             use_ollama_generation=cls._env_bool(
                 "USE_OLLAMA_GENERATION", runtime_profile.use_ollama_generation

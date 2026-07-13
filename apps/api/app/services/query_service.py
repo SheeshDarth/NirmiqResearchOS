@@ -5,6 +5,7 @@ from uuid import uuid4
 from app.api.schemas.common import Citation
 from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.api.schemas.query import QueryRequest, QueryResponse
+from app.domain.answer_intelligence import build_answer_plan
 from app.domain.citations import to_citations
 from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.paper_lab import build_paper_lab_artifact
@@ -323,10 +324,12 @@ class QueryService:
         if intent.intent == "factual_lookup":
             # Keep retrieval centered on the user's subject. Generic answer-shape
             # words belong in synthesis and can dominate textbook index ranking.
-            subject_terms = QueryService._factual_category_expansion(query)
+            answer_plan = build_answer_plan(query=query, response_mode=mode)
+            focused_query = answer_plan.evidence_query(query)
+            subject_terms = QueryService._factual_category_expansion(focused_query)
             if subject_terms:
-                return f"{query}\n\nSubject expansion: {' '.join(subject_terms)}"
-            return query
+                return f"{focused_query}\n\nSubject expansion: {' '.join(subject_terms)}"
+            return focused_query
         if mode.strip().lower() not in {"study_guide", "important_questions"}:
             return query
         questions = exam_context.get("questions", [])
