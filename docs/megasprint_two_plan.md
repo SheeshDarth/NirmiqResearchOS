@@ -501,3 +501,17 @@ Verification:
 Acceptance rule:
 
 - MegaSprint Two remains reopened until the user reviews the redesigned desktop UI. A green build alone cannot close this sprint.
+
+### 2026-07-13 User Review Follow-Up
+
+The supplied desktop screenshot confirmed that the shell is now visibly chat-first: one central canvas, optional Sources action, compact composer, and no persistent metadata rails.
+
+One remaining visual defect was found and corrected:
+
+- The native workspace `<select>` opened as a bright operating-system popup over the dark composer.
+- It was replaced with a keyboard-accessible dark menu that opens upward, includes short mode descriptions, and closes after selection.
+- No workspace capability or backend request changed.
+
+Verification:
+
+- `npm.cmd run build` from `apps/web`: passed.

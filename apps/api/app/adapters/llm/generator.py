@@ -5,12 +5,12 @@ class Generator:
     """Generator with Ollama path and deterministic offline fallback."""
 
     _preferred_generation_models = (
-        "mistral:7b-instruct-q4_K_M",
+        "phi3:mini",
         "qwen2.5:3b",
         "qwen2.5:3b-instruct",
-        "phi3:mini",
         "llama3.2:3b",
         "gemma2:2b",
+        "mistral:7b-instruct-q4_K_M",
         "qwen3.5:4b",
         "deepseek-r1:8b",
         "deepseek-coder:6.7b",

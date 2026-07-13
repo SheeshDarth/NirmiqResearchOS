@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
 import math
 import os
 import platform
+import shutil
 import statistics
+import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -40,12 +43,101 @@ def summarize(samples: list[float]) -> dict[str, float]:
     }
 
 
+def gpu_snapshot() -> list[dict[str, int | str]] | None:
+    """Read bounded GPU telemetry when nvidia-smi is available."""
+    if not shutil.which("nvidia-smi"):
+        return None
+    try:
+        completed = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=name,memory.total,memory.used,utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            check=True,
+            text=True,
+            timeout=3,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+    snapshots: list[dict[str, int | str]] = []
+    for line in completed.stdout.splitlines():
+        columns = [value.strip() for value in line.split(",")]
+        if len(columns) != 4:
+            continue
+        try:
+            snapshots.append(
+                {
+                    "name": columns[0],
+                    "memory_total_mib": int(columns[1]),
+                    "memory_used_mib": int(columns[2]),
+                    "utilization_percent": int(columns[3]),
+                }
+            )
+        except ValueError:
+            continue
+    return snapshots or None
+
+
+def process_rss_bytes(process_id: int | None) -> int | None:
+    """Return process RSS without adding a runtime dependency."""
+    if not process_id or process_id <= 0:
+        return None
+    if os.name != "nt":
+        try:
+            for line in Path(f"/proc/{process_id}/status").read_text(encoding="utf-8").splitlines():
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) * 1024
+        except (OSError, ValueError, IndexError):
+            return None
+        return None
+
+    class ProcessMemoryCounters(ctypes.Structure):
+        _fields_ = [
+            ("cb", ctypes.c_ulong),
+            ("page_fault_count", ctypes.c_ulong),
+            ("peak_working_set_size", ctypes.c_size_t),
+            ("working_set_size", ctypes.c_size_t),
+            ("quota_peak_paged_pool_usage", ctypes.c_size_t),
+            ("quota_paged_pool_usage", ctypes.c_size_t),
+            ("quota_peak_non_paged_pool_usage", ctypes.c_size_t),
+            ("quota_non_paged_pool_usage", ctypes.c_size_t),
+            ("pagefile_usage", ctypes.c_size_t),
+            ("peak_pagefile_usage", ctypes.c_size_t),
+        ]
+
+    process_query_information = 0x0400
+    process_vm_read = 0x0010
+    handle = ctypes.windll.kernel32.OpenProcess(  # type: ignore[attr-defined]
+        process_query_information | process_vm_read,
+        False,
+        process_id,
+    )
+    if not handle:
+        return None
+    try:
+        counters = ProcessMemoryCounters()
+        counters.cb = ctypes.sizeof(counters)
+        if not ctypes.windll.psapi.GetProcessMemoryInfo(  # type: ignore[attr-defined]
+            handle,
+            ctypes.byref(counters),
+            counters.cb,
+        ):
+            return None
+        return int(counters.working_set_size)
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)  # type: ignore[attr-defined]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Benchmark the local NIRMIQ runtime without cloud calls.")
     parser.add_argument("--api-base", default="http://127.0.0.1:8000")
     parser.add_argument("--iterations", type=int, default=5)
     parser.add_argument("--query")
     parser.add_argument("--document-id")
+    parser.add_argument("--api-pid", type=int, help="Optional API process id for RSS sampling.")
     parser.add_argument("--retrieval-mode", choices=("hybrid", "bm25", "vector"), default="bm25")
     parser.add_argument("--output", default="temp/runtime/runtime-benchmark.json")
     args = parser.parse_args()
@@ -57,6 +149,8 @@ def main() -> int:
         "python": platform.python_version(),
         "logical_cpus": os.cpu_count(),
         "api_base": args.api_base,
+        "gpu_before": gpu_snapshot(),
+        "api_rss_before_bytes": process_rss_bytes(args.api_pid),
     }
     try:
         readiness_samples: list[float] = []
@@ -96,6 +190,10 @@ def main() -> int:
                 query_samples.append(elapsed)
             meta = last_response.get("retrieval_meta") or {}
             result["query_latency"] = summarize(query_samples)
+            result["query_latency"]["first_ms"] = round(query_samples[0], 2)
+            if len(query_samples) > 1:
+                result["query_warm_latency"] = summarize(query_samples[1:])
+            result["query_samples_ms"] = [round(sample, 2) for sample in query_samples]
             result["query_result"] = {
                 "grounded": last_response.get("grounded"),
                 "citation_count": len(last_response.get("citations") or []),
@@ -109,6 +207,8 @@ def main() -> int:
     except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
         result["error"] = str(exc)
 
+    result["gpu_after"] = gpu_snapshot()
+    result["api_rss_after_bytes"] = process_rss_bytes(args.api_pid)
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(result, indent=2), encoding="utf-8")

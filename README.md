@@ -313,7 +313,9 @@ Model strategy:
 - Local-first inference.
 - RTX 4050-friendly constraints.
 - Low VRAM preference.
-- Optional Ollama models such as Phi-3 Mini, Qwen2.5 3B, DeepSeek Coder 6.7B, and `nomic-embed-text`.
+- Recommended local generator: MIT-licensed `phi3:mini`; NIRMIQ remains usable without it through deterministic cited synthesis.
+- Optional research-speed profile: `qwen2.5:3b`, with its separate Qwen model license reviewed by the user.
+- Optional `nomic-embed-text` embeddings and coding-specific models are never required for the offline fallback path.
 
 ## Architecture
 
@@ -356,6 +358,14 @@ Install once:
 cd C:\Nirmiq-researchOS
 .\scripts\bootstrap.ps1
 ```
+
+For fluent local generation on Windows/RTX 4050-class hardware, install the recommended MIT-licensed model once:
+
+```powershell
+ollama pull phi3:mini
+```
+
+Ollama is optional. If it or the model is unavailable, NIRMIQ keeps the same local document workflow and uses deterministic cited synthesis instead of making a cloud call.
 
 Root command hub:
 

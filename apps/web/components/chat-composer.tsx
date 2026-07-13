@@ -72,6 +72,14 @@ function SendIcon() {
   );
 }
 
+function ChevronIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="m8 10 4 4 4-4" />
+    </svg>
+  );
+}
+
 export function ChatComposer({
   activeActionLabel,
   activeMaterialName,
@@ -178,21 +186,30 @@ export function ChatComposer({
             </div>
 
             <div className="composer-footer">
-              <label className="mode-select-label">
-                <span className="sr-only">Workspace mode</span>
-                <select
-                  aria-label="Workspace mode"
-                  className="mode-select"
-                  value={workspaceSection}
-                  onChange={(event) => onWorkspaceSectionChange(event.target.value as WorkspaceSection)}
-                >
+              <details className="composer-mode">
+                <summary aria-label={`Current workspace: ${activeWorkspaceLabel}`}>
+                  <span>{activeWorkspaceLabel}</span>
+                  <ChevronIcon />
+                </summary>
+                <div className="composer-mode-menu" role="menu">
                   {WORKSPACE_SECTIONS.map((section) => (
-                    <option key={section.value} value={section.value}>
-                      {section.label}
-                    </option>
+                    <button
+                      aria-current={workspaceSection === section.value ? "true" : undefined}
+                      className={cx("composer-mode-option", workspaceSection === section.value && "active")}
+                      key={section.value}
+                      onClick={(event) => {
+                        onWorkspaceSectionChange(section.value);
+                        event.currentTarget.closest("details")?.removeAttribute("open");
+                      }}
+                      role="menuitem"
+                      type="button"
+                    >
+                      <span>{section.label}</span>
+                      <small>{section.hint}</small>
+                    </button>
                   ))}
-                </select>
-              </label>
+                </div>
+              </details>
 
               <span className="composer-runtime-state" aria-live="polite">{statusText}</span>
 

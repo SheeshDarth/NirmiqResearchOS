@@ -517,3 +517,18 @@ Current recovery verification:
 - Source drawer overlays the right side and keeps the answer canvas intact.
 - Header and composer remain fixed while the central response region owns vertical scrolling.
 - Production bundle remains approximately `117 kB` first-load JavaScript.
+
+## 2026-07-13 Composer Mode Menu Fix
+
+The recovered chat shell passed visual direction review, but its native workspace selector rendered a bright Windows popup that broke the restrained dark theme and obscured the composer.
+
+Implemented:
+
+- Replaced the native selector with an accessible `<details>` menu.
+- Kept one compact active-mode label in the composer.
+- Added concise mode descriptions only inside the opened menu.
+- Preserved keyboard focus, 48px option targets, reduced-motion compatibility, and the existing workspace routing callback.
+
+Verification:
+
+- Next.js production build passed.

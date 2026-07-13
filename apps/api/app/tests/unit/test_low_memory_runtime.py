@@ -90,3 +90,29 @@ def test_generator_uses_installed_instruct_model_when_default_is_missing() -> No
     assert generator.last_model_requested == "phi3:mini"
     assert generator.last_model_used == "mistral:7b-instruct-q4_K_M"
     assert generator.last_model_fallback is True
+
+
+def test_generator_prefers_small_phi_model_before_installed_seven_b_model() -> None:
+    class FakeOllama:
+        def __init__(self) -> None:
+            self.generated_with: str | None = None
+
+        async def is_available(self) -> bool:
+            return True
+
+        async def list_models(self) -> list[str]:
+            return ["mistral:7b-instruct-q4_K_M", "phi3:mini"]
+
+        async def generate(self, prompt: str, model: str, temperature: float = 0.0) -> str:
+            self.generated_with = model
+            return "Grounded answer. [1]"
+
+    fake = FakeOllama()
+    generator = Generator(ollama_client=fake, default_model="missing:small", use_ollama=True)  # type: ignore[arg-type]
+
+    answer = asyncio.run(generator.answer(prompt="Answer with citations.", temperature=0.1))
+
+    assert answer == "Grounded answer. [1]"
+    assert fake.generated_with == "phi3:mini"
+    assert generator.last_model_used == "phi3:mini"
+    assert generator.last_model_fallback is True

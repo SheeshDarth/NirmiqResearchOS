@@ -1,6 +1,6 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-07-12
+Last updated: 2026-07-13
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
@@ -3587,3 +3587,56 @@ Verification so far:
 - Windows package rebuilt as `dist\desktop\NIRMIQ Academic Intelligence 0.1.0.exe`.
 - Final packaged window title verified as `NIRMIQ Academic Intelligence`.
 - MegaSprint Two is reopened and must remain open until user visual acceptance.
+
+# Latest Session Update - 2026-07-13 MegaSprint Two Review And MegaSprint Four Baseline
+
+Objective:
+
+- Review the visibly recovered MegaSprint Two desktop UI before continuing runtime optimization.
+- Remove the remaining native-control visual mismatch.
+- Complete the representative RTX 4050 model comparison without weakening grounding or offline fallback.
+
+MegaSprint Two follow-up:
+
+- User-supplied screenshot confirmed the product now uses a single chat canvas, compact header, optional Sources action, and bottom composer rather than the old three-rail dashboard.
+- Found one remaining visual defect: the native workspace `<select>` opened as a bright Windows popup over the dark composer.
+- Replaced it with a dark, upward-opening, keyboard-accessible mode menu with concise mode descriptions and 48px targets.
+- Preserved Research, Chat, Paper Lab, Exam Lab, uploads, backend requests, and the 117 kB first-load JavaScript baseline.
+
+MegaSprint Four Block 2:
+
+- Installed and benchmarked `qwen2.5:3b` and `phi3:mini` through isolated local APIs against the same selected 2,842-chunk machine-learning textbook.
+- Test query: `What is a Gaussian mixture model?` using BM25 retrieval and balanced profile.
+- Prior accidental Mistral 7B fallback: `56.47 s` cold.
+- Qwen 2.5 3B: `8.90 s` cold, `5.18 s` warm, grounded, full measured citation coverage, 1.9 GB Q4_K_M artifact.
+- Phi-3 Mini: `29.32 s` cold, `10.69 s` warm, grounded, three citations, 2.2 GB Q4_0 artifact.
+- Kept `phi3:mini` as the publishable default because the official artifact is MIT licensed and intended for commercial and research use.
+- Documented Qwen 2.5 3B as an opt-in research-speed profile because its 3B artifact uses the separate Qwen license.
+- Reordered automatic generation fallback so small 3B/2B models are considered before Mistral 7B.
+- Enhanced `scripts/runtime_benchmark.py` with explicit first/warm query samples, optional API RSS, and bounded NVIDIA memory telemetry without new dependencies.
+- Live API verification after installation requested and used `phi3:mini` directly, returned a grounded answer with three citations, and did not fall back.
+
+Measured runtime probe:
+
+- Live FastAPI RSS without a resident model: approximately `183 MB`.
+- Idle RTX 4050 memory at probe time: `155 MiB` of `6141 MiB`.
+- Warm readiness: approximately `23 ms` in the focused probe.
+
+Verification:
+
+- Focused runtime tests: `9 passed`.
+- Python compile for benchmark and generator modules: passed.
+- Next.js production build: passed; first-load JavaScript remains `117 kB`.
+- Benchmark telemetry command: passed on the running Windows API.
+- Full `npm.cmd run ship:check`: passed.
+- Full backend suite: `101 passed`, `1 warning`.
+- Publish smoke: passed with `cloud_api_required=false`.
+- Golden demo: all four answer routes remained grounded with citations; unsupported query abstained with zero citations.
+- Portable Windows desktop package rebuilt at `dist/desktop/NIRMIQ Academic Intelligence 0.1.0.exe`.
+- `npm.cmd run desktop:smoke`: passed after packaging and cleaned up its scoped processes.
+
+Tradeoffs:
+
+- Phi-3 is slower than Qwen 2.5 3B on this RTX 4050, but has simpler redistribution terms for a publishable default.
+- Ollama remains optional; deterministic cited synthesis and BM25 continue to work offline on low-end/CPU-only systems.
+- The small benchmark is a hardware-specific baseline, not a universal quality or latency claim.

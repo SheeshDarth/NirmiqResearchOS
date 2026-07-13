@@ -1,6 +1,6 @@
 # NIRMIQ Local Model Optimization
 
-Last updated: 2026-06-20
+Last updated: 2026-07-13
 
 ## Goal
 
@@ -21,10 +21,10 @@ The project should prefer retrieval quality, citation verification, and context 
 The backend now uses bounded Ollama runtime defaults:
 
 ```text
-LOW_MEMORY_MODE=true
+NIRMIQ_RUNTIME_PROFILE=auto
 OLLAMA_KEEP_ALIVE=45s
 OLLAMA_NUM_CTX=3072
-OLLAMA_NUM_PREDICT=768
+OLLAMA_NUM_PREDICT=512
 OLLAMA_EMBED_BATCH_SIZE=8
 USE_OLLAMA_RERANKER=false
 ```
@@ -62,9 +62,24 @@ Tradeoff: answers become more extractive and less conversational, but they stay 
 
 For RTX 4050-class hardware, prefer small quantized Ollama models:
 
-- General grounded answers: `phi3:mini` or `qwen2.5:3b`
+- Publishable default: `phi3:mini` (MIT license)
+- Faster opt-in research model: `qwen2.5:3b` (Qwen license; review its terms before redistribution or commercial use)
 - Coding-heavy academic queries: `deepseek-coder:6.7b` only when needed
 - Embeddings: `nomic-embed-text`
+
+Representative Windows/RTX 4050 measurements on the same grounded textbook query:
+
+- `phi3:mini`: `29.32 s` cold, `10.69 s` warm.
+- `qwen2.5:3b`: `8.90 s` cold, `5.18 s` warm.
+- Accidental Mistral 7B fallback: `56.47 s` cold.
+
+Install the publishable default once:
+
+```powershell
+ollama pull phi3:mini
+```
+
+NIRMIQ still works through deterministic cited synthesis when Ollama or this model is unavailable.
 
 Ollama-distributed small models are generally provided as quantized local artifacts. If importing your own GGUF, prefer Q4-class variants such as `Q4_K_M` before trying larger Q5/Q6 variants.
 

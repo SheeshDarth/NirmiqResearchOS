@@ -62,6 +62,8 @@ Verification:
 
 ### Block 2: Representative Baseline
 
+Status: complete on the representative Windows/RTX 4050 path; broader query-set and Linux measurements remain in Block 4.
+
 - Record cold startup and warm readiness.
 - Measure BM25 fallback and local Ollama generation separately.
 - Record process RAM and `nvidia-smi` VRAM when available.
@@ -73,6 +75,27 @@ First Windows/RTX 4050 observation:
 - The requested `phi3:mini` model was not installed, so the legacy fallback order selected a 7B model before an available 4B model.
 - A trial that preferred the installed Qwen 4B model took `64.0 s` and produced no usable answer text, so faithfulness handling fell back to deterministic synthesis. The selector change was rejected rather than shipping a benchmark-only regression.
 - The next model test should use the intended Qwen 2.5 3B instruct or Phi-3 Mini runtime, then compare cold and warm runs before changing defaults.
+
+Measured model comparison on 2026-07-13 using the same selected 2,842-chunk textbook, BM25 retrieval, and `What is a Gaussian mixture model?`:
+
+| Local model | Artifact | Cold query | Warm query | Grounded | Citation coverage | Decision |
+| --- | --- | ---: | ---: | --- | ---: | --- |
+| Mistral 7B fallback | Q4_K_M, 4.4 GB | `56.47 s` | not recorded | yes | citations present | Reject as automatic small-device fallback |
+| Qwen 2.5 3B | Q4_K_M, 1.9 GB | `8.90 s` | `5.18 s` | yes | `1.00` | Fast opt-in research profile; Qwen-license disclosure required |
+| Phi-3 Mini | Q4_0, 2.2 GB | `29.32 s` | `10.69 s` | yes | `0.75` | Keep as MIT-licensed publishable default |
+
+Implementation decision:
+
+- Keep `phi3:mini` as the default because it is MIT licensed and explicitly intended for commercial and research use.
+- Move small 3B/2B models ahead of Mistral 7B in automatic fallback order.
+- Do not silently distribute or promote Qwen 2.5 3B without its model-license disclosure, even though it is materially faster on this machine.
+- Benchmark output now separates first/cold and warm query samples and can record API RSS and NVIDIA GPU memory without extra Python dependencies.
+
+Verification:
+
+- Runtime-focused unit tests: `9 passed`.
+- Full release gate: `101 passed`, production web build passed, publish smoke passed, golden demo passed, and unsupported-query abstention passed.
+- Windows desktop package and smoke test passed after the UI and runtime updates.
 
 ### Block 3: Model Residency And Scheduling
 

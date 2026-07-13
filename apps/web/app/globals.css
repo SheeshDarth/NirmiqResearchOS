@@ -3432,27 +3432,102 @@ body {
   padding: 0 4px 1px 6px;
 }
 
-.mode-select-label {
-  display: block;
+.composer-mode {
+  position: relative;
 }
 
-.mode-select {
-  min-height: 32px;
-  max-width: 150px;
-  border: 0;
+.composer-mode > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 92px;
+  min-height: 34px;
   border-radius: 10px;
-  padding: 0 25px 0 8px;
-  background: transparent;
+  padding: 0 8px;
   color: var(--nirmiq-text-muted);
   cursor: pointer;
   font-size: 11px;
   font-weight: 720;
+  list-style: none;
 }
 
-.mode-select:hover,
-.mode-select:focus-visible {
+.composer-mode > summary::-webkit-details-marker {
+  display: none;
+}
+
+.composer-mode > summary svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  transition: transform var(--motion-fast) var(--motion-curve);
+}
+
+.composer-mode[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.composer-mode > summary:hover,
+.composer-mode[open] > summary,
+.composer-mode > summary:focus-visible {
   background: rgba(238, 244, 241, 0.055);
   color: var(--nirmiq-text);
+}
+
+.composer-mode-menu {
+  position: absolute;
+  left: -6px;
+  bottom: calc(100% + 10px);
+  z-index: 20;
+  display: grid;
+  width: min(260px, calc(100vw - 32px));
+  gap: 3px;
+  border: 1px solid var(--nirmiq-border-strong);
+  border-radius: 15px;
+  padding: 7px;
+  background: #171b21;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.52);
+  animation: menuReveal 150ms var(--motion-curve) both;
+}
+
+.composer-mode-option {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--nirmiq-text-muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.composer-mode-option span {
+  color: inherit;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.composer-mode-option small {
+  color: var(--nirmiq-text-subtle);
+  font-size: 10px;
+}
+
+.composer-mode-option:hover,
+.composer-mode-option:focus-visible,
+.composer-mode-option.active {
+  background: rgba(238, 244, 241, 0.055);
+  color: var(--nirmiq-text);
+}
+
+.composer-mode-option.active {
+  box-shadow: inset 2px 0 0 var(--nirmiq-accent);
 }
 
 .composer-runtime-state {
@@ -3589,6 +3664,17 @@ body {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes menuReveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -3740,8 +3826,8 @@ body {
     grid-template-columns: auto 1fr auto;
   }
 
-  .mode-select {
-    max-width: 128px;
+  .composer-mode > summary {
+    min-width: 84px;
   }
 
   .feedback-popover {
