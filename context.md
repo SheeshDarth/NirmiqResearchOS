@@ -7,6 +7,53 @@ Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
+## Latest Session Update - 2026-07-13 Acronym And Evidence-Relevance Repair
+
+Observed failure:
+
+- `explain CNN` returned semantic-segmentation index fragments, object-detection details, an RNN sentence, and a false `Verified` cue.
+- Citations were textually attached, but the selected passages did not answer the user's question.
+
+Root causes:
+
+- Factual routing mixed answer-format words such as `definition`, `limitations`, and `key points` into BM25 and section ranking.
+- Three-letter acronym subjects were dropped while the command word `explain` was treated as a relevance term.
+- A legacy corpus-wide focused-seed scan reordered good retriever output and pushed direct evidence outside the synthesis context budget.
+- Compact backmatter fragments and end-of-book answer headings were not consistently rejected.
+- The faithfulness verifier correctly rewrote unsupported local-model prose, but the definition fallback was tuned too narrowly and produced incomplete or mislabeled sentences.
+
+Implemented:
+
+- Kept factual retrieval centered on subject terms and retained only narrow category expansion for broad supervised/unsupervised algorithm questions.
+- Added exact document-derived acronym expansion, including lowercase/uppercase acronym handling without leaking neighboring heading words.
+- Applied the expanded subject consistently to section ranking, chunk relevance, anchor rescue, and diagnostics.
+- Added acronym-aware section ranking so headings such as `CNN Architectures` are eligible without hard-coding CNN as a topic.
+- Rejected compact cross-reference fragments and sentence-like answer-key headings before explanatory retrieval.
+- Removed the redundant factual focused-seed orchestration layer; definition rescue remains inside the retriever where ranking is measurable.
+- Prevented a lone acronym mention from counting as direct explanatory evidence.
+- Generalized definition fallback cues for architecture, building blocks, uses, and true limitations; positive phrases such as `not restricted` are no longer presented as limitations.
+- Added chunk-boundary and heading-prefix cleanup for readable extractive answers.
+
+Exact textbook validation:
+
+- The repaired evidence comes from the CNN introduction/building blocks on pages `613-615` and `CNN Architectures` on pages `633-634`.
+- The deterministic safe answer explains convolutional and pooling layers plus image, voice, and NLP uses; object-detection/index/RNN filler is absent.
+- Trust remains gated by answer-used citations and faithfulness verification.
+
+Verification:
+
+- Backend unit + integration suite: `113 passed`, `1 warning`.
+- Demo retrieval: MRR `0.983`, Recall@8 `1.000`, expected citation coverage `1.000`.
+- Real-world retrieval (17 samples): Hybrid MRR `0.828`, BM25 MRR `0.868`, Recall@8 `1.000`, expected citation coverage `1.000`.
+- Real-world full-query (17 samples): MRR `0.902` in both modes, Recall@8 `1.000`, expected citation coverage `1.000`.
+
+Tradeoffs:
+
+- Acronym section matches receive a strong deterministic boost, but only when the acronym maps to a document-derived long form.
+- Section-first retrieval now considers up to eight sections instead of five; this modestly increases lexical work while remaining appropriate for a solo local workspace.
+- The local model may still be rewritten to an extractive answer when lexical faithfulness checks reject paraphrases. Accuracy is favored over fluency.
+- The 17-sample real-world set is still too small for a production-wide accuracy claim.
+
 ## Latest Session Update - 2026-07-10 MegaSprint Two Overnight Kickoff
 
 Objective: begin the overnight MegaSprint Two execution loop after closing MegaSprint One retrieval reliability.

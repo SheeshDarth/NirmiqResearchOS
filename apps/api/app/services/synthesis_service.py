@@ -25,8 +25,11 @@ _QUERY_STOPWORDS = {
     "corpus",
     "create",
     "deep",
+    "define",
+    "describe",
     "does",
     "draft",
+    "explain",
     "for",
     "from",
     "generate",
@@ -1172,17 +1175,33 @@ class SynthesisService:
             "parameters are unknown",
         )
         working_cues = (
+            "architecture",
+            "building blocks",
+            "composed of",
+            "consists of",
+            "convolutional layer",
+            "convolutional layers",
             "generated from",
             "distribution",
             "parameters",
             "density",
+            "filter",
+            "kernel",
+            "pooling layer",
+            "pooling layers",
             "sample",
             "estimate",
             "algorithm",
             "cluster",
+            "stack",
         )
         use_cues = (
+            "applications",
             "used for",
+            "used in",
+            "power ",
+            "powering",
+            "successful at",
             "density estimation",
             "clustering",
             "anomaly detection",
@@ -1191,13 +1210,26 @@ class SynthesisService:
         )
         limitation_cues = (
             "limitation",
-            "although",
-            "however",
-            "not",
+            "drawback",
+            "fails to",
+            "failure case",
             "different shapes",
             "doesn't do so well",
-            "does not",
+            "does not work",
         )
+        positive_exception_cues = (
+            "not restricted",
+            "not limited",
+            "not only",
+            "successful at",
+        )
+        acronym_subjects = {
+            token.upper().rstrip("S")
+            for token in re.findall(r"\b[A-Za-z][A-Za-z0-9+-]{1,8}s?\b", query)
+            if 2 <= len(token.rstrip("sS")) <= 8
+            and (token.isupper() or len(token.rstrip("sS")) <= 4)
+            and token.lower() not in _QUERY_STOPWORDS
+        }
 
         definitions: list[tuple[float, int, str]] = []
         workings: list[tuple[float, int, str]] = []
@@ -1211,17 +1243,34 @@ class SynthesisService:
                 lowered = f" {sentence.lower()} "
                 base = SynthesisService._sentence_score(sentence, query_terms)
                 rank_bonus = max(0, 10 - idx) * 0.04 + max(0, 12 - sentence_index) * 0.01
-                definition_score = base + rank_bonus + sum(1.0 for cue in definition_cues if cue in lowered)
-                working_score = base + rank_bonus + sum(0.65 for cue in working_cues if cue in lowered)
-                use_score = base + rank_bonus + sum(0.75 for cue in use_cues if cue in lowered)
-                limit_score = base + rank_bonus + sum(0.85 for cue in limitation_cues if cue in lowered)
+                boundary_penalty = 0.9 if sentence and sentence[-1] not in ".!?" else 0.0
+                definition_score = (
+                    base
+                    + rank_bonus
+                    + sum(1.0 for cue in definition_cues if cue in lowered)
+                    - boundary_penalty
+                )
+                if any(
+                    re.search(
+                        rf"\b[A-Za-z][A-Za-z0-9+/-]*(?:\s+[A-Za-z][A-Za-z0-9+/-]*){{1,7}}\s+\({re.escape(acronym)}s?\)",
+                        sentence,
+                        flags=re.I,
+                    )
+                    for acronym in acronym_subjects
+                ):
+                    definition_score += 3.0
+                working_score = base + rank_bonus + sum(0.65 for cue in working_cues if cue in lowered) - boundary_penalty
+                use_score = base + rank_bonus + sum(0.75 for cue in use_cues if cue in lowered) - boundary_penalty
+                limit_score = base + rank_bonus + sum(0.85 for cue in limitation_cues if cue in lowered) - boundary_penalty
                 if definition_score > base + rank_bonus:
                     definitions.append((definition_score, idx, sentence))
                 if working_score > base + rank_bonus:
                     workings.append((working_score, idx, sentence))
                 if use_score > base + rank_bonus:
                     uses.append((use_score, idx, sentence))
-                if limit_score > base + rank_bonus:
+                if limit_score > base + rank_bonus and not any(
+                    cue in lowered for cue in positive_exception_cues
+                ):
                     limits.append((limit_score, idx, sentence))
 
         selected_definition = SynthesisService._dedupe_scored_sentences(definitions, limit=1)
@@ -1503,7 +1552,7 @@ class SynthesisService:
             cleaned = f"Gaussian mixture models can be used for {use_match.group(1).strip()}"
         cleaned = re.sub(
             r"^(?:(?:[A-Z][A-Za-z0-9'()./-]*)|&)(?:\s+(?:(?:[A-Z][A-Za-z0-9'()./-]*)|&)){0,5}\s+"
-            r"(?=(?:A|An|The|This|It|All|Each|When|There)\b)",
+            r"(?=(?:A|An|The|This|It|All|Each|When|There|Typical)\b)",
             "",
             cleaned,
         ).strip()
@@ -1913,11 +1962,42 @@ class SynthesisService:
             )
         ):
             score += 0.18
+        if SynthesisService._is_definition_query(query):
+            acronym_subjects = {
+                token.upper().rstrip("S")
+                for token in re.findall(r"\b[A-Za-z][A-Za-z0-9+-]{1,8}s?\b", query)
+                if 2 <= len(token.rstrip("sS")) <= 8
+                and (token.isupper() or len(token.rstrip("sS")) <= 4)
+                and token.lower() not in _QUERY_STOPWORDS
+                and token.lower() not in {"explain", "define", "detail", "detailed"}
+            }
+            if acronym_subjects and len(query_terms) == 1:
+                has_definition_anchor = any(
+                    re.search(
+                        rf"\b[A-Za-z][A-Za-z0-9+/-]*(?:\s+[A-Za-z][A-Za-z0-9+/-]*){{1,7}}\s+\({re.escape(acronym)}s?\)",
+                        chunk_text,
+                        flags=re.I,
+                    )
+                    or re.search(
+                        rf"\b{re.escape(acronym)}s?\s+(?:is|means|refers|stands\s+for)\b",
+                        text,
+                        flags=re.I,
+                    )
+                    for acronym in acronym_subjects
+                )
+                if not has_definition_anchor:
+                    # Mentioning an acronym does not directly answer a request
+                    # to explain it; the passage must define or expand it.
+                    score = min(score, 0.45)
         if any(term in normalized_query for term in ("how", "work", "works", "process", "steps")) and any(
             cue in text for cue in ("works by", "consists of", "uses", "algorithm", "process", "step")
         ):
             score += 0.14
-        if any(term in normalized_query for term in ("diagram", "figure", "image", "visual")) and any(
+        visual_request = any(term in normalized_query for term in ("diagram", "figure", "visual")) or any(
+            phrase in normalized_query
+            for phrase in ("image reference", "image references", "provide image", "show image")
+        )
+        if visual_request and any(
             cue in text for cue in ("figure", "fig.", "diagram", "image", "caption", "visual")
         ):
             score += 0.12

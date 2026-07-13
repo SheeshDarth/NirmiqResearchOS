@@ -58,17 +58,26 @@ class RetrievalService:
         active_chunks = self._sqlite_repo.list_active_chunks(document_id=target_document_id)
         all_active_chunks = list(active_chunks)
         active_sections = self._sqlite_repo.list_active_sections(document_id=target_document_id)
-        query_expansion_terms = self._query_expansion_terms(
-            query,
+        document_acronym_expansion_terms = self._document_acronym_expansions(
+            query=query,
             chunks=all_active_chunks,
             sections=active_sections,
         )
+        document_query_expansion_terms = list(document_acronym_expansion_terms)
+        for term in self._document_topic_terms(query=query, sections=active_sections):
+            if term not in document_query_expansion_terms:
+                document_query_expansion_terms.append(term)
+        query_expansion_terms = self._query_expansion_terms(query)
+        for term in document_query_expansion_terms:
+            if term not in query_expansion_terms:
+                query_expansion_terms.append(term)
+        subject_query = self._expand_query(query, document_query_expansion_terms)
         expanded_query = self._expand_query(query, query_expansion_terms)
         active_chunk_sections = {
             str(chunk.get("id")): str(chunk.get("section_id") or "")
             for chunk in all_active_chunks
         }
-        section_candidates = self._rank_sections(query=query, sections=active_sections)
+        section_candidates = self._rank_sections(query=subject_query, sections=active_sections)
         section_candidate_ids = {
             str(candidate["section_id"])
             for candidate in section_candidates
@@ -85,6 +94,16 @@ class RetrievalService:
             if scoped_chunks:
                 active_chunks = scoped_chunks
                 section_filtered_chunk_count = len(scoped_chunks)
+        if self._is_explanatory_query(subject_query):
+            readable_chunks = [
+                chunk
+                for chunk in active_chunks
+                if not self._looks_like_index_chunk(str(chunk.get("text") or "").lower())
+                and not self._looks_like_answer_key_chunk(chunk)
+            ]
+            if readable_chunks:
+                active_chunks = readable_chunks
+                section_filtered_chunk_count = len(readable_chunks)
         bm25_hits = await self._bm25_index.search(
             query=expanded_query,
             chunks=active_chunks,
@@ -129,7 +148,7 @@ class RetrievalService:
 
         candidate_ids = [chunk_id for chunk_id, _ in fused[: profile_config["fused_k"]]]
         anchor_rescue_ids = self._anchor_rescue_candidate_ids(
-            query=query,
+            query=subject_query,
             chunks=all_active_chunks if target_document_id else active_chunks,
             existing_ids=set(candidate_ids),
             limit=min(3, profile_config["fused_k"]),
@@ -166,7 +185,7 @@ class RetrievalService:
                 vector_score_map=vector_score_map,
                 section_candidate_ids=section_candidate_ids,
                 top_bm25_score=top_bm25_score,
-                query=query,
+                query=subject_query,
                 anchor_rescue_ids=set(anchor_rescue_ids),
             ),
             reverse=True,
@@ -203,8 +222,8 @@ class RetrievalService:
             quality_score = self._normalize_quality(row.get("quality_score"))
             base_score = (0.5 * fused_score) + (0.3 * lexical_score) + (0.2 * semantic_score)
             quality_multiplier = 0.55 + (0.45 * quality_score)
-            noise_penalty = self._chunk_noise_penalty(row=row, query=query)
-            directness_score = self._chunk_answer_relevance(row=row, query=query)
+            noise_penalty = self._chunk_noise_penalty(row=row, query=subject_query)
+            directness_score = self._chunk_answer_relevance(row=row, query=subject_query)
             combined = max(0.0, (base_score * quality_multiplier) + (0.18 * directness_score) - noise_penalty)
             source = "hybrid"
             if chunk_id in bm25_score_map and chunk_id not in vector_score_map:
@@ -290,6 +309,10 @@ class RetrievalService:
                 },
                 "query_expansion_terms": query_expansion_terms,
                 "query_expansion_applied": bool(query_expansion_terms),
+                "document_query_expansion_terms": document_query_expansion_terms,
+                "subject_expansion_applied": bool(document_query_expansion_terms),
+                "document_acronym_expansion_terms": document_acronym_expansion_terms,
+                "acronym_expansion_applied": bool(document_acronym_expansion_terms),
                 "anchor_rescue_applied": bool(anchor_rescue_ids),
                 "anchor_rescue_count": len(anchor_rescue_ids),
                 "retrieval_noise_policy": "enabled",
@@ -298,7 +321,7 @@ class RetrievalService:
                 "scope": "document" if target_document_id else "corpus",
                 "retrieval_profile": normalized_profile,
                 "retrieval_method": "nirmiq_evidence_first_hierarchical_hybrid_rag",
-                "retrieval_method_version": "megasprint1.v2",
+                "retrieval_method_version": "megasprint1.v3",
                 "strategy": f"nirmiq_ehr_{normalized_mode}",
             },
         )
@@ -362,20 +385,6 @@ class RetrievalService:
     ) -> list[str]:
         normalized = query.lower()
         expansion_rules: list[tuple[tuple[str, ...], tuple[str, ...]]] = [
-            (
-                ("what is", "define", "meaning of", "explain"),
-                (
-                    "definition",
-                    "means",
-                    "refers",
-                    "called",
-                    "concept",
-                    "mechanism",
-                    "works",
-                    "uses",
-                    "limitations",
-                ),
-            ),
             (
                 ("compare", "contrast", "difference", "differences"),
                 (
@@ -638,12 +647,57 @@ class RetrievalService:
                     rf"\b{re.escape(acronym)}s?\s+\(([A-Za-z][A-Za-z0-9+/\- ]{{3,90}}?)\)",
                     flags=re.I,
                 )
-                for match in [*pattern_before.finditer(block), *pattern_after.finditer(block)]:
+                for match in pattern_before.finditer(block):
                     phrase = re.sub(r"\s+", " ", match.group(1)).strip(" -:;,.")
-                    phrase_terms = RetrievalService._metadata_terms(phrase)
-                    if 1 <= len(phrase_terms) <= 8:
-                        expansions.extend(sorted(phrase_terms))
+                    expansions.extend(
+                        RetrievalService._acronym_long_form_terms(
+                            phrase=phrase,
+                            acronym=acronym,
+                            long_form_before=True,
+                        )
+                    )
+                for match in pattern_after.finditer(block):
+                    phrase = re.sub(r"\s+", " ", match.group(1)).strip(" -:;,.")
+                    expansions.extend(
+                        RetrievalService._acronym_long_form_terms(
+                            phrase=phrase,
+                            acronym=acronym,
+                            long_form_before=False,
+                        )
+                    )
         return RetrievalService._dedupe_terms(expansions)
+
+    @staticmethod
+    def _acronym_long_form_terms(
+        *,
+        phrase: str,
+        acronym: str,
+        long_form_before: bool,
+    ) -> list[str]:
+        """Extract a long form only when its initials exactly match the acronym."""
+        acronym_key = re.sub(r"[^A-Z0-9]", "", acronym.upper())
+        tokens = re.findall(r"[A-Za-z][A-Za-z0-9+/-]*", phrase)
+        if not acronym_key or not tokens:
+            return []
+        candidate_ranges = (
+            ((start, len(tokens)) for start in range(len(tokens)))
+            if long_form_before
+            else ((0, end) for end in range(1, len(tokens) + 1))
+        )
+        candidates: list[list[str]] = []
+        for start, end in candidate_ranges:
+            candidate = tokens[start:end]
+            initials = "".join(token[0].upper() for token in candidate if token)
+            if initials == acronym_key:
+                candidates.append(candidate)
+        if not candidates:
+            return []
+        best = min(candidates, key=len)
+        return [
+            token.lower()
+            for token in best
+            if token.lower() not in {"a", "an", "and", "of", "the"}
+        ]
 
     @staticmethod
     def _document_topic_terms(query: str, sections: list[dict[str, object]]) -> list[str]:
@@ -685,6 +739,8 @@ class RetrievalService:
             penalty += 0.28
         if RetrievalService._looks_like_index_chunk(lowered):
             penalty += 0.26
+        if RetrievalService._looks_like_answer_key_chunk(row):
+            penalty += 0.5
         if RetrievalService._looks_like_exercise_question_chunk(lowered):
             penalty += 0.32
         if RetrievalService._looks_like_broad_example_section(metadata, query=query):
@@ -714,7 +770,7 @@ class RetrievalService:
         coverage = len(matched_terms) / max(len(query_terms), 1)
         score = min(1.0, coverage)
 
-        phrases = RetrievalService._query_phrases(query)
+        phrases = RetrievalService._specific_query_phrases(query)
         if phrases and any(phrase in combined for phrase in phrases):
             score += 0.28
         score += RetrievalService._subject_definition_score(query=query, text=combined)
@@ -762,7 +818,7 @@ class RetrievalService:
 
         normalized_query = query.lower()
         query_terms = RetrievalService._metadata_terms(query)
-        query_phrases = RetrievalService._query_phrases(query)
+        query_phrases = RetrievalService._specific_query_phrases(query)
         scored: list[tuple[float, int, str]] = []
         for row in chunks:
             chunk_id = str(row.get("id") or "")
@@ -865,7 +921,7 @@ class RetrievalService:
     def _anchor_rescue_priority_bonus(*, row: dict[str, object], query: str) -> float:
         text = str(row.get("text") or "").lower()
         directness = RetrievalService._chunk_answer_relevance(row=row, query=query)
-        phrases = RetrievalService._query_phrases(query)
+        phrases = RetrievalService._specific_query_phrases(query)
         phrase_hit = any(phrase in text for phrase in phrases)
         lowered_query = query.lower()
         if (
@@ -960,7 +1016,7 @@ class RetrievalService:
 
     @staticmethod
     def _subject_definition_score(*, query: str, text: str) -> float:
-        phrases = RetrievalService._query_phrases(query)
+        phrases = RetrievalService._specific_query_phrases(query)
         if not phrases:
             return 0.0
         lowered = text.lower()
@@ -984,6 +1040,42 @@ class RetrievalService:
         return score
 
     @staticmethod
+    def _specific_query_phrases(query: str) -> list[str]:
+        """Prefer an acronym's expanded long form over generic phrase suffixes."""
+        tokens = [
+            token
+            for token in re.findall(r"[A-Za-z][A-Za-z0-9+-]{1,}", query)
+            if token.lower()
+            not in {
+                "about",
+                "answer",
+                "define",
+                "describe",
+                "detail",
+                "detailed",
+                "explain",
+                "from",
+                "give",
+                "provide",
+                "source",
+                "the",
+                "this",
+                "what",
+                "with",
+            }
+        ]
+        for index, token in enumerate(tokens):
+            acronym = token.upper().rstrip("S")
+            if not (2 <= len(acronym) <= 8 and (token.isupper() or len(acronym) <= 4)):
+                continue
+            for end in range(index + 2, min(len(tokens), index + len(acronym) + 3) + 1):
+                candidate = tokens[index + 1 : end]
+                initials = "".join(item[0].upper() for item in candidate)
+                if initials == acronym:
+                    return [" ".join(item.lower() for item in candidate)]
+        return RetrievalService._query_phrases(query)
+
+    @staticmethod
     def _looks_like_exercise_question_chunk(text: str) -> bool:
         sample = text[:1200].lower()
         question_marks = sample.count("?")
@@ -993,23 +1085,39 @@ class RetrievalService:
     @staticmethod
     def _looks_like_index_chunk(text: str) -> bool:
         sample = text[:900]
-        if len(sample) < 180:
-            return False
         comma_count = sample.count(",")
         sentence_count = sample.count(".") + sample.count("?") + sample.count("!")
         line_count = max(1, sample.count("\n") + 1)
         short_fragment_count = sum(1 for fragment in re.split(r"[,;\n]", sample) if 2 <= len(fragment.strip()) <= 42)
+        compact_cross_reference = (
+            45 <= len(sample) < 180
+            and sentence_count == 0
+            and comma_count >= 1
+            and sample.count("-") >= 1
+        )
         return (
-            comma_count >= 14
-            and short_fragment_count >= 14
-            and sentence_count <= 8
-            and short_fragment_count / line_count >= 5
+            compact_cross_reference
+            or (
+                comma_count >= 14
+                and short_fragment_count >= 14
+                and sentence_count <= 8
+                and short_fragment_count / line_count >= 5
+            )
+        )
+
+    @staticmethod
+    def _looks_like_answer_key_chunk(row: dict[str, object]) -> bool:
+        heading = str(row.get("heading") or "").strip().lower()
+        return bool(
+            re.match(r"^chapter\s+\d+\s*,\s+", heading)
+            and len(re.findall(r"[a-zA-Z][a-zA-Z0-9+-]*", heading)) >= 8
         )
 
     @staticmethod
     def _rank_sections(query: str, sections: list[dict[str, object]]) -> list[dict[str, object]]:
         query_terms = RetrievalService._metadata_terms(query)
         query_phrases = RetrievalService._query_phrases(query)
+        query_acronyms = RetrievalService._query_acronyms(query)
         if not query_terms or not sections:
             return []
         normalized_query = query.lower()
@@ -1023,6 +1131,11 @@ class RetrievalService:
             heading_terms = RetrievalService._metadata_terms(heading)
             path_terms = RetrievalService._metadata_terms(section_path)
             metadata_terms = heading_terms | path_terms | set(key_terms)
+            metadata_acronyms = {
+                token.lower().rstrip("s")
+                for token in re.findall(r"\b[A-Z][A-Z0-9+-]{1,8}s?\b", f"{heading} {section_path}")
+            }
+            acronym_matches = query_acronyms & metadata_acronyms
             matched = sorted(
                 term
                 for term in query_terms
@@ -1043,6 +1156,7 @@ class RetrievalService:
                     phrases=phrase_matches,
                     query_terms=query_terms,
                 )
+                + (35.0 * len(acronym_matches))
             )
             metadata = f"{heading} {section_path}".lower()
             if RetrievalService._is_definition_or_explanation_query(normalized_query):
@@ -1050,8 +1164,11 @@ class RetrievalService:
                     score += 1.6
                 if any(marker in metadata for marker in ("overview", "introduction", "definition", "fundamentals")):
                     score += 0.6
-            if explanatory_query and RetrievalService._looks_like_index_section(section, metadata):
-                score -= 10.0
+            if explanatory_query and (
+                RetrievalService._looks_like_index_section(section, metadata)
+                or RetrievalService._looks_like_answer_key_chunk(section)
+            ):
+                continue
             if explanatory_query and RetrievalService._looks_like_broad_example_section(metadata, query=query):
                 score -= 1.6
             score -= RetrievalService._section_modifier_penalty(
@@ -1072,11 +1189,27 @@ class RetrievalService:
                         "page_end": section.get("page_end"),
                         "score": round(score, 3),
                         "matched_terms": matched,
+                        "matched_acronyms": sorted(acronym_matches),
                     },
                 )
             )
         ranked.sort(key=lambda item: item[0], reverse=True)
-        return [item for _, item in ranked[:5]]
+        return [item for _, item in ranked[:8]]
+
+    @staticmethod
+    def _query_acronyms(query: str) -> set[str]:
+        acronyms = {
+            token.lower().rstrip("s")
+            for token in re.findall(r"\b[A-Z][A-Z0-9+-]{1,8}s?\b", query)
+        }
+        specific_phrases = RetrievalService._specific_query_phrases(query)
+        if specific_phrases:
+            initials = "".join(word[0] for word in specific_phrases[0].split() if word)
+            for token in re.findall(r"\b[A-Za-z][A-Za-z0-9+-]{1,8}s?\b", query):
+                normalized = token.lower().rstrip("s")
+                if normalized == initials:
+                    acronyms.add(normalized)
+        return acronyms
 
     @staticmethod
     def _section_term_weights(*, query_terms: set[str], sections: list[dict[str, object]]) -> dict[str, float]:
@@ -1167,6 +1300,7 @@ class RetrievalService:
             page_start >= 850
             and (
                 comma_count >= 1
+                or (metadata.count("-") >= 1 and len(metadata.split()) <= 18)
                 or metadata.startswith("sklearn.")
                 or " see " in metadata
                 or "see also" in metadata

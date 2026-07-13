@@ -62,6 +62,71 @@ def test_query_expansion_uses_document_acronym_definitions() -> None:
     assert "networks" in terms
 
 
+def test_explanation_expansion_does_not_add_generic_format_vocabulary() -> None:
+    terms = RetrievalService._query_expansion_terms("Explain CNN")
+
+    assert terms == []
+
+
+def test_acronym_expansion_keeps_only_the_exact_long_form() -> None:
+    chunks = [
+        {
+            "text": "Convolutional neural networks (CNNs) are used for image recognition.",
+            "heading": "CNN Architectures-Choosing the Right CNN Architecture",
+            "section_path": "Chapter 14",
+        }
+    ]
+
+    terms = RetrievalService._document_acronym_expansions(
+        query="Explain CNN",
+        chunks=chunks,
+        sections=[],
+    )
+
+    assert terms == ["convolutional", "neural", "networks"]
+    assert "architectures" not in terms
+
+
+def test_document_acronym_expansion_drives_section_ranking() -> None:
+    sections = [
+        {
+            "id": "generic",
+            "heading": "Definitions and Graphs",
+            "section_path": "Appendix",
+            "key_terms_json": '["definition","graphs"]',
+            "page_start": 900,
+            "page_end": 901,
+        },
+        {
+            "id": "cnn",
+            "heading": "Convolutional Neural Networks",
+            "section_path": "Chapter 14 / Convolutional Neural Networks",
+            "key_terms_json": '["convolutional","neural","networks"]',
+            "page_start": 613,
+            "page_end": 635,
+        },
+    ]
+    chunks = [
+        {
+            "text": "Convolutional neural networks (CNNs) use convolutional and pooling layers.",
+            "heading": "Convolutional Neural Networks",
+            "section_path": "Chapter 14",
+        }
+    ]
+    terms = RetrievalService._document_aware_expansion_terms(
+        query="Explain CNN",
+        chunks=chunks,
+        sections=sections,
+    )
+
+    ranked = RetrievalService._rank_sections(
+        RetrievalService._expand_query("Explain CNN", terms),
+        sections,
+    )
+
+    assert ranked[0]["section_id"] == "cnn"
+
+
 def test_direct_evidence_score_prefers_answer_passage_over_loose_mention() -> None:
     direct_row = {
         "text": "Convolutional neural networks use convolutional layers to detect visual patterns in images.",
@@ -126,6 +191,61 @@ def test_exercise_question_chunks_are_noisy_for_explanations() -> None:
     }
 
     assert RetrievalService._chunk_noise_penalty(row=row, query="What is a Gaussian mixture model?") > 0
+
+
+def test_compact_cross_reference_is_treated_as_index_noise() -> None:
+    text = (
+        "Convolutional Neural Networks-Semantic Segmentation architectures, "
+        "CNN Architectures-Choosing the Right CNN Architecture"
+    )
+
+    assert RetrievalService._looks_like_index_chunk(text.lower()) is True
+
+
+def test_sentence_like_chapter_heading_is_treated_as_answer_key_noise() -> None:
+    row = {
+        "heading": "Chapter 14, convolutional neural networks are far better suited than dense",
+        "text": "The encoder is a regular CNN composed of convolutional and pooling layers.",
+    }
+
+    assert RetrievalService._looks_like_answer_key_chunk(row) is True
+
+
+def test_acronym_heading_enters_section_candidates() -> None:
+    sections = [
+        {
+            "id": "intro",
+            "heading": "Neural Networks",
+            "section_path": "Chapter 14 / Neural Networks",
+            "key_terms_json": '["neural","networks"]',
+            "page_start": 613,
+            "page_end": 615,
+        },
+        {
+            "id": "architecture",
+            "heading": "CNN Architectures",
+            "section_path": "Chapter 14 / CNN Architectures",
+            "key_terms_json": '["layers","pooling","convolutional"]',
+            "page_start": 633,
+            "page_end": 635,
+        },
+    ]
+
+    ranked = RetrievalService._rank_sections(
+        "Explain CNN convolutional neural networks",
+        sections,
+    )
+
+    assert {item["section_id"] for item in ranked} == {"intro", "architecture"}
+    assert next(item for item in ranked if item["section_id"] == "architecture")["matched_acronyms"] == ["cnn"]
+
+
+def test_acronym_definition_requires_full_expanded_subject_phrase() -> None:
+    query = "Explain CNN convolutional neural networks"
+    generic = "The architecture of biological neural networks is the subject of active research."
+
+    assert RetrievalService._specific_query_phrases(query) == ["convolutional neural networks"]
+    assert RetrievalService._subject_definition_score(query=query, text=generic) == 0
 
 
 def test_section_ranking_boosts_exact_query_phrase_without_topic_specific_rule() -> None:

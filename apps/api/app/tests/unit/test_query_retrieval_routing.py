@@ -26,3 +26,13 @@ def test_explicit_vector_mode_is_preserved() -> None:
     )
 
     assert mode == "vector"
+
+
+def test_factual_lookup_does_not_mix_answer_format_words_into_retrieval() -> None:
+    intent = QueryIntent("factual_lookup", 0.8, "default_grounded_retrieval")
+
+    query = QueryService._retrieval_query("explain CNN", "research", {}, intent)
+
+    assert query == "explain CNN"
+    assert "limitations" not in query
+    assert "key points" not in query

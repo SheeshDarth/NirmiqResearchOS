@@ -9,7 +9,6 @@ from app.domain.citations import to_citations
 from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.paper_lab import build_paper_lab_artifact
 from app.domain.query_intent import QueryIntent, detect_query_intent
-from app.domain.text_normalization import normalize_ocr_text
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
 from app.services.synthesis_service import SynthesisService
@@ -74,7 +73,6 @@ class QueryService:
             profile=retrieval_profile,
         )
         bundle = self._augment_selected_summary_bundle(payload=payload, intent=intent, bundle=bundle)
-        bundle = self._augment_selected_factual_bundle(payload=payload, intent=intent, bundle=bundle)
         answer, grounded, synthesis_meta = await self._synthesis_service.synthesize(
             payload.query,
             bundle,
@@ -323,13 +321,12 @@ class QueryService:
         if intent.intent == "deep_research":
             return f"{query}\n\nDeep research retrieval hints: mechanism evidence caveats architecture results limitations implications."
         if intent.intent == "factual_lookup":
-            hints = QueryService._focused_retrieval_hints(query)
-            if hints:
-                return f"{query}\n\nFocused retrieval hints: {hints}"
-            return (
-                f"{query}\n\n"
-                "Focused retrieval hints: definition explanation examples types steps advantages limitations key points."
-            )
+            # Keep retrieval centered on the user's subject. Generic answer-shape
+            # words belong in synthesis and can dominate textbook index ranking.
+            subject_terms = QueryService._factual_category_expansion(query)
+            if subject_terms:
+                return f"{query}\n\nSubject expansion: {' '.join(subject_terms)}"
+            return query
         if mode.strip().lower() not in {"study_guide", "important_questions"}:
             return query
         questions = exam_context.get("questions", [])
@@ -343,6 +340,30 @@ class QueryService:
         if not question_text:
             return query
         return f"{query}\n\nImported questions:\n{question_text}"
+
+    @staticmethod
+    def _factual_category_expansion(query: str) -> list[str]:
+        """Expand broad subject categories without adding answer-format noise."""
+        normalized = query.lower()
+        tokens = set(re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", normalized))
+        if "unsupervised" in tokens and {"algorithm", "algorithms", "method", "methods"} & tokens:
+            return [
+                "unsupervised learning",
+                "clustering",
+                "density estimation",
+                "anomaly detection",
+                "dimensionality reduction",
+                "pca",
+            ]
+        if "supervised" in tokens and {"algorithm", "algorithms", "method", "methods"} & tokens:
+            return [
+                "supervised learning",
+                "classification",
+                "regression",
+                "labeled examples",
+                "prediction",
+            ]
+        return []
 
     @staticmethod
     def _resolve_retrieval_mode(
@@ -517,242 +538,3 @@ class QueryService:
         if 80 <= len(text.split()) <= 220:
             score += 0.5
         return score
-
-    def _augment_selected_factual_bundle(
-        self,
-        *,
-        payload: QueryRequest,
-        intent: QueryIntent,
-        bundle: RetrievalBundle,
-    ) -> RetrievalBundle:
-        if not payload.document_id or intent.intent not in {"factual_lookup", "deep_research", "exam"}:
-            return bundle
-        focus_terms = self._query_focus_terms(payload.query)
-        if not focus_terms:
-            return bundle
-        rows = self._sqlite_repo.get_document_chunks(str(payload.document_id), active_only=True)
-        if not rows:
-            return bundle
-
-        scored_rows = [
-            (self._factual_seed_score(row, payload.query, focus_terms), row)
-            for row in rows
-        ]
-        seed_rows = [row for score, row in sorted(scored_rows, key=lambda item: item[0], reverse=True) if score > 0][:5]
-        existing_chunks = {chunk.chunk_id: chunk for chunk in bundle.chunks}
-        promoted_ids: set[str] = set()
-        seed_chunks: list[RetrievedChunk] = []
-        for rank, row in enumerate(seed_rows):
-            chunk_id = str(row["id"])
-            if chunk_id in promoted_ids:
-                continue
-            if chunk_id in existing_chunks:
-                seed_chunks.append(existing_chunks[chunk_id])
-            else:
-                seed_chunks.append(
-                    RetrievedChunk(
-                        chunk_id=chunk_id,
-                        document_id=str(row["document_id"]),
-                        text=str(row["text"]),
-                        score=max(0.01, 0.12 - (rank * 0.005)),
-                        page_start=row.get("page_start"),
-                        page_end=row.get("page_end"),
-                        source="focused_seed",
-                        quality_score=float(row.get("quality_score") or 1.0),
-                        section_id=row.get("section_id"),
-                        heading=row.get("heading"),
-                        section_path=row.get("section_path"),
-                        chunk_type=str(row.get("chunk_type") or "body"),
-                    )
-                )
-            promoted_ids.add(chunk_id)
-        if not seed_chunks:
-            return bundle
-        remaining_chunks = [
-            chunk for chunk in bundle.chunks if chunk.chunk_id not in promoted_ids
-        ]
-        return RetrievalBundle(
-            chunks=[*seed_chunks, *remaining_chunks],
-            meta={
-                **bundle.meta,
-                "focused_seed_chunks": len(seed_chunks),
-                "focused_seed_strategy": "definition_priority_terms",
-            },
-        )
-
-    @staticmethod
-    def _query_focus_terms(query: str) -> set[str]:
-        stopwords = {
-            "about",
-            "answer",
-            "briefly",
-            "could",
-            "detail",
-            "detailed",
-            "does",
-            "explain",
-            "few",
-            "from",
-            "give",
-            "into",
-            "material",
-            "provide",
-            "source",
-            "software",
-            "softwares",
-            "this",
-            "that",
-            "what",
-            "when",
-            "where",
-            "which",
-            "with",
-            "reduced",
-        }
-        terms: set[str] = set()
-        for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", query.lower()):
-            if token in stopwords:
-                continue
-            terms.add(token)
-            stem = QueryService._light_stem(token)
-            if stem != token:
-                terms.add(stem)
-        if "unsupervised" in terms and ("algorithm" in terms or "algorithms" in terms):
-            terms.update(
-                {
-                    "clustering",
-                    "cluster",
-                    "density",
-                    "anomaly",
-                    "detection",
-                    "dimensionality",
-                    "reduction",
-                    "pca",
-                    "k-means",
-                    "dbscan",
-                }
-            )
-        normalized_query = query.lower()
-        if any(phrase in normalized_query for phrase in ("fact-check", "fact check", "verification", "verify")):
-            terms.update({"trusted", "source", "retrieval", "rag", "fallback", "uncertain", "cross-check"})
-        for phrase in RetrievalService._query_phrases(query):
-            terms.update(phrase.split())
-        return terms
-
-    @staticmethod
-    def _focused_retrieval_hints(query: str) -> str:
-        normalized = query.lower()
-        tokens = set(re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", normalized))
-        hints = ["definition", "explanation", "mechanism", "uses", "limitations", "key points"]
-        if {"algorithm", "algorithms"} & tokens:
-            hints.extend(["algorithm", "method", "procedure", "training", "model"])
-        if "unsupervised" in tokens:
-            hints.extend(
-                [
-                    "unsupervised learning",
-                    "clustering",
-                    "k-means",
-                    "dbscan",
-                    "hierarchical clustering",
-                    "density estimation",
-                    "anomaly detection",
-                    "dimensionality reduction",
-                    "pca",
-                ]
-            )
-        if {"supervised", "classification", "regression"} & tokens:
-            hints.extend(["classification", "regression", "labels", "training examples", "prediction"])
-        if {"limitation", "limitations", "caveat", "caveats"} & tokens:
-            hints.extend(["limitations", "assumptions", "tradeoffs", "failure cases"])
-        if {"image", "images", "diagram", "diagrams", "figure", "figures", "visual"} & tokens:
-            hints.extend(["image", "figure", "diagram", "visual", "caption"])
-        if any(phrase in normalized for phrase in ("fact-check", "fact check", "verification", "verify")):
-            hints.extend(["trusted sources", "retrieval-based", "RAG", "fallback response", "uncertain"])
-        deduped: list[str] = []
-        seen: set[str] = set()
-        for hint in hints:
-            if hint not in seen:
-                deduped.append(hint)
-                seen.add(hint)
-        return " ".join(deduped)
-
-    @staticmethod
-    def _factual_seed_score(row: dict[str, object], query: str, focus_terms: set[str]) -> float:
-        text = normalize_ocr_text(str(row.get("text") or "")).lower()
-        if not text:
-            return 0.0
-        text_terms = set(re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", text))
-        text_terms.update(QueryService._light_stem(term) for term in list(text_terms))
-        overlap = focus_terms.intersection(text_terms)
-        if not overlap:
-            return 0.0
-
-        normalized_query = query.lower()
-        quality = float(row.get("quality_score") or 1.0)
-        directness_score = RetrievalService._chunk_answer_relevance(row=row, query=query)
-        query_phrases = RetrievalService._query_phrases(query)
-        metadata = " ".join(
-            normalize_ocr_text(str(row.get(key) or "")).lower()
-            for key in ("heading", "section_path", "chunk_type")
-        )
-        combined = f"{metadata} {text[:2200]}"
-        phrase_hits = sum(1 for phrase in query_phrases if phrase in combined)
-        score = quality + (len(overlap) * 1.15) + (directness_score * 3.2) + (phrase_hits * 2.2)
-        if any(phrase in normalized_query for phrase in ("what is", "define", "meaning")):
-            definition_cues = {
-                " is a ",
-                " is an ",
-                "means",
-                "called",
-                "occurs",
-                "refers",
-                "assumes",
-                "generalize",
-                "probabilistic model",
-                "generative model",
-                "generated from",
-                "parameters are unknown",
-                "training data",
-                "new instances",
-                "new data",
-            }
-            score += sum(0.9 for cue in definition_cues if cue in text)
-            if phrase_hits and any(cue in text for cue in (" is a ", " is an ", " means ", " refers ", "assumes")):
-                score += 1.4
-        if any(term in normalized_query for term in ("reduce", "reduced", "prevent", "avoid", "fix")):
-            solution_cues = {
-                "possible solutions",
-                "simplify",
-                "fewer parameters",
-                "reduce",
-                "regularization",
-                "constrain",
-                "training data",
-                "noise",
-                "outliers",
-                "early stopping",
-            }
-            score += sum(0.8 for cue in solution_cues if cue in text)
-        if (
-            any(marker in metadata for marker in ("references", "bibliography", "index"))
-            or RetrievalService._looks_like_index_chunk(text)
-        ):
-            score -= 3.0
-        if RetrievalService._looks_like_broad_example_section(metadata, query=query):
-            score -= 1.5
-        return score
-
-    @staticmethod
-    def _light_stem(token: str) -> str:
-        if len(token) > 5 and token.endswith("ing"):
-            stem = token[:-3]
-            if len(stem) > 3 and stem[-1] == stem[-2]:
-                stem = stem[:-1]
-            return stem
-        if len(token) > 4 and token.endswith("ed"):
-            return token[:-1] if token.endswith("eed") else token[:-2]
-        if len(token) > 4 and token.endswith("e"):
-            return token[:-1]
-        if len(token) > 4 and token.endswith("s"):
-            return token[:-1]
-        return token

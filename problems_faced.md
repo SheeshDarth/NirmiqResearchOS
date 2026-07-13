@@ -378,6 +378,40 @@ The next reliability phase should aim for:
 - Do not make the UI expose every retrieval parameter to normal users.
 - Do not claim production-grade academic accuracy until the real-world eval set is larger.
 
+## 2026-07-13 Acronym Query And Post-Retrieval Reordering Failure
+
+Symptom:
+
+- A request to `explain CNN` returned adjacent applications and index phrases rather than a definition and architecture.
+- The answer showed `Verified` because its claims matched the wrong retrieved chunks.
+
+Failure chain:
+
+1. Generic answer-format vocabulary polluted the factual retrieval query.
+2. `CNN` was too short for one subject-term filter, while `explain` survived another filter.
+3. The retriever still found the correct CNN chapter, but a later corpus-wide seed scan prepended unrelated literal mentions.
+4. Faithfulness verification rejected an overextended model answer and replaced it with a weak extractive fallback.
+5. Citation coverage remained high because the bad fallback cited the irrelevant passages accurately.
+
+Resolution:
+
+- Separate subject retrieval from response formatting.
+- Expand acronyms only from exact document-local long forms.
+- Remove the post-retrieval factual seed scan rather than adding more exceptions to it.
+- Reject compact index/backmatter and answer-key fragments before BM25 candidate selection.
+- Require acronym expansion or definition evidence before treating an acronym mention as direct.
+- Keep the faithfulness rewrite, but make the safe fallback query-agnostic and readable.
+
+Prevention tests:
+
+- Factual lookup does not add generic format vocabulary.
+- Exact acronym long form excludes neighboring heading text.
+- Acronym headings enter section candidates.
+- Compact cross-references and answer-key headings are noise.
+- A lone acronym application mention is weak evidence.
+- Definition fallback does not invent a limitation from `not restricted`.
+- Category-based query evaluation remains the primary quality measure; these tests enforce invariants rather than memorized answers.
+
 ## Next Documentation Links
 
 - `README.md` should link to this file as the engineering problem log.

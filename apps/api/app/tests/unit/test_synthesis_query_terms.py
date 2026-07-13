@@ -54,6 +54,56 @@ def test_context_relevance_uses_acronym_expansion_from_retrieved_context() -> No
     assert relevance["direct_evidence_count"] == 1
 
 
+def test_context_relevance_does_not_treat_lone_acronym_mention_as_definition() -> None:
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="cnn-application",
+                document_id="doc",
+                text=(
+                    "The CNN was trained to predict class probabilities, a bounding box, "
+                    "and an objectness score for object detection."
+                ),
+                score=0.9,
+            )
+        ]
+    )
+
+    relevance = SynthesisService._context_relevance("Explain CNN", bundle)
+
+    assert relevance["primary_query_terms"] == ["cnn"]
+    assert relevance["answer_relevance_state"] == "weak_related"
+    assert relevance["direct_evidence_count"] == 0
+
+
+def test_definition_fallback_uses_acronym_definition_without_false_limitation() -> None:
+    context_chunks = [
+        (
+            1,
+            "[1] doc=doc score=1.000 source=bm25 pages=613-615\n"
+            "Convolutional neural networks (CNNs) emerged from the study of the brain's visual cortex, "
+            "and they have been used in computer image recognition since the 1980s. CNNs are not "
+            "restricted to visual perception; they are also successful at voice recognition and NLP.",
+        ),
+        (
+            2,
+            "[2] doc=doc score=0.900 source=bm25 pages=633-634\n"
+            "Typical CNN architectures stack a few convolutional layers followed by pooling layers, "
+            "then add fully connected layers for the final prediction.",
+        ),
+    ]
+
+    answer = SynthesisService._fallback_definition_answer(
+        query="Explain CNN",
+        context_chunks=context_chunks,
+        response_mode="research",
+    )
+
+    assert "Convolutional neural networks (CNNs)" in answer
+    assert "Typical CNN architectures stack" in answer
+    assert "\nLimitation\n" not in answer
+
+
 def test_context_relevance_marks_loose_mentions_as_weak_related() -> None:
     bundle = RetrievalBundle(
         chunks=[

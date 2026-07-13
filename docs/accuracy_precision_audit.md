@@ -656,3 +656,29 @@ Verification:
 - Full backend suite: `95 passed`, `1 warning`.
 - API compile check: passed with a workspace-local bytecode cache.
 - The next reliability step is dataset expansion and abstention evaluation, not further tuning against this small seed.
+
+## 2026-07-13 Subject Relevance And Acronym Reliability
+
+The live `explain CNN` failure demonstrated that citation coverage and lexical faithfulness do not prove answer relevance. The system could faithfully cite an object-detection passage that mentioned a CNN while failing to explain a CNN.
+
+Changes:
+
+- Removed generic answer-format terms from factual retrieval.
+- Added exact document-local acronym expansion and acronym-heading ranking.
+- Removed the corpus-wide factual seed reorder that could override ranked evidence.
+- Added backmatter, answer-key, loose acronym mention, and false-limitation safeguards.
+- Improved extractive definition presentation for chunk boundaries and PDF heading prefixes.
+
+Latest measured results:
+
+| Evaluation | Samples | Hybrid MRR | BM25 MRR | Recall@8 | Expected citation coverage |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Demo retrieval | 30 | 0.983 | 0.983 | 1.000 | 1.000 |
+| Real-world retrieval | 17 | 0.828 | 0.868 | 1.000 | 1.000 |
+| Real-world full query | 17 | 0.902 | 0.902 | 1.000 | 1.000 |
+
+Interpretation:
+
+- Full-query MRR improved from the prior `0.882` while preserving complete expected citation coverage on the current seed.
+- BM25 remains the strongest first-rank local backbone on this dataset.
+- These results validate the architectural correction on a small seed; they do not establish commercial production accuracy.

@@ -77,10 +77,10 @@ Original baseline before the first reliability slice:
 - Recall@8: `0.750`.
 - Citation expected coverage: `0.750`.
 
-Current result after deterministic query expansion, normalized eval matching, retrieval noise penalties, strict anchor rescue, answer-directness priority, and corrected source-phrase labels:
+Current result after deterministic query expansion, normalized eval matching, acronym-aware section ranking, retrieval noise penalties, strict anchor rescue, answer-directness priority, and corrected source-phrase labels:
 
-- BM25 MRR: `0.843`.
-- Hybrid MRR: `0.804`.
+- BM25 MRR: `0.868`.
+- Hybrid MRR: `0.828`.
 - Recall@8: `1.000`.
 - Citation expected coverage: `1.000`.
 
@@ -88,7 +88,7 @@ The current reliability slice reaches the original MRR, Recall@8, and citation c
 
 ## Real-World Academic Seed Results
 
-Date: 2026-07-10
+Date: 2026-07-13
 
 Dataset: `data/processed/eval/real_world_academic_seed.jsonl`
 
@@ -119,7 +119,7 @@ The real-world script now also writes weak retrieval records to:
 data/processed/eval/real_world_retrieval_failures.jsonl
 ```
 
-Latest refresh note: the 2026-07-12 run produced no active weak retrieval records on the current 17-sample seed.
+Latest refresh note: the 2026-07-13 run retained Recall@8 and expected citation coverage at `1.000`; one cross-validation label first appears at rank 4, which remains inside the accepted retrieval window.
 
 Human-readable analysis lives in [`retrieval_failure_backlog.md`](retrieval_failure_backlog.md).
 
@@ -127,8 +127,8 @@ Results:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | nDCG@3 | nDCG@5 | nDCG@8 | Citation Expected Coverage |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| BM25 | 17 | 0.843 | 1.000 | 1.000 | 1.000 | 0.606 | 0.589 | 0.589 | 1.000 |
-| Hybrid | 17 | 0.804 | 1.000 | 1.000 | 1.000 | 0.570 | 0.567 | 0.567 | 1.000 |
+| BM25 | 17 | 0.868 | 0.941 | 1.000 | 1.000 | 0.590 | 0.599 | 0.599 | 1.000 |
+| Hybrid | 17 | 0.828 | 0.941 | 1.000 | 1.000 | 0.554 | 0.577 | 0.577 | 1.000 |
 
 Interpretation:
 
@@ -145,7 +145,7 @@ Next tuning targets:
 
 ## Full-Query Real-World Evaluation
 
-Date: 2026-07-12
+Date: 2026-07-13
 
 Command:
 
@@ -168,8 +168,8 @@ Results:
 
 | Mode | Samples | MRR | Recall@3 | Recall@5 | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 17 | 0.882 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.000 |
-| BM25 | 17 | 0.882 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.000 |
+| Hybrid | 17 | 0.902 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.000 |
+| BM25 | 17 | 0.902 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.000 |
 
 Interpretation:
 
@@ -177,6 +177,7 @@ Interpretation:
 - Legitimate textbook outlines are no longer discarded by the backmatter/index-noise filter.
 - Generic privacy and fact-checking controls now use source-specific fallback synthesis rather than product-specific wording.
 - Both full-query modes preserve expected evidence for every answerable sample in the current seed.
+- Removing the legacy factual seed reorder improved full-query MRR from `0.882` to `0.902` while keeping coverage complete.
 - The evidence reliability gate remains unchanged; the improvement comes from better evidence interpretation, not a weaker abstention threshold.
 
 ## Metrics Definitions
