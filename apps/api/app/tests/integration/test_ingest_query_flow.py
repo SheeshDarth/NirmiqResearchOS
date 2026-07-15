@@ -264,16 +264,32 @@ def test_upload_ingest_roundtrip() -> None:
         cache_file.write_text('{"version": 1, "pages": []}', encoding="utf-8")
         assert cache_file.exists()
 
+        upload_root = Path(os.environ["UPLOAD_PATH"])
+        orphan_upload = upload_root / "orphan-upload.txt"
+        orphan_upload.write_text("orphaned app upload", encoding="utf-8")
+        orphan_cache = cache_root / "orphan-cache.json"
+        orphan_cache.write_text("{}", encoding="utf-8")
+        diagram_root = Path(os.environ["DIAGRAM_PATH"])
+        orphan_diagram = diagram_root / "orphan-document" / "figure.png"
+        orphan_diagram.parent.mkdir(parents=True, exist_ok=True)
+        orphan_diagram.write_bytes(b"local-test-image")
+        external_original = cache_root.parent / "external-original.txt"
+        external_original.write_text("must remain outside app-owned roots", encoding="utf-8")
+
         purge_response = client.delete("/documents")
         assert purge_response.status_code == 200
         purge_body = purge_response.json()
         assert purge_body["deleted_count"] >= 1
         assert document_id in purge_body["deleted_document_ids"]
         assert purge_body["source_files_deleted"] is True
-        assert purge_body["source_file_delete_count"] >= 1
-        assert purge_body["derived_files_deleted"] >= 1
+        assert purge_body["source_file_delete_count"] >= 2
+        assert purge_body["derived_files_deleted"] >= 3
         assert not uploaded_source.exists()
         assert not cache_file.exists()
+        assert not orphan_upload.exists()
+        assert not orphan_cache.exists()
+        assert not orphan_diagram.exists()
+        assert external_original.exists()
 
         missing_detail = client.get(f"/documents/{document_id}")
         assert missing_detail.status_code == 404

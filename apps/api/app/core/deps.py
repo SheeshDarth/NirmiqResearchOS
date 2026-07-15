@@ -107,8 +107,9 @@ class AppContainer:
             workspace_root=settings.workspace_root,
             parse_cache_path=settings.parse_cache_path,
             upload_root=settings.upload_path,
+            diagram_root=settings.diagram_path,
         )
-        exam_service = ExamService(sqlite_repo=sqlite_repo, workspace_root=settings.workspace_root)
+        exam_service = ExamService(sqlite_repo=sqlite_repo, diagram_root=settings.diagram_path)
         memory_service = MemoryService(
             sqlite_repo=sqlite_repo,
             generator=generator,

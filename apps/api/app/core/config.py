@@ -21,6 +21,7 @@ class Settings(BaseModel):
     chroma_path: Path
     upload_path: Path
     parse_cache_path: Path
+    diagram_path: Path
     local_ingest_allowed_roots: list[Path]
     security_allow_arbitrary_local_paths: bool
     ollama_base_url: str
@@ -60,6 +61,7 @@ class Settings(BaseModel):
         chroma_default = workspace_root / "data" / "indexes" / "chroma"
         upload_default = workspace_root / "data" / "raw" / "uploads"
         parse_cache_default = workspace_root / "data" / "cache" / "parsed_pages"
+        diagram_default = workspace_root / "data" / "processed" / "diagrams"
         allowed_roots_default = f"{workspace_root / 'data' / 'raw'},{upload_default}"
         local_ingest_allowed_roots = [
             Path(part.strip())
@@ -90,6 +92,7 @@ class Settings(BaseModel):
             chroma_path=Path(os.getenv("CHROMA_PATH", str(chroma_default))),
             upload_path=Path(os.getenv("UPLOAD_PATH", str(upload_default))),
             parse_cache_path=Path(os.getenv("PARSE_CACHE_PATH", str(parse_cache_default))),
+            diagram_path=Path(os.getenv("DIAGRAM_PATH", str(diagram_default))),
             local_ingest_allowed_roots=local_ingest_allowed_roots,
             security_allow_arbitrary_local_paths=(
                 os.getenv("SECURITY_ALLOW_ARBITRARY_LOCAL_PATHS", "false").lower() == "true"

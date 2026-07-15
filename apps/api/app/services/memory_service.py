@@ -9,6 +9,7 @@ from app.api.schemas.memory import (
     AnswerFeedbackListResponse,
     AnswerFeedbackRequest,
     SessionDeleteResponse,
+    SessionPurgeResponse,
     SessionSummaryResponse,
     SessionTimelineMessage,
     SessionTimelineResponse,
@@ -112,6 +113,9 @@ class MemoryService:
             deleted_messages=int(result["deleted_messages"]),
             deleted_snapshots=int(result["deleted_snapshots"]),
         )
+
+    async def purge_sessions(self) -> SessionPurgeResponse:
+        return SessionPurgeResponse(**self._sqlite_repo.delete_all_sessions())
 
     async def save_answer_feedback(
         self,

@@ -136,7 +136,17 @@ export type DocumentPurgeResponse = {
   deleted_document_ids: string[];
   vector_store_cleared: boolean;
   source_files_deleted: boolean;
+  source_file_delete_count: number;
+  derived_files_deleted: number;
   note: string;
+};
+
+export type SessionPurgeResponse = {
+  deleted_sessions: number;
+  deleted_messages: number;
+  deleted_snapshots: number;
+  deleted_feedback: number;
+  deleted_exam_profiles: number;
 };
 
 export type DocumentDetailResponse = DocumentItem & {
@@ -393,6 +403,13 @@ export async function purgeDocuments(): Promise<DocumentPurgeResponse> {
     method: "DELETE",
   });
   return parseJson<DocumentPurgeResponse>(response);
+}
+
+export async function purgeSessions(): Promise<SessionPurgeResponse> {
+  const response = await apiFetch(`${API_BASE}/memory`, {
+    method: "DELETE",
+  });
+  return parseJson<SessionPurgeResponse>(response);
 }
 
 export async function upsertExamProfile(payload: {

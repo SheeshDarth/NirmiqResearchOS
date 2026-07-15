@@ -5,6 +5,7 @@ from app.api.schemas.memory import (
     AnswerFeedbackListResponse,
     AnswerFeedbackRequest,
     SessionDeleteResponse,
+    SessionPurgeResponse,
     SessionSummaryResponse,
     SessionTimelineResponse,
 )
@@ -12,6 +13,13 @@ from app.core.deps import get_memory_service
 from app.services.memory_service import MemoryService
 
 router = APIRouter()
+
+
+@router.delete("", response_model=SessionPurgeResponse)
+async def purge_sessions(
+    service: MemoryService = Depends(get_memory_service),
+) -> SessionPurgeResponse:
+    return await service.purge_sessions()
 
 
 @router.get("/{session_id}", response_model=SessionSummaryResponse)

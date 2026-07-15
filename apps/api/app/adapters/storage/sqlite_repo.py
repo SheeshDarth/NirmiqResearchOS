@@ -851,6 +851,31 @@ class SQLiteRepo:
             "deleted_snapshots": deleted_snapshots,
         }
 
+    def delete_all_sessions(self) -> dict[str, int]:
+        with self._connect() as conn:
+            counts = conn.execute(
+                """
+                SELECT
+                    (SELECT COUNT(*) FROM sessions) AS sessions,
+                    (SELECT COUNT(*) FROM messages) AS messages,
+                    (SELECT COUNT(*) FROM memory_snapshots) AS memory_snapshots,
+                    (SELECT COUNT(*) FROM answer_feedback) AS answer_feedback,
+                    (SELECT COUNT(*) FROM exam_profiles) AS exam_profiles
+                """
+            ).fetchone()
+            conn.execute("DELETE FROM answer_feedback")
+            conn.execute("DELETE FROM memory_snapshots")
+            conn.execute("DELETE FROM messages")
+            conn.execute("DELETE FROM exam_profiles")
+            conn.execute("DELETE FROM sessions")
+        return {
+            "deleted_sessions": int(counts["sessions"]) if counts else 0,
+            "deleted_messages": int(counts["messages"]) if counts else 0,
+            "deleted_snapshots": int(counts["memory_snapshots"]) if counts else 0,
+            "deleted_feedback": int(counts["answer_feedback"]) if counts else 0,
+            "deleted_exam_profiles": int(counts["exam_profiles"]) if counts else 0,
+        }
+
     def get_latest_memory_snapshot(self, session_id: str) -> dict[str, Any] | None:
         with self._connect() as conn:
             row = conn.execute(

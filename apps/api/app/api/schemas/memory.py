@@ -19,6 +19,14 @@ class SessionDeleteResponse(BaseModel):
     deleted_snapshots: int
 
 
+class SessionPurgeResponse(BaseModel):
+    deleted_sessions: int
+    deleted_messages: int
+    deleted_snapshots: int
+    deleted_feedback: int
+    deleted_exam_profiles: int
+
+
 class AnswerFeedbackRequest(BaseModel):
     rating: Literal["good", "needs_work"]
     query: str = Field(..., min_length=1, max_length=4000)

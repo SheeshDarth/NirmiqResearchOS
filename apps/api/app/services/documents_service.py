@@ -22,13 +22,14 @@ class DocumentsService:
         workspace_root: Path,
         parse_cache_path: Path,
         upload_root: Path,
+        diagram_root: Path,
     ) -> None:
         self._sqlite_repo = sqlite_repo
         self._chroma_repo = chroma_repo
         self._workspace_root = workspace_root.resolve()
         self._parse_cache_path = parse_cache_path.resolve()
         self._upload_root = upload_root.resolve()
-        self._diagram_root = (self._workspace_root / "data" / "processed" / "diagrams").resolve()
+        self._diagram_root = diagram_root.resolve()
 
     async def list_documents(self) -> DocumentListResponse:
         rows = self._sqlite_repo.list_documents()
@@ -99,6 +100,9 @@ class DocumentsService:
         deleted_document_ids = self._sqlite_repo.delete_all_documents()
         vector_store_cleared = await self._chroma_repo.clear_all_documents()
         artifact_counts = self._delete_owned_artifacts(document_rows, delete_uploaded_sources=True)
+        artifact_counts["source_files"] += self._clear_owned_root(self._upload_root)
+        artifact_counts["derived_files"] += self._clear_owned_root(self._parse_cache_path)
+        artifact_counts["derived_files"] += self._clear_owned_root(self._diagram_root)
         return DocumentPurgeResponse(
             deleted_count=len(deleted_document_ids),
             deleted_document_ids=deleted_document_ids,
@@ -148,6 +152,27 @@ class DocumentsService:
                     source_file_delete_count += 1
 
         return {"source_files": source_file_delete_count, "derived_files": derived_file_delete_count}
+
+    def _clear_owned_root(self, root: Path) -> int:
+        """Delete orphaned app-owned files without ever traversing outside the workspace."""
+        if root == self._workspace_root or not self._is_safe_child(root, self._workspace_root):
+            return 0
+        if not root.exists() or not root.is_dir():
+            return 0
+
+        deleted_files = 0
+        for child in list(root.iterdir()):
+            file_count = 1 if child.is_symlink() else self._count_files(child)
+            try:
+                if child.is_symlink() or child.is_file():
+                    child.unlink(missing_ok=True)
+                elif child.is_dir():
+                    shutil.rmtree(child)
+            except OSError:
+                continue
+            if not child.exists():
+                deleted_files += file_count
+        return deleted_files
 
     @staticmethod
     def _is_safe_child(path: Path, root: Path) -> bool:

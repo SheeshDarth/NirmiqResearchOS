@@ -9,6 +9,7 @@
     "start:linux": "bash scripts/start_local.sh",
     "stop:linux": "bash scripts/stop_local.sh",
     "doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release_doctor.ps1",
+    "diagnostics": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export_diagnostics.ps1",
     "desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_desktop.ps1",
     "desktop:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_desktop.ps1 -Install",
     "desktop:dev": "npm --prefix apps/desktop run dev",

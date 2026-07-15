@@ -20,6 +20,7 @@ import {
   listQuestionBank,
   listDocuments,
   purgeDocuments,
+  purgeSessions,
   runQuery,
   saveAnswerFeedback,
   upsertExamProfile,
@@ -635,7 +636,7 @@ export default function Home() {
   async function onPurgeDocuments() {
     if (busy !== "") return;
     const confirmed = window.confirm(
-      "Clear all indexed material from NIRMIQ? This removes local chunks, summaries, jobs, exam artifacts, and vector entries. Source files on disk are not deleted.",
+      "Clear all indexed material from NIRMIQ? This removes chunks, summaries, jobs, exam artifacts, vectors, parse cache, diagrams, and NIRMIQ-owned uploaded copies. External original files are kept.",
     );
     if (!confirmed) return;
     setBusy("privacy");
@@ -653,7 +654,39 @@ export default function Home() {
       setExamProfile(null);
       setQueryResult(null);
       setDeepView("evidence");
-      setError(`Cleared ${response.deleted_count} indexed material item(s). Source files were not deleted.`);
+      setError(
+        `Cleared ${response.deleted_count} material item(s), ${response.source_file_delete_count} app-owned upload(s), and ${response.derived_files_deleted} derived file(s). External originals were kept.`,
+      );
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onResetAllLocalData() {
+    if (busy !== "") return;
+    const confirmed = window.confirm(
+      "Reset all NIRMIQ local data? This removes indexed material, app-owned uploads, derived files, every local chat/session, feedback, and this local profile. External original files are kept.",
+    );
+    if (!confirmed) return;
+    setBusy("privacy");
+    setError("");
+    try {
+      const documentResult = await purgeDocuments();
+      const sessionResult = await purgeSessions();
+      for (const key of [
+        "nirmiq.localProfileName",
+        "nirmiq.localEmail",
+        "nirmiq.localPhone",
+        "nirmiq.localUnlocked",
+      ]) {
+        window.localStorage.removeItem(key);
+      }
+      setError(
+        `Reset ${documentResult.deleted_count} material item(s) and ${sessionResult.deleted_sessions} local session(s). External originals were kept.`,
+      );
+      window.location.reload();
     } catch (err) {
       setError(String(err));
     } finally {
@@ -1150,6 +1183,9 @@ export default function Home() {
                 type="button"
               >
                 Clear indexed material
+              </button>
+              <button className="button danger" disabled={busy !== ""} onClick={onResetAllLocalData} type="button">
+                Reset all local data
               </button>
             </div>
           </div>

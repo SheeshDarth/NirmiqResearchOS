@@ -371,6 +371,20 @@ async function runReleaseDoctor() {
   return true;
 }
 
+async function exportSafeDiagnostics() {
+  const diagnosticsPath = path.join(ROOT_DIR, "NIRMIQ Diagnostics.cmd");
+  if (!isWindows || !fs.existsSync(diagnosticsPath)) {
+    dialog.showErrorBox("NIRMIQ", "The safe diagnostics exporter is unavailable in this workspace.");
+    return false;
+  }
+  const error = await shell.openPath(diagnosticsPath);
+  if (error) {
+    appendLog("desktop", `\n[${new Date().toISOString()}] diagnostics launch failed: ${error}\n`);
+    return false;
+  }
+  return true;
+}
+
 async function showRuntimeStatus() {
   const apiOpen = await isPortOpen(8000);
   const webOpen = await isPortOpen(3002);
@@ -402,6 +416,7 @@ function buildMenu() {
         { label: "Runtime Status", accelerator: "CmdOrCtrl+Shift+S", click: () => showRuntimeStatus() },
         { label: "Restart Local Runtime", click: () => restartRuntime().catch(showStartupError) },
         { label: "Run Release Doctor", click: () => runReleaseDoctor() },
+        { label: "Export Safe Diagnostics", click: () => exportSafeDiagnostics() },
         { label: "Open Project Folder", click: () => openPath(ROOT_DIR) },
         { label: "Open In VS Code", click: openInVsCode },
         { label: "Open context.md", click: () => openPath(path.join(ROOT_DIR, "context.md")) },

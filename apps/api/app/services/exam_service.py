@@ -14,10 +14,9 @@ from app.api.schemas.exam import (
 
 
 class ExamService:
-    def __init__(self, sqlite_repo: SQLiteRepo, workspace_root: Path) -> None:
+    def __init__(self, sqlite_repo: SQLiteRepo, diagram_root: Path) -> None:
         self._sqlite_repo = sqlite_repo
-        self._workspace_root = workspace_root
-        self._diagram_root = workspace_root / "data" / "processed" / "diagrams"
+        self._diagram_root = diagram_root.resolve()
 
     async def upsert_profile(self, payload: ExamProfileRequest) -> ExamProfileItem:
         self._require_document(payload.document_id)

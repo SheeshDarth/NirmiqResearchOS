@@ -142,6 +142,7 @@ $requiredDirectories = @(
     "data\sqlite",
     "data\raw\uploads",
     "data\cache",
+    "data\processed\diagrams",
     "temp\runtime"
 )
 $missingDirectories = @(

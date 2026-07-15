@@ -211,7 +211,14 @@ try {
     Invoke-CheckedScript (Join-Path $PSScriptRoot "publish_smoke.ps1")
     Invoke-CheckedScript (Join-Path $PSScriptRoot "golden_demo.ps1")
 
-    Write-Output "SHIP CHECK PASS: tests/build/smoke/golden demo completed."
+    $diagnosticsScript = Join-Path $PSScriptRoot "export_diagnostics.ps1"
+    $diagnosticsOutput = Join-Path $root "temp\ship-diagnostics"
+    powershell -NoProfile -ExecutionPolicy Bypass -File $diagnosticsScript -OutputDirectory $diagnosticsOutput
+    if ($LASTEXITCODE -ne 0) {
+        throw "Privacy-safe diagnostics smoke failed."
+    }
+
+    Write-Output "SHIP CHECK PASS: tests/build/smoke/golden demo/diagnostics completed."
 } finally {
     foreach ($process in $started) {
         if ($process -and $process.Id -and -not $process.HasExited) {
