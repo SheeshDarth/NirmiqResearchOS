@@ -430,7 +430,7 @@ cd C:\Nirmiq-researchOS
 Or double-click:
 
 ```text
-NIRMIQ ResearchOS.cmd
+NIRMIQ Academic Intelligence.cmd
 ```
 
 Run local preview and warm-start the bundled golden demo:

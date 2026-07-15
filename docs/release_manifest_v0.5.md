@@ -70,11 +70,14 @@ Known measured debt remains seven answer-quality failures, concentrated in summa
 
 `npm.cmd run desktop:package` passed:
 
-- Artifact: `dist\desktop\NIRMIQ Academic Intelligence 0.1.0.exe`
+- Artifact: `dist\desktop\NIRMIQ Academic Intelligence 0.5.0.exe`
 - Format: portable Windows x64 executable.
-- Size: `71,252,192` bytes.
+- Size: `71,405,762` bytes.
+- SHA-256: `8BC4AC0A836724BE6121A467A6685A46F059EC97D43342FF674934755FE3EAF6`.
+- Embedded icon: verified against the source-controlled NIRMIQ Academic Intelligence mark.
+- Portable launch smoke: passed with health, SQLite readiness, offline contract, web-shell verification, and clean port release.
 - Code signing: not configured; the artifact must not be presented as a signed commercial installer.
-- Packaging warning: Electron's default executable icon is still used and is Block 3 release debt.
+- Startup recovery: local Retry, Run Doctor, and Open Logs actions replace a broken web view when runtime startup fails.
 
 ## Honest Release Boundary
 

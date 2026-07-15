@@ -1,6 +1,6 @@
 {
-  "name": "nirmiq-researchos-desktop",
-  "version": "0.1.0",
+  "name": "nirmiq-academic-intelligence-desktop",
+  "version": "0.5.0",
   "private": true,
   "author": "Siddharth P",
   "description": "Windows desktop shell for the local-first NIRMIQ Academic Intelligence runtime.",
@@ -8,6 +8,7 @@
   "scripts": {
     "start": "electron --in-process-gpu --disable-gpu-sandbox --disable-gpu-compositing --disable-gpu-rasterization --disable-accelerated-2d-canvas --disable-features=UseSkiaRenderer,Vulkan,CanvasOopRasterization .",
     "dev": "electron --in-process-gpu --disable-gpu-sandbox --disable-gpu-compositing --disable-gpu-rasterization --disable-accelerated-2d-canvas --disable-features=UseSkiaRenderer,Vulkan,CanvasOopRasterization . --dev",
+    "test": "node --test src/*.test.js",
     "pack": "electron-builder --dir",
     "package": "electron-builder --win portable"
   },
@@ -16,20 +17,24 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "ai.nirmiq.researchos",
+    "appId": "ai.nirmiq.academicintelligence",
     "productName": "NIRMIQ Academic Intelligence",
     "directories": {
-      "output": "../../dist/desktop"
+      "output": "../../dist/desktop",
+      "buildResources": "build"
     },
     "files": [
       "src/**/*",
+      "build/nirmiq.ico",
       "package.json"
     ],
     "win": {
+      "icon": "build/nirmiq.ico",
       "target": [
         "portable"
       ],
       "signAndEditExecutable": false
-    }
+    },
+    "artifactName": "${productName} ${version}.${ext}"
   }
 }

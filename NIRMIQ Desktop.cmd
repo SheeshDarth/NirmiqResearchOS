@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo Starting NIRMIQ ResearchOS desktop app...
+echo Starting NIRMIQ Academic Intelligence desktop app...
 echo.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start_desktop.ps1"
 if errorlevel 1 (

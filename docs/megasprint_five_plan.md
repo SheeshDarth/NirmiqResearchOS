@@ -1,7 +1,7 @@
 # MegaSprint Five Plan: Release Confidence And Public Proof
 
 Last updated: 2026-07-15
-Status: active; Blocks 1-2 complete, Block 3 next
+Status: active; Blocks 1-3 complete, Block 4 next
 
 ## Goal
 
@@ -36,7 +36,7 @@ Status: complete on 2026-07-15. Current evidence is recorded in [`release_manife
 
 ### Block 3: Desktop Packaging Polish
 
-Status: next.
+Status: complete on 2026-07-15.
 
 - Align package version, product name, icon, and output naming.
 - Improve startup failure presentation and make logs accessible without exposing private source paths.
@@ -44,6 +44,8 @@ Status: next.
 - Keep code signing as explicit release debt unless a certificate is available.
 
 ### Block 4: Privacy And Recovery
+
+Status: next.
 
 - Verify purge removes app-owned uploads, parse cache, diagrams, chunks, vectors, summaries, and session data according to documented scope.
 - Add a local diagnostics bundle that redacts full source paths and user document text.

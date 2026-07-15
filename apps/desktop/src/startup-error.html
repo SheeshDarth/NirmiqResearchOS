@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
+    />
+    <title>NIRMIQ local startup</title>
+    <link rel="stylesheet" href="startup-error.css" />
+    <script src="startup-error.js" defer></script>
+  </head>
+  <body>
+    <main class="recovery-shell">
+      <section class="recovery-card" aria-labelledby="failure-title">
+        <div class="brand-row">
+          <img src="../build/nirmiq.ico" alt="" width="42" height="42" />
+          <div>
+            <p class="eyebrow">NIRMIQ Academic Intelligence</p>
+            <p class="status-line"><span></span> Local runtime needs attention</p>
+          </div>
+        </div>
+
+        <div class="copy-block">
+          <h1 id="failure-title">Local startup paused</h1>
+          <p id="failure-detail">NIRMIQ could not finish starting the private academic workspace.</p>
+          <p id="failure-action" class="action-copy">Run the local doctor, then retry.</p>
+        </div>
+
+        <div id="action-status" class="action-status" role="status" aria-live="polite"></div>
+
+        <div class="actions">
+          <button id="retry" class="primary" type="button">Retry startup</button>
+          <button id="doctor" type="button">Run NIRMIQ Doctor</button>
+          <button id="logs" type="button">Open local logs</button>
+        </div>
+
+        <p class="privacy-note">Nothing was sent online. Diagnostics and logs remain on this device.</p>
+      </section>
+    </main>
+  </body>
+</html>

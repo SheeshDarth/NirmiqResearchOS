@@ -18,7 +18,7 @@ The canonical dated result is [`release_manifest_v0.5.md`](release_manifest_v0.5
 - First-load JavaScript: `117 kB`.
 - Publish and Electron desktop smoke: passed with `cloud_api_required=false`.
 - Strict 40-case metrics: MRR `0.868`, Recall@8 `0.921`, expected citation coverage `0.921`, faithfulness `0.985`, answerability correctness `1.000`.
-- Portable Windows package rebuilt successfully as `NIRMIQ Academic Intelligence 0.1.0.exe`.
+- Portable Windows package rebuilt and launch-tested successfully as `NIRMIQ Academic Intelligence 0.5.0.exe` with the NIRMIQ icon.
 
 ## Finale AI Dashboard Takeaways
 
@@ -102,7 +102,7 @@ Recommended proof assets:
 - Grow the 40-case answer-quality set with scans, diagrams, equations, and noisy notes.
 - Add a redacted local diagnostics bundle instead of cloud error tracking.
 - Add chapter-wise summaries for long textbooks.
-- Replace Electron's default executable icon and obtain code signing only when a certificate is available.
+- Obtain code signing only when a certificate is available.
 - Validate native Linux packaging on a real Linux host.
 - Add hosted-auth design only if public multi-user deployment becomes a goal.
 

@@ -3838,4 +3838,32 @@ Known release debt:
 - Seven measured answer-quality cases remain below threshold; summary/enumeration readability and mechanism/procedure relevance are the main categories.
 - The desktop executable still uses Electron's default icon and is unsigned.
 - Native Linux packaging remains unverified, although the conservative browser runtime path exists.
-- MegaSprint Five Block 3 is next: package identity, startup-failure presentation, private-path-safe diagnostics, and clean portable launch validation.
+- MegaSprint Five Block 3 was the next checkpoint and is recorded as completed below.
+
+## MegaSprint Five Block 3 - Desktop Packaging Polish
+
+Completed on 2026-07-15:
+
+- Aligned root, web, and desktop package identity to `NIRMIQ Academic Intelligence` version `0.5.0`.
+- Changed the Electron app id to `ai.nirmiq.academicintelligence` while preserving the existing local data architecture.
+- Generated and committed `apps/desktop/build/nirmiq.ico` from the source-controlled NIRMIQ Academic Intelligence SVG mark.
+- Verified the icon embedded in the generated Windows executable.
+- Replaced the legacy browser launcher name with `NIRMIQ Academic Intelligence.cmd` and updated shortcut descriptions/icons.
+- Added path-redacted desktop diagnostics and unit tests.
+- Replaced the failed-web-view startup behavior with a local recovery screen offering Retry startup, Run NIRMIQ Doctor, and Open local logs.
+- Removed absolute project/log paths from normal runtime status and desktop renderer status payloads.
+- Added `scripts/portable_desktop_smoke.ps1` and `npm.cmd run desktop:portable-smoke`.
+- Restricted recovery IPC actions to the packaged local recovery page so normal HTTP renderer content cannot trigger Doctor or log-folder actions.
+- Rebuilt `dist\desktop\NIRMIQ Academic Intelligence 0.5.0.exe` (`71,405,762` bytes).
+
+Verification:
+
+- Desktop diagnostics tests: `3 passed`.
+- Desktop JavaScript syntax checks: passed.
+- Source Electron smoke: passed.
+- Portable executable smoke: passed, including health, SQLite readiness, `cloud_api_required=false`, NIRMIQ web shell, and port cleanup.
+- Electron Builder no longer reports the default-icon warning.
+
+Next:
+
+- MegaSprint Five Block 4: verify full local purge scope, add a redacted diagnostics bundle, and verify local export/purge recovery paths.

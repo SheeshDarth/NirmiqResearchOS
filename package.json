@@ -1,6 +1,6 @@
 {
-  "name": "nirmiq-researchos",
-  "version": "0.4.0-demo",
+  "name": "nirmiq-academic-intelligence",
+  "version": "0.5.0",
   "private": true,
   "description": "Offline-first academic document intelligence workspace with local RAG, citations, Paper Lab, and Exam Lab.",
   "scripts": {
@@ -15,6 +15,7 @@
     "desktop:pack": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_desktop.ps1",
     "desktop:package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package_desktop.ps1 -Portable",
     "desktop:smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop_smoke.ps1",
+    "desktop:portable-smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/portable_desktop_smoke.ps1",
     "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop_local.ps1",
     "build": "npm --prefix apps/web run build",
     "build:web": "npm --prefix apps/web run build",

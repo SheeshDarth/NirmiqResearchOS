@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo Starting NIRMIQ ResearchOS golden demo preview...
+echo Starting NIRMIQ Academic Intelligence golden demo preview...
 echo.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\run_local.ps1" -GoldenDemo -OpenBrowser
 if errorlevel 1 (

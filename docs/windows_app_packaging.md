@@ -1,6 +1,6 @@
 # NIRMIQ Windows App Packaging
 
-Last updated: 2026-07-12
+Last updated: 2026-07-15
 
 ## Current Recommendation
 
@@ -72,7 +72,7 @@ The menu includes:
 Double-click from the repository root:
 
 ```text
-NIRMIQ ResearchOS.cmd
+NIRMIQ Academic Intelligence.cmd
 ```
 
 This runs:
@@ -117,15 +117,16 @@ The shortcut script creates separate entries for normal browser preview, golden-
 
 ## Latest Packaging Validation
 
-Validated on 2026-07-12:
+Validated on 2026-07-15:
 
-- `node --check apps\desktop\src\main.js`: passed.
-- `node --check apps\desktop\src\preload.js`: passed.
-- `npm.cmd run desktop:pack`: passed and generated `dist/desktop/win-unpacked/NIRMIQ ResearchOS.exe`.
-- `npm.cmd run desktop:package`: passed and generated `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
-- `npm.cmd run desktop:smoke`: passed.
-- Portable artifact size: `71,251,901` bytes.
-- Unpacked app executable size: `180,849,664` bytes.
+- `npm.cmd --prefix apps/desktop test`: `3 passed`.
+- `node --check` for desktop main, preload, diagnostics, and recovery UI scripts: passed.
+- `npm.cmd run desktop:package`: generated `dist/desktop/NIRMIQ Academic Intelligence 0.5.0.exe`.
+- `npm.cmd run desktop:smoke`: passed against the source desktop shell.
+- `npm.cmd run desktop:portable-smoke`: passed against the generated portable executable.
+- Portable artifact size: `71,405,762` bytes.
+- Portable artifact SHA-256: `8BC4AC0A836724BE6121A467A6685A46F059EC97D43342FF674934755FE3EAF6`.
+- The packaged executable icon was extracted and verified against the selected NIRMIQ Academic Intelligence mark.
 
 Hardening notes:
 
@@ -133,7 +134,9 @@ Hardening notes:
 - Portable builds also inspect `PORTABLE_EXECUTABLE_DIR` and `PORTABLE_EXECUTABLE_FILE` to find the repository root.
 - Desktop-launched child process IDs are mirrored under `temp\runtime` so `scripts\stop_local.ps1` can clean them up reliably.
 - Packaging and startup scripts now exit non-zero when npm/native commands fail.
-- Current package uses the default Electron icon because no source-controlled icon asset is available yet.
+- The desktop package and generated shortcuts use `apps/desktop/build/nirmiq.ico`, derived from the source-controlled NIRMIQ Academic Intelligence SVG mark.
+- Startup failures now render a local recovery page with Retry, Run Doctor, and Open Logs actions instead of loading a broken web page.
+- Normal status/error surfaces do not show absolute workspace or log paths; local desktop logs redact workspace and user-home paths.
 - Current portable package is unsigned; code signing is future release work.
 
 ## Full Windows Installer Later

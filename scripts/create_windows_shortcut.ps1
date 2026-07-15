@@ -10,11 +10,12 @@ if (-not $Desktop -and -not $StartMenu) {
 }
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
-$launcher = Join-Path $root "NIRMIQ ResearchOS.cmd"
+$launcher = Join-Path $root "NIRMIQ Academic Intelligence.cmd"
 $desktopLauncher = Join-Path $root "NIRMIQ Desktop.cmd"
 $goldenLauncher = Join-Path $root "NIRMIQ Golden Demo.cmd"
 $stopper = Join-Path $root "NIRMIQ Stop.cmd"
-$icon = Join-Path $env:SystemRoot "System32\shell32.dll"
+$brandIcon = Join-Path $root "apps\desktop\build\nirmiq.ico"
+$fallbackIcon = Join-Path $env:SystemRoot "System32\shell32.dll"
 
 if (-not (Test-Path $launcher)) {
     throw "Launcher not found: $launcher"
@@ -40,7 +41,7 @@ function New-NirmiqShortcut {
     $shortcut.TargetPath = $TargetPath
     $shortcut.WorkingDirectory = [string]$root
     $shortcut.Description = $Description
-    $shortcut.IconLocation = "$icon,$IconIndex"
+    $shortcut.IconLocation = if (Test-Path $brandIcon) { $brandIcon } else { "$fallbackIcon,$IconIndex" }
     $shortcut.Save()
     Write-Output "Created shortcut: $ShortcutPath"
 }
@@ -50,22 +51,22 @@ if ($Desktop) {
     New-NirmiqShortcut `
         -ShortcutPath (Join-Path $desktopPath "NIRMIQ Desktop.lnk") `
         -TargetPath $desktopLauncher `
-        -Description "Launch NIRMIQ ResearchOS desktop app" `
+        -Description "Launch NIRMIQ Academic Intelligence desktop app" `
         -IconIndex 13
     New-NirmiqShortcut `
         -ShortcutPath (Join-Path $desktopPath "NIRMIQ Browser Preview.lnk") `
         -TargetPath $launcher `
-        -Description "Launch NIRMIQ ResearchOS browser preview" `
+        -Description "Launch NIRMIQ Academic Intelligence browser preview" `
         -IconIndex 13
     New-NirmiqShortcut `
         -ShortcutPath (Join-Path $desktopPath "NIRMIQ Golden Demo.lnk") `
         -TargetPath $goldenLauncher `
-        -Description "Launch NIRMIQ ResearchOS with the golden demo corpus" `
+        -Description "Launch NIRMIQ Academic Intelligence with the golden demo corpus" `
         -IconIndex 13
     New-NirmiqShortcut `
-        -ShortcutPath (Join-Path $desktopPath "Stop NIRMIQ ResearchOS.lnk") `
+        -ShortcutPath (Join-Path $desktopPath "Stop NIRMIQ Academic Intelligence.lnk") `
         -TargetPath $stopper `
-        -Description "Stop NIRMIQ ResearchOS local preview services" `
+        -Description "Stop NIRMIQ Academic Intelligence local preview services" `
         -IconIndex 28
 }
 
@@ -75,21 +76,21 @@ if ($StartMenu) {
     New-NirmiqShortcut `
         -ShortcutPath (Join-Path $startMenuPath "NIRMIQ Desktop.lnk") `
         -TargetPath $desktopLauncher `
-        -Description "Launch NIRMIQ ResearchOS desktop app" `
+        -Description "Launch NIRMIQ Academic Intelligence desktop app" `
         -IconIndex 13
     New-NirmiqShortcut `
         -ShortcutPath (Join-Path $startMenuPath "NIRMIQ Browser Preview.lnk") `
         -TargetPath $launcher `
-        -Description "Launch NIRMIQ ResearchOS browser preview" `
+        -Description "Launch NIRMIQ Academic Intelligence browser preview" `
         -IconIndex 13
     New-NirmiqShortcut `
         -ShortcutPath (Join-Path $startMenuPath "NIRMIQ Golden Demo.lnk") `
         -TargetPath $goldenLauncher `
-        -Description "Launch NIRMIQ ResearchOS with the golden demo corpus" `
+        -Description "Launch NIRMIQ Academic Intelligence with the golden demo corpus" `
         -IconIndex 13
     New-NirmiqShortcut `
-        -ShortcutPath (Join-Path $startMenuPath "Stop NIRMIQ ResearchOS.lnk") `
+        -ShortcutPath (Join-Path $startMenuPath "Stop NIRMIQ Academic Intelligence.lnk") `
         -TargetPath $stopper `
-        -Description "Stop NIRMIQ ResearchOS local preview services" `
+        -Description "Stop NIRMIQ Academic Intelligence local preview services" `
         -IconIndex 28
 }

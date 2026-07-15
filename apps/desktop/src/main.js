@@ -2,8 +2,11 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require("electron")
 const fs = require("node:fs");
 const http = require("node:http");
 const net = require("node:net");
+const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
+const { pathToFileURL } = require("node:url");
+const { classifyStartupError, redactDiagnosticText } = require("./runtime_diagnostics");
 
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch("in-process-gpu");
@@ -12,6 +15,10 @@ app.commandLine.appendSwitch("disable-gpu-compositing");
 app.commandLine.appendSwitch("disable-gpu-rasterization");
 app.commandLine.appendSwitch("disable-accelerated-2d-canvas");
 app.commandLine.appendSwitch("disable-features", "UseSkiaRenderer,Vulkan,CanvasOopRasterization");
+app.setName("NIRMIQ Academic Intelligence");
+if (process.platform === "win32") {
+  app.setAppUserModelId("ai.nirmiq.academicintelligence");
+}
 
 function looksLikeProjectRoot(candidate) {
   if (!candidate) return false;
@@ -61,6 +68,9 @@ const API_URL = "http://127.0.0.1:8000";
 const WEB_URL = "http://127.0.0.1:3002";
 const API_HEALTH_URL = `${API_URL}/health`;
 const USER_DATA_DIR = path.join(TEMP_DIR, "electron-user-data");
+const ICON_PATH = path.join(__dirname, "..", "build", "nirmiq.ico");
+const STARTUP_ERROR_PATH = path.join(__dirname, "startup-error.html");
+const STARTUP_ERROR_URL = pathToFileURL(STARTUP_ERROR_PATH).href;
 
 fs.mkdirSync(USER_DATA_DIR, { recursive: true });
 app.setPath("userData", USER_DATA_DIR);
@@ -73,6 +83,7 @@ let mainWindow = null;
 let apiProcess = null;
 let webProcess = null;
 let runtimeStarting = false;
+let startupFailureState = null;
 
 function ensureRuntimeDir() {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
@@ -85,7 +96,8 @@ function logPath(name) {
 }
 
 function appendLog(name, line) {
-  fs.appendFileSync(logPath(name), line);
+  const safeLine = redactDiagnosticText(line, [ROOT_DIR, os.homedir()]);
+  fs.appendFileSync(logPath(name), safeLine);
 }
 
 function buildProcessEnv(extra = {}) {
@@ -233,6 +245,11 @@ function stopChild(child) {
 
 async function startRuntime() {
   if (runtimeStarting) return;
+  if (!looksLikeProjectRoot(ROOT_DIR)) {
+    const error = new Error("NIRMIQ project root could not be resolved.");
+    error.code = "PROJECT_ROOT_MISSING";
+    throw error;
+  }
   runtimeStarting = true;
   ensureRuntimeDir();
   let webScript = null;
@@ -288,6 +305,7 @@ function stopRuntime() {
 async function restartRuntime() {
   stopRuntime();
   await startRuntime();
+  startupFailureState = null;
   if (mainWindow) {
     await mainWindow.loadURL(WEB_URL);
   }
@@ -301,6 +319,7 @@ function createMainWindow() {
     minHeight: 740,
     title: "NIRMIQ Academic Intelligence",
     backgroundColor: "#111418",
+    icon: ICON_PATH,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -311,7 +330,11 @@ function createMainWindow() {
   });
 
   mainWindow.once("ready-to-show", () => mainWindow.show());
-  mainWindow.loadURL(WEB_URL);
+  if (startupFailureState) {
+    mainWindow.loadFile(STARTUP_ERROR_PATH);
+  } else {
+    mainWindow.loadURL(WEB_URL);
+  }
 }
 
 function openPath(targetPath) {
@@ -329,20 +352,43 @@ function openInVsCode() {
   child.unref();
 }
 
+function requireRecoveryPage(event) {
+  if (event.senderFrame.url !== STARTUP_ERROR_URL) {
+    throw new Error("Recovery action rejected outside the local startup page.");
+  }
+}
+
+async function runReleaseDoctor() {
+  const doctorPath = path.join(ROOT_DIR, "NIRMIQ Doctor.cmd");
+  if (!isWindows || !fs.existsSync(doctorPath)) {
+    return false;
+  }
+  const error = await shell.openPath(doctorPath);
+  if (error) {
+    appendLog("desktop", `\n[${new Date().toISOString()}] doctor launch failed: ${error}\n`);
+    return false;
+  }
+  return true;
+}
+
 async function showRuntimeStatus() {
   const apiOpen = await isPortOpen(8000);
   const webOpen = await isPortOpen(3002);
-  dialog.showMessageBox(mainWindow, {
+  const result = await dialog.showMessageBox(mainWindow, {
     type: apiOpen && webOpen ? "info" : "warning",
     title: "NIRMIQ Runtime Status",
     message: apiOpen && webOpen ? "NIRMIQ local runtime is ready." : "NIRMIQ local runtime needs attention.",
     detail: [
-      `API: ${apiOpen ? "online" : "offline"} (${API_URL})`,
-      `Web: ${webOpen ? "online" : "offline"} (${WEB_URL})`,
-      `Logs: ${TEMP_DIR}`,
-      `Project: ${ROOT_DIR}`,
+      `Knowledge engine: ${apiOpen ? "online" : "offline"}`,
+      `Workspace: ${webOpen ? "online" : "offline"}`,
+      "All runtime checks stay on this device.",
     ].join("\n"),
+    buttons: ["Close", "Open Logs", "Run Doctor"],
+    defaultId: 0,
+    cancelId: 0,
   });
+  if (result.response === 1) openPath(TEMP_DIR);
+  if (result.response === 2) await runReleaseDoctor();
 }
 
 function buildMenu() {
@@ -355,6 +401,7 @@ function buildMenu() {
         { type: "separator" },
         { label: "Runtime Status", accelerator: "CmdOrCtrl+Shift+S", click: () => showRuntimeStatus() },
         { label: "Restart Local Runtime", click: () => restartRuntime().catch(showStartupError) },
+        { label: "Run Release Doctor", click: () => runReleaseDoctor() },
         { label: "Open Project Folder", click: () => openPath(ROOT_DIR) },
         { label: "Open In VS Code", click: openInVsCode },
         { label: "Open context.md", click: () => openPath(path.join(ROOT_DIR, "context.md")) },
@@ -390,11 +437,14 @@ function buildMenu() {
 }
 
 function showStartupError(error) {
-  const message = error && error.message ? error.message : String(error);
-  dialog.showErrorBox(
-    "NIRMIQ startup failed",
-    `${message}\n\nCheck logs in ${TEMP_DIR}. You can still run scripts/start_local.ps1 from PowerShell.`,
-  );
+  const rawError = error?.stack || error?.message || String(error);
+  appendLog("desktop", `\n[${new Date().toISOString()}] startup failure: ${rawError}\n`);
+  startupFailureState = classifyStartupError(error);
+  if (!mainWindow) {
+    createMainWindow();
+    return;
+  }
+  mainWindow.loadFile(STARTUP_ERROR_PATH);
 }
 
 ipcMain.handle("nirmiq:status", async () => ({
@@ -402,9 +452,34 @@ ipcMain.handle("nirmiq:status", async () => ({
   webUrl: WEB_URL,
   apiStartedByDesktop: Boolean(apiProcess),
   webStartedByDesktop: Boolean(webProcess),
-  logDirectory: TEMP_DIR,
-  rootDirectory: ROOT_DIR,
 }));
+
+ipcMain.handle("nirmiq:startup-failure", (event) => {
+  requireRecoveryPage(event);
+  return startupFailureState;
+});
+
+ipcMain.handle("nirmiq:open-logs", async (event) => {
+  requireRecoveryPage(event);
+  openPath(TEMP_DIR);
+  return { ok: true };
+});
+
+ipcMain.handle("nirmiq:run-doctor", async (event) => {
+  requireRecoveryPage(event);
+  return { ok: await runReleaseDoctor() };
+});
+
+ipcMain.handle("nirmiq:retry-startup", async (event) => {
+  requireRecoveryPage(event);
+  try {
+    await restartRuntime();
+    return { ok: true };
+  } catch (error) {
+    showStartupError(error);
+    return { ok: false, failure: startupFailureState };
+  }
+});
 
 ipcMain.handle("nirmiq:restart", async () => {
   await restartRuntime();
@@ -418,7 +493,6 @@ app.whenReady().then(async () => {
     createMainWindow();
   } catch (error) {
     showStartupError(error);
-    createMainWindow();
   }
 });
 

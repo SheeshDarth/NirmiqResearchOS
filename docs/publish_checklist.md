@@ -89,7 +89,7 @@ cd C:\Nirmiq-researchOS
 Windows double-click preview:
 
 ```text
-NIRMIQ ResearchOS.cmd
+NIRMIQ Academic Intelligence.cmd
 ```
 
 Preferred golden-demo preview:
@@ -231,11 +231,12 @@ Release-hardening refresh on 2026-07-15:
 - `npm.cmd run desktop:package`: passed.
 - `npm.cmd run desktop:smoke`: passed.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\eval_answer_quality.ps1`: passed the release thresholds.
-- Portable artifact: `dist\desktop\NIRMIQ Academic Intelligence 0.1.0.exe`.
+- Portable artifact: `dist\desktop\NIRMIQ Academic Intelligence 0.5.0.exe`.
+- `npm.cmd run desktop:portable-smoke`: passed against the generated executable.
 
 Current known release debt:
 
 - README screenshots exist; a current optional GIF and final manual desktop/mobile visual acceptance remain.
 - Retrieval labels need to grow beyond the current 40-case quality set and include more scans, diagrams, equations, and noisy notes.
-- Desktop package still uses Electron's default executable icon and is unsigned.
+- Desktop package uses the NIRMIQ icon but remains unsigned.
 - Linux browser-preview path exists, but native Linux packaging is not validated yet.
