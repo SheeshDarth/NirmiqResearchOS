@@ -1,6 +1,7 @@
 param(
     [switch]$OpenBrowser,
-    [switch]$GoldenDemo
+    [switch]$GoldenDemo,
+    [switch]$SkipDoctor
 )
 
 $ErrorActionPreference = "Stop"
@@ -82,6 +83,14 @@ $webUrl = "http://127.0.0.1:3002"
 
 Write-Output "NIRMIQ local preview launcher"
 Write-Output "Workspace: $root"
+
+if (-not $SkipDoctor) {
+    $doctorScript = Join-Path $PSScriptRoot "release_doctor.ps1"
+    powershell -NoProfile -ExecutionPolicy Bypass -File $doctorScript -Startup
+    if ($LASTEXITCODE -ne 0) {
+        throw "NIRMIQ preflight failed. Run npm.cmd run doctor for the required actions."
+    }
+}
 
 if (Test-LocalPort 8000) {
     Write-Output "API already listening on $apiUrl"

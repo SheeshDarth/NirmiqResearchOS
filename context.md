@@ -3805,3 +3805,37 @@ MegaSprint Four Windows closure verification:
 - Production web build remained `117 kB` first-load JavaScript.
 - Publish smoke, grounded golden routes, citations, and unsupported-query abstention passed.
 - Core MegaSprint Four implementation is complete on Windows; only a true Linux-host smoke remains as cross-platform evidence follow-up.
+
+# Latest Session Update - 2026-07-15 MegaSprint Five Blocks 1-2
+
+Objective:
+
+- Turn the verified local MVP into a reproducible release with actionable startup diagnostics and current public proof.
+
+Block 1 delivered:
+
+- Added `scripts/release_doctor.ps1`, `npm.cmd run doctor`, and `NIRMIQ Doctor.cmd`.
+- Doctor checks Python, Node.js, npm, backend imports, web/desktop dependencies, local data directories, SQLite, ports `8000`/`3002`, unsafe local environment overrides, and optional Ollama.
+- Integrated preflight into normal Windows browser startup; `-SkipDoctor` remains an explicit developer-only bypass.
+- Kept Ollama optional so deterministic BM25 retrieval and cited synthesis remain available when it is stopped or absent.
+- Integrated the doctor into CI and the ship gate.
+- Verified one-click startup, health, readiness, web shell, offline-core assertion, and cleanup end to end.
+
+Block 2 release evidence:
+
+- `npm.cmd run ship:check`: passed.
+- Backend: `160 passed`, `1` third-party deprecation warning.
+- API compile and Next.js production build: passed; first-load JavaScript remains `117 kB`.
+- Publish smoke: `18` indexed documents, `9443` active chunks, `cloud_api_required=False`.
+- Golden Research, Exam Lab, and Paper Lab routes remained grounded with citations; unsupported query abstained with zero citations.
+- `npm.cmd run desktop:smoke`: passed.
+- Strict 40-case quality run: MRR `0.868`, Recall@8 `0.921`, expected citation coverage `0.921`, answer-quality pass `0.825`, faithfulness `0.985`, answerability correctness `1.000`.
+- `npm.cmd run desktop:package`: passed; portable output is `dist\desktop\NIRMIQ Academic Intelligence 0.1.0.exe`.
+- Added `docs/release_manifest_v0.5.md` as the canonical dated release evidence.
+
+Known release debt:
+
+- Seven measured answer-quality cases remain below threshold; summary/enumeration readability and mechanism/procedure relevance are the main categories.
+- The desktop executable still uses Electron's default icon and is unsigned.
+- Native Linux packaging remains unverified, although the conservative browser runtime path exists.
+- MegaSprint Five Block 3 is next: package identity, startup-failure presentation, private-path-safe diagnostics, and clean portable launch validation.

@@ -144,6 +144,11 @@ function Invoke-BoundedNativeProcess {
 Repair-PathEnvironment
 $npm = (Get-Command npm.cmd -ErrorAction Stop).Source
 $node = (Get-Command node.exe -ErrorAction Stop).Source
+$doctorScript = Join-Path $PSScriptRoot "release_doctor.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File $doctorScript -Startup
+if ($LASTEXITCODE -ne 0) {
+    throw "Release doctor failed before the ship gate."
+}
 $nextBuildCli = Join-Path $root "apps\web\node_modules\next\dist\bin\next"
 if (-not (Test-Path -LiteralPath $nextBuildCli)) {
     throw "Next.js build CLI not found: $nextBuildCli"

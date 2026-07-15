@@ -1,10 +1,10 @@
 # NIRMIQ Publish Checklist
 
-Last updated: 2026-07-08
+Last updated: 2026-07-15
 
 ## Target
 
-Publish a working NIRMIQ ResearchOS local-first golden demo with clear GitHub credibility, repeatable startup, CI, and measured retrieval evidence.
+Publish a working NIRMIQ Academic Intelligence local-first golden demo with clear GitHub credibility, repeatable startup, CI, and measured retrieval evidence.
 
 ## Pre-Publish Commands
 
@@ -13,20 +13,26 @@ Run from `C:\Nirmiq-researchOS`.
 Full EOD ship check, execution-policy safe:
 
 ```powershell
+npm.cmd run doctor
 npm.cmd run ship:check
 npm.cmd run desktop:smoke
 ```
 
+If startup would otherwise surface `Failed to fetch`, run `npm.cmd run doctor` first. Critical Python, Node, backend-import, web-dependency, or port conflicts fail with an actionable command. Missing/unreachable Ollama is only a warning because the deterministic offline core remains supported.
+
 Latest local verification:
 
-- Date: 2026-07-08.
+- Date: 2026-07-15.
+- Doctor: `12` checks, `0` failures, `1` optional Ollama warning.
 - Result: `SHIP CHECK PASS`.
-- Backend tests: `61 passed`, `1` warning.
+- Backend tests: `160 passed`, `1` third-party deprecation warning.
 - API compile: passed.
-- Web build: passed.
-- Publish smoke: passed.
-- Golden demo warm start: passed.
-- Command used: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ship_check.ps1`.
+- Web build: passed; `/` first-load JavaScript `117 kB`.
+- Publish smoke: passed with `18` indexed documents, `9443` active chunks, and `cloud_api_required=False`.
+- Golden grounded routes and unsupported-query abstention: passed.
+- Desktop smoke and portable Windows packaging: passed.
+- Strict 40-case result: MRR `0.868`, Recall@8 `0.921`, expected citation coverage `0.921`, faithfulness `0.985`.
+- Full evidence: [`release_manifest_v0.5.md`](release_manifest_v0.5.md).
 
 Implementation note:
 
@@ -205,7 +211,7 @@ python scripts/eval_retrieval.py --dataset data/processed/eval/qa_labels.jsonl -
 
 ## Latest Ship Gate Result
 
-Validated on 2026-07-12:
+Validated on 2026-07-15:
 
 ```powershell
 npm.cmd run ship:check
@@ -213,25 +219,23 @@ npm.cmd run ship:check
 
 Result:
 
-- Backend unit/integration tests: `89 passed, 1 warning`.
+- Backend unit/integration tests: `160 passed, 1 warning`.
 - API compile: passed.
 - Web production build: passed, `/` first-load JS `117 kB`.
-- Publish smoke: passed with `indexed_documents=17`, `active_chunks=6601`, and `cloud_api_required=False`.
+- Publish smoke: passed with `indexed_documents=18`, `active_chunks=9443`, and `cloud_api_required=False`.
 - Golden demo: Research, summary-style Research, Exam Lab, and Paper Lab returned grounded citations.
 - Golden demo unsupported Chat query: passed with `grounded=false` and `citations=0`.
 
-Release-hardening refresh on 2026-07-12:
+Release-hardening refresh on 2026-07-15:
 
-- `npm.cmd run desktop:pack`: passed.
 - `npm.cmd run desktop:package`: passed.
 - `npm.cmd run desktop:smoke`: passed.
-- `npm.cmd run eval:demo`: passed.
-- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\eval_real_world.ps1`: passed.
-- Real-world failure log currently has no active weak retrieval records on the 17-sample seed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\eval_answer_quality.ps1`: passed the release thresholds.
+- Portable artifact: `dist\desktop\NIRMIQ Academic Intelligence 0.1.0.exe`.
 
 Current known release debt:
 
-- README live UI screenshots/GIFs are still needed for public polish.
-- Retrieval labels need to grow beyond the current 17-sample real-world seed.
-- Full local purge now removes app-owned uploads, parse cache, and extracted diagrams; UI should show those counts more explicitly.
+- README screenshots exist; a current optional GIF and final manual desktop/mobile visual acceptance remain.
+- Retrieval labels need to grow beyond the current 40-case quality set and include more scans, diagrams, equations, and noisy notes.
+- Desktop package still uses Electron's default executable icon and is unsigned.
 - Linux browser-preview path exists, but native Linux packaging is not validated yet.

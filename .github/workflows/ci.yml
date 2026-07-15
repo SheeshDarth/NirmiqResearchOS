@@ -51,6 +51,9 @@ jobs:
         working-directory: apps/web
         run: npm.cmd ci
 
+      - name: Release doctor
+        run: npm.cmd run doctor
+
       - name: Build frontend
         working-directory: apps/web
         env:

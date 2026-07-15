@@ -1,12 +1,24 @@
 # NIRMIQ Ship Readiness Notes
 
-Last updated: 2026-06-14
+Last updated: 2026-07-15
 
 ## Current Ship Target
 
-NIRMIQ ResearchOS is ready to ship as a local-first portfolio/demo MVP.
+NIRMIQ Academic Intelligence is ready to ship as a local-first portfolio/demo MVP.
 
 It is not yet positioned as a hosted multi-user SaaS.
+
+## Current Verified Release Evidence
+
+The canonical dated result is [`release_manifest_v0.5.md`](release_manifest_v0.5.md).
+
+- Release doctor: `12` checks, `0` failures, `1` non-blocking Ollama warning.
+- Backend suite: `160 passed`, `1` third-party deprecation warning.
+- API compile and Next.js production build: passed.
+- First-load JavaScript: `117 kB`.
+- Publish and Electron desktop smoke: passed with `cloud_api_required=false`.
+- Strict 40-case metrics: MRR `0.868`, Recall@8 `0.921`, expected citation coverage `0.921`, faithfulness `0.985`, answerability correctness `1.000`.
+- Portable Windows package rebuilt successfully as `NIRMIQ Academic Intelligence 0.1.0.exe`.
 
 ## Finale AI Dashboard Takeaways
 
@@ -87,26 +99,15 @@ Recommended proof assets:
 ## Remaining Ship Debt
 
 - Keep README screenshots current after UI changes and capture an optional GIF.
-- Add real engineering/textbook labels beyond the current 30-question synthetic demo set.
-- Add optional uploaded-source-file purge after safe file ownership checks.
+- Grow the 40-case answer-quality set with scans, diagrams, equations, and noisy notes.
+- Add a redacted local diagnostics bundle instead of cloud error tracking.
 - Add chapter-wise summaries for long textbooks.
-- Add optional local log bundle export instead of cloud error tracking.
+- Replace Electron's default executable icon and obtain code signing only when a certificate is available.
+- Validate native Linux packaging on a real Linux host.
 - Add hosted-auth design only if public multi-user deployment becomes a goal.
 
-## 2026-07-12 Release Hardening Refresh
+## Historical Release Evidence
 
-Current release gate status:
+Earlier dated results remain available through Git history. The canonical current evidence is [`release_manifest_v0.5.md`](release_manifest_v0.5.md), which replaces stale test counts and package names in this page.
 
-- `npm.cmd run ship:check`: passed again after adding `desktop:smoke`.
-- Backend tests: `89 passed`, `1 warning`.
-- API compile: passed.
-- Web build: passed, `/` first-load JS `117 kB`.
-- Publish smoke: passed with `indexed_documents=17`, `active_chunks=6601`, and `cloud_api_required=False`.
-- Golden demo: passed, including all grounded locked prompts and unsupported-chat abstention.
-- `npm.cmd run desktop:pack`: passed.
-- `npm.cmd run desktop:package`: passed and refreshed `dist/desktop/NIRMIQ ResearchOS 0.1.0.exe`.
-- `npm.cmd run desktop:smoke`: passed; API/web readiness and `cloud_api_required=false` were verified through the Electron shell.
-- `npm.cmd run eval:demo`: passed with MRR `0.983` and Recall@8 `1.000` for both Hybrid and BM25.
-- `scripts\eval_real_world.ps1`: passed with BM25 MRR `0.843`, Hybrid MRR `0.804`, Recall@8 `1.000`, and no active weak retrieval records.
-
-The project remains positioned as a local-first portfolio/demo MVP. Remaining release-hardening priorities are live README screenshots/GIFs, a larger real-world eval set, signed/icon-branded desktop packaging, and manual visual QA inside the desktop window.
+The project remains positioned as a local-first portfolio/demo MVP. It is not represented as an arbitrary-document accuracy guarantee, signed commercial installer, or hosted multi-user service.

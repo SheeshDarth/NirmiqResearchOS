@@ -8,6 +8,7 @@
     "start:golden": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_local.ps1 -GoldenDemo",
     "start:linux": "bash scripts/start_local.sh",
     "stop:linux": "bash scripts/stop_local.sh",
+    "doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release_doctor.ps1",
     "desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_desktop.ps1",
     "desktop:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_desktop.ps1 -Install",
     "desktop:dev": "npm --prefix apps/desktop run dev",

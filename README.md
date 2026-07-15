@@ -1,22 +1,22 @@
-# NIRMIQ ResearchOS
+# NIRMIQ Academic Intelligence
 
 > Upload. Understand. Verify. Learn.
 
-[![NIRMIQ CI](https://github.com/SheeshDarth/NirmiqResearchOS/actions/workflows/ci.yml/badge.svg?branch=v3-foundation)](https://github.com/SheeshDarth/NirmiqResearchOS/actions/workflows/ci.yml)
+[![NIRMIQ CI](https://github.com/SheeshDarth/NirmiqResearchOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SheeshDarth/NirmiqResearchOS/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Local first](https://img.shields.io/badge/local--first-yes-64d8bd.svg)
 
-![NIRMIQ ResearchOS mark](apps/web/public/brand/nirmiq-ais-mark.svg)
+![NIRMIQ Academic Intelligence mark](apps/web/public/brand/nirmiq-ais-mark.svg)
 
 ![NIRMIQ local academic intelligence flow](docs/assets/nirmiq-demo-flow.svg)
 
-**NIRMIQ ResearchOS** is an offline-first academic document intelligence system built for students, researchers, and builders who need reliable answers from their own material.
+**NIRMIQ Academic Intelligence** is an offline-first academic document intelligence system built for students, researchers, and builders who need reliable answers from their own material.
 
 It is not just a PDF chatbot.
 
 It is a grounded academic knowledge assistant that helps users upload documents, ask questions, prepare for exams, draft research sections, retrieve source-backed answers, and understand complex content without hallucinated responses.
 
-Core product direction: **NIRMIQ ResearchOS is the academic intelligence workspace inside the broader NIRMIQ ecosystem.**
+Core product direction: **NIRMIQ Academic Intelligence is the standalone academic workspace inside the broader NIRMIQ ecosystem.**
 
 ## Why NIRMIQ Exists
 
@@ -32,7 +32,7 @@ Most generic AI tools fail in the exact places academic work needs trust:
 - They cannot reliably prove where an answer came from.
 - They are not optimized for exam preparation or paper writing.
 
-NIRMIQ ResearchOS was created to solve this problem.
+NIRMIQ Academic Intelligence was created to solve this problem.
 
 The goal is simple:
 
@@ -40,7 +40,7 @@ The goal is simple:
 
 ## Core Vision
 
-NIRMIQ ResearchOS is a lightweight, offline-first, adaptive academic intelligence system capable of:
+NIRMIQ Academic Intelligence is a lightweight, offline-first, adaptive academic intelligence system capable of:
 
 - Document understanding.
 - Grounded question answering.
@@ -105,7 +105,9 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 ## Active Engineering Tracks
 
 - [`docs/overnight_work_plan.md`](docs/overnight_work_plan.md): focused sprint plan for demo reliability, retrieval evaluation, citation selection, UI clarity, and release readiness.
-- Ascension OS foundation now lives outside this repository at `C:\Users\Siddharth\Documents\Ascension OS` so NIRMIQ ResearchOS remains focused on academic document intelligence.
+- [`docs/megasprint_five_plan.md`](docs/megasprint_five_plan.md): release confidence, desktop packaging, privacy recovery, and public proof.
+- [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md): current reproducible tests, retrieval metrics, offline proof, package result, and honest release boundary.
+- Ascension OS foundation now lives outside this repository at `C:\Users\Siddharth\Documents\Ascension OS` so NIRMIQ Academic Intelligence remains focused on academic document intelligence.
 
 ## Current V4 Foundation
 
@@ -165,6 +167,8 @@ Implemented in the current repository:
 - Use `/api/v1/*` routes while preserving the original local API route paths.
 - Enforce local request body limits, response compression, and scanner-clean SQLite migrations.
 - Run the full publish gate with `npm.cmd run ship:check` or `NIRMIQ Ship Check.cmd`, including tests, compile, web build, smoke, and golden-demo abstention checks.
+- Diagnose missing dependencies, stale ports, unsafe local overrides, and optional Ollama state with `npm.cmd run doctor` or `NIRMIQ Doctor.cmd` before startup.
+- Reproduce the current release evidence from [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md).
 
 ## Known Retrieval Status
 
