@@ -9,6 +9,11 @@ from app.adapters.retrieval.rrf_fuser import fuse_ranked_lists_with_scores
 from app.adapters.storage.chroma_repo import ChromaRepo
 from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.core.config import Settings
+from app.domain.answer_intelligence import (
+    answer_evidence_cue_score,
+    answer_subject_anchor_terms,
+    build_answer_plan,
+)
 from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.retrieval_policy import RetrievalPolicy
 
@@ -45,6 +50,8 @@ class RetrievalService:
         mode: str = "hybrid",
         document_id: str | None = None,
         profile: str = "balanced",
+        response_mode: str = "research",
+        answer_query: str | None = None,
     ) -> RetrievalBundle:
         normalized_mode = mode.strip().lower()
         if normalized_mode not in {"hybrid", "bm25", "vector"}:
@@ -54,6 +61,8 @@ class RetrievalService:
             normalized_profile = "balanced"
         target_document_id = document_id.strip() if document_id and document_id.strip() else None
         profile_config = self._profile_config(normalized_profile)
+        requested_query = answer_query.strip() if answer_query and answer_query.strip() else query
+        answer_plan = build_answer_plan(query=requested_query, response_mode=response_mode)
 
         active_chunks = self._sqlite_repo.list_active_chunks(document_id=target_document_id)
         all_active_chunks = list(active_chunks)
@@ -80,7 +89,7 @@ class RetrievalService:
             str(chunk.get("id")): str(chunk.get("section_id") or "")
             for chunk in all_active_chunks
         }
-        section_candidates = self._rank_sections(query=subject_query, sections=active_sections)
+        section_candidates = self._rank_sections(query=expanded_query, sections=active_sections)
         section_candidate_ids = {
             str(candidate["section_id"])
             for candidate in section_candidates
@@ -151,7 +160,8 @@ class RetrievalService:
 
         candidate_ids = [chunk_id for chunk_id, _ in fused[: profile_config["fused_k"]]]
         anchor_rescue_ids = self._anchor_rescue_candidate_ids(
-            query=subject_query,
+            query=expanded_query,
+            answer_query=requested_query,
             chunks=all_active_chunks if target_document_id else active_chunks,
             existing_ids=set(candidate_ids),
             limit=min(3, profile_config["fused_k"]),
@@ -160,6 +170,21 @@ class RetrievalService:
             rescued = set(anchor_rescue_ids)
             candidate_ids = [*anchor_rescue_ids, *[chunk_id for chunk_id in candidate_ids if chunk_id not in rescued]]
             candidate_ids = candidate_ids[: profile_config["fused_k"]]
+        neighbor_rescue_ids: list[str] = []
+        if target_document_id and answer_plan.answer_type == "concept_explanation":
+            neighbor_rescue_ids = self._page_neighbor_rescue_candidate_ids(
+                anchor_ids=anchor_rescue_ids or candidate_ids[:2],
+                chunks=all_active_chunks,
+                existing_ids=set(candidate_ids),
+                query=expanded_query,
+                answer_query=requested_query,
+                limit=4,
+            )
+            candidate_ids.extend(
+                chunk_id
+                for chunk_id in neighbor_rescue_ids
+                if chunk_id not in candidate_ids
+            )
         document_scope_fallback = False
         if target_document_id and not candidate_ids and active_chunks:
             candidate_ids = [str(chunk["id"]) for chunk in active_chunks[: profile_config["fused_k"]]]
@@ -188,8 +213,10 @@ class RetrievalService:
                 vector_score_map=vector_score_map,
                 section_candidate_ids=section_candidate_ids,
                 top_bm25_score=top_bm25_score,
-                query=subject_query,
+                query=expanded_query,
+                answer_query=requested_query,
                 anchor_rescue_ids=set(anchor_rescue_ids),
+                neighbor_rescue_ids=set(neighbor_rescue_ids),
             ),
             reverse=True,
         )
@@ -225,8 +252,12 @@ class RetrievalService:
             quality_score = self._normalize_quality(row.get("quality_score"))
             base_score = (0.5 * fused_score) + (0.3 * lexical_score) + (0.2 * semantic_score)
             quality_multiplier = 0.55 + (0.45 * quality_score)
-            noise_penalty = self._chunk_noise_penalty(row=row, query=subject_query)
-            directness_score = self._chunk_answer_relevance(row=row, query=subject_query)
+            noise_penalty = self._chunk_noise_penalty(row=row, query=requested_query)
+            directness_score = self._chunk_answer_relevance(
+                row=row,
+                query=expanded_query,
+                answer_query=requested_query,
+            )
             combined = max(0.0, (base_score * quality_multiplier) + (0.18 * directness_score) - noise_penalty)
             source = "hybrid"
             if chunk_id in bm25_score_map and chunk_id not in vector_score_map:
@@ -318,13 +349,16 @@ class RetrievalService:
                 "acronym_expansion_applied": bool(document_acronym_expansion_terms),
                 "anchor_rescue_applied": bool(anchor_rescue_ids),
                 "anchor_rescue_count": len(anchor_rescue_ids),
+                "neighbor_rescue_applied": bool(neighbor_rescue_ids),
+                "neighbor_rescue_count": len(neighbor_rescue_ids),
                 "retrieval_noise_policy": "enabled",
                 "average_chunk_quality": avg_quality,
                 "quality_weighting": "enabled",
                 "scope": "document" if target_document_id else "corpus",
                 "retrieval_profile": normalized_profile,
                 "retrieval_method": "nirmiq_evidence_first_hierarchical_hybrid_rag",
-                "retrieval_method_version": "megasprint1.v3",
+                "retrieval_method_version": "megasprint1.v5",
+                "answer_plan_type": answer_plan.answer_type,
                 "strategy": f"nirmiq_ehr_{normalized_mode}",
             },
         )
@@ -340,7 +374,9 @@ class RetrievalService:
         section_candidate_ids: set[str],
         top_bm25_score: float,
         query: str,
+        answer_query: str | None = None,
         anchor_rescue_ids: set[str] | None = None,
+        neighbor_rescue_ids: set[str] | None = None,
     ) -> float:
         row = chunks_by_id.get(chunk_id)
         if not row:
@@ -350,18 +386,36 @@ class RetrievalService:
         lexical_score = min(1.0, bm25_score_map.get(chunk_id, 0.0) / max(top_bm25_score, 1e-9))
         semantic_score = vector_score_map.get(chunk_id, 0.0)
         quality_score = RetrievalService._normalize_quality(row.get("quality_score"))
-        directness_score = RetrievalService._chunk_answer_relevance(row=row, query=query)
+        requested_query = answer_query or query
+        directness_score = RetrievalService._chunk_answer_relevance(
+            row=row,
+            query=query,
+            answer_query=requested_query,
+        )
         section_bonus = (
             0.12
             if row.get("section_id") and str(row.get("section_id")) in section_candidate_ids
             else 0.0
         )
-        noise_penalty = RetrievalService._chunk_noise_penalty(row=row, query=query)
+        noise_penalty = RetrievalService._chunk_noise_penalty(row=row, query=requested_query)
         anchor_bonus = (
-            RetrievalService._anchor_rescue_priority_bonus(row=row, query=query)
+            RetrievalService._anchor_rescue_priority_bonus(
+                row=row,
+                query=query,
+                answer_query=requested_query,
+            )
             if anchor_rescue_ids and chunk_id in anchor_rescue_ids
             else 0.0
         )
+        neighbor_bonus = 0.0
+        if neighbor_rescue_ids and chunk_id in neighbor_rescue_ids:
+            neighbor_bonus = 0.48
+            neighbor_text = str(row.get("text") or "").lower()
+            if any(
+                cue in neighbor_text
+                for cue in ("building block", "composed of", "consists of", "goal is to", "works by")
+            ):
+                neighbor_bonus += 0.4
         return (
             (0.30 * rerank_score)
             + (0.22 * lexical_score)
@@ -370,6 +424,7 @@ class RetrievalService:
             + (0.28 * directness_score)
             + section_bonus
             + anchor_bonus
+            + neighbor_bonus
             - noise_penalty
         )
 
@@ -553,6 +608,17 @@ class RetrievalService:
                 ),
             ),
             (
+                ("fact-check", "fact check", "verification", "verify outputs"),
+                (
+                    "cross-check",
+                    "trusted",
+                    "sources",
+                    "retrieval-based",
+                    "fallback",
+                    "uncertain",
+                ),
+            ),
+            (
                 ("summary", "summarize", "overview", "main idea", "what is this about"),
                 (
                     "introduction",
@@ -637,7 +703,10 @@ class RetrievalService:
                     for key in ("heading", "section_path", "key_terms_json")
                 )
             )
-        for chunk in chunks[:1200]:
+        # Older textbook indexes can place the first acronym definition well past
+        # chunk 1,200. The chunks are already loaded for retrieval, so this scan
+        # extends coverage without another database read or model dependency.
+        for chunk in chunks[:5000]:
             text = str(chunk.get("text") or "")
             metadata = " ".join(
                 str(chunk.get(key) or "")
@@ -760,7 +829,13 @@ class RetrievalService:
         return min(0.6, penalty)
 
     @staticmethod
-    def _chunk_answer_relevance(*, row: dict[str, object], query: str) -> float:
+    def _chunk_answer_relevance(
+        *,
+        row: dict[str, object],
+        query: str,
+        answer_query: str | None = None,
+    ) -> float:
+        requested_query = answer_query or query
         query_terms = RetrievalService._metadata_terms(query)
         if not query_terms:
             return 0.0
@@ -779,12 +854,25 @@ class RetrievalService:
         }
         coverage = len(matched_terms) / max(len(query_terms), 1)
         score = min(1.0, coverage)
+        answer_plan = build_answer_plan(query=requested_query, response_mode="research")
+        subject_terms = RetrievalService._metadata_terms(answer_plan.subject)
+        core_subject_terms = answer_subject_anchor_terms(requested_query, answer_plan)
+        matched_subject_terms = {
+            term
+            for term in subject_terms
+            if term in combined_terms
+            or any(len(term) >= 5 and candidate.startswith(term[:6]) for candidate in combined_terms)
+        }
+        subject_coverage = len(matched_subject_terms) / max(len(subject_terms), 1)
+        core_subject_hits = sum(1 for term in core_subject_terms if term in combined_terms)
+        core_subject_coverage = core_subject_hits / max(len(core_subject_terms), 1)
+        plan_cue_score = answer_evidence_cue_score(answer_plan.answer_type, combined)
 
-        phrases = RetrievalService._specific_query_phrases(query)
+        phrases = RetrievalService._specific_query_phrases(requested_query)
         if phrases and any(phrase in combined for phrase in phrases):
             score += 0.28
-        score += RetrievalService._subject_definition_score(query=query, text=combined)
-        if RetrievalService._is_definition_or_explanation_query(query) and any(
+        score += RetrievalService._subject_definition_score(query=requested_query, text=combined)
+        if RetrievalService._is_definition_or_explanation_query(requested_query) and any(
             cue in combined
             for cue in (
                 " is a ",
@@ -799,13 +887,33 @@ class RetrievalService:
             )
         ):
             score += 0.18
-        if RetrievalService._asks_for_visual_reference(query) and any(
+        if RetrievalService._asks_for_visual_reference(requested_query) and any(
             cue in combined for cue in ("figure", "fig.", "diagram", "image", "caption", "visual")
         ):
             score += 0.18
-        if RetrievalService._looks_like_index_chunk(text) or RetrievalService._looks_like_broad_example_section(metadata, query=query):
+        if plan_cue_score > 0 and core_subject_hits > 0 and (
+            subject_coverage >= 0.5
+            or core_subject_coverage >= 0.7
+            or any(phrase in combined for phrase in phrases)
+        ):
+            score += 0.24 * plan_cue_score
+        if (
+            answer_plan.answer_type in {
+                "mechanism_explanation",
+                "procedure",
+                "recommendation",
+                "limitations",
+            }
+            and core_subject_terms
+            and core_subject_hits <= 0
+        ):
+            score = min(score, 0.48)
+        if RetrievalService._looks_like_index_chunk(text) or RetrievalService._looks_like_broad_example_section(
+            metadata,
+            query=requested_query,
+        ):
             score -= 0.24
-        if RetrievalService._looks_like_loose_application_mention(combined, query=query):
+        if RetrievalService._looks_like_loose_application_mention(combined, query=requested_query):
             score -= 0.34
         return max(0.0, min(1.0, score))
 
@@ -813,6 +921,7 @@ class RetrievalService:
     def _anchor_rescue_candidate_ids(
         *,
         query: str,
+        answer_query: str | None = None,
         chunks: list[dict[str, object]],
         existing_ids: set[str],
         limit: int,
@@ -826,9 +935,13 @@ class RetrievalService:
         if not chunks or limit <= 0:
             return []
 
-        normalized_query = query.lower()
+        requested_query = answer_query or query
+        normalized_query = requested_query.lower()
+        answer_plan = build_answer_plan(query=requested_query, response_mode="research")
         query_terms = RetrievalService._metadata_terms(query)
-        query_phrases = RetrievalService._specific_query_phrases(query)
+        subject_terms = RetrievalService._metadata_terms(answer_plan.subject)
+        core_subject_terms = answer_subject_anchor_terms(requested_query, answer_plan)
+        query_phrases = RetrievalService._specific_query_phrases(requested_query)
         scored: list[tuple[float, int, str]] = []
         for row in chunks:
             chunk_id = str(row.get("id") or "")
@@ -838,12 +951,33 @@ class RetrievalService:
             if not text.strip():
                 continue
             text_lower = text.lower()
-            directness = RetrievalService._chunk_answer_relevance(row=row, query=query)
+            if (
+                RetrievalService._looks_like_index_chunk(text_lower)
+                and not RetrievalService._asks_for_date_fact(requested_query)
+            ):
+                continue
+            directness = RetrievalService._chunk_answer_relevance(
+                row=row,
+                query=query,
+                answer_query=requested_query,
+            )
             phrase_hits = sum(1 for phrase in query_phrases if phrase in text_lower)
             term_hits = sum(1 for term in query_terms if term in text_lower)
+            subject_hits = sum(1 for term in subject_terms if term in text_lower)
+            subject_coverage = subject_hits / max(len(subject_terms), 1)
+            core_subject_hits = sum(1 for term in core_subject_terms if term in text_lower)
+            core_subject_coverage = core_subject_hits / max(len(core_subject_terms), 1)
+            plan_cue_score = answer_evidence_cue_score(answer_plan.answer_type, text_lower)
             cue_bonus = 0.0
-            definition_anchor_score = RetrievalService._subject_definition_score(query=query, text=text_lower)
-            if RetrievalService._is_definition_or_explanation_query(query):
+            definition_anchor_score = RetrievalService._subject_definition_score(
+                query=requested_query,
+                text=text_lower,
+            )
+            acronym_definition_anchor = RetrievalService._contains_acronym_definition(
+                query=requested_query,
+                text=text,
+            )
+            if RetrievalService._is_definition_or_explanation_query(requested_query):
                 if definition_anchor_score > 0:
                     cue_bonus += 0.9
                 elif any(
@@ -858,7 +992,9 @@ class RetrievalService:
                     )
                 ):
                     cue_bonus += 0.25
-            if any(term in normalized_query for term in ("edition", "release", "date")) and (
+                if acronym_definition_anchor:
+                    cue_bonus += 0.85
+            if RetrievalService._asks_for_date_fact(requested_query) and (
                 re.search(r"\b20\d{2}[-/]\d{2}[-/]\d{2}\b", text_lower)
                 or "edition" in text_lower
                 or "release" in text_lower
@@ -877,19 +1013,32 @@ class RetrievalService:
                 + (0.28 * phrase_hits)
                 + (0.05 * term_hits)
                 + cue_bonus
-                - RetrievalService._chunk_noise_penalty(row=row, query=query)
+                + (
+                    0.75 * plan_cue_score
+                    if core_subject_hits > 0
+                    and (subject_coverage >= 0.5 or core_subject_coverage >= 0.7 or phrase_hits > 0)
+                    else 0.0
+                )
+                - RetrievalService._chunk_noise_penalty(row=row, query=requested_query)
             )
             if chunk_id in existing_ids:
                 score += 0.05
 
             strong_definition_anchor = (
-                directness >= 0.9
+                answer_plan.answer_type == "concept_explanation"
+                and directness >= 0.9
                 and phrase_hits > 0
-                and RetrievalService._is_definition_or_explanation_query(query)
+                and RetrievalService._is_definition_or_explanation_query(requested_query)
                 and definition_anchor_score > 0
             )
+            strong_acronym_anchor = (
+                answer_plan.answer_type == "concept_explanation"
+                and acronym_definition_anchor
+                and directness >= 0.55
+                and not RetrievalService._looks_like_index_chunk(text_lower)
+            )
             strong_date_anchor = (
-                any(term in normalized_query for term in ("edition", "release", "date"))
+                RetrievalService._asks_for_date_fact(requested_query)
                 and cue_bonus >= 0.9
                 and directness >= 0.45
             )
@@ -903,11 +1052,26 @@ class RetrievalService:
                 and cue_bonus >= 1.0
                 and directness >= 0.5
             )
+            strong_plan_anchor = (
+                answer_plan.answer_type in {
+                    "mechanism_explanation",
+                    "procedure",
+                    "recommendation",
+                    "comparison",
+                    "limitations",
+                }
+                and plan_cue_score >= 0.38
+                and directness >= 0.55
+                and core_subject_hits > 0
+                and (subject_coverage >= 0.5 or core_subject_coverage >= 0.7 or phrase_hits > 0)
+            )
             if score >= 1.1 and (
                 strong_definition_anchor
+                or strong_acronym_anchor
                 or strong_date_anchor
                 or strong_privacy_anchor
                 or strong_dimensionality_anchor
+                or strong_plan_anchor
             ):
                 try:
                     page_start = int(row.get("page_start") or 1_000_000)
@@ -928,20 +1092,133 @@ class RetrievalService:
         return rescued
 
     @staticmethod
-    def _anchor_rescue_priority_bonus(*, row: dict[str, object], query: str) -> float:
+    def _page_neighbor_rescue_candidate_ids(
+        *,
+        anchor_ids: list[str],
+        chunks: list[dict[str, object]],
+        existing_ids: set[str],
+        query: str,
+        answer_query: str,
+        limit: int,
+        page_radius: int = 14,
+    ) -> list[str]:
+        """Recover nearby subsections when legacy PDFs lack reliable heading metadata."""
+
+        if not anchor_ids or limit <= 0:
+            return []
+        rows_by_id = {str(row.get("id") or ""): row for row in chunks}
+        anchor_pages = [
+            int(rows_by_id[chunk_id]["page_start"])
+            for chunk_id in anchor_ids[:3]
+            if chunk_id in rows_by_id and rows_by_id[chunk_id].get("page_start") is not None
+        ]
+        if not anchor_pages:
+            return []
+        primary_anchor_page = anchor_pages[0]
+        anchor_pages = [
+            page
+            for page in anchor_pages
+            if abs(page - primary_anchor_page) <= (2 * page_radius)
+        ]
+
+        query_terms = RetrievalService._metadata_terms(query)
+        query_acronyms = RetrievalService._query_acronyms(answer_query)
+        scored: list[tuple[float, str]] = []
+        for row in chunks:
+            chunk_id = str(row.get("id") or "")
+            page_value = row.get("page_start")
+            if not chunk_id or chunk_id in existing_ids or page_value is None:
+                continue
+            page = int(page_value)
+            distance = min(abs(page - anchor_page) for anchor_page in anchor_pages)
+            if distance <= 0 or distance > page_radius:
+                continue
+            text = str(row.get("text") or "")
+            lowered = text.lower()
+            if (
+                RetrievalService._looks_like_index_chunk(lowered)
+                or RetrievalService._looks_like_answer_key_chunk(row)
+                or len(re.sub(r"\s+", " ", text).split()) < 18
+            ):
+                continue
+            directness = RetrievalService._chunk_answer_relevance(
+                row=row,
+                query=query,
+                answer_query=answer_query,
+            )
+            text_terms = RetrievalService._metadata_terms(text)
+            term_hits = len(query_terms & text_terms)
+            acronym_match = any(
+                re.search(rf"\b{re.escape(acronym)}s?\b", text, flags=re.I)
+                for acronym in query_acronyms
+            )
+            local_relevance = directness + min(0.35, 0.1 * term_hits) + (0.35 if acronym_match else 0.0)
+            concept_cue_bonus = 0.7 if any(
+                cue in lowered
+                for cue in (
+                    "building block",
+                    "composed of",
+                    "consists of",
+                    "goal is to",
+                    "works by",
+                    "used to",
+                )
+            ) else 0.0
+            if local_relevance < 0.2:
+                continue
+            quality = RetrievalService._normalize_quality(row.get("quality_score"))
+            proximity = 1.0 - (distance / (page_radius + 1))
+            scored.append(
+                (
+                    local_relevance
+                    + concept_cue_bonus
+                    + (0.25 * proximity)
+                    + (0.08 * quality),
+                    chunk_id,
+                )
+            )
+        return [chunk_id for _, chunk_id in sorted(scored, reverse=True)[:limit]]
+
+    @staticmethod
+    def _anchor_rescue_priority_bonus(
+        *,
+        row: dict[str, object],
+        query: str,
+        answer_query: str | None = None,
+    ) -> float:
+        requested_query = answer_query or query
         text = str(row.get("text") or "").lower()
-        directness = RetrievalService._chunk_answer_relevance(row=row, query=query)
-        phrases = RetrievalService._specific_query_phrases(query)
+        directness = RetrievalService._chunk_answer_relevance(
+            row=row,
+            query=query,
+            answer_query=requested_query,
+        )
+        phrases = RetrievalService._specific_query_phrases(requested_query)
         phrase_hit = any(phrase in text for phrase in phrases)
-        lowered_query = query.lower()
+        lowered_query = requested_query.lower()
+        answer_plan = build_answer_plan(query=requested_query, response_mode="research")
+        subject_terms = RetrievalService._metadata_terms(answer_plan.subject)
+        core_subject_terms = answer_subject_anchor_terms(requested_query, answer_plan)
+        subject_hits = sum(1 for term in subject_terms if term in text)
+        subject_coverage = subject_hits / max(len(subject_terms), 1)
+        core_subject_hits = sum(1 for term in core_subject_terms if term in text)
+        core_subject_coverage = core_subject_hits / max(len(core_subject_terms), 1)
+        plan_cue_score = answer_evidence_cue_score(answer_plan.answer_type, text)
         if (
-            RetrievalService._is_definition_or_explanation_query(query)
+            answer_plan.answer_type == "concept_explanation"
             and directness >= 0.9
             and phrase_hit
-            and RetrievalService._subject_definition_score(query=query, text=text) > 0
+            and RetrievalService._subject_definition_score(query=requested_query, text=text) > 0
         ):
             return 0.28
-        if any(term in lowered_query for term in ("edition", "release", "date")) and directness >= 0.45:
+        if (
+            answer_plan.answer_type == "concept_explanation"
+            and directness >= 0.55
+            and RetrievalService._contains_acronym_definition(query=requested_query, text=text)
+            and not RetrievalService._looks_like_index_chunk(text)
+        ):
+            return 0.28
+        if RetrievalService._asks_for_date_fact(requested_query) and directness >= 0.45:
             if re.search(r"\b20\d{2}[-/]\d{2}[-/]\d{2}\b", text) and (
                 "edition" in text or "release" in text
             ):
@@ -950,6 +1227,20 @@ class RetrievalService:
             if any(cue in text for cue in ("avoid storing", "mask personal", "limit data", "retention", "retenon")):
                 return 0.22
         if "dimensionality" in lowered_query and "curse of dimensionality" in text:
+            return 0.24
+        if (
+            answer_plan.answer_type in {
+                "mechanism_explanation",
+                "procedure",
+                "recommendation",
+                "comparison",
+                "limitations",
+            }
+            and plan_cue_score >= 0.38
+            and directness >= 0.55
+            and core_subject_hits > 0
+            and (subject_coverage >= 0.5 or core_subject_coverage >= 0.7 or phrase_hit)
+        ):
             return 0.24
         return 0.0
 
@@ -994,6 +1285,29 @@ class RetrievalService:
     def _asks_for_visual_reference(query: str) -> bool:
         lowered = query.lower()
         return any(marker in lowered for marker in ("image", "diagram", "figure", "visual", "photo"))
+
+    @staticmethod
+    def _asks_for_date_fact(query: str) -> bool:
+        return bool(
+            re.search(
+                r"\b(when|year|date|edition|release|released|publication|published)\b",
+                query.lower(),
+            )
+        )
+
+    @staticmethod
+    def _contains_acronym_definition(*, query: str, text: str) -> bool:
+        for acronym in RetrievalService._query_acronyms(query):
+            escaped = re.escape(acronym)
+            if re.search(
+                rf"\b[A-Za-z][A-Za-z0-9+/-]*(?:\s+[A-Za-z][A-Za-z0-9+/-]*){{1,7}}\s+\({escaped}s?\)",
+                text,
+                flags=re.I,
+            ):
+                return True
+            if re.search(rf"\b{escaped}s?\s+(?:is|are|means|refers|stands\s+for)\b", text, flags=re.I):
+                return True
+        return False
 
     @staticmethod
     def _looks_like_broad_example_section(metadata: str, *, query: str) -> bool:
@@ -1042,6 +1356,8 @@ class RetrievalService:
                 rf"\b(a|an|the)\s+{escaped}\s*(\([^)]+\))?\s+is\s+(a|an|the)\b",
                 rf"\b{escaped}\s+means\b",
                 rf"\b{escaped}\s+refers\s+to\b",
+                rf"\bcalled\s+{escaped}\b",
+                rf"\bknown\s+as\s+{escaped}\b",
             )
             if any(re.search(pattern, window) for pattern in definition_patterns):
                 score = max(score, 0.32)
@@ -1105,8 +1421,14 @@ class RetrievalService:
             and comma_count >= 1
             and sample.count("-") >= 1
         )
+        dense_cross_reference = (
+            sentence_count <= 2
+            and comma_count >= 16
+            and sample.count("-") >= 8
+        )
         return (
             compact_cross_reference
+            or dense_cross_reference
             or (
                 comma_count >= 14
                 and short_fragment_count >= 14

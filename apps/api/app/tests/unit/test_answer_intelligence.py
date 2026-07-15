@@ -1,4 +1,8 @@
-from app.domain.answer_intelligence import build_answer_plan
+from app.domain.answer_intelligence import (
+    answer_evidence_cue_score,
+    answer_subject_anchor_terms,
+    build_answer_plan,
+)
 from app.domain.query_intent import QueryIntent
 from app.services.query_service import QueryService
 from app.services.synthesis_service import SynthesisService
@@ -18,6 +22,11 @@ def test_concept_query_builds_query_specific_plan() -> None:
     assert "Source diagram references" in plan.sections
 
 
+def test_concept_evidence_cues_reward_definitions_and_components() -> None:
+    assert answer_evidence_cue_score("concept_explanation", "This is called transfer learning.") > 0
+    assert answer_evidence_cue_score("concept_explanation", "Pooling is a building block of CNNs.") > 0
+
+
 def test_mechanism_query_does_not_force_unrequested_sections() -> None:
     plan = build_answer_plan("How does gradient descent update a model?", "research")
 
@@ -35,6 +44,62 @@ def test_comparison_and_procedure_queries_get_different_contracts() -> None:
     assert comparison.sections[0] == "Direct comparison"
     assert procedure.answer_type == "procedure"
     assert procedure.sections[:2] == ("Goal", "Steps")
+
+
+def test_date_question_gets_factual_lookup_contract() -> None:
+    plan = build_answer_plan("When was the third edition released?", "research")
+
+    assert plan.answer_type == "factual_lookup"
+    assert plan.sections == ("Direct answer", "Supporting detail")
+
+
+def test_subject_anchor_extracts_named_model_from_generic_mechanism_predicate() -> None:
+    query = "How does softmax regression perform multiclass classification?"
+    plan = build_answer_plan(query, "research")
+
+    assert answer_subject_anchor_terms(query, plan) == {"softmax", "regression"}
+
+
+def test_subject_anchor_extracts_owner_of_requested_benefit_and_limitation() -> None:
+    query = "What benefit and runtime limitation does batch normalization have?"
+    plan = build_answer_plan(query, "research")
+
+    assert answer_subject_anchor_terms(query, plan) == {"batch", "normalization"}
+
+
+def test_subject_anchor_keeps_requested_mechanism_instead_of_document_actor() -> None:
+    query = "How does the book place cross-validation in the ML workflow?"
+    plan = build_answer_plan(query, "research")
+
+    assert answer_subject_anchor_terms(query, plan) == {"cross-validation"}
+
+
+def test_subject_anchor_preserves_hyphenated_focus_terms() -> None:
+    query = "How does the Transformer learning-rate schedule use warmup?"
+    plan = build_answer_plan(query, "research")
+
+    assert answer_subject_anchor_terms(query, plan) == {
+        "learning-rate",
+        "schedule",
+        "transformer",
+    }
+
+
+def test_recommendation_query_builds_clean_evidence_contract() -> None:
+    query = "What does the paper recommend for fact-checking and verification?"
+    plan = build_answer_plan(query, "research")
+
+    assert plan.answer_type == "recommendation"
+    assert answer_subject_anchor_terms(query, plan) == {"fact-checking", "verification"}
+
+
+def test_interpretation_query_uses_value_reading_contract() -> None:
+    query = "How should the silhouette coefficient be interpreted?"
+    plan = build_answer_plan(query, "research")
+
+    assert plan.answer_type == "interpretation"
+    assert plan.sections[:2] == ("Direct answer", "How to read the value")
+    assert answer_subject_anchor_terms(query, plan) == {"coefficient", "silhouette"}
 
 
 def test_prompt_contains_answer_plan_and_anti_fragment_guidance() -> None:

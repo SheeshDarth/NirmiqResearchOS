@@ -121,7 +121,7 @@ The normal UI should not show:
 MegaSprint One is split into two reliability blocks:
 
 - Block A, evidence retrieval: complete on the current seed.
-- Block B, grounded answer intelligence: reopened and prioritized; first implementation slice complete.
+- Block B, grounded answer intelligence: complete on the 40-case reliability gate.
 
 Implemented:
 
@@ -149,12 +149,14 @@ MegaSprint One final tightening notes:
 - Rebalanced candidate priority from `megasprint1.v1` to `megasprint1.v2` so direct answer relevance is stronger than a loose reranker hit.
 - Rejected broader production OCR normalization because it lowered real-world MRR in trial runs.
 
-Still active:
+Ongoing measured debt:
 
 - More real-world eval labels from textbooks, notes, papers, and exam material.
 - Better section detection for scanned PDFs and noisy OCR.
 - Automated answer relevance, completeness, readability, faithfulness, and abstention scoring.
 - Measuring answer relevance, citation faithfulness, abstention correctness, latency, and memory use across query categories.
+
+Latest 40-case strict offline BM25 result (2026-07-15): MRR `0.868`, Recall@8 `0.921`, expected citation coverage `0.921`, answer-quality pass `0.825`, faithfulness `0.985`, and answerability correctness `1.000`. The benchmark scores answer-used citations, not merely retrieved candidates.
 
 Block B details and closure criteria are tracked in [`megasprint_one_answer_intelligence_plan.md`](megasprint_one_answer_intelligence_plan.md).
 

@@ -292,3 +292,18 @@ New technical requirements now satisfied:
 - Existing export endpoints and UI controls should remain simple.
 
 Validated with web build, memory export integration test, and API compile.
+
+## 2026-07-15 Query-Agnostic Reliability Requirements Update
+
+Requirements now satisfied:
+
+- Full-query evaluation must use at least 40 category-diverse cases and score answer-used source chunks.
+- Retrieval must preserve MRR >= `0.700`, Recall@8 >= `0.850`, and expected citation coverage >= `0.900` in strict BM25-only mode.
+- Context selection must reserve bounded capacity across retrieved candidates instead of stopping after the first long chunks.
+- Definition rescue must support subject-after-predicate language such as `called <subject>` without embedding topic-specific answers.
+- Legacy PDFs without section metadata may use bounded page-neighbor rescue for adjacent concept subsections.
+- Extractive fallback must reject incomplete fragments and unrelated supporting details.
+- Unsupported and unanswerable prompts must abstain without cloud access.
+- Normal users must continue seeing answers, compact trust states, and readable citations rather than raw ranking metadata.
+
+Validation: `160` backend tests passed, Python compilation passed, Next.js production build passed, and the 40-case strict offline benchmark exceeded all retrieval/citation closure targets.

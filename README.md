@@ -177,8 +177,9 @@ The golden demo is strong, and the harder real-world seed now shows measurable i
 | MegaSprint One final Hybrid | 0.804 | 1.000 | 1.000 |
 | Full-query BM25 answer path | 0.882 | 1.000 | 1.000 |
 | Full-query Hybrid answer path | 0.882 | 1.000 | 1.000 |
+| 40-case answer-quality BM25 path | 0.868 | 0.921 | 0.921 |
 
-This means both raw retrieval and the answer-used citation path reach the current Recall@8 and citation-coverage targets on the 17-sample seed. The set is still small, so this is a serious progress signal, not a production-grade accuracy claim. BM25 remains the safest offline backbone, while hybrid is improving as a secondary signal instead of acting as the sole source of truth.
+The larger 40-case set covers definitions, explanations, mechanisms, comparisons, procedures, summaries, factual lookups, limitations, architecture questions, and unanswerable prompts. It passes the current reliability gates with answer-quality pass rate `0.825`, faithfulness `0.985`, readability `0.939`, and answerability correctness `1.000`. This is a serious progress signal, not a production-grade arbitrary-document claim. BM25 remains the safest offline backbone, while hybrid remains optional support rather than the sole source of truth.
 
 The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
 
@@ -200,19 +201,18 @@ Latest MegaSprint One reliability update:
 - Faithfulness handling now removes unsupported claims selectively and uses extractive fallback only when the repaired answer is not coherent.
 - Normal UI hides raw metadata and presents only the trust state plus optional source passages.
 
-## Current Priority: Grounded Answer Intelligence
+## Completed Priority: Grounded Answer Intelligence
 
-The first retrieval reliability block proved that the right passages can rank well on the current seed. The active priority is now the second half of the same problem: turn those passages into a coherent answer tailored to the user's exact question.
+MegaSprint One Block B now closes on a 40-case full-query benchmark. Query-aware context packing, intent-shaped evidence ranking, definition rescue, citation-used evaluation, and fail-closed abstention convert retrieved passages into a more coherent answer tailored to the user's question.
 
 This work belongs to **MegaSprint One, Block B**, not the UI sprint. It is documented in [`docs/megasprint_one_answer_intelligence_plan.md`](docs/megasprint_one_answer_intelligence_plan.md).
 
-What is being improved next:
+Remaining measured debt:
 
-- Grow real-world eval labels from `17` to at least `40`.
 - Convert saved `Needs work` feedback into local eval candidates.
-- Expand the query-agnostic category eval set with real textbook, notes, paper, and exam cases.
-- Continue improving textbook-aware retrieval metadata: chapter, section, heading, page range, captions, definitions, and key terms.
-- Improve section/page-first retrieval before chunk ranking.
+- Grow beyond `40` cases with scanned PDFs, noisier notes, equations, and diagram-grounded questions.
+- Improve the seven currently failing answer-quality cases without weakening faithfulness or abstention.
+- Reduce the roughly four-minute strict offline benchmark runtime by reusing immutable corpus setup.
 - Keep BM25-only fallback fully usable for offline and low-end devices.
 - Track chunk-selection reasons, section candidates, citation coverage, unsupported claims, latency, and memory behavior.
 - Measure answer relevance, completeness, claim faithfulness, readability, and abstention correctness separately from retrieval rank.

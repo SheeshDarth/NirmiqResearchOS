@@ -1,11 +1,50 @@
 # NIRMIQ ResearchOS Context
 
-Last updated: 2026-07-13
+Last updated: 2026-07-15
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
+
+## Latest Session Update - 2026-07-15 MegaSprint One Block B Closed
+
+Objective:
+
+- Finish query-agnostic RAG reliability before starting MegaSprint Five.
+- Repair the observed CNN/transfer-learning class of failure without hard-coded answers or heavier infrastructure.
+
+Implemented:
+
+- Expanded deterministic answer planning for recommendation and interpretation queries and strengthened subject extraction for document-actor and hyphenated prompts.
+- Added query-aware local evidence-window ranking for mechanisms, procedures, recommendations, interpretations, definitions, and explanations.
+- Added bounded, query-aware context packing so early long textbook chunks cannot consume the entire synthesis budget.
+- Added page-neighbor rescue for legacy selected-document PDFs whose missing heading metadata separates related concept subsections.
+- Added generic definition rescue for source language such as `called <subject>` and concept cues for component/goal sentences.
+- Rejected truncated extractive fragments and unrelated working details before formatting a source-only answer.
+- Added a 40-case answer-quality dataset and evaluator covering relevance, concept coverage, focus, answer-plan compliance, readability, faithfulness, answerability, retrieval rank, and answer-used citations.
+
+Measured result:
+
+- Strict offline BM25 full-query evaluation, 40 cases: MRR `0.868`, Recall@3/5/8 `0.921`, expected citation coverage `0.921`.
+- Answer quality: pass rate `0.825`, overall `0.906`, relevance `0.764`, concept coverage `0.774`, readability `0.939`, faithfulness `0.985`, answerability correctness `1.000`.
+- This exceeds the closure gates: MRR >= `0.700`, Recall@8 >= `0.850`, expected citation coverage >= `0.900`.
+- Targeted CNN and transfer-learning subset: citation coverage, readability, faithfulness, and answer-quality pass rate all `1.000`.
+
+Verification:
+
+- Focused reliability tests: `77 passed`.
+- Backend unit/integration suite: `160 passed`, `1 warning`.
+- `python -m compileall apps/api/app`: passed.
+- `npm run build` in `apps/web`: passed; first-load JavaScript `117 kB`.
+
+Tradeoffs and remaining work:
+
+- No cloud dependency, graph database, agent loop, larger model, or heavy reranker was introduced.
+- Seven quality cases and three answer-used expected-phrase misses remain in the committed failure log.
+- Strict evaluation takes roughly four minutes against the 1,800+ chunk legacy textbook index.
+- `deep-research-report.md` remains intentionally untracked and untouched.
+- MegaSprint Five is next: release/security/packaging evidence, final visual QA, privacy controls, screenshots, and one-click setup hardening without expanding normal UI complexity.
 
 ## Latest Session Update - 2026-07-13 Grounded Answer Intelligence
 

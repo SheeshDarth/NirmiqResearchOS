@@ -180,6 +180,36 @@ Interpretation:
 - Removing the legacy factual seed reorder improved full-query MRR from `0.882` to `0.902` while keeping coverage complete.
 - The evidence reliability gate remains unchanged; the improvement comes from better evidence interpretation, not a weaker abstention threshold.
 
+## 40-Case Answer-Quality Closure Benchmark
+
+Date: 2026-07-15
+
+Dataset:
+
+```text
+data/processed/eval/real_world_answer_quality.jsonl
+```
+
+Command:
+
+```powershell
+.\scripts\eval_answer_quality.ps1 -Modes bm25
+```
+
+This is the hardest committed evaluation path. It runs the complete query pipeline with Ollama generation, Ollama embeddings, and reranking disabled, then scores the full chunks actually cited by the answer.
+
+| Mode | Samples | MRR | Recall@3 | Recall@8 | Citation expected coverage | Answer-quality pass | Faithfulness | Readability | Answerability correctness |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| BM25 | 40 | 0.868 | 0.921 | 0.921 | 0.921 | 0.825 | 0.985 | 0.939 | 1.000 |
+
+Interpretation:
+
+- MRR, Recall@8, and expected citation coverage now exceed the MegaSprint One gates of `0.700`, `0.850`, and `0.900`.
+- The evaluator gives retrieval credit only for answer-used citation chunks, so high raw recall cannot hide poor synthesis selection.
+- CNN and transfer-learning failures were repaired through query-aware context packing and generic definition/component cues, not hard-coded answer text.
+- Seven answer-quality failures and three citation-phrase misses remain tracked in `real_world_answer_quality_failures.jsonl`; closure means the agreed gate passed, not that arbitrary queries are solved.
+- The strict run took about four minutes on the legacy textbook index and should be optimized by caching corpus setup, without weakening evaluation semantics.
+
 ## Metrics Definitions
 
 - Recall@K: whether expected evidence appears within the top K retrieved chunks.

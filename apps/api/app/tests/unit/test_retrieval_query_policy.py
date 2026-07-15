@@ -87,6 +87,28 @@ def test_acronym_expansion_keeps_only_the_exact_long_form() -> None:
     assert "architectures" not in terms
 
 
+def test_acronym_expansion_scans_late_textbook_chunks() -> None:
+    chunks = [
+        {"text": "General machine learning material.", "heading": "Overview", "section_path": "Part I"}
+        for _ in range(1250)
+    ]
+    chunks.append(
+        {
+            "text": "Convolutional neural networks (CNNs) process grid-like visual data.",
+            "heading": "Convolutional Neural Networks",
+            "section_path": "Chapter 14",
+        }
+    )
+
+    terms = RetrievalService._document_acronym_expansions(
+        query="Explain CNN",
+        chunks=chunks,
+        sections=[],
+    )
+
+    assert terms == ["convolutional", "neural", "networks"]
+
+
 def test_document_acronym_expansion_drives_section_ranking() -> None:
     sections = [
         {
@@ -207,6 +229,66 @@ def test_anchor_rescue_promotes_direct_definition_from_legacy_chunks() -> None:
     assert rescued[0] == "direct"
 
 
+def test_anchor_rescue_recognizes_definition_named_after_explanation() -> None:
+    chunks = [
+        {
+            "id": "index",
+            "page_start": 900,
+            "text": "Transfer learning, pretrained models, training APIs, model reuse.",
+            "quality_score": 0.8,
+        },
+        {
+            "id": "definition",
+            "page_start": 38,
+            "text": (
+                "Transferring knowledge from one task to another is called transfer learning. "
+                "It is especially useful with deep neural networks."
+            ),
+            "quality_score": 1.0,
+        },
+    ]
+
+    rescued = RetrievalService._anchor_rescue_candidate_ids(
+        query="What is transfer learning?",
+        chunks=chunks,
+        existing_ids={"index"},
+        limit=2,
+    )
+
+    assert rescued[0] == "definition"
+
+
+def test_anchor_rescue_promotes_subject_matched_mechanism_evidence() -> None:
+    chunks = [
+        {
+            "id": "related",
+            "text": "Gradient descent is a common optimization algorithm.",
+            "heading": "Optimization",
+            "section_path": "Overview",
+            "chunk_type": "body",
+        },
+        {
+            "id": "mechanism",
+            "text": (
+                "Gradient descent computes the gradient of the cost function for the model parameters, "
+                "then updates the parameters in the opposite direction to reduce the cost."
+            ),
+            "heading": "Gradient Descent",
+            "section_path": "Optimization / Gradient Descent",
+            "chunk_type": "body",
+        },
+    ]
+
+    rescued = RetrievalService._anchor_rescue_candidate_ids(
+        query="How does gradient descent update model parameters?",
+        chunks=chunks,
+        existing_ids={"related"},
+        limit=2,
+    )
+
+    assert rescued[0] == "mechanism"
+
+
 def test_exercise_question_chunks_are_noisy_for_explanations() -> None:
     row = {
         "text": (
@@ -225,6 +307,21 @@ def test_compact_cross_reference_is_treated_as_index_noise() -> None:
     text = (
         "Convolutional Neural Networks-Semantic Segmentation architectures, "
         "CNN Architectures-Choosing the Right CNN Architecture"
+    )
+
+    assert RetrievalService._looks_like_index_chunk(text.lower()) is True
+
+
+def test_dense_backmatter_cross_references_are_treated_as_index_noise() -> None:
+    text = (
+        "softmax regression, Softmax Regression-Softmax Regression, SVM classes, "
+        "SVM Classes-Computational Complexity, multiclass classification, "
+        "Multiclass Classification-Multiclass Classification, convolution kernels, "
+        "Filters-CNN Architectures, pooling layers, Pooling Layers-Implementing Pooling Layers, "
+        "object detection, Object Detection-You Only Look Once, object tracking, "
+        "Object Tracking-Object Tracking, pretrained models, Models-Using Pretrained Models, "
+        "semantic segmentation, Segmentation-Semantic Segmentation, model splitting, "
+        "Devices-Splitting Across Devices."
     )
 
     assert RetrievalService._looks_like_index_chunk(text.lower()) is True
@@ -299,3 +396,48 @@ def test_section_ranking_boosts_exact_query_phrase_without_topic_specific_rule()
     ranked = RetrievalService._rank_sections("Explain image recognition software", sections)
 
     assert ranked[0]["section_id"] == "direct"
+
+
+def test_concept_neighbor_rescue_recovers_adjacent_subsection() -> None:
+    chunks = [
+        {
+            "id": "anchor",
+            "page_start": 100,
+            "text": "Convolutional neural networks use local receptive fields.",
+            "quality_score": 1.0,
+        },
+        {
+            "id": "pooling",
+            "page_start": 112,
+            "text": (
+                "The second common building block of CNNs is the pooling layer. "
+                "Its goal is to subsample feature maps and reduce computation."
+            ),
+            "quality_score": 1.0,
+        },
+        {
+            "id": "unrelated",
+            "page_start": 105,
+            "text": "An optimizer schedule changes the learning rate during training.",
+            "quality_score": 1.0,
+        },
+        {
+            "id": "far-away",
+            "page_start": 140,
+            "text": "CNN pooling layers reduce feature maps.",
+            "quality_score": 1.0,
+        },
+    ]
+
+    rescued = RetrievalService._page_neighbor_rescue_candidate_ids(
+        anchor_ids=["anchor"],
+        chunks=chunks,
+        existing_ids={"anchor"},
+        query="Explain CNN convolutional neural networks",
+        answer_query="Explain CNN",
+        limit=4,
+    )
+
+    assert "pooling" in rescued
+    assert "unrelated" not in rescued
+    assert "far-away" not in rescued

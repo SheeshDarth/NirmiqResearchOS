@@ -3,6 +3,7 @@ import asyncio
 from app.core.config import Settings
 from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.retrieval_policy import RetrievalPolicy
+from app.domain.answer_intelligence import build_answer_plan
 from app.services.query_service import QueryService
 from app.services.synthesis_service import SynthesisService
 from app.domain.query_intent import QueryIntent
@@ -705,3 +706,51 @@ def test_long_context_deep_research_uses_configured_creative_temperature() -> No
     assert grounded is True
     assert generator.temperature == 0.85
     assert meta["generation_temperature"] == 0.85
+
+
+def test_context_budget_preserves_later_direct_evidence() -> None:
+    service = SynthesisService(
+        settings=_settings(),
+        policy=RetrievalPolicy(min_grounding_score=0.1, max_context_tokens=320),
+        generator=FakeGenerator(""),  # type: ignore[arg-type]
+    )
+    broad_text = (
+        "Convolutional neural networks process images with learned feature maps. "
+        "This chapter also discusses training data, optimization, and model evaluation. "
+        * 30
+    )
+    pooling_text = (
+        "The second common building block of CNNs is the pooling layer. "
+        "Its goal is to subsample or shrink feature maps to reduce the computational load."
+    )
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id=f"chunk-{index}",
+                document_id="doc-1",
+                text=broad_text,
+                score=1.0 - (index * 0.05),
+            )
+            for index in range(1, 4)
+        ]
+        + [
+            RetrievedChunk(
+                chunk_id="chunk-4",
+                document_id="doc-1",
+                text=pooling_text,
+                score=0.8,
+            )
+        ],
+        meta={},
+    )
+    query = "Explain CNN"
+
+    selected = service._select_context(
+        bundle,
+        query=query,
+        answer_plan=build_answer_plan(query=query, response_mode="research"),
+    )
+
+    assert [anchor for anchor, _ in selected] == [1, 2, 3, 4]
+    assert "pooling layer" in selected[-1][1]
+    assert sum(len(service._context_text(block).split()) for _, block in selected) <= 320

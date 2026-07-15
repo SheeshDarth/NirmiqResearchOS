@@ -72,6 +72,8 @@ class QueryService:
             mode=retrieval_mode,
             document_id=payload.document_id,
             profile=retrieval_profile,
+            response_mode=response_mode,
+            answer_query=payload.query,
         )
         bundle = self._augment_selected_summary_bundle(payload=payload, intent=intent, bundle=bundle)
         answer, grounded, synthesis_meta = await self._synthesis_service.synthesize(

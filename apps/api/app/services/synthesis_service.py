@@ -3,7 +3,12 @@ from collections import Counter
 
 from app.adapters.llm.generator import Generator
 from app.core.config import Settings
-from app.domain.answer_intelligence import AnswerPlan, build_answer_plan
+from app.domain.answer_intelligence import (
+    AnswerPlan,
+    answer_evidence_cue_score,
+    answer_subject_anchor_terms,
+    build_answer_plan,
+)
 from app.domain.citation_coverage import citation_coverage
 from app.domain.models import RetrievalBundle
 from app.domain.retrieval_policy import RetrievalPolicy
@@ -19,6 +24,7 @@ _QUERY_STOPWORDS = {
     "are",
     "brief",
     "briefly",
+    "be",
     "cite",
     "cited",
     "citation",
@@ -29,6 +35,7 @@ _QUERY_STOPWORDS = {
     "define",
     "describe",
     "does",
+    "during",
     "draft",
     "explain",
     "for",
@@ -54,11 +61,13 @@ _QUERY_STOPWORDS = {
     "to",
     "say",
     "says",
+    "should",
     "what",
     "when",
     "where",
     "which",
     "who",
+    "why",
     "write",
     "with",
 }
@@ -102,6 +111,40 @@ _CLAIM_STOPWORDS = _QUERY_STOPWORDS | {
     "were",
     "will",
     "would",
+}
+
+_ANSWER_TASK_TERMS = {
+    "apply",
+    "classify",
+    "compare",
+    "compute",
+    "describe",
+    "detect",
+    "encode",
+    "explain",
+    "form",
+    "generate",
+    "have",
+    "identify",
+    "interpret",
+    "learn",
+    "optimize",
+    "mask",
+    "place",
+    "perform",
+    "provide",
+    "predict",
+    "represent",
+    "recommend",
+    "regularize",
+    "require",
+    "select",
+    "train",
+    "transform",
+    "update",
+    "use",
+    "work",
+    "works",
 }
 
 
@@ -206,7 +249,11 @@ class SynthesisService:
                 },
             )
 
-        selected = self._select_context(bundle)
+        selected = self._select_context(
+            bundle,
+            query=query,
+            answer_plan=answer_plan,
+        )
         prompt = self._build_grounded_prompt(
             query,
             selected,
@@ -383,24 +430,127 @@ class SynthesisService:
             return max(0.0, min(1.0, self._settings.generator_temperature_long_context))
         return max(0.0, min(1.0, self._settings.generator_temperature_grounded))
 
-    def _select_context(self, bundle: RetrievalBundle) -> list[tuple[int, str]]:
+    def _select_context(
+        self,
+        bundle: RetrievalBundle,
+        *,
+        query: str,
+        answer_plan: AnswerPlan,
+    ) -> list[tuple[int, str]]:
         selected: list[tuple[int, str]] = []
         used_words = 0
-        for idx, chunk in enumerate(bundle.chunks[:8], start=1):
+        candidates = bundle.chunks[:8]
+        if not candidates:
+            return selected
+
+        # Share the context budget across the retrieved evidence set. Previously,
+        # two or three long textbook chunks could consume the entire budget and
+        # hide a later, directly answering subsection from synthesis.
+        per_chunk_budget = max(80, self._max_context_tokens // len(candidates))
+        for idx, chunk in enumerate(candidates, start=1):
             text = chunk.text.strip()
             if not text:
                 continue
-            chunk_words = len(text.split())
-            if used_words + chunk_words > self._max_context_tokens and selected:
+            remaining_words = self._max_context_tokens - used_words
+            if remaining_words <= 0:
                 break
+            excerpt = self._query_aware_context_excerpt(
+                text=text,
+                query=query,
+                answer_plan=answer_plan,
+                max_words=min(per_chunk_budget, remaining_words),
+            )
+            if not excerpt:
+                continue
+            chunk_words = len(excerpt.split())
             block = (
                 f"[{idx}] doc={chunk.document_id} score={chunk.score:.3f} "
                 f"source={chunk.source} pages={chunk.page_start or '?'}-{chunk.page_end or '?'}\n"
-                f"{text}"
+                f"{excerpt}"
             )
             selected.append((idx, block))
             used_words += chunk_words
         return selected
+
+    @staticmethod
+    def _query_aware_context_excerpt(
+        *,
+        text: str,
+        query: str,
+        answer_plan: AnswerPlan,
+        max_words: int,
+    ) -> str:
+        """Keep a complete local evidence window instead of a chunk's arbitrary head."""
+
+        normalized = re.sub(r"\s+", " ", normalize_ocr_text(text)).strip()
+        if not normalized or max_words <= 0:
+            return ""
+        words = normalized.split()
+        if len(words) <= max_words:
+            return normalized
+
+        sentences = SynthesisService._split_sentences(normalized)
+        if not sentences:
+            return " ".join(words[:max_words]).strip()
+
+        core_terms = SynthesisService._core_subject_terms(query=query, answer_plan=answer_plan)
+        expanded_terms = SynthesisService._query_terms(query) - _ANSWER_TASK_TERMS
+        literal_terms = {
+            token
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", query.lower())
+            if token not in _QUERY_STOPWORDS
+        }
+        goal_terms = literal_terms - core_terms - _ANSWER_TASK_TERMS
+
+        def sentence_signal(item: tuple[int, str]) -> tuple[float, int]:
+            sentence_index, sentence = item
+            score = (
+                (3.0 * SynthesisService._sentence_score(sentence, core_terms))
+                + (2.5 * SynthesisService._sentence_score(sentence, goal_terms))
+                + (0.45 * SynthesisService._sentence_score(sentence, expanded_terms))
+                + (3.0 * answer_evidence_cue_score(answer_plan.answer_type, sentence))
+                - (1.0 if SynthesisService._is_low_value_evidence_sentence(sentence) else 0.0)
+            )
+            return (score, -sentence_index)
+
+        seed_index = max(enumerate(sentences), key=sentence_signal)[0]
+        selected_indices: set[int] = set()
+        selected_words = 0
+        offsets = [0]
+        for distance in range(1, len(sentences)):
+            offsets.extend((distance, -distance))
+        for offset in offsets:
+            sentence_index = seed_index + offset
+            if sentence_index < 0 or sentence_index >= len(sentences):
+                continue
+            sentence = sentences[sentence_index].strip()
+            sentence_words = len(sentence.split())
+            if selected_words + sentence_words > max_words:
+                continue
+            selected_indices.add(sentence_index)
+            selected_words += sentence_words
+            if selected_words >= max_words:
+                break
+
+        if selected_indices:
+            return " ".join(sentences[index] for index in sorted(selected_indices)).strip()
+
+        # A malformed PDF can expose a whole paragraph as one sentence. Keep the
+        # span around the first query term so the useful evidence is not lost.
+        focus_terms = core_terms | goal_terms | expanded_terms
+        focus_index = next(
+            (
+                index
+                for index, word in enumerate(words)
+                if any(
+                    SynthesisService._term_matches(sentence=word, term=term)
+                    for term in focus_terms
+                )
+            ),
+            0,
+        )
+        start = max(0, min(focus_index - (max_words // 3), len(words) - max_words))
+        return " ".join(words[start : start + max_words]).strip()
 
     @staticmethod
     def _citation_context_meta(
@@ -563,6 +713,11 @@ class SynthesisService:
         exam_context: dict[str, object] | None = None,
     ) -> str:
         mode = response_mode.strip().lower()
+        answer_plan = build_answer_plan(
+            query=query,
+            response_mode=response_mode,
+            exam_profile=exam_profile,
+        )
         if mode == "study_guide":
             return SynthesisService._fallback_study_guide(
                 query=query,
@@ -582,6 +737,12 @@ class SynthesisService:
                 context_chunks=context_chunks,
                 exam_profile=exam_profile,
                 exam_context=exam_context,
+            )
+        if answer_plan.answer_type == "factual_lookup":
+            return SynthesisService._fallback_planned_answer(
+                query=query,
+                context_chunks=context_chunks,
+                answer_plan=answer_plan,
             )
         if SynthesisService._is_list_or_algorithm_query(query):
             return SynthesisService._fallback_list_answer(
@@ -604,6 +765,19 @@ class SynthesisService:
                 query=query,
                 context_chunks=context_chunks,
                 response_mode=response_mode,
+            )
+        if answer_plan.answer_type in {
+            "mechanism_explanation",
+            "procedure",
+            "recommendation",
+            "interpretation",
+            "comparison",
+            "limitations",
+        }:
+            return SynthesisService._fallback_planned_answer(
+                query=query,
+                context_chunks=context_chunks,
+                answer_plan=answer_plan,
             )
 
         query_terms = SynthesisService._query_terms(query)
@@ -644,6 +818,730 @@ class SynthesisService:
             selected=selected,
             response_mode=response_mode,
         )
+
+    @staticmethod
+    def _fallback_planned_answer(
+        *,
+        query: str,
+        context_chunks: list[tuple[int, str]],
+        answer_plan: AnswerPlan,
+    ) -> str:
+        """Build a readable extractive answer around the query's evidence contract."""
+
+        if answer_plan.answer_type == "factual_lookup":
+            direct_factual_answer = SynthesisService._fallback_factual_answer(
+                query=query,
+                context_chunks=context_chunks,
+            )
+            if direct_factual_answer:
+                return direct_factual_answer
+
+        subject_terms = {
+            token
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", answer_plan.subject.lower())
+            if token not in _QUERY_STOPWORDS and len(token) >= 3
+        }
+        literal_query_terms = {
+            token
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", query.lower())
+            if token not in _QUERY_STOPWORDS
+        }
+        expanded_query_terms = SynthesisService._query_terms(query)
+        core_subject_terms = SynthesisService._core_subject_terms(query=query, answer_plan=answer_plan)
+        scoring_terms = core_subject_terms or subject_terms or literal_query_terms
+        goal_terms = literal_query_terms - core_subject_terms - _ANSWER_TASK_TERMS
+        expanded_scoring_terms = expanded_query_terms - _ANSWER_TASK_TERMS
+        prepared_context = [
+            (idx, SynthesisService._context_text(block))
+            for idx, block in context_chunks[:10]
+        ]
+        term_weights = SynthesisService._context_term_weights(
+            terms=scoring_terms | expanded_scoring_terms,
+            context_texts=[text for _, text in prepared_context],
+        )
+        requested_elements = set(answer_plan.requested_elements)
+        allow_roadmap_evidence = SynthesisService._allows_roadmap_evidence(
+            query=query,
+            answer_type=answer_plan.answer_type,
+        )
+        benefit_cues = (
+            "benefit",
+            "advantage",
+            "improves ",
+            "improve ",
+            "reduces ",
+            "reduce ",
+            "reducing ",
+            "faster",
+            "allows ",
+            "stabilizes ",
+            "stabilize ",
+            "higher ",
+            "better ",
+            "speeding up",
+            "speeds up",
+            "less sensitive",
+            "fewer ",
+        )
+        definition_cues = (
+            " is a ",
+            " is an ",
+            " means ",
+            " refers to ",
+            " defined as ",
+            " consists of ",
+        )
+        chunk_sentences: dict[int, list[str]] = {}
+        chunk_core_positions: dict[int, list[int]] = {}
+        chunk_anchor_positions: dict[int, list[int]] = {}
+        chunk_plan_scores: dict[int, float] = {}
+        for idx, text in prepared_context:
+            sentences = SynthesisService._split_sentences(text)[:18]
+            chunk_covers_core = bool(core_subject_terms) and (
+                SynthesisService._sentence_score(text, core_subject_terms) >= len(core_subject_terms)
+            )
+            core_positions = [
+                position
+                for position, sentence in enumerate(sentences)
+                if (
+                    SynthesisService._has_core_subject_anchor(sentence, core_subject_terms)
+                    or (
+                        chunk_covers_core
+                        and SynthesisService._sentence_score(sentence, core_subject_terms) >= 1
+                    )
+                    or (
+                        SynthesisService._sentence_score(sentence, core_subject_terms) >= 1
+                        and answer_evidence_cue_score(answer_plan.answer_type, sentence) >= 0.6
+                    )
+                )
+                and (allow_roadmap_evidence or not SynthesisService._is_roadmap_sentence(sentence))
+                and not SynthesisService._is_low_value_evidence_sentence(sentence)
+                and not SynthesisService._is_code_heavy_sentence(sentence)
+            ]
+            focus_positions = [
+                position
+                for position, sentence in enumerate(sentences)
+                if SynthesisService._has_answer_focus_anchor(
+                    sentence=sentence,
+                    answer_type=answer_plan.answer_type,
+                    goal_terms=goal_terms,
+                    expanded_terms=expanded_scoring_terms,
+                )
+                and (allow_roadmap_evidence or not SynthesisService._is_roadmap_sentence(sentence))
+                and not SynthesisService._is_low_value_evidence_sentence(sentence)
+                and not SynthesisService._is_code_heavy_sentence(sentence)
+            ]
+            anchor_positions = sorted(set(core_positions) | set(focus_positions))
+            chunk_sentences[idx] = sentences
+            chunk_core_positions[idx] = core_positions
+            chunk_anchor_positions[idx] = anchor_positions
+
+            # Chapter roadmaps can mention the subject without answering the
+            # question. Rank each chunk by its best local answer-bearing window.
+            if core_subject_terms and not anchor_positions:
+                continue
+            local_scores: list[float] = []
+            for sentence_index, sentence in enumerate(sentences):
+                if (
+                    len(sentence.split()) < 6
+                    or (
+                        not allow_roadmap_evidence
+                        and SynthesisService._is_roadmap_sentence(sentence)
+                    )
+                    or SynthesisService._is_low_value_evidence_sentence(sentence)
+                    or SynthesisService._is_extract_fragment(sentence)
+                    or (
+                        answer_plan.answer_type != "procedure"
+                        and SynthesisService._is_code_heavy_sentence(sentence)
+                        and not SynthesisService._has_answer_focus_anchor(
+                            sentence=sentence,
+                            answer_type=answer_plan.answer_type,
+                            goal_terms=goal_terms,
+                            expanded_terms=expanded_scoring_terms,
+                        )
+                    )
+                ):
+                    continue
+                near_core_subject = any(
+                    0 <= sentence_index - position <= 3
+                    for position in anchor_positions
+                )
+                local_score = SynthesisService._planned_sentence_signal(
+                    sentence=sentence,
+                    answer_type=answer_plan.answer_type,
+                    core_terms=core_subject_terms,
+                    goal_terms=goal_terms,
+                    expanded_terms=expanded_scoring_terms,
+                    near_core=near_core_subject,
+                )
+                if local_score > 0:
+                    local_scores.append(local_score)
+            if local_scores:
+                precision_local_ranking = answer_plan.answer_type in {
+                    "mechanism_explanation",
+                    "procedure",
+                    "recommendation",
+                    "interpretation",
+                }
+                strongest = sorted(local_scores, reverse=True)[:3]
+                richness_weights = (
+                    (1.0, 0.2, 0.1)
+                    if precision_local_ranking
+                    else (1.0, 0.45, 0.25)
+                )
+                richness_score = sum(
+                    weight * score
+                    for weight, score in zip(richness_weights, strongest, strict=False)
+                )
+                lowered_chunk = f" {text.lower()} "
+                goal_coverage_bonus = min(
+                    4.0,
+                    2.0 * SynthesisService._sentence_score(text, goal_terms),
+                )
+                cue_coverage_weight = 10.0 if precision_local_ranking else 4.0
+                plan_cue_coverage_bonus = cue_coverage_weight * max(
+                    (
+                        answer_evidence_cue_score(answer_plan.answer_type, sentence)
+                        for sentence in sentences
+                    ),
+                    default=0.0,
+                )
+                expanded_coverage_bonus = min(
+                    3.0,
+                    0.3 * SynthesisService._sentence_score(text, expanded_scoring_terms),
+                )
+                benefit_coverage_bonus = (
+                    1.2
+                    if "benefits" in requested_elements
+                    and any(cue in lowered_chunk for cue in benefit_cues)
+                    else 0.0
+                )
+                chunk_plan_scores[idx] = (
+                    richness_score
+                    + goal_coverage_bonus
+                    + plan_cue_coverage_bonus
+                    + expanded_coverage_bonus
+                    + benefit_coverage_bonus
+                    + (0.8 / max(idx, 1))
+                )
+        prioritized_chunk_ids = {
+            idx
+            for idx, _ in sorted(
+                chunk_plan_scores.items(),
+                key=lambda item: (-item[1], item[0]),
+            )[:4]
+        }
+        best_chunk_id = max(
+            chunk_plan_scores,
+            key=lambda idx: (chunk_plan_scores[idx], -idx),
+            default=None,
+        )
+        candidates: list[tuple[float, int, str]] = []
+        candidate_positions: dict[tuple[int, str], int] = {}
+        for idx, text in prepared_context:
+            if prioritized_chunk_ids and idx not in prioritized_chunk_ids:
+                continue
+            chunk_subject_score = SynthesisService._sentence_score(text, scoring_terms)
+            chunk_weighted_score = SynthesisService._weighted_sentence_score(text, term_weights)
+            sentences = chunk_sentences.get(idx, SynthesisService._split_sentences(text)[:18])
+            core_positions = chunk_core_positions.get(idx, [])
+            anchor_positions = chunk_anchor_positions.get(idx, core_positions)
+            if core_subject_terms and not anchor_positions:
+                continue
+            for sentence_index, sentence in enumerate(sentences):
+                if len(sentence.split()) < 6:
+                    continue
+                if not allow_roadmap_evidence and SynthesisService._is_roadmap_sentence(sentence):
+                    continue
+                if SynthesisService._is_extract_fragment(sentence):
+                    continue
+                if (
+                    answer_plan.answer_type != "procedure"
+                    and SynthesisService._is_code_heavy_sentence(sentence)
+                    and not SynthesisService._has_answer_focus_anchor(
+                        sentence=sentence,
+                        answer_type=answer_plan.answer_type,
+                        goal_terms=goal_terms,
+                        expanded_terms=expanded_scoring_terms,
+                    )
+                ):
+                    continue
+                if (
+                    "equations" not in requested_elements
+                    and SynthesisService._is_formula_heavy_sentence(sentence)
+                ):
+                    continue
+                if answer_plan.answer_type == "factual_lookup":
+                    if any(
+                        marker in sentence.lower()
+                        for marker in ("isbn", "copyright", "all rights reserved", "trademark")
+                    ):
+                        continue
+                    if (
+                        SynthesisService._is_low_value_evidence_sentence(sentence)
+                        and SynthesisService._factual_sentence_cue_score(query=query, sentence=sentence) <= 0
+                    ):
+                        continue
+                elif SynthesisService._is_low_value_evidence_sentence(sentence):
+                    continue
+                lowered = f" {sentence.lower()} "
+                subject_score = SynthesisService._sentence_score(sentence, scoring_terms)
+                query_score = SynthesisService._sentence_score(sentence, literal_query_terms)
+                goal_score = SynthesisService._sentence_score(sentence, goal_terms)
+                expanded_query_score = SynthesisService._sentence_score(sentence, expanded_scoring_terms)
+                weighted_query_score = SynthesisService._weighted_sentence_score(sentence, term_weights)
+                core_subject_score = SynthesisService._sentence_score(sentence, core_subject_terms)
+                chunk_core_subject_score = SynthesisService._sentence_score(text, core_subject_terms)
+                near_core_subject = core_subject_score > 0 or SynthesisService._has_answer_focus_anchor(
+                    sentence=sentence,
+                    answer_type=answer_plan.answer_type,
+                    goal_terms=goal_terms,
+                    expanded_terms=expanded_scoring_terms,
+                ) or any(
+                    0 <= sentence_index - position <= 3
+                    for position in anchor_positions
+                )
+                if anchor_positions and not near_core_subject:
+                    continue
+                plan_cue_score = answer_evidence_cue_score(answer_plan.answer_type, sentence)
+                factual_cue_score = SynthesisService._factual_sentence_cue_score(query=query, sentence=sentence)
+                benefit_cue_score = (
+                    min(1.0, 0.45 * sum(1 for cue in benefit_cues if cue in lowered))
+                    if "benefits" in requested_elements
+                    else 0.0
+                )
+                definition_score = (
+                    0.65
+                    if subject_score > 0 and any(cue in lowered for cue in definition_cues)
+                    else 0.0
+                )
+                sequence_cue_score = (
+                    1.2
+                    if answer_plan.answer_type == "mechanism_explanation"
+                    and any(
+                        cue in lowered
+                        for cue in (" for each ", " counts ", " count ", " first ", " then ", " next ")
+                    )
+                    else 0.0
+                )
+                precision_intent = answer_plan.answer_type in {
+                    "mechanism_explanation",
+                    "procedure",
+                    "recommendation",
+                    "interpretation",
+                }
+                goal_weight = 2.8 if precision_intent and goal_terms else 1.2
+                core_weight = 1.25 if precision_intent and goal_terms else 1.8
+                plan_weight = 5.0 if precision_intent else 3.0
+
+                if answer_plan.answer_type in {
+                    "mechanism_explanation",
+                    "procedure",
+                    "recommendation",
+                    "interpretation",
+                    "limitations",
+                }:
+                    if (
+                        plan_cue_score <= 0
+                        and definition_score <= 0
+                        and benefit_cue_score <= 0
+                        and goal_score <= 0
+                        and expanded_query_score < 2
+                    ):
+                        continue
+                elif answer_plan.answer_type == "comparison":
+                    if plan_cue_score <= 0 and subject_score < min(2, max(1, len(scoring_terms))):
+                        continue
+                elif answer_plan.answer_type == "factual_lookup" and factual_cue_score <= 0:
+                    continue
+
+                # Pronoun-led process sentences may omit the subject but are valid
+                # when their containing passage strongly matches it.
+                if (
+                    subject_score <= 0
+                    and chunk_subject_score <= 0
+                    and goal_score <= 0
+                    and expanded_query_score <= 0
+                    and factual_cue_score <= 0
+                ):
+                    continue
+                rank_bonus = max(0, 11 - idx) * 0.04 + max(0, 14 - sentence_index) * 0.01
+                chunk_plan_bonus = 3.0 if idx == best_chunk_id else 0.15
+                word_count = len(sentence.split())
+                length_penalty = min(5.0, max(0, word_count - 55) / 15)
+                code_penalty = 1.25 if any(
+                    marker in sentence
+                    for marker in (">>>", "tf.keras", "np.array", "array([", "model.fit(")
+                ) else 0.0
+                score = (
+                    (0.45 * subject_score)
+                    + (0.1 * min(query_score, 4.0))
+                    + (goal_weight * min(goal_score, 3.0))
+                    + (0.1 * min(expanded_query_score, 5.0))
+                    + (0.85 * weighted_query_score)
+                    + (0.12 * min(chunk_weighted_score, 5.0))
+                    + (core_weight * core_subject_score)
+                    + (0.35 * min(chunk_core_subject_score, 2.0))
+                    + (plan_weight * plan_cue_score)
+                    + (2.4 * factual_cue_score)
+                    + (1.6 * benefit_cue_score)
+                    + definition_score
+                    + sequence_cue_score
+                    + rank_bonus
+                    + chunk_plan_bonus
+                    - length_penalty
+                    - code_penalty
+                )
+                candidates.append((score, idx, sentence))
+                candidate_positions[(idx, SynthesisService._clean_evidence_sentence(sentence))] = sentence_index
+
+        passage_candidates = [item for item in candidates if item[1] == best_chunk_id]
+        precision_first_types = {
+            "mechanism_explanation",
+            "procedure",
+            "recommendation",
+            "interpretation",
+            "limitations",
+        }
+        selected_pool = (
+            passage_candidates
+            if passage_candidates
+            and (
+                len(passage_candidates) >= 2
+                or answer_plan.answer_type in precision_first_types
+            )
+            else candidates
+        )
+        selected = SynthesisService._dedupe_scored_sentences(
+            selected_pool,
+            limit=3 if answer_plan.answer_type in precision_first_types else 6,
+            allow_low_value=answer_plan.answer_type == "factual_lookup",
+        )
+        if answer_plan.answer_type in {"mechanism_explanation", "interpretation"} and len(selected) < 4:
+            existing = {(anchor, sentence) for anchor, sentence in selected}
+            continuations: list[tuple[float, int, str]] = []
+            for score, anchor, sentence in candidates:
+                cleaned = SynthesisService._clean_evidence_sentence(sentence)
+                if (anchor, cleaned) in existing or anchor == best_chunk_id:
+                    continue
+                continuation_has_core = SynthesisService._has_core_subject_anchor(
+                    cleaned,
+                    core_subject_terms,
+                )
+                continuation_has_focus = SynthesisService._has_answer_focus_anchor(
+                    sentence=cleaned,
+                    answer_type=answer_plan.answer_type,
+                    goal_terms=goal_terms,
+                    expanded_terms=expanded_scoring_terms,
+                )
+                continuation_cue = answer_evidence_cue_score(answer_plan.answer_type, cleaned)
+                if continuation_cue < 0.6 and not continuation_has_focus:
+                    continue
+                lowered = cleaned.lower()
+                outcome_bonus = (
+                    (3.0 if "highest" in lowered else 0.0)
+                    + (0.3 if any(cue in lowered for cue in ("predicts", "selects", "outputs")) else 0.0)
+                )
+                continuations.append((score + outcome_bonus, anchor, cleaned))
+            if continuations:
+                continuation_limit = 2 if answer_plan.answer_type == "interpretation" else 1
+                for _, anchor, sentence in sorted(continuations, reverse=True)[:continuation_limit]:
+                    selected.append((anchor, sentence))
+        if len(passage_candidates) >= 2:
+            lead = selected[0]
+            details = sorted(
+                selected[1:],
+                key=lambda item: (
+                    item[0] != best_chunk_id,
+                    candidate_positions.get(item, 1_000_000),
+                ),
+            )
+            selected = [lead, *details]
+        if selected and answer_plan.answer_type in precision_first_types:
+            def lead_priority(item: tuple[int, str]) -> tuple[float, int]:
+                anchor, sentence = item
+                cue_score = answer_evidence_cue_score(answer_plan.answer_type, sentence)
+                goal_score = SynthesisService._sentence_score(sentence, goal_terms)
+                expanded_score = SynthesisService._sentence_score(sentence, expanded_scoring_terms)
+                core_score = SynthesisService._sentence_score(sentence, core_subject_terms)
+                word_count = len(sentence.split())
+                table_penalty = 5.0 if word_count > 65 or SynthesisService._is_formula_heavy_sentence(sentence) else 0.0
+                lowered = f" {sentence.lower()} "
+                interpretation_bonus = 0.0
+                if answer_plan.answer_type == "interpretation":
+                    interpretation_bonus = 1.5 * sum(
+                        lowered.count(cue)
+                        for cue in (" means ", " close to ", " ranges from ", " can vary between ")
+                    )
+                action_bonus = 1.2 * sum(
+                    lowered.count(cue)
+                    for cue in (
+                        " compute ",
+                        " apply ",
+                        " add ",
+                        " divide ",
+                        " prevent ",
+                        " temporarily ",
+                        " ignored ",
+                        " active ",
+                        " increasing ",
+                        " decreasing ",
+                    )
+                )
+                score = (
+                    (6.0 * cue_score)
+                    + (2.0 * goal_score)
+                    + (0.3 * expanded_score)
+                    + (0.5 * core_score)
+                    + interpretation_bonus
+                    + action_bonus
+                    - table_penalty
+                )
+                return score, -anchor
+
+            eligible_leads = selected
+            if answer_plan.answer_type != "interpretation" and best_chunk_id is not None:
+                same_passage = [item for item in selected if item[0] == best_chunk_id]
+                if same_passage:
+                    eligible_leads = same_passage
+            lead = max(eligible_leads, key=lead_priority)
+            remaining = sorted(
+                (item for item in selected if item != lead),
+                key=lead_priority,
+                reverse=True,
+            )
+            selected = [lead, *remaining]
+        if not selected:
+            return (
+                "I found related passages, but not enough direct evidence to answer this "
+                "part of the question confidently."
+            )
+
+        detail_labels = {
+            "mechanism_explanation": "How it works",
+            "procedure": "Steps from the source",
+            "recommendation": "Recommendations from the source",
+            "interpretation": "How to read it",
+            "comparison": "Key differences",
+            "limitations": "Benefits and limitations" if "benefits" in requested_elements else "Limitations",
+            "factual_lookup": "Supporting detail",
+        }
+        lead_anchor, lead_sentence = selected[0]
+        sections = ["Short answer", f"\n{lead_sentence} [{lead_anchor}]"]
+        details = [item for item in selected[1:] if item[1] != lead_sentence]
+        if answer_plan.answer_type in precision_first_types:
+            details = [
+                (anchor, sentence)
+                for anchor, sentence in details
+                if answer_evidence_cue_score(answer_plan.answer_type, sentence) >= 0.6
+                or SynthesisService._sentence_score(sentence, goal_terms) > 0
+                or SynthesisService._has_core_subject_anchor(sentence, core_subject_terms)
+                or (
+                    answer_plan.answer_type == "recommendation"
+                    and anchor == lead_anchor
+                )
+            ]
+        if details:
+            sections.append(f"\n{detail_labels.get(answer_plan.answer_type, 'Explanation')}")
+            detail_limit = (
+                2 if answer_plan.answer_type in precision_first_types else 5
+            )
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in details[:detail_limit])
+        return "\n".join(sections)
+
+    @staticmethod
+    def _fallback_factual_answer(
+        *,
+        query: str,
+        context_chunks: list[tuple[int, str]],
+    ) -> str | None:
+        if not re.search(r"\b(when|year|date|edition|release|released|published)\b", query, re.I):
+            return None
+
+        edition_pattern = re.compile(
+            r"\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\d+(?:st|nd|rd|th))\s+edition\b",
+            re.I,
+        )
+        release_pattern = re.compile(
+            r"\b((?:19|20)\d{2}-\d{2}-\d{2})\s*:\s*((?:first\s+)?release)\b",
+            re.I,
+        )
+        published_pattern = re.compile(
+            r"\b(published|released)\s+(?:in|on)\s+((?:19|20)\d{2}(?:-\d{2}-\d{2})?)\b",
+            re.I,
+        )
+        edition_fact: tuple[int, str] | None = None
+        release_fact: tuple[int, str, str] | None = None
+        published_fact: tuple[int, str] | None = None
+        for anchor, block in context_chunks[:8]:
+            text = SynthesisService._context_text(block)
+            if edition_fact is None and (match := edition_pattern.search(text)):
+                edition_fact = (anchor, match.group(0).title())
+            if release_fact is None and (match := release_pattern.search(text)):
+                release_fact = (anchor, match.group(1), match.group(2).title())
+            if published_fact is None and (match := published_pattern.search(text)):
+                published_fact = (anchor, match.group(0).lower())
+            if edition_fact and (release_fact or published_fact):
+                break
+
+        if edition_fact and release_fact:
+            anchors = sorted({edition_fact[0], release_fact[0]})
+            citation = "".join(f" [{anchor}]" for anchor in anchors)
+            return (
+                "Short answer\n\n"
+                f"The source identifies the {edition_fact[1]} and records "
+                f"{release_fact[1]} as the {release_fact[2]}.{citation}"
+            )
+        if edition_fact and published_fact:
+            anchors = sorted({edition_fact[0], published_fact[0]})
+            citation = "".join(f" [{anchor}]" for anchor in anchors)
+            return (
+                "Short answer\n\n"
+                f"The source identifies the {edition_fact[1]} and states it was "
+                f"{published_fact[1]}.{citation}"
+            )
+        if edition_fact:
+            return f"Short answer\n\nThe source identifies the {edition_fact[1]}. [{edition_fact[0]}]"
+        if release_fact:
+            return (
+                "Short answer\n\n"
+                f"The source records {release_fact[1]} as the {release_fact[2]}. [{release_fact[0]}]"
+            )
+        return None
+
+    @staticmethod
+    def _context_term_weights(*, terms: set[str], context_texts: list[str]) -> dict[str, float]:
+        if not terms or not context_texts:
+            return {}
+        context_count = len(context_texts)
+        weights: dict[str, float] = {}
+        for term in terms:
+            document_frequency = sum(
+                1
+                for text in context_texts
+                if SynthesisService._sentence_score(text, {term}) > 0
+            )
+            weights[term] = 1.0 + min(2.0, (context_count + 1) / (document_frequency + 1) * 0.25)
+        return weights
+
+    @staticmethod
+    def _weighted_sentence_score(sentence: str, term_weights: dict[str, float]) -> float:
+        if not term_weights:
+            return 0.0
+        return sum(
+            weight
+            for term, weight in term_weights.items()
+            if SynthesisService._term_matches(sentence=sentence, term=term)
+        )
+
+    @staticmethod
+    def _planned_sentence_signal(
+        *,
+        sentence: str,
+        answer_type: str,
+        core_terms: set[str],
+        goal_terms: set[str],
+        expanded_terms: set[str],
+        near_core: bool,
+    ) -> float:
+        """Score whether one local sentence can help answer the planned question."""
+
+        core_score = SynthesisService._sentence_score(sentence, core_terms)
+        goal_score = SynthesisService._sentence_score(sentence, goal_terms)
+        expanded_score = SynthesisService._sentence_score(sentence, expanded_terms)
+        cue_score = answer_evidence_cue_score(answer_type, sentence)
+        if core_terms and core_score <= 0 and not near_core:
+            return -1.0
+        if core_score <= 0 and goal_score <= 0 and expanded_score <= 0 and cue_score <= 0:
+            return -1.0
+
+        word_count = len(sentence.split())
+        length_penalty = min(3.0, max(0, word_count - 55) / 18)
+        code_penalty = 1.25 if any(
+            marker in sentence
+            for marker in (">>>", "tf.keras", "np.array", "array([", "model.fit(")
+        ) else 0.0
+        return (
+            (2.2 * core_score)
+            + (3.0 * min(goal_score, 3.0))
+            + (0.45 * min(expanded_score, 6.0))
+            + (3.0 * cue_score)
+            + (0.8 if near_core else 0.0)
+            - length_penalty
+            - code_penalty
+        )
+
+    @staticmethod
+    def _core_subject_terms(*, query: str, answer_plan: AnswerPlan) -> set[str]:
+        return answer_subject_anchor_terms(query, answer_plan)
+
+    @staticmethod
+    def _has_core_subject_anchor(sentence: str, core_terms: set[str]) -> bool:
+        if not core_terms:
+            return False
+        required_hits = max(1, ((3 * len(core_terms)) + 4) // 5)
+        return SynthesisService._sentence_score(sentence, core_terms) >= required_hits
+
+    @staticmethod
+    def _has_answer_focus_anchor(
+        *,
+        sentence: str,
+        answer_type: str,
+        goal_terms: set[str],
+        expanded_terms: set[str],
+    ) -> bool:
+        """Accept a local answer window even when it omits the document or model name."""
+
+        goal_hits = SynthesisService._sentence_score(sentence, goal_terms)
+        expanded_hits = SynthesisService._sentence_score(sentence, expanded_terms)
+        cue_score = answer_evidence_cue_score(answer_type, sentence)
+        required_goal_hits = 1 if len(goal_terms) == 1 else 2
+        if goal_terms and goal_hits >= required_goal_hits:
+            return True
+        if cue_score >= 0.6 and (goal_hits >= 1 or expanded_hits >= 1):
+            return True
+        return expanded_hits >= 2 and cue_score > 0
+
+    @staticmethod
+    def _allows_roadmap_evidence(*, query: str, answer_type: str) -> bool:
+        if answer_type in {"document_summary", "enumeration"}:
+            return True
+        normalized = query.lower()
+        return bool(
+            re.search(r"\b(?:book|document|module|paper|source|textbook)\b", normalized)
+            and re.search(
+                r"\b(?:cover|covers|covered|describe|describes|described|place|places|"
+                r"present|presents|presented|mention|mentions|list|outline)\b",
+                normalized,
+            )
+        )
+
+    @staticmethod
+    def _factual_sentence_cue_score(*, query: str, sentence: str) -> float:
+        normalized_query = query.lower()
+        normalized_sentence = sentence.lower()
+        score = 0.0
+        asks_date = bool(
+            re.search(r"\b(when|year|date|released?|published?|edition)\b", normalized_query)
+        )
+        if asks_date and (
+            re.search(r"\b(?:19|20)\d{2}\b", normalized_sentence)
+            or re.search(r"\b(?:19|20)\d{2}[-/]\d{1,2}[-/]\d{1,2}\b", normalized_sentence)
+        ):
+            score += 0.75
+            if any(term in normalized_sentence for term in ("release", "publish", "edition", "date")):
+                score += 0.25
+        if re.search(r"\bhow\s+many\b", normalized_query) and re.search(
+            r"\b(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)\b",
+            normalized_sentence,
+        ):
+            score += 0.8
+        if re.search(r"\bwho\b", normalized_query) and re.search(
+            r"\b(?:written|authored|created|developed|proposed|introduced)\s+by\b",
+            normalized_sentence,
+        ):
+            score += 0.8
+        return min(1.0, score)
 
     @staticmethod
     def _mode_instruction(response_mode: str) -> str:
@@ -1216,8 +2114,10 @@ class SynthesisService:
         definition_cues = (
             " is a ",
             " is an ",
+            " is the ",
             " means ",
             " refers ",
+            " called ",
             "probabilistic model",
             "generative model",
             "assumes",
@@ -1227,8 +2127,13 @@ class SynthesisService:
         working_cues = (
             "architecture",
             "building blocks",
+            "building block",
             "composed of",
             "consists of",
+            "goal is to",
+            "subsample",
+            "shrink",
+            "reduce the computational",
             "convolutional layer",
             "convolutional layers",
             "generated from",
@@ -1287,10 +2192,37 @@ class SynthesisService:
         limits: list[tuple[float, int, str]] = []
         for idx, block in context_chunks[:10]:
             text = SynthesisService._context_text(block)
-            for sentence_index, sentence in enumerate(SynthesisService._split_sentences(text)[:12]):
-                if len(sentence.split()) < 7 or SynthesisService._is_low_value_evidence_sentence(sentence):
+            sentences = SynthesisService._split_sentences(text)[:12]
+            required_subject_hits = max(1, ((3 * len(subject_terms)) + 4) // 5)
+            subject_positions = [
+                position
+                for position, candidate in enumerate(sentences)
+                if (
+                    SynthesisService._sentence_score(candidate, subject_terms) >= required_subject_hits
+                    or any(
+                        re.search(rf"\b{re.escape(acronym)}s?\b", candidate, flags=re.I)
+                        for acronym in acronym_subjects
+                    )
+                )
+            ]
+            for sentence_index, sentence in enumerate(sentences):
+                if (
+                    len(sentence.split()) < 7
+                    or SynthesisService._is_low_value_evidence_sentence(sentence)
+                    or SynthesisService._is_extract_fragment(sentence)
+                ):
                     continue
                 lowered = f" {sentence.lower()} "
+                if not requested_elements & {"applications", "examples"} and any(
+                    cue in lowered
+                    for cue in (
+                        "topics, including",
+                        "introduced many additional",
+                        "covers the following topics",
+                        "gives an overview of",
+                    )
+                ):
+                    continue
                 base = SynthesisService._sentence_score(sentence, query_terms)
                 rank_bonus = max(0, 10 - idx) * 0.04 + max(0, 12 - sentence_index) * 0.01
                 boundary_penalty = 0.9 if sentence and sentence[-1] not in ".!?" else 0.0
@@ -1298,12 +2230,28 @@ class SynthesisService:
                     base
                     + rank_bonus
                     + sum(1.0 for cue in definition_cues if cue in lowered)
+                    + SynthesisService._subject_head_score(
+                        sentence=sentence,
+                        subject_terms=subject_terms,
+                        acronym_subjects=acronym_subjects,
+                    )
                     + SynthesisService._subject_called_definition_score(
                         sentence=sentence,
                         subject_terms=subject_terms,
                     )
                     - boundary_penalty
                 )
+                if not requested_elements & {"examples", "applications"} and re.match(
+                    r"^(?:for example|consider|historically)\b",
+                    sentence.strip(),
+                    flags=re.I,
+                ):
+                    definition_score -= 2.2
+                if not re.search(r"\b(history|historical|origin|origins)\b", query, re.I) and any(
+                    cue in lowered
+                    for cue in (" emerged from ", " inspired by ", " since the 19", " since the 20")
+                ):
+                    definition_score -= 4.0
                 if any(
                     re.search(
                         rf"\b[A-Za-z][A-Za-z0-9+/-]*(?:\s+[A-Za-z][A-Za-z0-9+/-]*){{1,7}}\s+\({re.escape(acronym)}s?\)",
@@ -1313,12 +2261,36 @@ class SynthesisService:
                     for acronym in acronym_subjects
                 ):
                     definition_score += 3.0
-                working_score = base + rank_bonus + sum(0.65 for cue in working_cues if cue in lowered) - boundary_penalty
+                working_score = (
+                    base
+                    + rank_bonus
+                    + sum(0.65 for cue in working_cues if cue in lowered)
+                    + (
+                        0.6
+                        * SynthesisService._subject_head_score(
+                            sentence=sentence,
+                            subject_terms=subject_terms,
+                            acronym_subjects=acronym_subjects,
+                        )
+                    )
+                    + (1.5 * answer_evidence_cue_score("mechanism_explanation", sentence))
+                    - boundary_penalty
+                )
+                if not requested_elements & {"examples", "applications"} and re.match(
+                    r"^(?:for example|consider)\b",
+                    sentence.strip(),
+                    flags=re.I,
+                ):
+                    working_score -= 2.2
                 use_score = base + rank_bonus + sum(0.75 for cue in use_cues if cue in lowered) - boundary_penalty
                 limit_score = base + rank_bonus + sum(0.85 for cue in limitation_cues if cue in lowered) - boundary_penalty
                 if definition_score > base + rank_bonus:
                     definitions.append((definition_score, idx, sentence))
-                if working_score > base + rank_bonus:
+                near_subject = any(
+                    0 <= sentence_index - position <= 2
+                    for position in subject_positions
+                )
+                if working_score > base + rank_bonus and near_subject:
                     workings.append((working_score, idx, sentence))
                 if use_score > base + rank_bonus:
                     uses.append((use_score, idx, sentence))
@@ -1328,7 +2300,6 @@ class SynthesisService:
                     limits.append((limit_score, idx, sentence))
 
         selected_definition = SynthesisService._dedupe_scored_sentences(definitions, limit=1)
-        selected_working = SynthesisService._dedupe_scored_sentences(workings, limit=2)
         selected_uses = SynthesisService._dedupe_scored_sentences(uses, limit=2)
         selected_limits = SynthesisService._dedupe_scored_sentences(limits, limit=1)
 
@@ -1340,6 +2311,8 @@ class SynthesisService:
             )
         if not selected_definition:
             return "I found related passages, but not a clear source-backed definition to answer safely."
+
+        selected_working = SynthesisService._dedupe_scored_sentences(workings, limit=2)
 
         mode = response_mode.strip().lower()
         title = "Exam-ready definition" if mode == "exam_answer" else "Short answer"
@@ -1354,6 +2327,16 @@ class SynthesisService:
         limit_items = [(anchor, sentence) for anchor, sentence in selected_limits if sentence not in extra_seen]
 
         if working_items:
+            if len(working_items) < 2:
+                supplemental = SynthesisService._dedupe_scored_sentences(workings, limit=6)
+                existing = extra_seen | {sentence for _, sentence in working_items}
+                for anchor, sentence in supplemental:
+                    if sentence in existing:
+                        continue
+                    working_items.append((anchor, sentence))
+                    existing.add(sentence)
+                    if len(working_items) >= 2:
+                        break
             sections.append("\nHow it works")
             sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in working_items[:2])
         if use_items and requested_elements & {"applications", "examples"}:
@@ -1378,6 +2361,50 @@ class SynthesisService:
                 lowered,
             ):
                 return 3.0
+        if " called " in f" {lowered} " and all(
+            SynthesisService._term_matches(sentence=sentence, term=term)
+            for term in subject_terms
+        ):
+            return 3.0
+        return 0.0
+
+    @staticmethod
+    def _subject_head_score(
+        *,
+        sentence: str,
+        subject_terms: set[str],
+        acronym_subjects: set[str],
+    ) -> float:
+        """Prefer statements about the requested subject over mentions as an object."""
+
+        leading_tokens = re.findall(r"[A-Za-z][A-Za-z0-9+-]*", sentence)[:4]
+        if not leading_tokens:
+            return 0.0
+        normalized = [token.lower().rstrip("s") for token in leading_tokens]
+        normalized_subjects = {term.lower().rstrip("s") for term in subject_terms}
+        normalized_acronyms = {term.lower().rstrip("s") for term in acronym_subjects}
+        if normalized[0] in normalized_subjects | normalized_acronyms:
+            return 2.4
+        if any(token in normalized_subjects | normalized_acronyms for token in normalized[:3]):
+            return 1.1
+        full_tokens = re.findall(r"[A-Za-z][A-Za-z0-9+-]*", sentence)[:10]
+        for acronym in acronym_subjects:
+            acronym = acronym.upper().rstrip("S")
+            for length in range(2, min(7, len(full_tokens)) + 1):
+                if "".join(token[0].upper() for token in full_tokens[:length]) == acronym:
+                    return 2.4
+        subject_pattern = "|".join(
+            re.escape(term.rstrip("s")) + "s?"
+            for term in normalized_subjects | normalized_acronyms
+            if term
+        )
+        if subject_pattern and re.search(
+            rf"\b(?:a\s+|an\s+|the\s+)?(?:{subject_pattern})\s+"
+            r"(?:is|are|uses|use|works|consists|contains|applies|computes|solves)\b",
+            sentence,
+            flags=re.I,
+        ):
+            return 1.6
         return 0.0
 
     @staticmethod
@@ -1386,12 +2413,15 @@ class SynthesisService:
         *,
         limit: int,
         min_words: int = 6,
+        allow_low_value: bool = False,
     ) -> list[tuple[int, str]]:
         selected: list[tuple[int, str]] = []
         seen: set[str] = set()
         for _, idx, sentence in sorted(scored, key=lambda item: item[0], reverse=True):
             sentence = SynthesisService._clean_evidence_sentence(sentence)
-            if len(sentence.split()) < min_words or SynthesisService._is_low_value_evidence_sentence(sentence):
+            if len(sentence.split()) < min_words or (
+                not allow_low_value and SynthesisService._is_low_value_evidence_sentence(sentence)
+            ):
                 continue
             normalized = re.sub(r"\W+", "", sentence.lower())[:120]
             if normalized in seen:
@@ -1585,6 +2615,10 @@ class SynthesisService:
             "part ii",
             "chapter covers",
             "learning objectives",
+            "we will start with",
+            "then we'll discuss",
+            "before we move on",
+            "in this section we will",
         )
         if any(cue in lowered for cue in outline_cues):
             return False
@@ -1606,9 +2640,82 @@ class SynthesisService:
         return False
 
     @staticmethod
+    def _is_roadmap_sentence(sentence: str) -> bool:
+        """Identify topic previews that mention concepts without explaining them."""
+
+        lowered = sentence.lower()
+        return any(
+            marker in lowered
+            for marker in (
+                "covers the following topics",
+                "chapter covers",
+                "learning objectives",
+                "we will start with",
+                "then we'll discuss",
+                "before we move on",
+                "in this section we will",
+                "this chapter will",
+                "we will look at",
+                "we will examine",
+            )
+        )
+
+    @staticmethod
+    def _is_code_heavy_sentence(sentence: str) -> bool:
+        lowered = sentence.lower()
+        markers = (
+            ">>>",
+            "np.",
+            "tf.",
+            "sklearn.",
+            ".fit(",
+            ".predict(",
+            ".kneighbors(",
+            "array([",
+            "model.compile(",
+        )
+        if any(marker in lowered for marker in markers):
+            return True
+        code_tokens = len(re.findall(r"\b[a-zA-Z][a-zA-Z0-9]*_[a-zA-Z0-9_]+\b", sentence))
+        assignments = len(re.findall(r"\b[a-zA-Z_][a-zA-Z0-9_]*\s*=", sentence))
+        return code_tokens + assignments >= 3
+
+    @staticmethod
+    def _is_formula_heavy_sentence(sentence: str) -> bool:
+        formula_markers = sum(
+            sentence.count(marker)
+            for marker in ("=", "∑", "⊺", "argmax", "exp(", "max(")
+        )
+        return formula_markers >= 2
+
+    @staticmethod
+    def _is_extract_fragment(sentence: str) -> bool:
+        stripped = sentence.strip()
+        if not stripped:
+            return True
+        if stripped.startswith(("[...]", "\u2026")):
+            return True
+        if "they note that:" in stripped.lower():
+            return True
+        if re.search(
+            r"\b(?:and|at|because|by|could|for|from|highly|in|means|of|or|the|that|to|while|with|would)\.?$",
+            stripped,
+            flags=re.I,
+        ):
+            return True
+        first_character = stripped[0]
+        return first_character.isalpha() and first_character.islower()
+
+    @staticmethod
     def _clean_evidence_sentence(sentence: str) -> str:
         cleaned = re.sub(r"\s+", " ", sentence).strip(" -")
         cleaned = re.split(r"\s+>>>\s+", cleaned, maxsplit=1)[0].strip()
+        cleaned = re.sub(
+            r"^(?:[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,5})\s+"
+            r"(?:\d+\s+){2,}(?=(?:A|An|The|This|It|All|Each|When|There|Typical)\b)",
+            "",
+            cleaned,
+        ).strip()
         cleaned = re.sub(r"^#+\s+[^.?!]{0,180}?\s+(?=NIRMIQ\b)", "", cleaned, flags=re.I).strip()
         cleaned = re.sub(r"\s+#\s+.*$", "", cleaned).strip()
         use_match = re.search(
@@ -1815,13 +2922,29 @@ class SynthesisService:
     def _sentence_score(sentence: str, query_terms: set[str]) -> float:
         if not query_terms:
             return 0.0
-        sentence_lower = sentence.lower()
         return float(
             sum(
                 1
                 for term in query_terms
-                if term in sentence_lower or any(word.startswith(term[:5]) for word in sentence_lower.split())
+                if SynthesisService._term_matches(sentence=sentence, term=term)
             )
+        )
+
+    @staticmethod
+    def _term_matches(*, sentence: str, term: str) -> bool:
+        """Match specific phrases exactly while retaining mild singular/plural tolerance."""
+
+        lowered = re.sub(r"\s+", " ", sentence.lower().replace("-", " "))
+        normalized_term = re.sub(r"\s+", " ", term.lower().replace("-", " ")).strip()
+        if not normalized_term:
+            return False
+        if " " in normalized_term:
+            return normalized_term in lowered
+        if normalized_term in lowered:
+            return True
+        return len(normalized_term) >= 5 and any(
+            word.startswith(normalized_term[:5])
+            for word in re.findall(r"[a-zA-Z][a-zA-Z0-9+]*", lowered)
         )
 
     @staticmethod
@@ -2321,7 +3444,20 @@ class SynthesisService:
     @staticmethod
     def _claim_terms(sentence: str) -> set[str]:
         cleaned = re.sub(r"\[\d+\]", " ", sentence.lower())
-        raw_tokens = re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{1,}", cleaned)
+        cleaned = re.sub(
+            r"^(?:short answer|direct answer|how it works|supporting detail)\s+",
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(
+            r"\b(?:the\s+)?source\s+(?:identifies|records|states|shows|says)\b",
+            "",
+            cleaned,
+        )
+        raw_tokens = re.findall(
+            r"(?:[a-zA-Z][a-zA-Z0-9+-]{1,}|(?:19|20)\d{2}(?:-\d{2}-\d{2})?)",
+            cleaned,
+        )
         return {
             token
             for token in raw_tokens
@@ -2337,7 +3473,12 @@ class SynthesisService:
     def _claim_support_score(claim_terms: set[str], context_text: str) -> float:
         if not claim_terms:
             return 1.0
-        context_terms = set(re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{1,}", context_text.lower()))
+        context_terms = set(
+            re.findall(
+                r"(?:[a-zA-Z][a-zA-Z0-9+-]{1,}|(?:19|20)\d{2}(?:-\d{2}-\d{2})?)",
+                context_text.lower(),
+            )
+        )
         matches = 0
         for term in claim_terms:
             if term in context_terms:

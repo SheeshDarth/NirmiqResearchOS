@@ -105,3 +105,80 @@ def test_fallback_definition_prefers_subject_called_definition() -> None:
 
     assert "Constraining a model to make it simpler" in answer
     assert "Direct answer\n- Ridge regression" not in answer
+
+
+def test_fallback_definition_prefers_subject_led_cnn_explanation() -> None:
+    context_chunks = [
+        (
+            1,
+            "[1] doc=doc score=1 source=bm25 pages=1-1\n"
+            "CNNs solve the parameter-growth problem using partially connected layers and weight sharing. "
+            "The most important building block of a CNN is the convolutional layer.",
+        ),
+        (
+            2,
+            "[2] doc=doc score=.8 source=bm25 pages=2-2\n"
+            "The encoder is a regular CNN composed of convolutional layers and pooling layers.",
+        ),
+    ]
+
+    answer = SynthesisService._fallback_definition_answer(
+        query="Explain CNN",
+        context_chunks=context_chunks,
+        response_mode="research",
+    )
+
+    assert "CNNs solve the parameter-growth problem" in answer
+    assert "Direct answer\n- The encoder" not in answer
+
+
+def test_fallback_definition_keeps_working_details_local_to_subject() -> None:
+    context_chunks = [
+        (
+            1,
+            "[1] doc=doc score=1 source=bm25 pages=38-38\n"
+            "Transferring knowledge from one task to another is called transfer learning. "
+            "It reuses knowledge learned for a related task.",
+        ),
+        (
+            2,
+            "[2] doc=doc score=.9 source=bm25 pages=200-200\n"
+            "Online learning algorithms can train on datasets that do not fit in memory. "
+            "This is called out-of-core learning.",
+        ),
+    ]
+
+    answer = SynthesisService._fallback_definition_answer(
+        query="What is transfer learning?",
+        context_chunks=context_chunks,
+        response_mode="research",
+    )
+
+    assert "called transfer learning" in answer
+    assert "out-of-core learning" not in answer
+
+
+def test_fallback_definition_includes_distinct_cnn_pooling_component() -> None:
+    context_chunks = [
+        (
+            1,
+            "[1] doc=doc score=1 source=bm25 pages=615-615\n"
+            "The most important building block of a CNN is the convolutional layer. "
+            "CNNs use local receptive fields and shared weights.",
+        ),
+        (
+            2,
+            "[2] doc=doc score=.9 source=bm25 pages=627-627\n"
+            "The second common building block of CNNs is the pooling layer. "
+            "Their goal is to subsample or shrink feature maps to reduce the computational load.",
+        ),
+    ]
+
+    answer = SynthesisService._fallback_definition_answer(
+        query="Explain CNN",
+        context_chunks=context_chunks,
+        response_mode="research",
+    )
+
+    assert "pooling layer" in answer
+    assert "subsample or shrink" in answer

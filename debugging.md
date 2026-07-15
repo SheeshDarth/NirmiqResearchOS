@@ -602,3 +602,28 @@ bash scripts/stop_local.sh
 ```
 
 Current Windows workspace note: Bash validation could not run because WSL has no installed distribution. Validate on an actual Linux distro before promising Linux release support.
+
+## Diagnosing A Related-But-Wrong Answer
+
+Use the answer-quality evaluator before changing model size or temperature:
+
+```powershell
+cd C:\Nirmiq-researchOS
+.\scripts\eval_answer_quality.ps1 -Modes bm25
+```
+
+Inspect:
+
+- `data/processed/eval/real_world_answer_quality_metrics.json` for aggregate retrieval, relevance, readability, faithfulness, and answerability metrics.
+- `data/processed/eval/real_world_answer_quality_failures.jsonl` for per-query misses and answer-quality reasons.
+- `cited_context_chunk_ids` in debug retrieval metadata to confirm the evaluator and UI are judging passages actually used by the answer.
+- `anchor_rescue_applied` and `neighbor_rescue_applied` only in debug mode when direct definitions or adjacent subsections are buried.
+
+Failure classification:
+
+1. Correct passage absent from retrieved chunks: inspect parsing, section metadata, BM25 terms, and bounded rescue.
+2. Correct passage retrieved but absent from `cited_context_chunk_ids`: inspect context packing and answer-plan sentence ranking.
+3. Correct passage cited but answer is poor: inspect deterministic fallback structure and fragment filtering.
+4. Unsupported claim survives: inspect claim verification and the evidence reliability gate; do not weaken abstention first.
+
+Known performance note: the full 40-case legacy-textbook run takes roughly four minutes. A slow successful evaluation is not a sandbox failure.

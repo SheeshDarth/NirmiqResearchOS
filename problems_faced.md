@@ -458,3 +458,43 @@ Prevention:
 - UI sprint closure now requires manual rendered review and user acceptance.
 - Component refactors must be evaluated separately from visible information-architecture changes.
 - The normal interface must preserve one primary task, one primary scroll region, and progressive disclosure for advanced controls.
+
+## 2026-07-15 Resolved: Correct Evidence Starved By Long Earlier Chunks
+
+Symptom:
+
+- Retrieval found a direct adjacent subsection, such as CNN pooling, but the final answer cited only earlier broad convolution passages.
+
+Root cause:
+
+- Synthesis appended complete chunks in rank order and stopped when the global context budget was full.
+- Two or three long textbook chunks could therefore hide later direct evidence.
+
+Resolution:
+
+- Distribute the bounded context budget across up to eight candidates.
+- Select a local sentence window per chunk using the query subject, goal terms, and answer-intent cues.
+- Preserve original citation anchors while packing excerpts.
+- Add page-neighbor rescue for legacy documents whose adjacent subsection lacks usable heading metadata.
+
+## 2026-07-15 Resolved: Definitions Named After Their Explanation
+
+Symptom:
+
+- `What is transfer learning?` ranked backmatter references above the clean sentence `Transferring knowledge ... is called transfer learning`.
+
+Root cause:
+
+- Definition rescue recognized `<subject> is ...` but not `... is called <subject>`.
+- The legacy definition fallback also admitted truncated and unrelated working sentences.
+
+Resolution:
+
+- Add generic `called <subject>` and `known as <subject>` definition patterns.
+- Require explanatory details to be locally connected to a subject-bearing sentence.
+- Reject fragments ending in dangling prepositions or connectors.
+
+Measured result:
+
+- 40 strict offline BM25 full queries: MRR `0.868`, Recall@8 `0.921`, expected citation coverage `0.921`, answer-quality pass `0.825`, faithfulness `0.985`, answerability correctness `1.000`.
+- Remaining problems are preserved in `data/processed/eval/real_world_answer_quality_failures.jsonl`; the current sprint passed its gate but did not eliminate arbitrary-query risk.

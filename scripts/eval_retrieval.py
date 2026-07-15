@@ -17,6 +17,7 @@ from app.core.config import get_settings
 from app.core.deps import AppContainer
 from app.api.schemas.ingest import IngestRequest
 from app.api.schemas.query import QueryRequest
+from app.domain.answer_quality import evaluate_answer_quality
 from app.domain.text_normalization import normalize_token_text
 
 
@@ -31,6 +32,9 @@ class EvalSample:
     document_id: str | None = None
     category: str | None = None
     expected_answer: str | None = None
+    answerability: str = "answerable"
+    required_concepts: list[list[str]] | None = None
+    response_mode: str = "research"
 
 
 def parse_args() -> argparse.Namespace:
@@ -101,6 +105,15 @@ def load_samples(path: Path) -> list[EvalSample]:
         sample_id = str(payload.get("id") or f"line-{line_no}").strip()
         category = str(payload.get("category") or "").strip() or None
         expected_answer = str(payload.get("expected_answer") or "").strip() or None
+        raw_answerability = payload.get("answerability", payload.get("answerable", "answerable"))
+        if isinstance(raw_answerability, bool):
+            answerability = "answerable" if raw_answerability else "unanswerable"
+        else:
+            answerability = str(raw_answerability or "answerable").strip().lower()
+        if answerability not in {"answerable", "partial", "unanswerable"}:
+            raise ValueError(f"Line {line_no} has invalid answerability: {answerability}")
+        required_concepts = parse_required_concepts(payload.get("required_concepts"), line_no=line_no)
+        response_mode = str(payload.get("response_mode") or "research").strip() or "research"
         if not query:
             raise ValueError(f"Line {line_no} missing query.")
         if not expected_doc_ids and not expected_chunk_ids and not expected_phrases and not source_file:
@@ -117,9 +130,26 @@ def load_samples(path: Path) -> list[EvalSample]:
                 source_file=source_file,
                 category=category,
                 expected_answer=expected_answer,
+                answerability=answerability,
+                required_concepts=required_concepts,
+                response_mode=response_mode,
             )
         )
     return samples
+
+
+def parse_required_concepts(value: object, *, line_no: int) -> list[list[str]]:
+    if value in (None, []):
+        return []
+    if not isinstance(value, list):
+        raise ValueError(f"Line {line_no} required_concepts must be a list.")
+    groups: list[list[str]] = []
+    for item in value:
+        aliases = item if isinstance(item, list) else [item]
+        normalized = [str(alias).strip() for alias in aliases if str(alias).strip()]
+        if normalized:
+            groups.append(normalized)
+    return groups
 
 
 async def resolve_sample_sources(
@@ -148,7 +178,7 @@ async def resolve_sample_sources(
             row = container.sqlite_repo.get_document_by_id(response.document_id)
         if row:
             sample.document_id = str(row["id"])
-            if not sample.expected_document_ids:
+            if not sample.expected_document_ids and sample.answerability != "unanswerable":
                 sample.expected_document_ids = [sample.document_id]
 
 
@@ -224,14 +254,16 @@ async def run_eval_for_mode(
     mrr_sum = 0.0
     citation_presence_hits = 0
     citation_expected_hits = 0
-    level_counts = {"chunk": 0, "document": 0, "phrase": 0}
+    level_counts = {"chunk": 0, "document": 0, "phrase": 0, "unanswerable": 0}
     grounding_state_counts = {"strong": 0, "moderate": 0, "weak": 0, "unknown": 0}
     grounding_score_sum = 0.0
     citation_count_sum = 0
     citation_anchor_hits = 0
     grounded_response_hits = 0
     generation_backend_counts: dict[str, int] = {}
+    quality_records: list[tuple[str, dict[str, object]]] = []
     total = len(samples)
+    retrieval_target_total = 0
     max_k = max(ks) if ks else 0
     review_rank_threshold = min(ks) if ks else 3
 
@@ -243,6 +275,7 @@ async def run_eval_for_mode(
                     query=sample.query,
                     document_id=sample.document_id,
                     retrieval_mode=mode,  # type: ignore[arg-type]
+                    mode=sample.response_mode,
                     debug=True,
                 )
             )
@@ -273,19 +306,48 @@ async def run_eval_for_mode(
                 for chunk_id in retrieved_chunk_ids
                 if chunk_id in cited_rows
             ] or [str(citation.excerpt or "") for citation in citations]
-            citation_presence_hits += 1 if citations else 0
+            has_retrieved_evidence = bool(citations)
         else:
             bundle = await container.retrieval_service.retrieve_with_mode(
                 sample.query,
                 mode=mode,
                 document_id=sample.document_id,
+                response_mode=sample.response_mode,
+                answer_query=sample.query,
             )
             retrieved_chunk_ids = [chunk.chunk_id for chunk in bundle.chunks]
             retrieved_doc_ids = [chunk.document_id for chunk in bundle.chunks]
             retrieved_texts = [chunk.text for chunk in bundle.chunks]
-            citation_presence_hits += 1 if bundle.chunks else 0
+            has_retrieved_evidence = bool(bundle.chunks)
 
-        if sample.expected_chunk_ids:
+        if sample.answerability != "unanswerable":
+            citation_presence_hits += 1 if has_retrieved_evidence else 0
+
+        if full_query:
+            quality = evaluate_answer_quality(
+                query=sample.query,
+                answer=answer,
+                grounded=response.grounded,
+                retrieval_meta=retrieval_meta,
+                response_mode=sample.response_mode,
+                answerability=sample.answerability,
+                expected_answer=sample.expected_answer,
+                required_concepts=sample.required_concepts,
+            )
+            category = sample.category or "uncategorized"
+            quality_records.append((category, quality))
+            maybe_record_answer_quality_failure(
+                failure_records,
+                sample=sample,
+                mode=mode,
+                answer=answer,
+                quality=quality,
+            )
+
+        if sample.answerability == "unanswerable":
+            level_counts["unanswerable"] += 1
+        elif sample.expected_chunk_ids:
+            retrieval_target_total += 1
             expected = set(sample.expected_chunk_ids)
             retrieved = retrieved_chunk_ids
             level_counts["chunk"] += 1
@@ -310,6 +372,7 @@ async def run_eval_for_mode(
                 retrieved_texts=retrieved_texts,
             )
         elif sample.expected_phrases:
+            retrieval_target_total += 1
             level_counts["phrase"] += 1
             first_rank = first_phrase_rank(retrieved_texts, sample.expected_phrases)
             mrr_sum += phrase_reciprocal_rank(retrieved_texts, sample.expected_phrases)
@@ -332,6 +395,7 @@ async def run_eval_for_mode(
                 retrieved_texts=retrieved_texts,
             )
         elif sample.expected_document_ids:
+            retrieval_target_total += 1
             expected = set(sample.expected_document_ids)
             retrieved = retrieved_doc_ids
             level_counts["document"] += 1
@@ -366,17 +430,28 @@ async def run_eval_for_mode(
     if level_counts["phrase"] and not level_counts["chunk"] and not level_counts["document"]:
         target_level = "phrase"
 
-    recall_at_k = {f"recall@{k}": (recall_hits[k] / total if total else 0.0) for k in ks}
-    ndcg_at_k = {f"ndcg@{k}": (ndcg_sums[k] / total if total else 0.0) for k in ks}
+    recall_at_k = {
+        f"recall@{k}": (recall_hits[k] / retrieval_target_total if retrieval_target_total else 0.0)
+        for k in ks
+    }
+    ndcg_at_k = {
+        f"ndcg@{k}": (ndcg_sums[k] / retrieval_target_total if retrieval_target_total else 0.0)
+        for k in ks
+    }
     metrics = {
         "mode": mode,
         "samples": total,
+        "retrieval_scored_samples": retrieval_target_total,
         "target_level": target_level if total else "unknown",
-        "mrr": (mrr_sum / total if total else 0.0),
+        "mrr": (mrr_sum / retrieval_target_total if retrieval_target_total else 0.0),
         **recall_at_k,
         **ndcg_at_k,
-        "citation_presence_rate": (citation_presence_hits / total if total else 0.0),
-        "citation_expected_coverage": (citation_expected_hits / total if total else 0.0),
+        "citation_presence_rate": (
+            citation_presence_hits / retrieval_target_total if retrieval_target_total else 0.0
+        ),
+        "citation_expected_coverage": (
+            citation_expected_hits / retrieval_target_total if retrieval_target_total else 0.0
+        ),
     }
     if full_query:
         metrics["grounding_metrics"] = {
@@ -392,6 +467,7 @@ async def run_eval_for_mode(
                 backend: (count / total if total else 0.0) for backend, count in generation_backend_counts.items()
             },
         }
+        metrics["answer_quality_metrics"] = summarize_answer_quality(quality_records)
     return metrics
 
 
@@ -476,6 +552,88 @@ def compact_excerpt(text: str, limit: int = 260) -> str:
     if len(cleaned) <= limit:
         return cleaned
     return cleaned[: limit - 3].rstrip() + "..."
+
+
+def summarize_answer_quality(
+    records: list[tuple[str, dict[str, object]]],
+) -> dict[str, object]:
+    score_fields = (
+        "overall_score",
+        "answer_relevance",
+        "concept_coverage",
+        "query_focus",
+        "plan_compliance",
+        "readability",
+        "faithfulness",
+        "answerability_correct",
+    )
+    if not records:
+        return {"samples": 0, "pass_rate": 0.0, "by_category": {}}
+
+    def summarize_group(group: list[dict[str, object]]) -> dict[str, object]:
+        failure_counts: dict[str, int] = {}
+        for result in group:
+            reasons = result.get("failure_reasons")
+            if not isinstance(reasons, list):
+                continue
+            for reason in reasons:
+                key = str(reason)
+                failure_counts[key] = failure_counts.get(key, 0) + 1
+        return {
+            "samples": len(group),
+            "pass_rate": round(
+                sum(1 for result in group if bool(result.get("passed"))) / len(group),
+                3,
+            ),
+            **{
+                field: round(
+                    sum(float(result.get(field) or 0.0) for result in group) / len(group),
+                    3,
+                )
+                for field in score_fields
+            },
+            "failure_reason_counts": failure_counts,
+        }
+
+    all_results = [result for _, result in records]
+    categories: dict[str, list[dict[str, object]]] = {}
+    for category, result in records:
+        categories.setdefault(category, []).append(result)
+    return {
+        **summarize_group(all_results),
+        "by_category": {
+            category: summarize_group(group)
+            for category, group in sorted(categories.items())
+        },
+    }
+
+
+def maybe_record_answer_quality_failure(
+    failure_records: list[dict[str, Any]] | None,
+    *,
+    sample: EvalSample,
+    mode: str,
+    answer: str,
+    quality: dict[str, object],
+) -> None:
+    if failure_records is None or bool(quality.get("passed")):
+        return
+    failure_records.append(
+        {
+            "sample_id": sample.sample_id,
+            "category": sample.category,
+            "mode": mode,
+            "status": "answer_quality_failure",
+            "failure_type": "answer_quality",
+            "query": sample.query,
+            "source_file": sample.source_file,
+            "answerability": sample.answerability,
+            "expected_answer": sample.expected_answer,
+            "required_concepts": sample.required_concepts,
+            "quality": quality,
+            "answer_excerpt": compact_excerpt(answer, limit=500),
+        }
+    )
 
 
 async def main_async() -> int:

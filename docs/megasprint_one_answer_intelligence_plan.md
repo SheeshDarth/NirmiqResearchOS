@@ -1,7 +1,7 @@
 # MegaSprint One, Block B: Grounded Answer Intelligence
 
-Last updated: 2026-07-13
-Status: active; first implementation slice complete
+Last updated: 2026-07-15
+Status: complete on the 40-case reliability gate; ongoing quality debt remains tracked
 
 ## Goal
 
@@ -104,14 +104,34 @@ Regression verification:
 - Python API compile check: passed.
 - Next.js production build: passed; first-load JavaScript `117 kB`.
 
-## Remaining Work Before Block B Closes
+## Closure Result
 
-- Grow the real-world answer-quality set from 17 to at least 40 diverse textbook, note, paper, exam, visual, and unanswerable cases.
-- Score answer relevance and completeness in addition to retrieval rank.
-- Add automated checks for fragmentary prose, section duplication, incorrect limitations, and unsupported applications.
-- Measure claim faithfulness and abstention correctness independently from citation presence.
-- Run warm/cold latency and memory checks on balanced, low-memory, and CPU-offline profiles.
-- Refactor the verifier out of the large synthesis service only after behavior is stable and protected by tests.
+- Added a 40-case dataset spanning papers, a large textbook, notes, and unanswerable questions.
+- Added automated answer relevance, concept coverage, query focus, plan compliance, readability, faithfulness, and answerability scoring.
+- Added query-aware context packing so long early chunks cannot hide later direct evidence.
+- Added concept, mechanism, procedure, recommendation, interpretation, comparison, and limitation evidence contracts.
+- Added strict definition rescue for source phrasing such as `called <subject>` and page-neighbor rescue for legacy PDFs without headings.
+- Preserved answer-used citation scoring: retrieval only receives credit when final cited passages contain expected support.
+
+Final strict offline BM25 full-query result:
+
+| Samples | MRR | Recall@3 | Recall@8 | Expected citation coverage | Answer-quality pass | Faithfulness | Answerability correctness |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 40 | 0.868 | 0.921 | 0.921 | 0.921 | 0.825 | 0.985 | 1.000 |
+
+Verification:
+
+- Backend unit and integration tests: `160 passed`, `1 warning`.
+- Python API compile check: passed.
+- Next.js production build: passed; first-load JavaScript remained `117 kB`.
+- Targeted CNN and transfer-learning evaluation: `1.000` citation coverage, readability, faithfulness, and answer-quality pass rate.
+
+Known debt after closure:
+
+- Seven of 40 cases remain below the answer-quality pass threshold, primarily summary/list readability and four low-relevance mechanism/procedure cases.
+- Three expected source-phrase cases remain absent from answer-used citations.
+- The strict full-query benchmark takes about four minutes against the legacy 1,800+ chunk textbook index.
+- Refactor the verifier and answer composer out of the large synthesis service only after behavior remains stable across another dataset expansion.
 
 ## Non-Goals
 

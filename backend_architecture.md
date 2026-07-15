@@ -346,3 +346,32 @@ Export handling now uses cleaner local artifact rules:
 - Full local file paths remain omitted from normal exports.
 
 No public API request change or new dependency was added.
+
+## 2026-07-15 Answer Intelligence Closure Architecture
+
+The strict offline query path now uses this bounded evidence flow:
+
+```mermaid
+flowchart LR
+    Q["Natural query"] --> P["Deterministic answer plan"]
+    P --> R["Section/BM25 retrieval"]
+    R --> A["Strict anchor and neighbor rescue"]
+    A --> C["Query-aware context packing"]
+    C --> S["One local synthesis pass or deterministic fallback"]
+    S --> V["Claim and citation verification"]
+    V -->|"supported"| O["Readable cited answer"]
+    V -->|"repairable"| X["Prune unsupported claims"]
+    V -->|"weak"| N["Abstain"]
+    X --> O
+```
+
+Architecture invariants:
+
+- SQLite active chunks remain the source of truth; vector hits cannot revive stale chunks.
+- BM25 remains sufficient for the CPU-offline path.
+- Context budget is shared across up to eight candidates using complete local evidence windows, preventing early long chunks from starving later direct evidence.
+- Rescue is deterministic and bounded; it recognizes general definition, mechanism, and nearby-subsection patterns rather than fixed textbook answers.
+- Evaluation scores chunks actually cited by the answer, not merely candidates returned by retrieval.
+- The public query request and top-level response contracts remain unchanged.
+
+Measured closure gate: 40 strict offline BM25 full queries reached MRR `0.868`, Recall@8 `0.921`, expected citation coverage `0.921`, faithfulness `0.985`, and answerability correctness `1.000`.

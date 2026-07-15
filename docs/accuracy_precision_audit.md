@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-07-13
+Last updated: 2026-07-15
 
 ## Canonical Problem Log
 
@@ -13,6 +13,41 @@ See [`answer_used_citation_backlog.md`](answer_used_citation_backlog.md) for cas
 See [`nirmiq_rag_method.md`](nirmiq_rag_method.md) for the chosen RAG architecture: NIRMIQ Evidence-First Hierarchical Hybrid RAG.
 
 See [`megasprint_one_answer_intelligence_plan.md`](megasprint_one_answer_intelligence_plan.md) for the active query-understanding, synthesis, claim-repair, and answer-quality closure block.
+
+## 2026-07-15 MegaSprint One Block B Closure Audit
+
+Decision:
+
+- Close the answer-intelligence block on the agreed 40-case gate.
+- Keep BM25 as the strict offline backbone; no cloud API, graph database, agent loop, larger model, or heavy reranker was added.
+- Preserve known failures in the committed failure log instead of weakening thresholds or rewriting gold labels around implementation output.
+
+Implemented:
+
+- Query-aware context packing distributes bounded context across up to eight chunks and keeps local sentence windows around the requested subject and answer intent.
+- Generic concept cues recognize definitions and named concepts such as `called <subject>`, plus component/goal language such as `building block` and `goal is to`.
+- Legacy page-neighbor rescue recovers adjacent textbook subsections when section headings are unavailable.
+- Definition fallback rejects truncated fragments and only includes working details locally connected to the queried subject.
+- Full-query evaluation scores answer-used cited chunk text, answer relevance, concept coverage, query focus, plan compliance, readability, faithfulness, and answerability correctness.
+
+Measured strict offline BM25 result:
+
+| Samples | MRR | Recall@3 | Recall@8 | Expected citation coverage | Quality pass | Relevance | Readability | Faithfulness | Answerability |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 40 | 0.868 | 0.921 | 0.921 | 0.921 | 0.825 | 0.764 | 0.939 | 0.985 | 1.000 |
+
+Verification:
+
+- Focused reliability tests: `77 passed`.
+- Full backend suite: `160 passed`, `1 warning`.
+- Python compilation: passed.
+- Next.js production build: passed.
+
+Residual risk:
+
+- Seven answer-quality cases remain below threshold and three expected phrase targets remain absent from answer-used citations.
+- Summary/list readability and several mechanism/procedure relevance cases are the highest-value next quality work.
+- The result supports a portfolio/demo reliability claim, not a claim of commercial or arbitrary-document perfection.
 
 ## 2026-07-13 Grounded Answer Intelligence Audit
 
