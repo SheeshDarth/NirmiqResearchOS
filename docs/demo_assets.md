@@ -1,6 +1,6 @@
 ﻿# Demo Assets
 
-NIRMIQ ResearchOS is screenshot-ready, but screenshots should be regenerated after UI changes so the README stays honest.
+NIRMIQ Academic Intelligence is screenshot-ready, but screenshots should be regenerated after UI changes so the README stays honest.
 
 Recommended GitHub assets:
 

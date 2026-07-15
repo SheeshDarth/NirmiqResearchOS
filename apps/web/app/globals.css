@@ -2651,8 +2651,8 @@ body {
 }
 
 .sidebar-simple {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   height: 100%;
   min-height: 0;
   padding: 16px 12px 12px;
@@ -2775,11 +2775,11 @@ body {
 
 .sidebar-library {
   display: flex;
-  flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
   margin-top: 18px;
   border-top: 1px solid var(--nirmiq-border);
+  overflow: hidden;
   padding-top: 12px;
 }
 
@@ -2797,6 +2797,7 @@ body {
 }
 
 .sidebar-material-list {
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   padding-right: 3px;
@@ -2842,9 +2843,10 @@ body {
 }
 
 .sidebar-advanced {
-  flex: 0 0 auto;
+  max-height: min(44dvh, 420px);
   margin-top: 10px;
   border-top: 1px solid var(--nirmiq-border);
+  overflow: hidden;
   padding-top: 9px;
 }
 
@@ -2866,9 +2868,11 @@ body {
 }
 
 .sidebar-advanced-body {
-  max-height: min(440px, 55vh);
+  max-height: min(360px, calc(44dvh - 49px));
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px 2px 2px;
+  scrollbar-gutter: stable;
 }
 
 .sidebar-tool-row {

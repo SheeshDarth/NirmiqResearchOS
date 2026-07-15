@@ -94,7 +94,7 @@ cd C:\Nirmiq-researchOS
 Windows double-click browser preview:
 
 ```text
-NIRMIQ ResearchOS.cmd
+NIRMIQ Academic Intelligence.cmd
 ```
 
 Preview with bundled demo corpus:
@@ -516,13 +516,14 @@ Use the full ship gate instead of manual spot checks:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ship_check.ps1
 ```
 
-Latest known-good result:
+Latest known-good result (2026-07-15):
 
-- Backend tests: `41 passed, 1 warning`.
+- Backend tests: `163 passed, 1 warning`.
 - API compile: passed.
-- Web build: passed.
+- Web build: passed at `118 kB` first-load JavaScript.
 - Publish smoke: passed.
 - Golden demo smoke: passed.
+- Privacy-safe diagnostics export: passed.
 
 If the gate exits early, inspect:
 
@@ -536,7 +537,7 @@ Get-Content .\temp\runtime\web.ship.err.log -Tail 120
 Normal preview:
 
 ```text
-NIRMIQ ResearchOS.cmd
+NIRMIQ Academic Intelligence.cmd
 ```
 
 Golden-demo warm start:
@@ -557,9 +558,9 @@ Run the harder local seed benchmark:
 
 Expected current baseline:
 
-- 16 phrase-labeled samples.
-- Hybrid Recall@8 around `0.750`.
-- BM25 Recall@8 around `0.750`.
+- 17 phrase-labeled samples.
+- Hybrid and BM25 Recall@8 `1.000` on the phrase-level seed.
+- Use the strict 40-case full-query benchmark for the harder answer-quality release gate.
 
 If this fails because source files are missing, replace `source_file` paths in `data/processed/eval/real_world_academic_seed.jsonl` with local PDFs/notes. The referenced source PDFs are intentionally not committed.
 
@@ -627,3 +628,35 @@ Failure classification:
 4. Unsupported claim survives: inspect claim verification and the evidence reliability gate; do not weaken abstention first.
 
 Known performance note: the full 40-case legacy-textbook run takes roughly four minutes. A slow successful evaluation is not a sandbox failure.
+
+## Export Safe Diagnostics
+
+Use this before sharing a startup/release problem:
+
+```powershell
+npm.cmd run diagnostics
+```
+
+Or double-click `NIRMIQ Diagnostics.cmd`. The ZIP is created under `temp/diagnostics` and is never uploaded automatically.
+
+Privacy boundary:
+
+- Included: product/runtime versions, Release Doctor status, and aggregate error/warning/failure marker counts.
+- Excluded: raw logs, environment variables, SQLite/vector data, uploads, source text, prompts, answers, excerpts, filenames, and full local paths.
+- The exporter fails before compression if the workspace path or Windows user-home path remains in the payload.
+
+If deeper local-only diagnosis is needed, inspect `temp/runtime` and `temp/desktop` directly. Do not attach those raw logs without reviewing them first.
+
+## Next Build Reports `/_not-found` While Preview Is Running
+
+The Next.js preview and `next build` both use `apps/web/.next`. Building while the local preview is active can transiently report `Cannot find module for page: /_not-found` even when source code is valid.
+
+Use this order:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\stop_local.ps1
+Remove-Item -LiteralPath C:\Nirmiq-researchOS\apps\web\.next -Recurse -Force
+npm.cmd --prefix apps\web run build
+```
+
+Only remove the generated `.next` directory after confirming the resolved path is inside the workspace. Do not delete source, data, or user-upload directories. Restart the preview with `scripts\run_local.ps1` after the build passes.

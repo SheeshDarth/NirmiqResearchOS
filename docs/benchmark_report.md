@@ -1,6 +1,6 @@
 # NIRMIQ Golden Demo Benchmark Report
 
-Last updated: 2026-06-11
+Last updated: 2026-07-15
 
 ## Scope
 
@@ -60,19 +60,18 @@ cd C:\Nirmiq-researchOS
 
 ## Latest Local Result
 
-Verified on 2026-06-14 with `scripts/ship_check.ps1`:
+Verified on 2026-07-15 with `scripts/ship_check.ps1`:
 
-- Implementation commit: `d6e8c99`.
-- Backend tests: 37 passed, 1 warning.
+- Privacy/recovery implementation commit: `791c969`.
+- Backend tests: `163 passed`, `1` warning.
 - API compile: passed.
-- Web production build: passed.
+- Web production build: passed at `118 kB` first-load JavaScript.
 - Publish smoke: passed with `cloud_api_required=false`.
-- Readiness: `ready`, `indexed_documents=9`, `active_chunks=1880`.
-- Research query: passed with 2 citations.
-- Summary-style research query: passed with 2 citations.
-- Exam Lab query: passed with 2 citations.
-- Paper Lab query: passed with 2 citations.
+- Readiness: `ready`, `indexed_documents=18`, `active_chunks=9443` on the verification machine.
+- Research and summary-style Research queries: passed with citations.
+- Exam Lab and Paper Lab queries: passed with citations.
 - Unsupported Chat query: passed with `grounded=false` and zero citations.
+- Privacy-safe diagnostics archive: generated inside the release gate.
 
 ## Tradeoff
 
@@ -135,7 +134,7 @@ Interpretation:
 - Two real-world labels were corrected because source-valid evidence was being missed by OCR/wording-damaged expected phrases.
 - The 2026-07-12 refresh produced no active weak retrieval records in `data/processed/eval/real_world_retrieval_failures.jsonl`.
 
-## 2026-07-11 Ship Gate Refresh
+## 2026-07-15 Ship Gate Refresh
 
 Command:
 
@@ -145,12 +144,13 @@ npm.cmd run ship:check
 
 Result:
 
-- Backend unit/integration tests: `89 passed`, `1 warning`.
+- Backend unit/integration tests: `163 passed`, `1 warning`.
 - API compile: passed.
-- Web production build: passed.
+- Web production build: passed at `118 kB` first-load JavaScript.
 - Publish smoke: passed.
 - Golden demo: all four grounded demo queries returned citations.
 - Abstention check: unsupported general-chat prompt returned `grounded=false` and `citations=0`.
+- Diagnostics privacy smoke: passed without bundling raw logs or user content.
 
 Release-hardening note:
 

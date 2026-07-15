@@ -1,6 +1,6 @@
-# NIRMIQ ResearchOS Security Notes
+# NIRMIQ Academic Intelligence Security Notes
 
-Last updated: 2026-06-20
+Last updated: 2026-07-15
 
 ## Current security model
 
@@ -34,6 +34,9 @@ NIRMIQ currently runs as a local single-user application. The login screen is a 
   - Export current thread as Markdown.
   - Clear current thread memory and snapshots.
   - Clear indexed document metadata, chunks, summaries, jobs, exam artifacts, vector entries, parse-cache files, extracted diagrams, and app-owned uploaded source copies.
+  - Reset all app-local documents, sessions, feedback, exam profiles, and browser profile values while preserving external originals.
+- App-owned diagram storage is configurable and isolated in tests; recursive purge is fenced to safe child directories inside the workspace.
+- Safe diagnostics export contains status summaries and aggregate log markers only. It never packages raw logs or user document/conversation data and performs a final private-path check before compression.
 
 ## V3 Local Data Protection Protocol
 
@@ -67,9 +70,7 @@ NIRMIQ is designed to protect the user from accidental data leakage while preser
 
 1. Add real authentication only if hosted or multi-user deployment is introduced.
 2. Add encrypted local vault support for SQLite and extracted assets.
-3. Add optional secure source-file purge confirmations and visible counts in the UI.
-4. Add provider consent screens before sending content to external APIs.
-5. Add audit log export for document operations.
-6. Add optional local encryption for SQLite, raw uploads, extracted diagrams, and parse cache.
-7. Add local bug-report bundle export for logs without sending telemetry to a third party.
-8. Add a strict "local-only model endpoint" guard before allowing non-loopback Ollama or external model hosts.
+3. Add provider consent screens before sending content to external APIs.
+4. Add an optional local audit log for destructive document operations.
+5. Add optional local encryption for SQLite, raw uploads, extracted diagrams, and parse cache.
+6. Add a strict "local-only model endpoint" guard before allowing non-loopback Ollama or external model hosts.

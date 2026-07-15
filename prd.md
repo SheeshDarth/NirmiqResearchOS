@@ -1,14 +1,14 @@
 # NIRMIQ Product Requirements Document
 
-Last updated: 2026-07-09
+Last updated: 2026-07-15
 
 ## Product Name
 
-NIRMIQ ResearchOS
+NIRMIQ Academic Intelligence
 
 ## Ecosystem Context
 
-NIRMIQ ResearchOS is the academic document intelligence workspace under the broader NIRMIQ umbrella. The wider ecosystem may include NIRMIQ OS, NIRMIQ Mirror, NIRMIQ Intelligence Engine, NIRMIQ Agent System, NIRMIQ Research Assistant, and NIRMIQ Echo. This product must still work independently for users who only want academic document intelligence.
+NIRMIQ Academic Intelligence is the academic document intelligence workspace under the broader NIRMIQ umbrella. The wider ecosystem may include NIRMIQ OS, NIRMIQ Mirror, NIRMIQ Intelligence Engine, NIRMIQ Agent System, NIRMIQ Research Assistant, and NIRMIQ Echo. This product must still work independently for users who only want academic document intelligence.
 
 ## One-Line Promise
 
@@ -80,7 +80,7 @@ Students and early researchers often have scattered PDFs, lecture notes, screens
 
 ### First Run
 
-1. User sees NIRMIQ ResearchOS landing screen.
+1. User sees the NIRMIQ Academic Intelligence landing screen.
 2. User enters name plus email or phone.
 3. User chooses a workspace: Research, Chat, Paper Lab, or Exam Lab.
 4. User uploads or selects a document.
@@ -171,7 +171,7 @@ Acceptance targets:
 - Safe local agent orchestrator with typed retrieval/synthesis tools.
 - Paper Lab DOCX/LaTeX export after Markdown behavior is validated.
 - Exam Lab answer templates by marks and diagram-aware study guides.
-- Local data purge/export controls.
+- Optional encrypted local vault after the current purge/reset controls are proven across releases.
 - Larger retrieval evaluation dataset for NIRMIQ academic use cases after the first reliability pass.
 - Streaming answers after synthesis reliability is stable.
 

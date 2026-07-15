@@ -1,6 +1,6 @@
 # NIRMIQ Academic Intelligence Privacy Policy
 
-Last updated: 2026-05-29
+Last updated: 2026-07-15
 
 ## Local-first privacy position
 
@@ -15,6 +15,8 @@ NIRMIQ may store:
 - SQLite session messages and memory summaries.
 - Exam profiles, imported question banks, and diagram metadata.
 - Extracted source diagram image files under `data/processed/diagrams`.
+- Parsed-page cache files under `data/cache/parsed_pages`.
+- Uploaded source copies under the configured NIRMIQ upload directory.
 - Local browser profile name for the client-side login gate.
 
 ## Data not intentionally collected by this MVP
@@ -37,4 +39,11 @@ Users should not ingest confidential, regulated, or third-party restricted docum
 
 ## Deleting local data
 
-Local runtime data can be removed by deleting local database and index files under `data/sqlite`, `data/indexes`, and `data/processed`, subject to the app being stopped first.
+- `Clear thread` removes the current local conversation memory.
+- `Clear indexed material` removes document metadata, chunks, summaries, jobs, exam artifacts, vector entries, parse cache, extracted diagrams, and NIRMIQ-owned uploaded copies.
+- `Reset all local data` also removes all local sessions, feedback, exam profiles, and browser-local profile values.
+- External original files selected from outside NIRMIQ's upload directory are intentionally preserved.
+
+## Diagnostics and support
+
+The optional safe diagnostics export contains runtime/status summaries only. It excludes raw logs, environment variables, databases, uploads, document text, prompts, answers, source excerpts, filenames, and full local paths. It is created locally and is never uploaded automatically.

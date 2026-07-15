@@ -1,7 +1,7 @@
 # MegaSprint Five Plan: Release Confidence And Public Proof
 
 Last updated: 2026-07-15
-Status: active; Blocks 1-3 complete, Block 4 next
+Status: complete on Windows; native Linux packaging remains a follow-up boundary
 
 ## Goal
 
@@ -45,7 +45,7 @@ Status: complete on 2026-07-15.
 
 ### Block 4: Privacy And Recovery
 
-Status: next.
+Status: complete on 2026-07-15.
 
 - Verify purge removes app-owned uploads, parse cache, diagrams, chunks, vectors, summaries, and session data according to documented scope.
 - Add a local diagnostics bundle that redacts full source paths and user document text.
@@ -53,9 +53,21 @@ Status: next.
 
 ### Block 5: Public Review Package
 
+Status: complete on 2026-07-15.
+
 - Refresh screenshots/GIF, demo script, benchmark report, ship-readiness page, and release notes.
 - Add a concise `What works / Known limits` release section.
 - Validate Windows one-click startup and document the still-unverified native Linux packaging boundary.
+
+## Closure Evidence
+
+- Implementation commits: `a076ed2`, `3771489`, and `791c969`.
+- Ship gate: `163 passed`, API compile, `118 kB` first-load web build, local smoke, grounded golden routes, abstention, and diagnostics export.
+- Desktop source and rebuilt portable executable smoke: passed.
+- Portable SHA-256: `800FECA2FF2BB56247629495EF41A2160F12FD961DC6C5607044122A1A65527F`.
+- Strict 40-case metrics remained above every release threshold recorded in the release manifest.
+- Live browser QA at `1280 x 720` confirmed the advanced privacy controls scroll independently and `Reset all local data` is reachable without expanding or obscuring the chat surface.
+- Final clean Next.js production build: passed at `118 kB` first-load JavaScript.
 
 ## Acceptance Gate
 

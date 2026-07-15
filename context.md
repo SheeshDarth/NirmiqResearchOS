@@ -1,4 +1,4 @@
-# NIRMIQ ResearchOS Context
+# NIRMIQ Academic Intelligence Context
 
 Last updated: 2026-07-15
 Current branch: `main`
@@ -3867,3 +3867,69 @@ Verification:
 Next:
 
 - MegaSprint Five Block 4: verify full local purge scope, add a redacted diagnostics bundle, and verify local export/purge recovery paths.
+
+## MegaSprint Five Blocks 4-5 - Privacy, Recovery, And Public Release
+
+Completed on 2026-07-15.
+
+Implementation commit:
+
+- `791c969` - `Complete local privacy and recovery controls`.
+
+Local-data architecture:
+
+- Added `DELETE /memory` and `/api/v1/memory` for complete session/message/snapshot/feedback/exam-profile removal without changing `POST /query`.
+- Preserved the existing single-session deletion endpoint.
+- Expanded indexed-material purge to remove orphaned NIRMIQ-owned uploads, parse-cache files, and extracted diagrams after database/vector cleanup.
+- Preserved external source files outside the application upload root.
+- Added a workspace-child safety fence, workspace-root rejection, and symlink non-traversal for recursive cleanup.
+- Made diagram storage configurable through `DIAGRAM_PATH` and isolated it under the per-run test directory, preventing tests from touching live extracted diagrams.
+
+UI behavior:
+
+- Corrected privacy confirmation copy so it no longer claims every source file is preserved when NIRMIQ-owned upload copies are intentionally removed.
+- Added a hidden-advanced `Reset all local data` action that clears documents/artifacts, sessions, feedback, exam profiles, and browser-local profile values while keeping external originals.
+- Kept normal chat, answer, composer, and source surfaces unchanged.
+
+Safe diagnostics:
+
+- Added `scripts/export_diagnostics.ps1`, `npm.cmd run diagnostics`, `NIRMIQ Diagnostics.cmd`, and the desktop `Export Safe Diagnostics` menu item.
+- Bundle includes only product/runtime versions, Release Doctor output, aggregate log marker counts, and a privacy README.
+- Bundle excludes raw logs, environment variables, databases, uploads, document text, prompts, answers, source excerpts, filenames, and full local paths.
+- Export performs a final workspace/user-home path scan before compression and never uploads automatically.
+- Added diagnostics generation to `npm.cmd run ship:check`.
+
+Tests and verification:
+
+- Focused privacy/purge suite: `10 passed`, `1` third-party warning.
+- Full backend suite: `163 passed`, `1` third-party warning.
+- API compile: passed.
+- Next.js production build: passed; first-load JavaScript `118 kB`.
+- Full ship gate: passed with local smoke, grounded Research/Summary/Exam/Paper routes, unsupported-query abstention, and diagnostics export.
+- Desktop diagnostics tests and JavaScript syntax checks: passed.
+- Source Electron smoke: passed.
+- Rebuilt portable executable smoke: passed and released local ports cleanly.
+- Diagnostics ZIP inspection confirmed no workspace or Windows user-home path in the payload.
+
+Windows artifact:
+
+- `dist\desktop\NIRMIQ Academic Intelligence 0.5.0.exe`
+- Size: `71,405,018` bytes.
+- SHA-256: `800FECA2FF2BB56247629495EF41A2160F12FD961DC6C5607044122A1A65527F`.
+- Unsigned; still positioned as a portfolio/demo MVP rather than a signed commercial installer.
+
+MegaSprint Five closure:
+
+- Blocks 1-5 are complete on Windows.
+- README screenshots for chat, grounded answer, and citation trail remain current.
+- Optional GIF plus Paper Lab/Exam Lab captures remain public-polish debt, not release blockers.
+- Native Linux desktop packaging remains unverified; Linux browser mode is the documented low-end path.
+- `deep-research-report.md` remained unrelated/untracked and was not modified or committed.
+
+Final live UI QA on 2026-07-15:
+
+- Added `Reset all local data` to the active `Local tools and privacy` drawer; the earlier copy existed only in hidden legacy JSX and was not reachable by users.
+- Reworked the drawer into bounded grid rows so the document list yields space when advanced tools are open.
+- At a measured `1280 x 720` viewport, the advanced panel had a `268px` client height, `357px` scroll height, and `overflow-y: auto`; scrolling brought the reset control fully inside the viewport.
+- The chat canvas, compact composer, and default collapsed privacy state remained unchanged.
+- A production build initially collided with the running preview's shared `.next` cache and reported a transient `/_not-found` module error. Stopping the preview, deleting only `apps/web/.next`, and rebuilding cleanly passed at `118 kB` first-load JavaScript.

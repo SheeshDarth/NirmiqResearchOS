@@ -4,7 +4,7 @@ Last updated: 2026-07-13
 
 ## Project
 
-NIRMIQ ResearchOS is an offline-first academic workspace for grounded document research, general chat, paper drafting, and exam preparation. The implementation target is a solo-developer MVP that runs well on a local laptop with RTX 4050-class constraints.
+NIRMIQ Academic Intelligence is an offline-first academic workspace for grounded document research, general chat, paper drafting, and exam preparation. The implementation target is a solo-developer MVP that runs well on a local laptop with RTX 4050-class constraints.
 
 It belongs to the broader NIRMIQ ecosystem, but this repository must remain independently runnable and useful without NIRMIQ OS, Mirror, Intelligence Engine, Agent System, or Echo.
 
@@ -142,7 +142,7 @@ It belongs to the broader NIRMIQ ecosystem, but this repository must remain inde
 
 ## V3 Acceptance Criteria
 
-- Landing screen explains NIRMIQ ResearchOS clearly.
+- Landing screen explains NIRMIQ Academic Intelligence clearly.
 - Login accepts display name plus email or phone.
 - Workspace section choice is clear: Research, Chat, Paper Lab, Exam Lab.
 - Composer adapts placeholder/action to the current section.
@@ -306,4 +306,18 @@ Requirements now satisfied:
 - Unsupported and unanswerable prompts must abstain without cloud access.
 - Normal users must continue seeing answers, compact trust states, and readable citations rather than raw ranking metadata.
 
-Validation: `160` backend tests passed, Python compilation passed, Next.js production build passed, and the 40-case strict offline benchmark exceeded all retrieval/citation closure targets.
+Validation: `163` backend tests passed, Python compilation passed, Next.js production build passed, and the 40-case strict offline benchmark exceeded all retrieval/citation closure targets.
+
+## 2026-07-15 Privacy And Recovery Requirements
+
+Requirements now satisfied:
+
+- Full local reset must remove indexed records, app-owned uploads, parse cache, diagrams, vectors, all sessions, snapshots, feedback, exam profiles, and browser-local profile values.
+- External source files outside NIRMIQ-owned storage roots must never be deleted by application purge.
+- Recursive cleanup must reject the workspace root, configured roots outside the workspace, and symlink traversal.
+- Upload, parse-cache, and diagram roots must be isolated during tests.
+- Safe diagnostics must not contain raw logs, environment variables, databases, uploads, source text, prompts, answers, filenames, or full paths.
+- The ship gate must generate the safe diagnostics archive successfully.
+- Existing query APIs and normal chat behavior remain unchanged.
+
+Validation: implementation commit `791c969`; `163` backend tests, API compile, `118 kB` Next.js build, full ship gate, source desktop smoke, and rebuilt portable smoke passed.

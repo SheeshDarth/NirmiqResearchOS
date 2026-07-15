@@ -1,6 +1,6 @@
 ﻿# Demo Academic QA Dataset
 
-This folder contains the lightweight recruiter/demo evaluation set for NIRMIQ ResearchOS.
+This folder contains the lightweight recruiter/demo evaluation set for NIRMIQ Academic Intelligence.
 
 ## Sources
 

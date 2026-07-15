@@ -4,7 +4,7 @@ Last updated: 2026-07-13
 
 ## Goal
 
-Run NIRMIQ ResearchOS locally with low memory pressure while preserving grounded answer quality.
+Run NIRMIQ Academic Intelligence locally with low memory pressure while preserving grounded answer quality.
 
 The project should prefer retrieval quality, citation verification, and context packing over larger models. A smaller quantized model with strong retrieval is usually better for this product than a large model that causes VRAM pressure, latency spikes, or crashes.
 

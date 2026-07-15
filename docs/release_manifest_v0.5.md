@@ -10,6 +10,7 @@ Release position: local-first portfolio/demo MVP
 
 - Branch: `main`
 - Reliability baseline commit: `121f7ec`
+- Privacy/recovery implementation commit: `791c969`
 - Public query API shape: unchanged
 - Cloud model/API requirement: none
 - Optional local generation: Ollama
@@ -30,10 +31,10 @@ The doctor is integrated into the normal Windows launcher. Missing optional Olla
 
 `npm.cmd run ship:check` passed:
 
-- Backend unit/integration tests: `160 passed`, `1` third-party deprecation warning.
+- Backend unit/integration tests: `163 passed`, `1` third-party deprecation warning.
 - API compile: passed.
 - Next.js production build: passed.
-- Route `/` first-load JavaScript: `117 kB`.
+- Route `/` first-load JavaScript: `118 kB`.
 - API health/readiness smoke: passed.
 - Indexed local state during smoke: `18` documents and `9443` active chunks.
 - `cloud_api_required`: `false`.
@@ -41,6 +42,7 @@ The doctor is integrated into the normal Windows launcher. Missing optional Olla
 - Golden Exam Lab route: grounded with citations.
 - Golden Paper Lab route: grounded with citations.
 - Unsupported corpus question: abstained with zero citations.
+- Privacy-safe diagnostics bundle: generated and inspected with no workspace path or user-home path in its payload.
 
 `npm.cmd run desktop:smoke` passed:
 
@@ -72,12 +74,22 @@ Known measured debt remains seven answer-quality failures, concentrated in summa
 
 - Artifact: `dist\desktop\NIRMIQ Academic Intelligence 0.5.0.exe`
 - Format: portable Windows x64 executable.
-- Size: `71,405,762` bytes.
-- SHA-256: `8BC4AC0A836724BE6121A467A6685A46F059EC97D43342FF674934755FE3EAF6`.
+- Size: `71,405,018` bytes.
+- SHA-256: `800FECA2FF2BB56247629495EF41A2160F12FD961DC6C5607044122A1A65527F`.
 - Embedded icon: verified against the source-controlled NIRMIQ Academic Intelligence mark.
 - Portable launch smoke: passed with health, SQLite readiness, offline contract, web-shell verification, and clean port release.
 - Code signing: not configured; the artifact must not be presented as a signed commercial installer.
 - Startup recovery: local Retry, Run Doctor, and Open Logs actions replace a broken web view when runtime startup fails.
+- Desktop menu: exports a safe local diagnostics archive without packaging raw logs or user content.
+
+## Privacy And Recovery Verification
+
+- `DELETE /documents` clears SQLite document records, optional vectors, app-owned uploads, parse cache, diagrams, and orphaned files inside those owned roots.
+- Files outside the NIRMIQ-owned storage roots are preserved.
+- `DELETE /memory` and `/api/v1/memory` clear all local sessions, messages, snapshots, feedback, and exam profiles.
+- The Library privacy panel exposes thread clear, indexed-material purge, and full app-local reset behind explicit confirmations.
+- Purge integration tests use isolated upload/cache/diagram roots and never target the developer's live corpus.
+- The diagnostics archive contains four status-only files: manifest, doctor result, aggregate runtime summary, and privacy README.
 
 ## Honest Release Boundary
 

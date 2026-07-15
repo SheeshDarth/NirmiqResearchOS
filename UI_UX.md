@@ -126,7 +126,7 @@ Implementation rules:
 
 ### Landing/Login
 
-- Hero headline: NIRMIQ ResearchOS.
+- Hero headline: NIRMIQ Academic Intelligence.
 - Brief value proposition: upload, understand, verify, and learn from local academic material.
 - Start screen should stay calm and minimal, with no heavy animation or dashboard cards.
 - Login fields: name, email, phone.
@@ -516,7 +516,7 @@ Current recovery verification:
 - Navigation/library drawer overlays the conversation and has an independent material list scroll.
 - Source drawer overlays the right side and keeps the answer canvas intact.
 - Header and composer remain fixed while the central response region owns vertical scrolling.
-- Production bundle remains approximately `117 kB` first-load JavaScript.
+- Production bundle remains approximately `118 kB` first-load JavaScript.
 
 ## 2026-07-13 Composer Mode Menu Fix
 
@@ -532,3 +532,19 @@ Implemented:
 Verification:
 
 - Next.js production build passed.
+
+## 2026-07-15 Privacy Control Presentation
+
+- Destructive controls remain inside the Library privacy area rather than the normal chat canvas.
+- `Clear thread`, `Clear indexed material`, and `Reset all local data` use distinct confirmation copy that explains scope before deletion.
+- Normal users see readable deletion counts and the guarantee that external originals are preserved; paths, chunk IDs, and storage internals remain hidden.
+- Safe diagnostics export stays in the desktop application menu and command launcher, avoiding another chat control.
+- The normal answer/search experience is unchanged; this release adds recovery confidence without reintroducing dashboard complexity.
+
+Verification: production build passed at `118 kB` first-load JavaScript.
+
+Final laptop-height QA:
+
+- The navigation drawer uses bounded grid rows: fixed identity/actions, a flexible document list, and a bounded advanced-tools region.
+- At `1280 x 720`, the advanced region scrolls independently and exposes every privacy action, including `Reset all local data`.
+- The privacy region remains collapsed by default, so the normal chat-first experience gains no new visible complexity.

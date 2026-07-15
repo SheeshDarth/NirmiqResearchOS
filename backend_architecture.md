@@ -375,3 +375,25 @@ Architecture invariants:
 - The public query request and top-level response contracts remain unchanged.
 
 Measured closure gate: 40 strict offline BM25 full queries reached MRR `0.868`, Recall@8 `0.921`, expected citation coverage `0.921`, faithfulness `0.985`, and answerability correctness `1.000`.
+
+## 2026-07-15 Local Data And Recovery Architecture
+
+Local destructive operations are split by scope:
+
+- `DELETE /memory/{session_id}` removes one session's messages, snapshots, and feedback.
+- `DELETE /memory` and `DELETE /api/v1/memory` remove all sessions, messages, snapshots, feedback, and exam profiles.
+- `DELETE /documents` removes document rows, chunks, sections, jobs, summaries, exam artifacts, optional vectors, NIRMIQ-owned uploads, parse cache, diagrams, and orphaned files under those owned roots.
+
+Filesystem invariants:
+
+- External original files outside the configured NIRMIQ upload root are preserved.
+- Recursive owned-root cleanup is permitted only for resolved child directories inside the workspace and rejects the workspace root itself.
+- Symlinks are unlinked rather than traversed.
+- `DIAGRAM_PATH` is configurable so tests and alternate runtimes can isolate diagram storage; integration tests use a per-run temporary directory.
+
+Diagnostics architecture:
+
+- The exporter includes no raw logs or database/document payloads.
+- Runtime logs are read only to calculate aggregate marker counts, then discarded from process memory.
+- Manifest/Doctor output is path-redacted and verified against workspace and user-home paths before ZIP creation.
+- The archive is local-only and has no upload/network action.

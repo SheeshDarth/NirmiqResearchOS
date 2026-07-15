@@ -59,6 +59,8 @@ The menu includes:
 
 - Runtime Status.
 - Restart Local Runtime.
+- Run Release Doctor.
+- Export Safe Diagnostics.
 - Open Project Folder.
 - Open In VS Code.
 - Open `context.md`.
@@ -124,8 +126,8 @@ Validated on 2026-07-15:
 - `npm.cmd run desktop:package`: generated `dist/desktop/NIRMIQ Academic Intelligence 0.5.0.exe`.
 - `npm.cmd run desktop:smoke`: passed against the source desktop shell.
 - `npm.cmd run desktop:portable-smoke`: passed against the generated portable executable.
-- Portable artifact size: `71,405,762` bytes.
-- Portable artifact SHA-256: `8BC4AC0A836724BE6121A467A6685A46F059EC97D43342FF674934755FE3EAF6`.
+- Portable artifact size: `71,405,018` bytes.
+- Portable artifact SHA-256: `800FECA2FF2BB56247629495EF41A2160F12FD961DC6C5607044122A1A65527F`.
 - The packaged executable icon was extracted and verified against the selected NIRMIQ Academic Intelligence mark.
 
 Hardening notes:
@@ -137,6 +139,7 @@ Hardening notes:
 - The desktop package and generated shortcuts use `apps/desktop/build/nirmiq.ico`, derived from the source-controlled NIRMIQ Academic Intelligence SVG mark.
 - Startup failures now render a local recovery page with Retry, Run Doctor, and Open Logs actions instead of loading a broken web page.
 - Normal status/error surfaces do not show absolute workspace or log paths; local desktop logs redact workspace and user-home paths.
+- `Export Safe Diagnostics` creates a status-only ZIP and excludes raw logs, databases, uploads, source text, prompts, answers, filenames, and full local paths.
 - Current portable package is unsigned; code signing is future release work.
 
 ## Full Windows Installer Later
@@ -150,7 +153,6 @@ Recommended later path:
 3. Bundle the Electron shell and backend launcher.
 4. Store SQLite/Chroma data under a user app-data directory.
 5. Add installer checks for Ollama and optional local models.
-6. Add first-run diagnostics and log export.
-7. Add signed releases only after the local runtime and packaging flow are repeatedly green.
+6. Add signed releases only after the local runtime and packaging flow are repeatedly green.
 
 Do not do this before the local web/runtime flow is stable and the golden demo path remains green.

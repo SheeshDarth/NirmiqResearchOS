@@ -996,6 +996,14 @@ export default function Home() {
               >
                 <span>Clear indexed material</span>
               </button>
+              <button
+                className="sidebar-tool-row danger"
+                disabled={busy !== ""}
+                onClick={onResetAllLocalData}
+                type="button"
+              >
+                <span>Reset all local data</span>
+              </button>
               <div className="sidebar-legal">
                 <a href="/privacy_policy.md" target="_blank" rel="noreferrer">Privacy</a>
                 <a href="/terms_conditions.md" target="_blank" rel="noreferrer">Terms</a>

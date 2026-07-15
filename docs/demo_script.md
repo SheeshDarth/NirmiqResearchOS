@@ -1,6 +1,6 @@
 # NIRMIQ Golden Demo Script
 
-Last updated: 2026-07-12
+Last updated: 2026-07-15
 
 ## Goal
 
@@ -52,9 +52,10 @@ No internet is required.
 3. Run `Research proof`.
 4. Click an `Evidence` chip under the answer.
 5. Show `Deep Research` opening the focused source chunk.
-6. Show the proof strip: intent, citation coverage, cache, source type.
+6. Keep the normal answer view simple; open Sources only when the reviewer wants proof.
 7. Click `Export` to create a local Markdown answer with citations.
-8. Open `Knowledge Base` and point to `Remove material` as the privacy/purge moment.
+8. Open `Knowledge Base` and show the three explicit local-data scopes: clear thread, clear indexed material, and reset all local data.
+9. Mention `NIRMIQ Diagnostics.cmd`: it exports status summaries without raw logs or document/conversation content.
 
 ## Locked Demo Questions
 
@@ -111,7 +112,7 @@ Fail:
 
 ## Latest Verified Walkthrough
 
-Validated on 2026-07-12 with:
+Validated on 2026-07-15 with:
 
 ```powershell
 npm.cmd run ship:check
@@ -120,9 +121,9 @@ npm.cmd run desktop:smoke
 
 Result:
 
-- Backend tests: `89 passed`, `1 warning`.
+- Backend tests: `163 passed`, `1 warning`.
 - API compile: passed.
-- Web production build: passed.
+- Web production build: passed at `118 kB` first-load JavaScript.
 - Publish smoke: passed with `cloud_api_required=False`.
 - Golden demo indexing: passed for all four bundled local sources.
 - Research prompt: passed with grounded citations.
@@ -131,10 +132,12 @@ Result:
 - Paper Lab prompt: passed with grounded citations.
 - Unsupported query: passed with `grounded=False` and `citations=0`.
 - Desktop smoke: passed through the Electron shell and cleaned up smoke-started runtime processes.
+- Rebuilt portable executable smoke: passed.
+- Safe diagnostics export: passed inside the ship gate.
 
 Current demo limitation:
 
-- Live screenshots/GIFs still need to be captured from the current UI before public README polish is complete.
+- Current Chat, grounded-answer, and citation-trail screenshots are committed. Paper Lab/Exam Lab captures and an optional short GIF remain public-polish follow-ups.
 
 ## Fallback Plan
 

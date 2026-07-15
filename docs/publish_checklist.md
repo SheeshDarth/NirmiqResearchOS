@@ -25,9 +25,9 @@ Latest local verification:
 - Date: 2026-07-15.
 - Doctor: `12` checks, `0` failures, `1` optional Ollama warning.
 - Result: `SHIP CHECK PASS`.
-- Backend tests: `160 passed`, `1` third-party deprecation warning.
+- Backend tests: `163 passed`, `1` third-party deprecation warning.
 - API compile: passed.
-- Web build: passed; `/` first-load JavaScript `117 kB`.
+- Web build: passed; `/` first-load JavaScript `118 kB`.
 - Publish smoke: passed with `18` indexed documents, `9443` active chunks, and `cloud_api_required=False`.
 - Golden grounded routes and unsupported-query abstention: passed.
 - Desktop smoke and portable Windows packaging: passed.
@@ -204,7 +204,7 @@ python scripts/eval_retrieval.py --dataset data/processed/eval/qa_labels.jsonl -
 - Keep the repo local-first and offline-capable.
 - Do not promise production authentication yet.
 - Do not claim cloud sync, internet search, or ChatGPT/OpenAI account dependency.
-- Present this as NIRMIQ ResearchOS: a working local academic document intelligence workspace with a repeatable golden path for grounded answers, citation inspection, Paper Lab, Exam Lab, export, and local source removal.
+- Present this as NIRMIQ Academic Intelligence: a working local academic document intelligence workspace with a repeatable golden path for grounded answers, citation inspection, Paper Lab, Exam Lab, export, and local-data control.
 - If linking publicly, call it a local-first portfolio/demo MVP, not a hosted SaaS.
 - Use `/api/v1/*` in future clients, but keep existing local routes working for current UI stability.
 - Keep HSTS/CSP disabled on local HTTP unless running behind HTTPS/proxy.
@@ -219,12 +219,13 @@ npm.cmd run ship:check
 
 Result:
 
-- Backend unit/integration tests: `160 passed, 1 warning`.
+- Backend unit/integration tests: `163 passed, 1 warning`.
 - API compile: passed.
-- Web production build: passed, `/` first-load JS `117 kB`.
+- Web production build: passed, `/` first-load JS `118 kB`.
 - Publish smoke: passed with `indexed_documents=18`, `active_chunks=9443`, and `cloud_api_required=False`.
 - Golden demo: Research, summary-style Research, Exam Lab, and Paper Lab returned grounded citations.
 - Golden demo unsupported Chat query: passed with `grounded=false` and `citations=0`.
+- Privacy-safe diagnostics export: passed inside the ship gate.
 
 Release-hardening refresh on 2026-07-15:
 

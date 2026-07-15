@@ -109,13 +109,13 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 - [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md): current reproducible tests, retrieval metrics, offline proof, package result, and honest release boundary.
 - Ascension OS foundation now lives outside this repository at `C:\Users\Siddharth\Documents\Ascension OS` so NIRMIQ Academic Intelligence remains focused on academic document intelligence.
 
-## Current V4 Foundation
+## Current Release Foundation
 
 Implemented in the current repository:
 
 - Bundled `Load Golden Demo` flow with four local academic Markdown sources.
 - Electron desktop shell that starts the local runtime and opens NIRMIQ in a Windows app window.
-- Desktop diagnostics menu for runtime status, logs, VS Code, project docs, and data folder access.
+- Desktop diagnostics menu for runtime status, recovery, a privacy-safe support bundle, VS Code, project docs, and local data access.
 - Locked reviewer prompts for Research, Summary, Paper Lab, Exam Lab, and abstention behavior.
 - Golden demo smoke script that fails if unsupported chat prompts return grounded answers.
 - Local answer export as Markdown with citations.
@@ -138,7 +138,7 @@ Implemented in the current repository:
 - Use Exam Lab for marks-oriented answers, study guides, question-bank support, and printable custom PDFs.
 - Check local publish readiness through `/health/readiness` and `scripts/publish_smoke.ps1`.
 - Run with a low-memory local model profile: bounded Ollama context, bounded prediction length, short keep-alive, and batched embeddings.
-- Use Local Data controls to clear current thread memory or clear indexed material while leaving source files on disk.
+- Use Local Data controls to clear one thread, remove indexed material and NIRMIQ-owned artifacts, or reset all app-local data while preserving external original files.
 - Hardened retrieval/runtime path from the latest audit:
   - empty-text reindex attempts fail safely without wiping prior active chunks.
   - vector-only stale chunks are dropped unless they still exist as active SQLite chunks.
@@ -158,7 +158,8 @@ Implemented in the current repository:
 - Export the current thread as local Markdown.
 - Save answer-quality feedback locally for later accuracy tuning.
 - Generate Exam Lab custom PDFs from grounded responses.
-- Clear thread memory and indexed material from the UI for privacy/reset demos.
+- Clear one thread, remove indexed material, or reset all NIRMIQ-local data from the privacy panel with explicit confirmation and deletion counts.
+- Export a privacy-safe diagnostics ZIP containing status summaries only; raw logs, document text, prompts, answers, databases, uploads, filenames, and full local paths are excluded.
 - Run local smoke checks, backend tests, and frontend production build.
 - Evaluate retrieval on a bundled 30-question demo dataset.
 - Evaluate query behavior through `data/processed/eval/query_agnostic_rag_categories.jsonl`, covering definitions, explanations, comparisons, procedures, limitations, visuals, summaries, exam answers, paper drafting, and unanswerable prompts.
@@ -390,6 +391,8 @@ Root command hub:
 cd C:\Nirmiq-researchOS
 npm.cmd run start
 npm.cmd run start:golden
+npm.cmd run doctor
+npm.cmd run diagnostics
 npm.cmd run desktop
 npm.cmd run desktop:smoke
 npm.cmd run ship:check
@@ -409,7 +412,15 @@ Or double-click:
 NIRMIQ Desktop.cmd
 ```
 
-The desktop shell starts the same local FastAPI and Next.js runtime, then opens NIRMIQ in an app window. It also includes menu shortcuts for runtime status, logs, VS Code, project files, `context.md`, the README, and debugging docs.
+The desktop shell starts the same local FastAPI and Next.js runtime, then opens NIRMIQ in an app window. Its menu includes runtime status, recovery, safe diagnostics export, local logs, VS Code, project files, `context.md`, the README, and debugging docs.
+
+Create a privacy-safe local support bundle without starting the app:
+
+```powershell
+npm.cmd run diagnostics
+```
+
+The ZIP is written under `temp/diagnostics` and is never uploaded automatically.
 
 Run the repeatable desktop smoke check:
 
@@ -608,7 +619,7 @@ Live UI captures from the verified golden-demo path:
 
 Remaining recommended public README assets:
 
-- Compare answer runs.
+- Paper Lab and Exam Lab workflow captures.
 - Optional GIF: upload -> ask -> citation trail.
 
 Capture checklist: [Demo assets guide](docs/demo_assets.md).
@@ -629,7 +640,7 @@ Windows double-click alternative:
 NIRMIQ Ship Check.cmd
 ```
 
-`ship:check` runs backend tests, API compile, frontend production build, local smoke check, and the golden demo. `desktop:smoke` separately validates the Electron shell startup path.
+`ship:check` runs backend tests, API compile, frontend production build, local smoke, the golden demo, abstention, and a privacy-safe diagnostics export. `desktop:smoke` separately validates the Electron shell startup path.
 
 If backend and frontend are already running and you only want the lightweight smoke:
 
@@ -655,6 +666,7 @@ Current public-release posture:
 - Ownership: `.github/CODEOWNERS` routes project ownership to `@SheeshDarth`.
 - License: MIT.
 - Security: request body limits, baseline security headers, optional production HSTS/CSP toggles, CORS allowlist, upload sniffing, and local-path ingestion restrictions.
+- Privacy recovery: explicit thread clear, indexed-material purge, full app-local reset, and diagnostics that contain no raw user content.
 - API stability: existing routes are preserved, with `/api/v1` aliases available for future clients.
 
 ## Golden Demo
@@ -690,11 +702,12 @@ The golden path proves:
 
 Latest verified walkthrough:
 
-- `npm.cmd run ship:check`: passed on 2026-07-12.
-- `npm.cmd run desktop:smoke`: passed on 2026-07-12.
+- `npm.cmd run ship:check`: passed on 2026-07-15 with `163` backend tests and a `118 kB` first-load web bundle.
+- `npm.cmd run desktop:smoke` and `npm.cmd run desktop:portable-smoke`: passed on 2026-07-15.
 - Golden demo grounded prompts returned citations.
 - Unsupported prompt returned `grounded=false` and `citations=0`.
 - Desktop shell verified local API/web readiness and `cloud_api_required=false`.
+- Privacy-safe diagnostics export passed inside the ship gate.
 
 Primary demo docs:
 
@@ -755,6 +768,10 @@ Offline access over cloud dependency
 
 - [Publish checklist](docs/publish_checklist.md)
 - [Ship readiness notes](docs/ship_readiness.md)
+- [Release manifest v0.5](docs/release_manifest_v0.5.md)
+- [Release notes v0.5](docs/release_notes_v0.5.md)
+- [Privacy policy](docs/privacy_policy.md)
+- [Security notes](docs/security.md)
 - [Demo dataset](docs/demo_dataset.md)
 - [Retrieval evaluation results](docs/retrieval_eval_results.md)
 - [Demo assets guide](docs/demo_assets.md)
@@ -772,7 +789,7 @@ Offline access over cloud dependency
 
 This project is under active development.
 
-NIRMIQ ResearchOS is being built as a solo-developer AI systems project focused on practical student problems, local AI infrastructure, trustworthy document intelligence, and publishable portfolio value.
+NIRMIQ Academic Intelligence is being built as a solo-developer AI systems project focused on practical student problems, local AI infrastructure, trustworthy document intelligence, and publishable portfolio value.
 
 ## Author
 
