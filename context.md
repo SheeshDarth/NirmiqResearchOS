@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-19
 
-Current checkpoint: MegaSprint Six remains complete. Remaining Job 1 is locally green and awaits one clean GitHub Actions run before closure; Job 2 remains locked. See `## 2026-07-19 Remaining Job 1 - Hard-Document Reliability` near the end of this file.
+Current checkpoint: MegaSprint Six and Remaining Job 1 are complete. Job 1 passed local, clean-runner, and post-completion council gates; Remaining Job 2 is unlocked. See `## 2026-07-19 Remaining Job 1 - Hard-Document Reliability` near the end of this file.
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
@@ -4046,6 +4046,14 @@ Verification before council:
 - Fixture determinism: two independent generations produced identical SHA-256 fingerprints for all four assets.
 - Reproducibility report: Python `3.12.10`, PyMuPDF `1.27.2.3`, Pillow `12.0.0`, pytesseract `0.3.13`, Tesseract `5.5.0.20241111`, languages `eng` and `osd`.
 - Post-job council verdict: local scope is complete; remote CI is the sole remaining closure gate. No corpus, model, graph, or architecture expansion is required for Job 1.
+- Candidate commit: `7ac3d230a618a214e3c19322b08c73ac7523507b`.
+- Clean-runner closure gate: GitHub Actions `29698536495` passed in `2m22s` on Windows, including pinned Tesseract provisioning, backend tests, compile, hard-document evaluation, retained evidence artifact, release doctor, production web build, and Docker Compose validation.
+- Closure evidence URL: `https://github.com/SheeshDarth/NirmiqResearchOS/actions/runs/29698536495`.
+- Supported clean-runner baseline for this job: Windows. Native Linux validation remains Remaining Job 5.
+- Final post-completion LLM Council: all five advisors approved closure; the chairman found no unresolved in-scope blocker and unlocked Job 2.
+- Frozen regression requirement: keep the nine-case hard-document gate and 40-case academic gate green for later jobs.
+- Residual risk: the compact hard-document corpus is implementation-authored. Independently sourced real documents remain necessary before any arbitrary-document claim, but are not a Job 1 closure blocker.
+- Formal status: `COMPLETE`.
 
 Canonical evidence:
 

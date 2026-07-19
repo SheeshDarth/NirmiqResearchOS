@@ -85,6 +85,17 @@ An empty failure file means this specific gate passed. It does not mean every fu
 - Answerability correctness exactly `1.00`.
 - Every OCR, indexing, and diagram check must pass.
 
+## Clean-Runner Evidence
+
+- Candidate commit: `7ac3d230a618a214e3c19322b08c73ac7523507b`.
+- GitHub Actions run: `29698536495`.
+- Result: passed on Windows in `2m22s`.
+- Run URL: `https://github.com/SheeshDarth/NirmiqResearchOS/actions/runs/29698536495`.
+- The run installed pinned Tesseract, executed the backend and hard-document gates, retained the evidence artifact, passed release doctor and the production web build, and validated Docker Compose.
+- Windows is the clean-runner baseline for this job; native Linux validation is tracked separately.
+- The final five-advisor LLM Council approved closure with no in-scope blocker.
+- Keep this suite frozen as a regression gate. Its implementation-authored fixtures do not establish arbitrary-document generalization; independently sourced documents remain a separate hardening task.
+
 ## Limitations And Next Work
 
 - Generated handwriting is cleaner than many real notes.
