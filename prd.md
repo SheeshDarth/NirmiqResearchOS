@@ -1,6 +1,6 @@
 # NIRMIQ Product Requirements Document
 
-Last updated: 2026-07-15
+Last updated: 2026-07-19
 
 ## Product Name
 
@@ -139,7 +139,7 @@ Chat is the general assistant lane. In the current local MVP, it should use loca
 
 NIRMIQ is not a generic upload-and-chat clone. It is a local academic intelligence workspace that combines retrieval engineering, citation transparency, paper workflows, and exam workflows in one focused system. Its advantage is trust: the document corpus remains the source of truth, and users can inspect why an answer was produced.
 
-## Next Phase: RAG Reliability
+## Completed Phase: RAG Reliability
 
 Product goal:
 
@@ -151,7 +151,7 @@ Why this matters:
 - Real textbooks reveal harder retrieval failures: BM25 MRR `0.578`, Recall@8 `0.750`, and expected citation coverage `0.750`.
 - Users experience these retrieval gaps as hallucination, vague answers, boring summaries, or citations that do not support the exact claim.
 
-Planned product behavior:
+Delivered product behavior:
 
 - When the user selects a document, NIRMIQ should first identify the most relevant chapter/section/page region, then answer from chunks inside that region.
 - If evidence is weak, NIRMIQ should ask for a narrower question or abstain instead of producing a confident generic answer.
@@ -164,6 +164,19 @@ Acceptance targets:
 - MRR at least `0.700`.
 - Expected citation coverage at least `0.900`.
 - Golden demo and offline fallback behavior must not regress.
+
+MegaSprint Six measured result:
+
+- Strict BM25-only offline benchmark: `40/40` answer-quality pass.
+- MRR `0.921`, Recall@8 `1.000`, expected citation coverage `1.000`.
+- Readability `0.985`, faithfulness `0.995`, answerability correctness `1.000`.
+- Both deliberately unsupported prompts abstained correctly.
+
+Product boundary:
+
+- This closes the current labeled reliability gate, not arbitrary-document accuracy.
+- The next quality gate must use unseen textbooks, scans, noisy notes, tables, equations, diagrams, handwriting, and natural user questions.
+- Full recursive chapter summarization remains a product increment beyond the current hierarchy-aware representative source selection.
 
 ## V4 Candidate Upgrades
 

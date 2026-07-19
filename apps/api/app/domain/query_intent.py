@@ -49,7 +49,15 @@ def _has_phrase(value: str, phrases: tuple[str, ...]) -> bool:
 
 
 def _is_summary_request(normalized_query: str, tokens: set[str], normalized_mode: str) -> bool:
-    if _has_any(tokens, {"summarize", "summary", "overview", "abstract"}):
+    if "summarize" in tokens:
+        return True
+    # Treat "overview" as a summary command only when it is used as the task,
+    # not when a question asks about an overview that already exists in a book.
+    if re.search(
+        r"^(?:please\s+)?(?:give|provide|create|write|make)?\s*(?:a\s+|an\s+|the\s+)?"
+        r"(?:summary|overview|abstract)\b",
+        normalized_query,
+    ) or re.search(r"\b(?:summary|overview|abstract)\s+of\b", normalized_query):
         return True
     if normalized_mode != "summary":
         return False

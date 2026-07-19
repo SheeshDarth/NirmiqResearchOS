@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-07-15
+Last updated: 2026-07-19
 
 ## Canonical Problem Log
 
@@ -13,6 +13,44 @@ See [`answer_used_citation_backlog.md`](answer_used_citation_backlog.md) for cas
 See [`nirmiq_rag_method.md`](nirmiq_rag_method.md) for the chosen RAG architecture: NIRMIQ Evidence-First Hierarchical Hybrid RAG.
 
 See [`megasprint_one_answer_intelligence_plan.md`](megasprint_one_answer_intelligence_plan.md) for the active query-understanding, synthesis, claim-repair, and answer-quality closure block.
+
+See [`megasprint_six_plan.md`](megasprint_six_plan.md) for the latest query-agnostic evidence-obligation architecture and verified 40-case result.
+
+## 2026-07-19 MegaSprint Six Closure Audit
+
+Decision:
+
+- Close the remaining current-corpus answer-quality failures through generic evidence obligations and query-shaped fallback synthesis.
+- Do not add a cloud dependency, larger model, graph database, agent loop, or heavy reranker.
+- Stop tuning the existing 40 labels after the full gate reached `40/40`; move subsequent quality work to unseen documents.
+
+Measured strict offline BM25 result:
+
+| Samples | MRR | Recall@3 | Recall@8 | Expected citation coverage | Quality pass | Relevance | Readability | Faithfulness | Answerability |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 40 | 0.921 | 1.000 | 1.000 | 1.000 | 1.000 | 0.819 | 0.985 | 0.995 | 1.000 |
+
+Controls added:
+
+- Required and optional evidence obligations derived from answer intent.
+- Per-obligation BM25 retrieval and relation-aware local evidence scoring.
+- Soft section ranking, lexical preservation, and bounded recovery rather than destructive filtering.
+- Dedicated source-only fallbacks for comparisons, mechanisms, interpretations, procedures, and workflow placement.
+- Hierarchy-aware summary seed selection and cache profile `v6-hierarchical`.
+- Answer-used citation mapping across the complete bounded context candidate range.
+
+Verification:
+
+- `202` unit tests passed.
+- `10` integration tests passed.
+- Python compile and Next.js production build passed.
+- Final 40-case benchmark rerun against the exact final code recorded no failures.
+
+Residual risk:
+
+- Metrics are valid for the current labeled local corpus, not every academic PDF.
+- The next gate must use unseen textbooks, scans, tables, equations, diagrams, noisy notes, and natural user feedback.
+- Full recursive chapter summarization and native Linux package validation remain separate follow-up work.
 
 ## 2026-07-15 MegaSprint One Block B Closure Audit
 

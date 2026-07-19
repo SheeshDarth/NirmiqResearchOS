@@ -106,6 +106,7 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 
 - [`docs/overnight_work_plan.md`](docs/overnight_work_plan.md): focused sprint plan for demo reliability, retrieval evaluation, citation selection, UI clarity, and release readiness.
 - [`docs/megasprint_five_plan.md`](docs/megasprint_five_plan.md): release confidence, desktop packaging, privacy recovery, and public proof.
+- [`docs/megasprint_six_plan.md`](docs/megasprint_six_plan.md): query-agnostic evidence obligations, hierarchical summary coverage, and the final 40-case offline reliability result.
 - [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md): current reproducible tests, retrieval metrics, offline proof, package result, and honest release boundary.
 - Ascension OS foundation now lives outside this repository at `C:\Users\Siddharth\Documents\Ascension OS` so NIRMIQ Academic Intelligence remains focused on academic document intelligence.
 
@@ -128,7 +129,7 @@ Implemented in the current repository:
 - Inspect answer-used source passages and page references without exposing ranking metadata by default.
 - Use four workspaces: Research, Chat, Paper Lab, and Exam Lab.
 - Run hybrid retrieval with BM25, optional vector search, RRF, and reranking hooks.
-- Continue the RAG Reliability Phase with textbook-aware section metadata, section-first retrieval diagnostics, query-agnostic eval categories, and answer relevance metadata inside debug retrieval metadata.
+- Use textbook-aware section metadata, soft section ranking, query-specific evidence obligations, and answer relevance diagnostics without exposing retrieval metadata in the normal UI.
 - Use selected-document summary caching keyed by document id, content hash, and summary profile.
 - Route query intent deterministically for summary, lookup, compare, deep research, paper, exam, chat, and unclear prompts.
 - Show compact trust signals only as `Verified`, `Needs more evidence`, or `Not found in sources`.
@@ -183,8 +184,9 @@ The golden demo is strong, and the harder real-world seed now shows measurable i
 | Full-query BM25 answer path | 0.882 | 1.000 | 1.000 |
 | Full-query Hybrid answer path | 0.882 | 1.000 | 1.000 |
 | 40-case answer-quality BM25 path | 0.868 | 0.921 | 0.921 |
+| MegaSprint Six final offline BM25 path | **0.921** | **1.000** | **1.000** |
 
-The larger 40-case set covers definitions, explanations, mechanisms, comparisons, procedures, summaries, factual lookups, limitations, architecture questions, and unanswerable prompts. It passes the current reliability gates with answer-quality pass rate `0.825`, faithfulness `0.985`, readability `0.939`, and answerability correctness `1.000`. This is a serious progress signal, not a production-grade arbitrary-document claim. BM25 remains the safest offline backbone, while hybrid remains optional support rather than the sole source of truth.
+The larger 40-case set covers definitions, explanations, mechanisms, comparisons, procedures, summaries, factual lookups, limitations, architecture questions, and unanswerable prompts. The final MegaSprint Six run passes all 40 quality cases with overall quality `0.937`, faithfulness `0.995`, readability `0.985`, and answerability correctness `1.000`. This is a strong measured result on the current corpus, not a production-grade arbitrary-document claim. BM25 remains the safest offline backbone, while hybrid remains optional support rather than the sole source of truth.
 
 The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
 
@@ -201,6 +203,9 @@ Latest MegaSprint One reliability update:
 - Broad index, glossary, backmatter, and example-list sections are penalized for explanatory questions.
 - Synthesis now separates direct evidence, weak related mentions, and true source misses.
 - A deterministic answer planner now identifies the requested subject, answer type, depth, and elements such as examples, comparisons, limitations, or diagram references.
+- Required evidence obligations now describe what a valid answer must prove, and bounded per-obligation BM25 searches protect direct definitions, mechanisms, comparisons, interpretations, procedures, and workflow placement from loose keyword matches.
+- Deterministic fallback synthesis assembles readable query-shaped answers only from obligation-satisfying passages and abstains when required evidence is missing.
+- Selected-document summaries now seed context across document sections or page spans instead of relying only on the first top-ranked passages.
 - Exact source-derived acronym meanings lock query expansion so broad index/application terms cannot pull retrieval away from the requested concept.
 - The local model now receives a query-specific answer contract and is told to connect evidence instead of copying disconnected fragments.
 - Faithfulness handling now removes unsupported claims selectively and uses extractive fallback only when the repaired answer is not coherent.
@@ -212,12 +217,12 @@ MegaSprint One Block B now closes on a 40-case full-query benchmark. Query-aware
 
 This work belongs to **MegaSprint One, Block B**, not the UI sprint. It is documented in [`docs/megasprint_one_answer_intelligence_plan.md`](docs/megasprint_one_answer_intelligence_plan.md).
 
-Remaining measured debt:
+Remaining measured debt after MegaSprint Six:
 
 - Convert saved `Needs work` feedback into local eval candidates.
-- Grow beyond `40` cases with scanned PDFs, noisier notes, equations, and diagram-grounded questions.
-- Improve the seven currently failing answer-quality cases without weakening faithfulness or abstention.
-- Reduce the roughly four-minute strict offline benchmark runtime by reusing immutable corpus setup.
+- Grow beyond `40` cases with scanned PDFs, noisier notes, handwriting, equations, tables, and diagram-grounded questions.
+- Add full chapter-level hierarchical summarization; the current implementation selects representative original chunks across the hierarchy but does not recursively summarize every chapter.
+- Reduce the roughly two-minute strict offline benchmark runtime by reusing immutable corpus setup.
 - Keep BM25-only fallback fully usable for offline and low-end devices.
 - Track chunk-selection reasons, section candidates, citation coverage, unsupported claims, latency, and memory behavior.
 - Measure answer relevance, completeness, claim faithfulness, readability, and abstention correctness separately from retrieval rank.
@@ -558,6 +563,7 @@ Details:
 - [MegaSprint Two UX plan](docs/megasprint_two_plan.md)
 - [MegaSprint Three academic workflow plan](docs/megasprint_three_plan.md)
 - [MegaSprint Four local runtime plan](docs/megasprint_four_plan.md)
+- [MegaSprint Six reliability plan and result](docs/megasprint_six_plan.md)
 - [Benchmark report](docs/benchmark_report.md)
 - [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
 - [Engineering problem log and RAG Reliability roadmap](problems_faced.md)
@@ -596,12 +602,13 @@ Run:
 
 This seed set is intentionally harder than the golden demo and is the baseline for the RAG Reliability Phase. The goal is to improve retrieval precision and citation coverage before increasing model size, temperature, or context length.
 
-Full-query real-world evaluation now scores expected evidence against full cited chunks, not truncated UI citation previews:
+The current strict full-query benchmark scores expected evidence against the complete chunks actually cited by each answer, not truncated UI previews or unused retrieval candidates:
 
-| Mode | MRR | Recall@8 | Citation expected coverage | Grounded response rate | Abstention rate |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Hybrid | 0.573 | 0.688 | 0.688 | 0.938 | 0.063 |
-| BM25 | 0.583 | 0.688 | 0.688 | 0.938 | 0.063 |
+| Mode | Samples | MRR | Recall@3 | Recall@8 | Citation expected coverage | Quality pass | Faithfulness |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| BM25 offline | 40 | 0.921 | 1.000 | 1.000 | 1.000 | 1.000 | 0.995 |
+
+The two deliberately unsupported prompts abstained correctly. The empty canonical failure file means no case in this particular labeled set is currently below the evaluator threshold; it does not mean every future document or query is solved.
 
 ## Screenshots And GIFs
 
@@ -774,6 +781,7 @@ Offline access over cloud dependency
 - [Security notes](docs/security.md)
 - [Demo dataset](docs/demo_dataset.md)
 - [Retrieval evaluation results](docs/retrieval_eval_results.md)
+- [MegaSprint Six reliability plan](docs/megasprint_six_plan.md)
 - [Demo assets guide](docs/demo_assets.md)
 - [Backend architecture](backend_architecture.md)
 - [Product requirements](prd.md)

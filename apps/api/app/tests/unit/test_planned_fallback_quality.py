@@ -28,6 +28,31 @@ def test_mechanism_fallback_prefers_process_over_related_description() -> None:
     assert "[2]" in answer
 
 
+def test_mechanism_fallback_prefers_complete_requested_operation() -> None:
+    query = "How does scaled dot-product attention compute attention outputs?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=4-4\n"
+                "Scaled dot-product attention computes query-key dot products, divides them by a "
+                "scale factor, and applies softmax to obtain weights on the values.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=.9 source=bm25 pages=5-5\n"
+                "Scaled dot-product attention masks illegal decoder connections before softmax.",
+            ),
+        ],
+    )
+
+    assert "query-key dot products" in answer
+    assert "weights on the values" in answer
+    assert "[1]" in answer
+
+
 def test_comparison_fallback_selects_explicit_contrast() -> None:
     query = "Compare precision and recall"
     answer = SynthesisService._fallback_planned_answer(
@@ -45,6 +70,108 @@ def test_comparison_fallback_selects_explicit_contrast() -> None:
 
     assert "whereas recall" in answer
     assert "[1]" in answer
+
+
+def test_comparison_fallback_requires_direct_evidence_for_each_side() -> None:
+    query = "Compare precision and recall"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=3-3\n"
+                "The accuracy of positive predictions is called precision.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=.9 source=bm25 pages=4-4\n"
+                "Recall is the ratio of positive instances correctly detected by the classifier.",
+            ),
+            (
+                3,
+                "[3] doc=doc score=.8 source=bm25 pages=5-5\n"
+                "It is convenient to combine precision and recall into a metric called the F score.",
+            ),
+        ],
+    )
+
+    assert answer.startswith("Direct comparison")
+    assert "Precision: The accuracy of positive predictions" in answer
+    assert "Recall: Recall is the ratio" in answer
+    assert "metric called the F score" not in answer
+    assert "[1]" in answer
+    assert "[2]" in answer
+
+
+def test_comparison_fallback_covers_high_and_low_behavior() -> None:
+    query = "Compare a high and low learning rate in online learning."
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=42-42\n"
+                "A high learning rate lets the system rapidly adapt to new data but quickly forget old data. "
+                "Conversely, a low learning rate has more inertia; it learns more slowly and is less sensitive to noise.",
+            )
+        ],
+    )
+
+    assert answer.startswith("Direct comparison")
+    assert "rapidly adapt" in answer
+    assert "low learning rate has more inertia" in answer
+    assert "less sensitive to noise" in answer
+
+
+def test_interpretation_fallback_prefers_explicit_value_mapping() -> None:
+    query = "How should the silhouette coefficient be interpreted?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=340-340\n"
+                "A coefficient close to +1 means the instance is well inside its own cluster. "
+                "A value close to 0 means it is near a cluster boundary, while a value close to -1 "
+                "means it may be assigned to the wrong cluster.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=.8 source=bm25 pages=183-183\n"
+                "Analyzing the confusion matrix can improve a classifier.",
+            ),
+        ],
+    )
+
+    assert "close to +1" in answer
+    assert "cluster boundary" in answer
+    assert "confusion matrix" not in answer
+
+
+def test_mechanism_fallback_prefers_full_requested_subject_evidence() -> None:
+    query = "How does the Transformer represent token positions?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=2-2\n"
+                "The Transformer computes hidden representations in parallel for output positions.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=.9 source=bm25 pages=6-6\n"
+                "To represent token positions, positional encodings are added to the input embeddings.",
+            ),
+        ],
+    )
+
+    assert "positional encodings" in answer
+    assert "hidden representations in parallel" not in answer
 
 
 def test_limitation_fallback_does_not_return_only_a_definition() -> None:
@@ -226,6 +353,125 @@ def test_document_workflow_question_may_use_explicit_roadmap_evidence() -> None:
     assert "after data preparation" in answer
     assert "before final model tuning" in answer
     assert "[1]" in answer
+
+
+def test_workflow_fallback_splits_a_dense_pdf_roadmap_clause() -> None:
+    query = "How does the source place validation in the model-building workflow?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=8-9\n"
+                "Roadmap This part covers the following topics: Framing the problem "
+                "Preparing the data Selecting a model and tuning its settings using validation "
+                "The challenges of underfitting and overfitting Reducing dimensionality to",
+            )
+        ],
+    )
+
+    assert "Selecting a model and tuning its settings using validation" in answer
+    assert "Reducing dimensionality to" not in answer
+
+
+def test_mechanism_fallback_keeps_operation_and_explicit_scope_together() -> None:
+    query = "How does the position-wise block transform each position?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=5-5\n"
+                "The position-wise block is applied to each position separately and identically. "
+                "It consists of two linear transformations with an activation between them.",
+            )
+        ],
+    )
+
+    assert "two linear transformations" in answer
+    assert "each position separately and identically" in answer
+
+
+def test_mechanism_fallback_covers_evidence_across_multiple_passages() -> None:
+    query = "How does a generator create an output from an input?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=1-1\n"
+                "The generator starts with an input signal.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=.9 source=bm25 pages=2-2\n"
+                "It repeatedly transforms the signal using the supplied condition.",
+            ),
+            (
+                3,
+                "[3] doc=doc score=.8 source=bm25 pages=3-3\n"
+                "The final transformation produces the requested output.",
+            ),
+        ],
+    )
+
+    assert "starts with an input" in answer
+    assert "repeatedly transforms" in answer
+    assert "produces the requested output" in answer
+    assert "[1]" in answer and "[2]" in answer and "[3]" in answer
+
+
+def test_reasoned_definition_covers_condition_and_rationale() -> None:
+    query = "What is early stopping and why does it reduce overfitting?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=1-1\n"
+                "Early stopping is a regularization method that interrupts training early.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=.9 source=bm25 pages=2-2\n"
+                "Training stops when validation error reaches its minimum, before it rises again. "
+                "This prevents the model from continuing to overfit the training data.",
+            ),
+        ],
+    )
+
+    assert "interrupts training early" in answer
+    assert "validation error reaches its minimum" in answer
+    assert "prevents the model" in answer
+
+
+def test_enumeration_fallback_splits_dense_source_list_into_cited_items() -> None:
+    query = "Which common methods are listed in the overview?"
+    plan = build_answer_plan(query, "research")
+    answer = SynthesisService._fallback_enumeration_answer(
+        query=query,
+        answer_plan=plan,
+        response_mode="research",
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=1-1\n"
+                "The overview lists common methods: linear and polynomial regression, nearest neighbors, "
+                "decision trees, and ensemble methods.",
+            )
+        ],
+    )
+
+    assert "linear regression" in answer
+    assert "polynomial regression" in answer
+    assert "nearest neighbors" in answer
+    assert "decision trees" in answer
+    assert "ensemble methods" in answer
+    assert answer.count("[1]") >= 1
 
 
 def test_hyphenated_focus_term_does_not_match_only_its_first_word() -> None:

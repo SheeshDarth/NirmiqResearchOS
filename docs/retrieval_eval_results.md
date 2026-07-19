@@ -182,7 +182,7 @@ Interpretation:
 
 ## 40-Case Answer-Quality Closure Benchmark
 
-Date: 2026-07-15
+Latest rerun: 2026-07-19
 
 Dataset:
 
@@ -200,15 +200,17 @@ This is the hardest committed evaluation path. It runs the complete query pipeli
 
 | Mode | Samples | MRR | Recall@3 | Recall@8 | Citation expected coverage | Answer-quality pass | Faithfulness | Readability | Answerability correctness |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| BM25 | 40 | 0.868 | 0.921 | 0.921 | 0.921 | 0.825 | 0.985 | 0.939 | 1.000 |
+| BM25 | 40 | 0.921 | 1.000 | 1.000 | 1.000 | 1.000 | 0.995 | 0.985 | 1.000 |
 
 Interpretation:
 
-- MRR, Recall@8, and expected citation coverage now exceed the MegaSprint One gates of `0.700`, `0.850`, and `0.900`.
+- MRR, Recall@8, and expected citation coverage exceed the reliability gates of `0.700`, `0.850`, and `0.900`.
 - The evaluator gives retrieval credit only for answer-used citation chunks, so high raw recall cannot hide poor synthesis selection.
-- CNN and transfer-learning failures were repaired through query-aware context packing and generic definition/component cues, not hard-coded answer text.
-- Seven answer-quality failures and three citation-phrase misses remain tracked in `real_world_answer_quality_failures.jsonl`; closure means the agreed gate passed, not that arbitrary queries are solved.
-- The strict run took about four minutes on the legacy textbook index and should be optimized by caching corpus setup, without weakening evaluation semantics.
+- Definitions, comparisons, mechanisms, interpretations, procedures, summaries, and workflow-placement cases are handled through generic evidence obligations, not hard-coded answer text.
+- Both deliberately unsupported cases abstained correctly.
+- `real_world_answer_quality_failures.jsonl` is empty for this dataset. This means no current labeled case is below threshold, not that arbitrary queries are solved.
+- The strict run took about two minutes on the current verification machine and should still be optimized by caching corpus setup without weakening evaluation semantics.
+- Further tuning against the same 40 labels is paused; the next reliability work must use unseen and harder documents.
 
 ## Metrics Definitions
 

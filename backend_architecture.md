@@ -1,6 +1,6 @@
 # NIRMIQ Backend Architecture
 
-Last updated: 2026-07-13
+Last updated: 2026-07-19
 
 ## Overview
 
@@ -397,3 +397,35 @@ Diagnostics architecture:
 - Runtime logs are read only to calculate aggregate marker counts, then discarded from process memory.
 - Manifest/Doctor output is path-redacted and verified against workspace and user-home paths before ZIP creation.
 - The archive is local-only and has no upload/network action.
+
+## 2026-07-19 MegaSprint Six Evidence-Obligation Architecture
+
+The strict offline answer path now decomposes a natural query into evidence requirements before retrieving answer context:
+
+```mermaid
+flowchart LR
+    Q["User query"] --> P["Answer plan"]
+    P --> O["Evidence obligations"]
+    O --> M["Batched BM25 obligation searches"]
+    M --> R["Soft section ranking and bounded rescue"]
+    R --> K["Subject and relation-aware evidence gate"]
+    K --> C["Bounded multi-obligation context"]
+    C --> S["Local generation or deterministic fallback"]
+    S --> V["Claim/citation verification"]
+    V --> A["Answer-used citations or abstention"]
+```
+
+Invariants:
+
+- Evidence requirements are derived from query structure, not textbook-specific answer text.
+- Every required obligation retains at least one qualifying candidate when direct evidence exists.
+- Comparison evidence must define or describe each named side locally.
+- Mechanism evidence must connect the requested operation to its effect or result.
+- Section candidates influence rank but cannot exclude a clean top lexical hit.
+- Candidate inspection may cover up to 12 chunks, while the existing global context-token budget remains fixed.
+- Deterministic fallback never adds facts outside selected passages.
+- Missing required evidence causes abstention or a narrower answer.
+- Citation IDs map through the complete bounded context set; public citations include only chunks used by the final answer.
+- Summary seed selection spans source sections or page groups and stores only original chunk references; it does not create a second vector/index truth source.
+
+Measured final gate: 40 strict offline BM25 queries reached MRR `0.921`, Recall@8 `1.000`, expected citation coverage `1.000`, answer-quality pass `1.000`, faithfulness `0.995`, and answerability correctness `1.000`.

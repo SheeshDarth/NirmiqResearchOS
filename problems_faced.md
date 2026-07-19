@@ -1,12 +1,37 @@
 # Problems Faced And RAG Reliability Roadmap
 
-Last updated: 2026-07-13
+Last updated: 2026-07-19
 
 This is the canonical engineering problem log for NIRMIQ ResearchOS. It documents what has failed, what is still failing, what may fail later, and how the next RAG Reliability Phase should resolve the core retrieval and hallucination issues.
 
 The main conclusion is simple:
 
 > The model hallucinates mostly because retrieval is not yet precise enough on large academic documents. If the right evidence does not enter context, the local model is forced to guess.
+
+## 2026-07-19 MegaSprint Six Reliability Closure
+
+Resolved on the current 40-case offline benchmark:
+
+- Broad lexical overlap no longer counts as sufficient evidence by itself. Each query is converted into required and optional evidence obligations.
+- Comparisons require direct evidence for each named side; nearby labels, headings, and figure captions are not accepted as definitions.
+- Mechanism questions require the requested operation and result, while interpretation questions require complete value-to-meaning mappings.
+- Required obligations receive bounded independent BM25 searches, local subject-relevance scoring, and preservation through final candidate selection.
+- Long early chunks no longer monopolize synthesis context; bounded excerpts are packed across up to 12 candidates without increasing the total token budget.
+- Deterministic fallbacks are shaped by the requested answer type and use only source evidence. Missing required evidence produces abstention rather than confident filler.
+- Selected-document summaries receive representative source chunks across sections or page spans.
+
+Measured result:
+
+- Strict offline BM25 full-query benchmark: MRR `0.921`, Recall@8 `1.000`, expected citation coverage `1.000`.
+- Answer-quality pass: `40/40`; readability `0.985`; faithfulness `0.995`; answerability correctness `1.000`.
+- The canonical failure log is empty for this labeled set.
+
+Still open:
+
+- The 40 cases do not cover arbitrary documents. Scans, handwriting, equations, tables, diagrams, and additional textbooks remain required evaluation work.
+- Hierarchical summary seeds improve whole-document coverage, but full recursive chapter summarization is not implemented.
+- BM25 is deliberately retained as the reliable low-memory backbone; optional semantic retrieval must beat it on unseen data before becoming authoritative.
+- Further tuning against the same 40 labels is paused to avoid overfitting.
 
 ## 2026-07-13 Grounded Answer Intelligence Gap
 

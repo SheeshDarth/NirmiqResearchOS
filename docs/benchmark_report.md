@@ -1,6 +1,6 @@
 # NIRMIQ Golden Demo Benchmark Report
 
-Last updated: 2026-07-15
+Last updated: 2026-07-19
 
 ## Scope
 
@@ -156,3 +156,35 @@ Release-hardening note:
 
 - Golden Demo 02 privacy/runtime query required a targeted directness fix for local-first privacy controls before the ship gate passed.
 - The fix did not reduce global evidence thresholds.
+
+## 2026-07-19 MegaSprint Six Reliability Refresh
+
+This is the current hardest answer-quality proof path, separate from the small golden demo.
+
+Configuration:
+
+- Full `POST /query` orchestration.
+- BM25 only.
+- Ollama generation, embeddings, and reranking disabled.
+- Vector retrieval disabled.
+- Low-memory mode enabled.
+- Evaluation against answer-used full citation chunks.
+
+| Samples | MRR | Recall@3 | Recall@8 | Expected citation coverage | Quality pass | Readability | Faithfulness | Answerability |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 40 | 0.921 | 1.000 | 1.000 | 1.000 | 1.000 | 0.985 | 0.995 | 1.000 |
+
+Verification performed with the final code:
+
+- Backend unit tests: `202 passed`.
+- Backend integration tests: `10 passed`.
+- Python compile: passed.
+- Next.js production build: passed at `118 kB` first-load JavaScript.
+- Failure records: none on this dataset.
+- Full ship gate: passed with `212` backend tests, local publish smoke, four grounded golden-demo routes, correct unsupported-query abstention, and privacy-safe diagnostics export.
+
+Release interpretation:
+
+- NIRMIQ now has strong reproducible evidence for its strict offline textbook path.
+- The result does not establish arbitrary-document accuracy or replace real-user QA.
+- Next benchmark expansion should prioritize scans, tables, equations, diagrams, handwriting, additional textbooks, and natural questions not used during implementation.

@@ -2,6 +2,7 @@ from app.domain.answer_intelligence import (
     answer_evidence_cue_score,
     answer_subject_anchor_terms,
     build_answer_plan,
+    evidence_obligation_score,
 )
 from app.domain.query_intent import QueryIntent
 from app.services.query_service import QueryService
@@ -20,6 +21,15 @@ def test_concept_query_builds_query_specific_plan() -> None:
     assert plan.sections[:2] == ("Direct answer", "How it works")
     assert "diagram references" in plan.requested_elements
     assert "Source diagram references" in plan.sections
+
+
+def test_image_as_a_topic_does_not_imply_a_visual_reference_request() -> None:
+    plan = build_answer_plan(
+        "How do image generation systems turn prompts into concept art?",
+        "research",
+    )
+
+    assert "diagram references" not in plan.requested_elements
 
 
 def test_concept_evidence_cues_reward_definitions_and_components() -> None:
@@ -44,6 +54,85 @@ def test_comparison_and_procedure_queries_get_different_contracts() -> None:
     assert comparison.sections[0] == "Direct comparison"
     assert procedure.answer_type == "procedure"
     assert procedure.sections[:2] == ("Goal", "Steps")
+
+
+def test_document_workflow_question_gets_placement_obligations() -> None:
+    plan = build_answer_plan(
+        "How does the book place validation in the training workflow?",
+        "research",
+    )
+
+    assert plan.answer_type == "workflow_placement"
+    assert [item.key for item in plan.evidence_obligations] == [
+        "placement",
+        "workflow_action",
+    ]
+
+
+def test_document_description_of_workflow_gets_placement_obligations() -> None:
+    plan = build_answer_plan(
+        "How does the book describe cross-validation in the machine learning workflow?",
+        "research",
+    )
+
+    assert plan.answer_type == "workflow_placement"
+
+
+def test_overview_reference_is_enumeration_not_document_summary() -> None:
+    plan = build_answer_plan(
+        "Which common methods are listed in the early overview?",
+        "research",
+    )
+
+    assert plan.answer_type == "enumeration"
+    assert plan.subject == "common methods"
+    assert plan.evidence_obligations[0].key == "items"
+
+
+def test_topic_scope_query_extracts_the_document_part_as_subject() -> None:
+    plan = build_answer_plan(
+        "Which topics does Part I of Example Systems cover?",
+        "research",
+    )
+
+    assert plan.subject == "Part I of Example Systems"
+
+
+def test_mechanism_obligations_score_different_source_facets() -> None:
+    plan = build_answer_plan(
+        "How does a generator create an output from an input?",
+        "research",
+    )
+    scores = {
+        item.key: evidence_obligation_score(
+            item,
+            "It starts with an input, transforms it repeatedly, and produces the output.",
+        )
+        for item in plan.evidence_obligations
+    }
+
+    assert scores["initial_state"] > 0
+    assert scores["operation"] > 0
+    assert scores["result"] > 0
+
+
+def test_coordinated_outcome_obligations_require_the_named_target() -> None:
+    plan = build_answer_plan(
+        "How does the method identify clusters and anomalies?",
+        "research",
+    )
+    obligations = {item.key: item for item in plan.evidence_obligations}
+
+    cluster_sentence = "Neighboring core instances form one cluster."
+    anomaly_sentence = "An isolated instance is considered an anomaly."
+
+    assert evidence_obligation_score(obligations["result_target_1"], cluster_sentence) > 0
+    assert evidence_obligation_score(obligations["result_target_1"], anomaly_sentence) == 0
+    assert evidence_obligation_score(obligations["result_target_2"], anomaly_sentence) > 0
+    assert evidence_obligation_score(
+        obligations["decision_condition"],
+        "If a neighborhood has at least five points, then it is a core region.",
+    ) > 0
 
 
 def test_date_question_gets_factual_lookup_contract() -> None:
@@ -78,10 +167,190 @@ def test_subject_anchor_preserves_hyphenated_focus_terms() -> None:
     query = "How does the Transformer learning-rate schedule use warmup?"
     plan = build_answer_plan(query, "research")
 
+    assert plan.subject == "warmup"
+    assert answer_subject_anchor_terms(query, plan) == {"warmup"}
+
+
+def test_use_question_focuses_on_the_technique_not_the_document_actor() -> None:
+    query = "Why does the paper use multi-head attention?"
+    plan = build_answer_plan(query, "research")
+
+    assert plan.subject == "multi-head attention"
+    assert answer_subject_anchor_terms(query, plan) == {"multi-head", "attention"}
+    assert plan.evidence_obligations[0].key == "rationale"
+    assert plan.evidence_obligations[1].required is False
+
+
+def test_representation_question_focuses_on_the_represented_object() -> None:
+    query = "How does the Transformer represent token positions?"
+    plan = build_answer_plan(query, "research")
+
+    assert plan.subject == "token positions"
+    assert answer_subject_anchor_terms(query, plan) == {"token", "positions"}
+
+
+def test_benefit_and_limitation_query_builds_two_evidence_obligations() -> None:
+    plan = build_answer_plan(
+        "What benefit and runtime limitation does batch normalization have?",
+        "research",
+    )
+
+    assert plan.subject == "batch normalization"
+    assert [item.key for item in plan.evidence_obligations] == ["benefit", "limitation"]
+
+
+def test_mechanism_plan_adds_query_derived_operation_focus() -> None:
+    plan = build_answer_plan(
+        "How does scaled dot-product attention compute attention outputs?",
+        "research",
+    )
+    focus = next(item for item in plan.evidence_obligations if item.key == "operation_focus")
+
+    assert evidence_obligation_score(
+        focus,
+        "We compute the dot products and apply softmax to obtain the output.",
+    ) > 0
+    assert evidence_obligation_score(
+        focus,
+        "The decoder masks illegal connections before softmax.",
+    ) == 0
+
+
+def test_comparison_plan_requires_evidence_for_both_named_sides() -> None:
+    plan = build_answer_plan(
+        "Compare precision and recall for a binary classifier.",
+        "research",
+    )
+
+    assert [item.key for item in plan.evidence_obligations[:2]] == [
+        "comparison_side_1",
+        "comparison_side_2",
+    ]
+    assert plan.evidence_obligations[0].retrieval_terms == ("precision",)
+    assert plan.evidence_obligations[1].retrieval_terms == ("recall",)
+
+
+def test_comparison_plan_uses_distinguishing_terms_for_each_side() -> None:
+    plan = build_answer_plan(
+        "Compare a high and low learning rate.",
+        "research",
+    )
+
+    assert plan.evidence_obligations[0].retrieval_terms == ("high",)
+    assert plan.evidence_obligations[1].retrieval_terms == ("low",)
+
+
+def test_comparison_evidence_cues_must_describe_the_named_side_locally() -> None:
+    plan = build_answer_plan(
+        "Compare precision and recall for a classifier.",
+        "research",
+    )
+    precision, recall = plan.evidence_obligations[:2]
+
+    precision_definition = (
+        "The accuracy of positive predictions is called the precision of the classifier."
+    )
+    recall_definition = (
+        "Precision is used with recall, also called sensitivity; recall is the ratio of "
+        "positive instances correctly detected by the classifier."
+    )
+
+    assert evidence_obligation_score(precision, precision_definition) >= 0.32
+    assert evidence_obligation_score(precision, recall_definition) < 0.32
+    assert evidence_obligation_score(recall, recall_definition) >= 0.32
+    unrelated_label = (
+        "It is convenient to combine precision and recall into a metric called the F score."
+    )
+    assert evidence_obligation_score(precision, unrelated_label) < 0.32
+    assert evidence_obligation_score(recall, unrelated_label) < 0.32
+    tradeoff_label = "This is called the precision/recall trade-off."
+    assert evidence_obligation_score(precision, tradeoff_label) < 0.32
+    assert evidence_obligation_score(recall, tradeoff_label) < 0.32
+    framework_heading = (
+        "Precision and Recall Scikit-Learn provides functions to compute classifier metrics."
+    )
+    assert evidence_obligation_score(recall, framework_heading) < 0.32
+    unrelated_long_heading = (
+        "The Precision/Recall Trade-off explains how the classifier makes its decisions."
+    )
+    assert evidence_obligation_score(recall, unrelated_long_heading) < 0.32
+    figure_caption = (
+        "The chosen ratio is at 90% precision and 48% recall; once again there is a trade-off."
+    )
+    assert evidence_obligation_score(precision, figure_caption) < 0.32
+    assert evidence_obligation_score(recall, figure_caption) < 0.32
+
+
+def test_comparison_behavior_cues_support_high_and_low_variants() -> None:
+    plan = build_answer_plan("Compare a high and low learning rate.", "research")
+    high, low = plan.evidence_obligations[:2]
+
+    assert evidence_obligation_score(
+        high,
+        "A high learning rate lets the model rapidly adapt to changing data.",
+    ) >= 0.32
+    assert evidence_obligation_score(
+        low,
+        "A low learning rate has more inertia and the model learns more slowly.",
+    ) >= 0.32
+
+
+def test_explicit_mechanism_verb_becomes_the_required_operation() -> None:
+    plan = build_answer_plan(
+        "How does the Transformer represent token positions?",
+        "research",
+    )
+
+    assert plan.evidence_obligations[0].key == "operation_focus"
+    assert plan.evidence_obligations[0].required is True
+    assert "representation" in plan.evidence_obligations[0].retrieval_terms
+    operation = next(item for item in plan.evidence_obligations if item.key == "operation")
+    assert operation.required is False
+
+
+def test_interpretation_query_uses_meaning_and_value_obligations() -> None:
+    plan = build_answer_plan(
+        "How should the silhouette coefficient be interpreted?",
+        "research",
+    )
+
+    assert [item.key for item in plan.evidence_obligations] == [
+        "value_mapping",
+        "interpretive_relation",
+    ]
+    assert plan.evidence_obligations[0].required is False
+    assert plan.evidence_obligations[1].required is True
+
+
+def test_numbered_component_question_is_an_enumeration() -> None:
+    plan = build_answer_plan(
+        "What are the two sublayers in each Transformer encoder layer?",
+        "research",
+    )
+
+    assert plan.answer_type == "enumeration"
+
+
+def test_document_recommendation_subject_omits_the_document_actor() -> None:
+    plan = build_answer_plan(
+        "What does the GenAI module recommend for fact-checking and verification?",
+        "research",
+    )
+
+    assert plan.subject == "fact-checking and verification"
+    assert plan.evidence_obligations[0].key == "recommended_action"
+
+
+def test_document_mention_question_focuses_on_the_mentioned_concept() -> None:
+    query = "Why does the book mention reducing dimensionality of training data?"
+    plan = build_answer_plan(query, "research")
+
+    assert plan.subject == "reducing dimensionality of training data"
     assert answer_subject_anchor_terms(query, plan) == {
-        "learning-rate",
-        "schedule",
-        "transformer",
+        "reducing",
+        "dimensionality",
+        "training",
+        "data",
     }
 
 

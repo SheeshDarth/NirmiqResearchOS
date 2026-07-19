@@ -1,6 +1,6 @@
 # NIRMIQ RAG Method
 
-Last updated: 2026-07-13
+Last updated: 2026-07-19
 
 ## Chosen Method
 
@@ -142,6 +142,7 @@ Latest verification:
 | Query-category seed | Hybrid | 0.850 | 1.000 | 1.000 |
 | Real-world academic seed | BM25 | 0.843 | 1.000 | 1.000 |
 | Real-world academic seed | Hybrid | 0.804 | 1.000 | 1.000 |
+| MegaSprint Six full-query corpus | BM25 offline | 0.921 | 1.000 | 1.000 |
 
 MegaSprint One final tightening notes:
 
@@ -153,10 +154,10 @@ Ongoing measured debt:
 
 - More real-world eval labels from textbooks, notes, papers, and exam material.
 - Better section detection for scanned PDFs and noisy OCR.
-- Automated answer relevance, completeness, readability, faithfulness, and abstention scoring.
 - Measuring answer relevance, citation faithfulness, abstention correctness, latency, and memory use across query categories.
+- Full recursive chapter summarization beyond hierarchy-aware representative source selection.
 
-Latest 40-case strict offline BM25 result (2026-07-15): MRR `0.868`, Recall@8 `0.921`, expected citation coverage `0.921`, answer-quality pass `0.825`, faithfulness `0.985`, and answerability correctness `1.000`. The benchmark scores answer-used citations, not merely retrieved candidates.
+Latest 40-case strict offline BM25 result (2026-07-19): MRR `0.921`, Recall@8 `1.000`, expected citation coverage `1.000`, answer-quality pass `1.000`, faithfulness `0.995`, and answerability correctness `1.000`. The benchmark scores answer-used citations, not merely retrieved candidates. The obligation-based MegaSprint Six extension is documented in [`megasprint_six_plan.md`](megasprint_six_plan.md).
 
 Block B details and closure criteria are tracked in [`megasprint_one_answer_intelligence_plan.md`](megasprint_one_answer_intelligence_plan.md).
 

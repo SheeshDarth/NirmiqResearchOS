@@ -1,6 +1,6 @@
 # NIRMIQ Debugging Guide
 
-Last updated: 2026-07-09
+Last updated: 2026-07-19
 
 ## 2026-07-09 MegaSprint One RAG Debugging Notes
 
@@ -591,7 +591,7 @@ Recommended order:
    - If citations are unrelated, this is retrieval precision.
 8. Mark the answer as `Needs work` so it can become a local eval candidate.
 
-Do not treat hallucination as a model-size problem first. The current evidence says the main failure mode is retrieval precision on real textbooks: BM25 MRR `0.578`, Recall@8 `0.750`, and citation expected coverage `0.750`.
+Do not treat hallucination as a model-size problem first. The historical pre-reliability baseline was BM25 MRR `0.578`, Recall@8 `0.750`, and citation expected coverage `0.750`. The 2026-07-19 MegaSprint Six benchmark reached MRR `0.921`, Recall@8 `1.000`, and citation expected coverage `1.000` on the current 40-case corpus, so new failures should now be diagnosed against unseen-document coverage rather than hidden by the aggregate score.
 
 ### Linux Browser Preview
 
@@ -619,6 +619,8 @@ Inspect:
 - `data/processed/eval/real_world_answer_quality_failures.jsonl` for per-query misses and answer-quality reasons.
 - `cited_context_chunk_ids` in debug retrieval metadata to confirm the evaluator and UI are judging passages actually used by the answer.
 - `anchor_rescue_applied` and `neighbor_rescue_applied` only in debug mode when direct definitions or adjacent subsections are buried.
+- `evidence_obligations` and `obligation_candidates` to confirm retrieval found every required part of the answer.
+- `obligation_recovery_applied` and `roadmap_rescue_applied` to distinguish direct retrieval from bounded recovery.
 
 Failure classification:
 
@@ -626,8 +628,9 @@ Failure classification:
 2. Correct passage retrieved but absent from `cited_context_chunk_ids`: inspect context packing and answer-plan sentence ranking.
 3. Correct passage cited but answer is poor: inspect deterministic fallback structure and fragment filtering.
 4. Unsupported claim survives: inspect claim verification and the evidence reliability gate; do not weaken abstention first.
+5. One side of a comparison or one step of a mechanism is absent: inspect required obligation candidates before increasing context length.
 
-Known performance note: the full 40-case legacy-textbook run takes roughly four minutes. A slow successful evaluation is not a sandbox failure.
+Known performance note: the final full 40-case legacy-textbook run took roughly two minutes on the current verification machine. A slow successful evaluation is not a sandbox failure.
 
 ## Export Safe Diagnostics
 

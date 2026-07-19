@@ -44,3 +44,12 @@ def test_intent_router_treats_which_question_as_factual_lookup() -> None:
 
     assert intent.intent == "factual_lookup"
     assert intent.route == "default_grounded_retrieval"
+
+
+def test_overview_noun_does_not_trigger_document_summary() -> None:
+    intent = detect_query_intent(
+        "Which methods are listed in the chapter overview?",
+        "research",
+    )
+
+    assert intent.intent == "factual_lookup"

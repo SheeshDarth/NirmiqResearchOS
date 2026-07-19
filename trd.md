@@ -1,6 +1,6 @@
 # NIRMIQ Technical Requirements Document
 
-Last updated: 2026-07-13
+Last updated: 2026-07-19
 
 ## Project
 
@@ -321,3 +321,29 @@ Requirements now satisfied:
 - Existing query APIs and normal chat behavior remain unchanged.
 
 Validation: implementation commit `791c969`; `163` backend tests, API compile, `118 kB` Next.js build, full ship gate, source desktop smoke, and rebuilt portable smoke passed.
+
+## 2026-07-19 MegaSprint Six Reliability Requirements
+
+Requirements satisfied:
+
+- Query planning must express required and optional evidence obligations without changing the public query request.
+- Retrieval must run bounded, batched lexical searches for those obligations and preserve qualifying candidates through final ranking.
+- Section metadata must remain a soft ranking signal to preserve recall on legacy or imperfectly parsed documents.
+- Comparison, mechanism, procedure, workflow-placement, and interpretation responses must require relation-specific evidence rather than keyword co-occurrence.
+- Synthesis may inspect up to 12 candidates but must keep the configured global context-token budget unchanged.
+- Deterministic fallback must be query-shaped, source-only, citation-aware, and fail closed when required evidence is absent.
+- Citation mappings must support the complete bounded context set and expose only answer-used sources to normal clients.
+- Selected-document summary input must sample across section/page hierarchy and use cache profile `v6-hierarchical`.
+- The strict BM25-only path must work with Ollama, embeddings, reranking, vectors, cloud APIs, agents, and graph databases disabled.
+- Normal UI must continue hiding raw retrieval metadata.
+
+Validation:
+
+- `202` unit tests and `10` integration tests passed.
+- Python compilation passed.
+- Next.js production build passed at `118 kB` first-load JavaScript.
+- The final 40-case offline benchmark reached MRR `0.921`, Recall@8 `1.000`, citation expected coverage `1.000`, quality pass `1.000`, and faithfulness `0.995` with no recorded failures.
+
+Next-data requirement:
+
+- Do not optimize further against only the current 40 labels. Expand with unseen textbooks, scans, handwriting, tables, equations, diagrams, and natural user feedback before changing retrieval thresholds.

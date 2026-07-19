@@ -23,51 +23,71 @@ class BM25Index:
         self._b = b
 
     async def search(self, query: str, chunks: list[dict[str, object]], limit: int) -> list[BM25Hit]:
-        if not query.strip() or not chunks:
-            return []
+        results = await self.search_many(queries={"query": query}, chunks=chunks, limit=limit)
+        return results.get("query", [])
+
+    async def search_many(
+        self,
+        *,
+        queries: dict[str, str],
+        chunks: list[dict[str, object]],
+        limit: int,
+    ) -> dict[str, list[BM25Hit]]:
+        """Score several evidence queries while tokenizing the corpus only once."""
+
+        if not chunks or limit <= 0:
+            return {key: [] for key in queries}
 
         tokenized_docs: list[list[str]] = [self._tokenize(self._search_text(chunk)) for chunk in chunks]
-        query_tokens = self._tokenize(query)
-        if not query_tokens:
-            return []
-
         doc_count = len(tokenized_docs)
         avgdl = sum(len(doc) for doc in tokenized_docs) / max(doc_count, 1)
         doc_freq: dict[str, int] = {}
+        term_frequencies: list[dict[str, int]] = []
         for doc_tokens in tokenized_docs:
-            for token in set(doc_tokens):
-                doc_freq[token] = doc_freq.get(token, 0) + 1
-
-        hits: list[BM25Hit] = []
-        for idx, doc_tokens in enumerate(tokenized_docs):
             tf: dict[str, int] = {}
             for token in doc_tokens:
                 tf[token] = tf.get(token, 0) + 1
-            doc_len = len(doc_tokens)
-            score = 0.0
-            for token in query_tokens:
-                if token not in tf:
-                    continue
-                n_qi = doc_freq.get(token, 0)
-                idf = math.log(1 + (doc_count - n_qi + 0.5) / (n_qi + 0.5))
-                freq = tf[token]
-                denom = freq + self._k1 * (1 - self._b + self._b * (doc_len / max(avgdl, 1e-9)))
-                score += idf * ((freq * (self._k1 + 1)) / max(denom, 1e-9))
-            if score <= 0:
+            term_frequencies.append(tf)
+            for token in set(doc_tokens):
+                doc_freq[token] = doc_freq.get(token, 0) + 1
+
+        results: dict[str, list[BM25Hit]] = {}
+        for key, query in queries.items():
+            query_tokens = self._tokenize(query)
+            if not query_tokens:
+                results[key] = []
                 continue
-            row = chunks[idx]
-            hits.append(
-                BM25Hit(
-                    chunk_id=str(row["id"]),
-                    score=score,
-                    text=str(row["text"]),
-                    document_id=str(row["document_id"]),
-                    page_start=int(row["page_start"]) if row["page_start"] is not None else None,
-                    page_end=int(row["page_end"]) if row["page_end"] is not None else None,
+            hits: list[BM25Hit] = []
+            for idx, doc_tokens in enumerate(tokenized_docs):
+                tf = term_frequencies[idx]
+                doc_len = len(doc_tokens)
+                score = 0.0
+                for token in query_tokens:
+                    if token not in tf:
+                        continue
+                    n_qi = doc_freq.get(token, 0)
+                    idf = math.log(1 + (doc_count - n_qi + 0.5) / (n_qi + 0.5))
+                    freq = tf[token]
+                    denom = freq + self._k1 * (
+                        1 - self._b + self._b * (doc_len / max(avgdl, 1e-9))
+                    )
+                    score += idf * ((freq * (self._k1 + 1)) / max(denom, 1e-9))
+                if score <= 0:
+                    continue
+                row = chunks[idx]
+                hits.append(
+                    BM25Hit(
+                        chunk_id=str(row["id"]),
+                        score=score,
+                        text=str(row["text"]),
+                        document_id=str(row["document_id"]),
+                        page_start=int(row["page_start"]) if row["page_start"] is not None else None,
+                        page_end=int(row["page_end"]) if row["page_end"] is not None else None,
+                    )
                 )
-            )
-        hits.sort(key=lambda item: item.score, reverse=True)
-        return hits[:limit]
+            hits.sort(key=lambda item: item.score, reverse=True)
+            results[key] = hits[:limit]
+        return results
 
     @staticmethod
     def _tokenize(text: str) -> list[str]:

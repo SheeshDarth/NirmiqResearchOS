@@ -1,13 +1,15 @@
 # NIRMIQ Academic Intelligence Context
 
-Last updated: 2026-07-15
+Last updated: 2026-07-19
+
+Current checkpoint: MegaSprint Six is complete on the current 40-case strict offline gate. See `## 2026-07-19 MegaSprint Six - Query-Agnostic Evidence Reliability` near the end of this file for the full implementation and verification record.
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
 Primary app URL: `http://127.0.0.1:3002/`
 API URL: `http://127.0.0.1:8000/`
 
-## Latest Session Update - 2026-07-15 MegaSprint One Block B Closed
+## Historical Session Update - 2026-07-15 MegaSprint One Block B Closed
 
 Objective:
 
@@ -2937,7 +2939,7 @@ MegaSprint roadmap:
 3. MegaSprint Three: Academic workflows: Paper Lab, Exam Lab, diagrams, study guides, and source-grounded exports.
 4. MegaSprint Four: Local runtime optimization for RTX 4050, low-end Linux, Ollama profiles, quantization, and latency budgets.
 5. MegaSprint Five: Release, security, packaging, CI, screenshots/GIFs, privacy controls, and one-click setup.
-6. MegaSprint Six: NIRMIQ ecosystem bridge: Mirror memory, OS hooks, agents, and Echo integrations only after the standalone academic product is reliable.
+6. Deferred ecosystem bridge: Mirror memory, OS hooks, agents, and Echo integrations only after the standalone academic product is reliable on broader unseen documents.
 
 Completion target for MegaSprint One:
 
@@ -3933,3 +3935,61 @@ Final live UI QA on 2026-07-15:
 - At a measured `1280 x 720` viewport, the advanced panel had a `268px` client height, `357px` scroll height, and `overflow-y: auto`; scrolling brought the reset control fully inside the viewport.
 - The chat canvas, compact composer, and default collapsed privacy state remained unchanged.
 - A production build initially collided with the running preview's shared `.next` cache and reported a transient `/_not-found` module error. Stopping the preview, deleting only `apps/web/.next`, and rebuilding cleanly passed at `118 kB` first-load JavaScript.
+
+## 2026-07-19 MegaSprint Six - Query-Agnostic Evidence Reliability
+
+Objective:
+
+- Resolve the remaining measured summary, enumeration, mechanism, procedure, comparison, and interpretation failures without memorizing prompts or increasing model size.
+- Preserve the public `POST /query` contract, offline-first behavior, low-memory fallback, and simple trust UI.
+
+Architecture delivered:
+
+- Added deterministic answer plans with required and optional evidence obligations.
+- Added batched BM25 retrieval per obligation, direct-evidence relation scoring, lexical guardrails, and bounded obligation/neighbor/roadmap/anchor recovery.
+- Kept section narrowing as a soft ranking signal so legacy or imperfect section metadata cannot remove a strong lexical answer.
+- Added operation-focus and result-target evidence for mechanism questions, side-specific evidence for comparisons, complete value mapping for interpretation questions, and workflow-placement routing.
+- Added query-shaped deterministic fallback synthesis that uses only obligation-satisfying passages and abstains when required evidence is absent.
+- Expanded context inspection from 8 to 12 candidates without increasing the global context-token budget.
+- Expanded citation-anchor mapping to match the inspected context and kept public citations limited to answer-used chunks.
+- Added section/page-spanning hierarchical summary seeds and bumped the summary cache profile to `v6-hierarchical`.
+- Removed the old topic-specific Gaussian-mixture fallback rewrite; current behavior is query-agnostic.
+
+Measured final result:
+
+- Strict 40-case BM25-only offline benchmark: `40/40` answer-quality pass.
+- MRR: `0.921`.
+- Recall@3, Recall@5, and Recall@8: `1.000`.
+- Expected citation coverage: `1.000`.
+- Overall answer quality: `0.937`.
+- Answer relevance: `0.819`.
+- Concept coverage: `0.825`.
+- Query focus: `0.805`.
+- Readability: `0.985`.
+- Faithfulness: `0.995`.
+- Answerability correctness: `1.000`; both unsupported cases abstained correctly.
+- Canonical failure log is empty for the current dataset.
+
+Verification:
+
+- Focused answer-planning/synthesis tests: `49 passed`.
+- Full backend unit suite: `202 passed`, one third-party deprecation warning.
+- Integration suite: `10 passed`, one third-party deprecation warning.
+- Python compile: passed.
+- Next.js production build: passed at `118 kB` first-load JavaScript.
+- Final strict benchmark rerun against the exact final code reproduced the accepted metrics.
+- Full `npm run ship:check`: passed with `212` backend tests, offline readiness, web-shell smoke, four grounded golden-demo routes, unsupported-query abstention with zero citations, and privacy-safe diagnostics export.
+
+Tradeoffs and stop condition:
+
+- Obligation-level BM25 adds bounded CPU work but no cloud, vector, reranker, or VRAM dependency.
+- The global context-token budget is unchanged; candidate diversity improved instead of making prompts larger.
+- Deterministic fallback is intentionally less creative than unconstrained generation and is safer for academic evidence.
+- Do not continue tuning against these same 40 cases merely to maximize the score. The next accuracy work must use unseen textbooks, scans, tables, equations, diagrams, handwriting, and natural user feedback.
+- Full recursive chapter summarization is still future work; MegaSprint Six provides representative hierarchy-aware source coverage, not a complete map-reduce summarizer.
+
+Canonical plan and evidence:
+
+- `docs/megasprint_six_plan.md`.
+- `data/processed/eval/real_world_answer_quality_metrics.json`.
+- `data/processed/eval/real_world_answer_quality_failures.jsonl`.

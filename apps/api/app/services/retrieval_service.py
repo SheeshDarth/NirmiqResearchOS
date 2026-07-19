@@ -10,9 +10,11 @@ from app.adapters.storage.chroma_repo import ChromaRepo
 from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.core.config import Settings
 from app.domain.answer_intelligence import (
+    EvidenceObligation,
     answer_evidence_cue_score,
     answer_subject_anchor_terms,
     build_answer_plan,
+    evidence_obligation_score,
 )
 from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.retrieval_policy import RetrievalPolicy
@@ -85,10 +87,6 @@ class RetrievalService:
                 query_expansion_terms.append(term)
         subject_query = self._expand_query(query, document_query_expansion_terms)
         expanded_query = self._expand_query(query, query_expansion_terms)
-        active_chunk_sections = {
-            str(chunk.get("id")): str(chunk.get("section_id") or "")
-            for chunk in all_active_chunks
-        }
         section_candidates = self._rank_sections(query=expanded_query, sections=active_sections)
         section_candidate_ids = {
             str(candidate["section_id"])
@@ -104,23 +102,42 @@ class RetrievalService:
                 if str(chunk.get("section_id") or "") in section_candidate_ids
             ]
             if scoped_chunks:
-                active_chunks = scoped_chunks
                 section_filtered_chunk_count = len(scoped_chunks)
+        asks_for_exercise_content = bool(
+            re.search(r"\b(?:exercise|exercises|practice\s+question|question\s+bank)\b", requested_query, re.I)
+        )
         if self._is_explanatory_query(subject_query):
             readable_chunks = [
                 chunk
                 for chunk in active_chunks
                 if not self._looks_like_index_chunk(str(chunk.get("text") or "").lower())
                 and not self._looks_like_answer_key_chunk(chunk)
+                and (
+                    asks_for_exercise_content
+                    or not self._looks_like_exercise_question_chunk(str(chunk.get("text") or ""))
+                )
             ]
             if readable_chunks:
                 active_chunks = readable_chunks
                 section_filtered_chunk_count = len(readable_chunks)
-        bm25_hits = await self._bm25_index.search(
-            query=expanded_query,
+        obligation_queries = (
+            answer_plan.evidence_queries(requested_query)
+            if target_document_id
+            else {}
+        )
+        batched_queries = {"__base__": expanded_query}
+        batched_queries.update(
+            {
+                f"obligation:{key}": self._expand_query(value, query_expansion_terms)
+                for key, value in obligation_queries.items()
+            }
+        )
+        bm25_batches = await self._bm25_index.search_many(
+            queries=batched_queries,
             chunks=active_chunks,
             limit=profile_config["bm25_k"],
         )
+        bm25_hits = bm25_batches.get("__base__", [])
 
         vector_hits: list[dict[str, object]] = []
         vector_enabled = self._settings.retrieval_enable_vector and self._chroma_repo.is_available()
@@ -133,12 +150,6 @@ class RetrievalService:
                 limit=profile_config["vector_k"],
                 document_id=target_document_id,
             )
-            if section_candidate_ids:
-                vector_hits = [
-                    hit
-                    for hit in vector_hits
-                    if active_chunk_sections.get(str(hit.get("id") or "")) in section_candidate_ids
-                ]
 
         bm25_ranked_ids = [hit.chunk_id for hit in bm25_hits]
         vector_ranked_ids = [str(hit["id"]) for hit in vector_hits if hit.get("id")]
@@ -159,6 +170,97 @@ class RetrievalService:
             )
 
         candidate_ids = [chunk_id for chunk_id, _ in fused[: profile_config["fused_k"]]]
+        active_chunks_by_id = {
+            str(row.get("id") or ""): row
+            for row in active_chunks
+            if row.get("id")
+        }
+        obligation_candidate_map: dict[str, list[str]] = {}
+        obligation_score_map: dict[str, float] = {}
+        obligation_keys_by_id: dict[str, list[str]] = {}
+        core_subject_terms = answer_subject_anchor_terms(requested_query, answer_plan)
+        for obligation in answer_plan.evidence_obligations[:4]:
+            hits = bm25_batches.get(f"obligation:{obligation.key}", [])
+            top_score = max((hit.score for hit in hits), default=1.0)
+            scored_hits: list[tuple[float, str]] = []
+            for hit in hits:
+                row = active_chunks_by_id.get(hit.chunk_id)
+                if not row:
+                    continue
+                text = str(row.get("text") or "")
+                lowered = text.lower()
+                if self._looks_like_index_chunk(lowered) or self._looks_like_answer_key_chunk(row):
+                    continue
+                normalized_score = min(1.0, hit.score / max(top_score, 1e-9))
+                cue_score = evidence_obligation_score(obligation, text)
+                directness = self._chunk_answer_relevance(
+                    row=row,
+                    query=expanded_query,
+                    answer_query=requested_query,
+                )
+                if obligation.key.startswith("comparison_side_") and cue_score < 0.32:
+                    continue
+                core_hits = sum(1 for term in core_subject_terms if term in lowered)
+                core_coverage = core_hits / max(len(core_subject_terms), 1)
+                if normalized_score < 0.2 and cue_score < 0.42:
+                    continue
+                if directness < 0.22 and cue_score < 0.42:
+                    continue
+                if core_subject_terms and core_hits <= 0 and not (
+                    directness >= 0.55 and cue_score >= 0.42
+                ):
+                    continue
+                structural_score = self._structural_identifier_score(
+                    query=requested_query,
+                    text=text,
+                )
+                noise_penalty = self._chunk_noise_penalty(row=row, query=requested_query)
+                combined_obligation_score = max(0.0, min(
+                    1.0,
+                    (0.32 * normalized_score)
+                    + (0.28 * cue_score)
+                    + (0.22 * directness)
+                    + (0.12 * core_coverage)
+                    + (0.18 * structural_score)
+                    - noise_penalty,
+                ))
+                scored_hits.append((combined_obligation_score, hit.chunk_id))
+
+            accepted = [
+                chunk_id
+                for _, chunk_id in sorted(scored_hits, reverse=True)[:2]
+            ]
+            for combined_obligation_score, chunk_id in sorted(scored_hits, reverse=True)[:2]:
+                obligation_score_map[chunk_id] = max(
+                    obligation_score_map.get(chunk_id, 0.0),
+                    combined_obligation_score,
+                )
+                obligation_keys_by_id.setdefault(chunk_id, []).append(obligation.key)
+            obligation_candidate_map[obligation.key] = accepted
+
+        obligation_recovery_ids = list(
+            dict.fromkeys(
+                chunk_id
+                for ids in obligation_candidate_map.values()
+                for chunk_id in ids
+            )
+        )
+        for chunk_id in obligation_recovery_ids:
+            if chunk_id not in candidate_ids:
+                candidate_ids.append(chunk_id)
+        candidate_ids = candidate_ids[: profile_config["fused_k"] + 8]
+        roadmap_rescue_ids = self._roadmap_rescue_candidate_ids(
+            query=requested_query,
+            chunks=all_active_chunks if target_document_id else active_chunks,
+            existing_ids=set(candidate_ids),
+            limit=3,
+        ) if answer_plan.answer_type in {"enumeration", "workflow_placement"} else []
+        if roadmap_rescue_ids:
+            rescued = set(roadmap_rescue_ids)
+            candidate_ids = [
+                *roadmap_rescue_ids,
+                *[chunk_id for chunk_id in candidate_ids if chunk_id not in rescued],
+            ][: profile_config["fused_k"] + 8]
         anchor_rescue_ids = self._anchor_rescue_candidate_ids(
             query=expanded_query,
             answer_query=requested_query,
@@ -169,22 +271,66 @@ class RetrievalService:
         if anchor_rescue_ids:
             rescued = set(anchor_rescue_ids)
             candidate_ids = [*anchor_rescue_ids, *[chunk_id for chunk_id in candidate_ids if chunk_id not in rescued]]
-            candidate_ids = candidate_ids[: profile_config["fused_k"]]
+            candidate_ids = candidate_ids[: profile_config["fused_k"] + 8]
         neighbor_rescue_ids: list[str] = []
-        if target_document_id and answer_plan.answer_type == "concept_explanation":
+        neighbor_obligation_priority_ids: list[str] = []
+        neighbor_answer_types = {
+            "concept_explanation",
+            "comparison",
+            "enumeration",
+            "mechanism_explanation",
+            "procedure",
+            "workflow_placement",
+        }
+        if target_document_id and answer_plan.answer_type in neighbor_answer_types:
             neighbor_rescue_ids = self._page_neighbor_rescue_candidate_ids(
-                anchor_ids=anchor_rescue_ids or candidate_ids[:2],
+                anchor_ids=roadmap_rescue_ids or anchor_rescue_ids or candidate_ids[:3] or obligation_recovery_ids,
                 chunks=all_active_chunks,
                 existing_ids=set(candidate_ids),
                 query=expanded_query,
                 answer_query=requested_query,
-                limit=4,
+                limit=10,
+                page_radius=(
+                    16
+                    if answer_plan.answer_type == "concept_explanation"
+                    else 2
+                    if answer_plan.answer_type == "comparison"
+                    else 3
+                    if answer_plan.answer_type == "enumeration"
+                    else 4
+                ),
             )
             candidate_ids.extend(
                 chunk_id
                 for chunk_id in neighbor_rescue_ids
                 if chunk_id not in candidate_ids
             )
+            for obligation in answer_plan.evidence_obligations:
+                ranked_neighbors = sorted(
+                    (
+                        (
+                            evidence_obligation_score(
+                                obligation,
+                                str(active_chunks_by_id[chunk_id].get("text") or ""),
+                            ),
+                            chunk_id,
+                        )
+                        for chunk_id in neighbor_rescue_ids
+                        if chunk_id in active_chunks_by_id
+                    ),
+                    reverse=True,
+                )
+                if ranked_neighbors and ranked_neighbors[0][0] >= 0.32:
+                    neighbor_obligation_priority_ids.append(ranked_neighbors[0][1])
+        if target_document_id and not asks_for_exercise_content:
+            exercise_chunk_ids = {
+                str(row.get("id") or "")
+                for row in all_active_chunks
+                if self._looks_like_exercise_question_chunk(str(row.get("text") or ""))
+            }
+            candidate_ids = [
+                chunk_id for chunk_id in candidate_ids if chunk_id not in exercise_chunk_ids
+            ]
         document_scope_fallback = False
         if target_document_id and not candidate_ids and active_chunks:
             candidate_ids = [str(chunk["id"]) for chunk in active_chunks[: profile_config["fused_k"]]]
@@ -193,6 +339,53 @@ class RetrievalService:
         active_chunk_ids = {str(chunk["id"]) for chunk in all_active_chunks}
         orphan_vector_hit_count = len([chunk_id for chunk_id in vector_ranked_ids if chunk_id not in active_chunk_ids])
         candidate_ids = [chunk_id for chunk_id in candidate_ids if chunk_id in chunks_by_id]
+        local_obligation_priority_ids: list[str] = []
+        if answer_plan.answer_type not in {"document_summary", "enumeration", "workflow_placement"}:
+            required_obligations = [
+                obligation
+                for obligation in answer_plan.evidence_obligations
+                if obligation.required
+            ]
+            local_scores_by_chunk: dict[str, dict[str, float]] = {}
+            for obligation in required_obligations:
+                ranked_local_candidates = sorted(
+                    (
+                        (
+                            self._local_obligation_evidence_score(
+                                row=chunks_by_id[chunk_id],
+                                obligation=obligation,
+                                core_subject_terms=core_subject_terms,
+                            ),
+                            chunk_id,
+                        )
+                        for chunk_id in candidate_ids
+                    ),
+                    reverse=True,
+                )
+                for score, chunk_id in ranked_local_candidates:
+                    local_scores_by_chunk.setdefault(chunk_id, {})[obligation.key] = score
+                if ranked_local_candidates and ranked_local_candidates[0][0] >= 0.32:
+                    local_obligation_priority_ids.append(ranked_local_candidates[0][1])
+            if len(required_obligations) >= 2:
+                joint_candidates: list[tuple[float, str]] = []
+                for chunk_id, scores_by_key in local_scores_by_chunk.items():
+                    scores = [
+                        scores_by_key.get(obligation.key, 0.0)
+                        for obligation in required_obligations
+                    ]
+                    if any(score < 0.32 for score in scores):
+                        continue
+                    joint_candidates.append(
+                        (
+                            min(scores) + (sum(scores) / len(scores)),
+                            chunk_id,
+                        )
+                    )
+                if joint_candidates:
+                    local_obligation_priority_ids.insert(
+                        0,
+                        max(joint_candidates)[1],
+                    )
 
         candidate_texts = [str(chunks_by_id[cid]["text"]) for cid in candidate_ids if cid in chunks_by_id]
         reranked_order = await self._reranker.rerank(query=expanded_query, texts=candidate_texts)
@@ -217,6 +410,9 @@ class RetrievalService:
                 answer_query=requested_query,
                 anchor_rescue_ids=set(anchor_rescue_ids),
                 neighbor_rescue_ids=set(neighbor_rescue_ids),
+                obligation_score_map=obligation_score_map,
+                obligation_keys_by_id=obligation_keys_by_id,
+                roadmap_rescue_ids=set(roadmap_rescue_ids),
             ),
             reverse=True,
         )
@@ -237,6 +433,28 @@ class RetrievalService:
             per_document_counts[document_id] = current_count + 1
             if len(top_ids) >= profile_config["rerank_k"]:
                 break
+        top_ids = self._preserve_lexical_guardrail(
+            selected_ids=top_ids,
+            bm25_ranked_ids=bm25_ranked_ids,
+            chunks_by_id=chunks_by_id,
+            query=requested_query,
+            limit=profile_config["rerank_k"],
+            protected_limit=min(5, profile_config["rerank_k"]),
+        )
+        required_obligation_ids = [
+            obligation_candidate_map[obligation.key][0]
+            for obligation in answer_plan.evidence_obligations
+            if obligation.required and obligation_candidate_map.get(obligation.key)
+        ]
+        top_ids = self._preserve_priority_candidates(
+            selected_ids=top_ids,
+            priority_ids=[
+                *local_obligation_priority_ids,
+                *required_obligation_ids,
+                *neighbor_obligation_priority_ids,
+            ],
+            limit=profile_config["rerank_k"],
+        )
 
         fused_score_map = {chunk_id: score for chunk_id, score in fused}
 
@@ -299,6 +517,8 @@ class RetrievalService:
                     "heading": row.get("heading"),
                     "section_path": row.get("section_path"),
                     "chunk_type": row.get("chunk_type") or "body",
+                    "evidence_obligations": obligation_keys_by_id.get(chunk_id, []),
+                    "obligation_score": round(obligation_score_map.get(chunk_id, 0.0), 4),
                 }
             )
         avg_quality = (
@@ -337,10 +557,25 @@ class RetrievalService:
                 "retrieval_diagnostics": {
                     "active_chunks_considered": len(all_active_chunks),
                     "active_sections_considered": len(active_sections),
-                    "section_filter_applied": bool(section_candidate_ids),
+                    "section_filter_applied": False,
+                    "section_soft_ranking_applied": bool(section_candidate_ids),
                     "candidate_ids_after_fusion": len(candidate_ids),
                     "returned_chunks": len(chunks),
+                    "obligation_candidate_count": len(obligation_recovery_ids),
                 },
+                "evidence_obligations": [
+                    {
+                        "key": item.key,
+                        "label": item.label,
+                        "required": item.required,
+                    }
+                    for item in answer_plan.evidence_obligations
+                ],
+                "obligation_candidates": obligation_candidate_map,
+                "obligation_recovery_applied": bool(obligation_recovery_ids),
+                "obligation_recovery_count": len(obligation_recovery_ids),
+                "roadmap_rescue_applied": bool(roadmap_rescue_ids),
+                "roadmap_rescue_count": len(roadmap_rescue_ids),
                 "query_expansion_terms": query_expansion_terms,
                 "query_expansion_applied": bool(query_expansion_terms),
                 "document_query_expansion_terms": document_query_expansion_terms,
@@ -357,11 +592,146 @@ class RetrievalService:
                 "scope": "document" if target_document_id else "corpus",
                 "retrieval_profile": normalized_profile,
                 "retrieval_method": "nirmiq_evidence_first_hierarchical_hybrid_rag",
-                "retrieval_method_version": "megasprint1.v5",
+                "retrieval_method_version": "megasprint6.v1",
                 "answer_plan_type": answer_plan.answer_type,
                 "strategy": f"nirmiq_ehr_{normalized_mode}",
             },
         )
+
+    @staticmethod
+    def _preserve_lexical_guardrail(
+        *,
+        selected_ids: list[str],
+        bm25_ranked_ids: list[str],
+        chunks_by_id: dict[str, dict[str, object]],
+        query: str,
+        limit: int,
+        protected_limit: int,
+    ) -> list[str]:
+        """Keep clean top lexical evidence available after helper reranking."""
+
+        if limit <= 0 or protected_limit <= 0:
+            return selected_ids[: max(limit, 0)]
+        protected: list[str] = []
+        for chunk_id in bm25_ranked_ids:
+            row = chunks_by_id.get(chunk_id)
+            if not row:
+                continue
+            text = str(row.get("text") or "").lower()
+            if (
+                RetrievalService._looks_like_index_chunk(text)
+                or RetrievalService._looks_like_answer_key_chunk(row)
+                or RetrievalService._chunk_noise_penalty(row=row, query=query) >= 0.5
+            ):
+                continue
+            protected.append(chunk_id)
+            if len(protected) >= protected_limit:
+                break
+
+        result = list(dict.fromkeys(selected_ids[:limit]))
+        protected_set = set(protected)
+        for chunk_id in protected:
+            if chunk_id in result:
+                continue
+            if len(result) < limit:
+                result.append(chunk_id)
+                continue
+            replacement_index = next(
+                (
+                    index
+                    for index in range(len(result) - 1, -1, -1)
+                    if result[index] not in protected_set
+                ),
+                None,
+            )
+            if replacement_index is None:
+                break
+            result[replacement_index] = chunk_id
+        return list(dict.fromkeys(result))[:limit]
+
+    @staticmethod
+    def _preserve_priority_candidates(
+        *,
+        selected_ids: list[str],
+        priority_ids: list[str],
+        limit: int,
+    ) -> list[str]:
+        """Keep one evidence candidate for every required answer obligation."""
+
+        if limit <= 0:
+            return []
+        priorities = list(dict.fromkeys(priority_ids))[:limit]
+        priority_set = set(priorities)
+        result = list(dict.fromkeys(selected_ids))[:limit]
+        for chunk_id in priorities:
+            if chunk_id in result:
+                continue
+            if len(result) < limit:
+                result.append(chunk_id)
+                continue
+            replacement_index = next(
+                (
+                    index
+                    for index in range(len(result) - 1, -1, -1)
+                    if result[index] not in priority_set
+                ),
+                None,
+            )
+            if replacement_index is None:
+                break
+            result[replacement_index] = chunk_id
+        return list(dict.fromkeys(result))[:limit]
+
+    @staticmethod
+    def _local_obligation_evidence_score(
+        *,
+        row: dict[str, object],
+        obligation: EvidenceObligation,
+        core_subject_terms: set[str],
+    ) -> float:
+        """Score evidence only when the subject and operation share a local window."""
+
+        text = re.sub(r"\s+", " ", str(row.get("text") or "")).strip()
+        if not text:
+            return 0.0
+        sentences = [
+            sentence.strip(" -")
+            for sentence in re.split(r"(?<=[.!?])\s+", text)
+            if sentence.strip(" -")
+        ]
+        if not sentences:
+            return 0.0
+        roadmap_cues = (
+            "covers the following topics",
+            "in this section we will",
+            "this chapter will",
+            "learning objectives",
+            "before we move on",
+        )
+        core_positions = [
+            index
+            for index, sentence in enumerate(sentences)
+            if not any(cue in sentence.lower() for cue in roadmap_cues)
+            and any(
+                term in RetrievalService._metadata_terms(sentence)
+                for term in core_subject_terms
+            )
+        ]
+        if core_subject_terms and not core_positions:
+            return 0.0
+
+        best = 0.0
+        for index, sentence in enumerate(sentences):
+            obligation_score = evidence_obligation_score(obligation, sentence)
+            if obligation_score < 0.32:
+                continue
+            if core_positions and min(abs(index - position) for position in core_positions) > 2:
+                continue
+            core_hits = len(
+                core_subject_terms & RetrievalService._metadata_terms(sentence)
+            )
+            best = max(best, min(1.0, obligation_score + (0.05 * core_hits)))
+        return best
 
     @staticmethod
     def _candidate_priority(
@@ -377,6 +747,9 @@ class RetrievalService:
         answer_query: str | None = None,
         anchor_rescue_ids: set[str] | None = None,
         neighbor_rescue_ids: set[str] | None = None,
+        obligation_score_map: dict[str, float] | None = None,
+        obligation_keys_by_id: dict[str, list[str]] | None = None,
+        roadmap_rescue_ids: set[str] | None = None,
     ) -> float:
         row = chunks_by_id.get(chunk_id)
         if not row:
@@ -416,6 +789,20 @@ class RetrievalService:
                 for cue in ("building block", "composed of", "consists of", "goal is to", "works by")
             ):
                 neighbor_bonus += 0.4
+        obligation_score = (
+            obligation_score_map.get(chunk_id, 0.0)
+            if obligation_score_map
+            else 0.0
+        )
+        obligation_diversity = min(
+            3,
+            len(obligation_keys_by_id.get(chunk_id, [])) if obligation_keys_by_id else 0,
+        )
+        structural_score = RetrievalService._structural_identifier_score(
+            query=requested_query,
+            text=str(row.get("text") or ""),
+        )
+        roadmap_bonus = 0.7 if roadmap_rescue_ids and chunk_id in roadmap_rescue_ids else 0.0
         return (
             (0.30 * rerank_score)
             + (0.22 * lexical_score)
@@ -425,6 +812,10 @@ class RetrievalService:
             + section_bonus
             + anchor_bonus
             + neighbor_bonus
+            + (0.24 * obligation_score)
+            + (0.04 * obligation_diversity)
+            + (0.42 * structural_score)
+            + roadmap_bonus
             - noise_penalty
         )
 
@@ -901,6 +1292,7 @@ class RetrievalService:
             answer_plan.answer_type in {
                 "mechanism_explanation",
                 "procedure",
+                "workflow_placement",
                 "recommendation",
                 "limitations",
             }
@@ -1056,6 +1448,7 @@ class RetrievalService:
                 answer_plan.answer_type in {
                     "mechanism_explanation",
                     "procedure",
+                    "workflow_placement",
                     "recommendation",
                     "comparison",
                     "limitations",
@@ -1092,6 +1485,81 @@ class RetrievalService:
         return rescued
 
     @staticmethod
+    def _roadmap_rescue_candidate_ids(
+        *,
+        query: str,
+        chunks: list[dict[str, object]],
+        existing_ids: set[str],
+        limit: int,
+    ) -> list[str]:
+        """Recover document outlines and adjacent list-bearing roadmap chunks."""
+
+        if not chunks or limit <= 0:
+            return []
+        normalized_query = query.lower()
+        if not re.search(
+            r"\b(?:cover|covers|covered|list|listed|overview|outline|topics?|workflow)\b",
+            normalized_query,
+        ):
+            return []
+        query_terms = RetrievalService._metadata_terms(query)
+        scored: list[tuple[float, int, str]] = []
+        for row in chunks:
+            chunk_id = str(row.get("id") or "")
+            text = str(row.get("text") or "")
+            if not chunk_id or not text.strip():
+                continue
+            lowered = text.lower()
+            roadmap_cues = sum(
+                cue in lowered
+                for cue in (
+                    "covers the following topics",
+                    "covers the following",
+                    "the most common",
+                    "steps in a typical",
+                    "overview",
+                    "learning objectives",
+                )
+            )
+            list_density = min(1.0, (text.count(",") + text.count(";")) / 7.0)
+            if roadmap_cues <= 0 and list_density < 0.55:
+                continue
+            text_terms = RetrievalService._metadata_terms(text)
+            overlap = len(query_terms & text_terms) / max(len(query_terms), 1)
+            structural_score = RetrievalService._structural_identifier_score(
+                query=query,
+                text=text,
+            )
+            if structural_score < 0:
+                continue
+            directness = RetrievalService._chunk_answer_relevance(
+                row=row,
+                query=query,
+                answer_query=query,
+            )
+            try:
+                page = int(row.get("page_start") or 1_000_000)
+            except (TypeError, ValueError):
+                page = 1_000_000
+            early_bonus = 0.25 if "early" in normalized_query and page <= 80 else 0.0
+            score = (
+                (2.2 * overlap)
+                + (1.4 * roadmap_cues)
+                + (0.8 * list_density)
+                + (2.5 * structural_score)
+                + directness
+                + early_bonus
+                - RetrievalService._chunk_noise_penalty(row=row, query=query)
+            )
+            if chunk_id in existing_ids:
+                score += 0.05
+            if score >= 1.0:
+                scored.append((score, -page, chunk_id))
+
+        scored.sort(reverse=True)
+        return [chunk_id for _, _, chunk_id in scored[:limit]]
+
+    @staticmethod
     def _page_neighbor_rescue_candidate_ids(
         *,
         anchor_ids: list[str],
@@ -1114,12 +1582,7 @@ class RetrievalService:
         ]
         if not anchor_pages:
             return []
-        primary_anchor_page = anchor_pages[0]
-        anchor_pages = [
-            page
-            for page in anchor_pages
-            if abs(page - primary_anchor_page) <= (2 * page_radius)
-        ]
+        anchor_pages = list(dict.fromkeys(anchor_pages))
 
         query_terms = RetrievalService._metadata_terms(query)
         query_acronyms = RetrievalService._query_acronyms(answer_query)
@@ -1138,6 +1601,14 @@ class RetrievalService:
             if (
                 RetrievalService._looks_like_index_chunk(lowered)
                 or RetrievalService._looks_like_answer_key_chunk(row)
+                or (
+                    not re.search(
+                        r"\b(?:exercise|exercises|practice\s+question|question\s+bank)\b",
+                        answer_query,
+                        re.I,
+                    )
+                    and RetrievalService._looks_like_exercise_question_chunk(text)
+                )
                 or len(re.sub(r"\s+", " ", text).split()) < 18
             ):
                 continue
@@ -1232,6 +1703,7 @@ class RetrievalService:
             answer_plan.answer_type in {
                 "mechanism_explanation",
                 "procedure",
+                "workflow_placement",
                 "recommendation",
                 "comparison",
                 "limitations",
@@ -1406,7 +1878,11 @@ class RetrievalService:
         sample = text[:1200].lower()
         question_marks = sample.count("?")
         numbered_questions = len(re.findall(r"\b\d{1,2}\.\s+(what|how|why|can|which|name|describe)\b", sample))
-        return question_marks >= 3 or numbered_questions >= 2
+        practice_prompt = bool(
+            re.search(r"\?\s*\d{1,2}\.\s+practice\b", sample)
+            or re.search(r"\bexercises?\s+\d{1,2}\.\s+(?:practice|build|train|implement)\b", sample)
+        )
+        return question_marks >= 3 or numbered_questions >= 2 or practice_prompt
 
     @staticmethod
     def _looks_like_index_chunk(text: str) -> bool:
@@ -1415,6 +1891,9 @@ class RetrievalService:
         sentence_count = sample.count(".") + sample.count("?") + sample.count("!")
         line_count = max(1, sample.count("\n") + 1)
         short_fragment_count = sum(1 for fragment in re.split(r"[,;\n]", sample) if 2 <= len(fragment.strip()) <= 42)
+        dotted_identifier_count = len(
+            re.findall(r"\b[a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)+(?:\(\))?", sample)
+        )
         compact_cross_reference = (
             45 <= len(sample) < 180
             and sentence_count == 0
@@ -1426,9 +1905,15 @@ class RetrievalService:
             and comma_count >= 16
             and sample.count("-") >= 8
         )
+        dense_api_index = (
+            dotted_identifier_count >= 6
+            and comma_count >= 10
+            and short_fragment_count >= 10
+        )
         return (
             compact_cross_reference
             or dense_cross_reference
+            or dense_api_index
             or (
                 comma_count >= 14
                 and short_fragment_count >= 14
@@ -1680,6 +2165,25 @@ class RetrievalService:
             for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", text.lower())
             if token not in stopwords and len(token) >= 4
         }
+
+    @staticmethod
+    def _structural_identifier_score(*, query: str, text: str) -> float:
+        """Preserve requested Part/Chapter/Figure scope during retrieval."""
+
+        pattern = re.compile(
+            r"\b(part|chapter|section|figure|table)\s+([ivxlcdm]+|\d+(?:\.\d+)*)\b",
+            flags=re.I,
+        )
+        requested = {(kind.lower(), value.lower()) for kind, value in pattern.findall(query)}
+        if not requested:
+            return 0.0
+        present = {(kind.lower(), value.lower()) for kind, value in pattern.findall(text)}
+        if requested & present:
+            return 1.0
+        requested_kinds = {kind for kind, _ in requested}
+        if any(kind in requested_kinds for kind, _ in present):
+            return -0.75
+        return 0.0
 
     @staticmethod
     def _query_phrases(text: str) -> list[str]:

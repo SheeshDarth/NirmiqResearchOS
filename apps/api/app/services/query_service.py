@@ -7,6 +7,7 @@ from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.api.schemas.query import QueryRequest, QueryResponse
 from app.domain.answer_intelligence import build_answer_plan
 from app.domain.citations import to_citations
+from app.domain.hierarchical_summary import select_hierarchical_summary_seeds
 from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.paper_lab import build_paper_lab_artifact
 from app.domain.query_intent import QueryIntent, detect_query_intent
@@ -241,7 +242,7 @@ class QueryService:
 
     @staticmethod
     def _summary_profile(*, retrieval_mode: str, retrieval_profile: str) -> str:
-        return f"{retrieval_mode}:{retrieval_profile}:v5"
+        return f"{retrieval_mode}:{retrieval_profile}:v6-hierarchical"
 
     @staticmethod
     def _citations_from_synthesis_context(
@@ -318,7 +319,9 @@ class QueryService:
                 "architecture approach contribution results limitations key points."
             )
         if intent.intent == "compare":
-            return f"{query}\n\nComparison retrieval hints: differences similarities contrast tradeoffs advantages limitations."
+            # Side-specific evidence queries already carry the comparison plan.
+            # Generic hints over-rank textbook roadmaps and backmatter indexes.
+            return query
         if intent.intent == "paper_draft":
             return f"{query}\n\nPaper drafting retrieval hints: related work methodology results limitations future work citations."
         if intent.intent == "deep_research":
@@ -448,7 +451,21 @@ class QueryService:
 
     @staticmethod
     def _is_diagram_request(query: str) -> bool:
-        return bool(re.search(r"\b(diagram|diagrams|figure|figures|image|images|visual|visuals)\b", query, re.I))
+        visual = r"(?:diagram|diagrams|figure|figures|image|images|visual|visuals)"
+        return bool(
+            re.search(
+                rf"\b(?:provide|include|show|add|cite|attach|use|with)\b.{{0,28}}\b{visual}\b",
+                query,
+                re.I,
+            )
+            or re.search(rf"\b{visual}\s+references?\b", query, re.I)
+            or re.search(
+                rf"\b(?:explain|describe|interpret|open)\s+(?:the\s+)?{visual}\b",
+                query,
+                re.I,
+            )
+            or re.search(rf"\bwhat\b.{{0,24}}\b{visual}\b.{{0,16}}\bshow", query, re.I)
+        )
 
     def _augment_selected_summary_bundle(
         self,
@@ -464,13 +481,13 @@ class QueryService:
             return bundle
 
         existing_ids = {chunk.chunk_id for chunk in bundle.chunks}
-        seed_rows = sorted(
-            rows[:120],
-            key=lambda row: self._summary_seed_score(row),
-            reverse=True,
-        )[:6]
+        summary_seeds, hierarchy_meta = select_hierarchical_summary_seeds(
+            rows,
+            max_seeds=8,
+        )
         seed_chunks: list[RetrievedChunk] = []
-        for rank, row in enumerate(seed_rows):
+        for rank, seed in enumerate(summary_seeds):
+            row = seed.row
             chunk_id = str(row["id"])
             if chunk_id in existing_ids:
                 continue
@@ -482,7 +499,7 @@ class QueryService:
                     score=max(0.01, 0.12 - (rank * 0.005)),
                     page_start=row.get("page_start"),
                     page_end=row.get("page_end"),
-                    source="summary_seed",
+                    source="hierarchical_summary_seed",
                     quality_score=float(row.get("quality_score") or 1.0),
                     section_id=row.get("section_id"),
                     heading=row.get("heading"),
@@ -499,47 +516,7 @@ class QueryService:
             meta={
                 **bundle.meta,
                 "summary_seed_chunks": len(seed_chunks),
-                "summary_seed_strategy": "early_outline_chunks",
+                "summary_seed_strategy": "hierarchical_original_chunk_coverage",
+                "summary_hierarchy": hierarchy_meta,
             },
         )
-
-    @staticmethod
-    def _summary_seed_score(row: dict[str, object]) -> float:
-        text = str(row.get("text") or "").lower()
-        page = int(row.get("page_start") or 9999)
-        quality = float(row.get("quality_score") or 1.0)
-        positive_terms = {
-            "this book",
-            "chapter",
-            "part i",
-            "part ii",
-            "fundamentals",
-            "covers",
-            "overview",
-            "introduction",
-            "machine learning",
-            "deep learning",
-            "training",
-            "model",
-            "algorithm",
-            "project",
-            "data",
-            "classification",
-            "regression",
-        }
-        negative_terms = {
-            "other resources",
-            "bibliography",
-            "references",
-            "index",
-            "copyright",
-            "trademark",
-            "isbn",
-        }
-        score = quality * 2.0
-        score += max(0.0, 3.0 - (page / 18.0))
-        score += sum(0.7 for term in positive_terms if term in text)
-        score -= sum(1.2 for term in negative_terms if term in text)
-        if 80 <= len(text.split()) <= 220:
-            score += 0.5
-        return score

@@ -8,9 +8,10 @@ from app.domain.answer_intelligence import (
     answer_evidence_cue_score,
     answer_subject_anchor_terms,
     build_answer_plan,
+    evidence_obligation_score,
 )
 from app.domain.citation_coverage import citation_coverage
-from app.domain.models import RetrievalBundle
+from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.retrieval_policy import RetrievalPolicy
 from app.domain.text_normalization import normalize_ocr_text
 
@@ -174,6 +175,14 @@ class SynthesisService:
             "answer_plan_depth": answer_plan.depth,
             "answer_plan_subject": answer_plan.subject,
             "answer_plan_requested_elements": list(answer_plan.requested_elements),
+            "answer_plan_obligations": [
+                {
+                    "key": item.key,
+                    "label": item.label,
+                    "required": item.required,
+                }
+                for item in answer_plan.evidence_obligations
+            ],
         }
         top_grounding_score = max((float(chunk.score) for chunk in bundle.chunks), default=0.0)
         citation_count = len(bundle.chunks)
@@ -253,6 +262,10 @@ class SynthesisService:
             bundle,
             query=query,
             answer_plan=answer_plan,
+        )
+        obligation_context_meta = self._obligation_context_meta(
+            answer_plan=answer_plan,
+            context_chunks=selected,
         )
         prompt = self._build_grounded_prompt(
             query,
@@ -365,6 +378,7 @@ class SynthesisService:
                     "document_overview_request": overview_query,
                     "low_score_overview_allowed": low_score_overview,
                     **answer_plan_meta,
+                    **obligation_context_meta,
                     **context_relevance,
                     "exam_profile_used": bool(exam_profile),
                     "exam_context_used": bool(
@@ -398,6 +412,7 @@ class SynthesisService:
             "document_overview_request": overview_query,
             "low_score_overview_allowed": low_score_overview,
             **answer_plan_meta,
+            **obligation_context_meta,
             **context_relevance,
             "exam_profile_used": bool(exam_profile),
             "exam_context_used": bool(
@@ -439,15 +454,44 @@ class SynthesisService:
     ) -> list[tuple[int, str]]:
         selected: list[tuple[int, str]] = []
         used_words = 0
-        candidates = bundle.chunks[:8]
-        if not candidates:
+        indexed_candidates = list(enumerate(bundle.chunks[:12], start=1))
+        if not indexed_candidates:
             return selected
+
+        # Preserve citation anchors while ordering the context for evidence
+        # coverage. One long, highly ranked chunk must not hide a later chunk
+        # that fills a different part of the answer contract.
+        coverage_first: list[tuple[int, RetrievedChunk]] = []
+        used_anchors: set[int] = set()
+        for obligation in answer_plan.evidence_obligations:
+            ranked = sorted(
+                (
+                    (evidence_obligation_score(obligation, chunk.text), anchor, chunk)
+                    for anchor, chunk in indexed_candidates
+                    if anchor not in used_anchors
+                ),
+                key=lambda item: (item[0], -item[1]),
+                reverse=True,
+            )
+            if not ranked or ranked[0][0] < 0.32:
+                continue
+            _, anchor, chunk = ranked[0]
+            coverage_first.append((anchor, chunk))
+            used_anchors.add(anchor)
+        candidates = [
+            *coverage_first,
+            *[
+                (anchor, chunk)
+                for anchor, chunk in indexed_candidates
+                if anchor not in used_anchors
+            ],
+        ]
 
         # Share the context budget across the retrieved evidence set. Previously,
         # two or three long textbook chunks could consume the entire budget and
         # hide a later, directly answering subsection from synthesis.
         per_chunk_budget = max(80, self._max_context_tokens // len(candidates))
-        for idx, chunk in enumerate(candidates, start=1):
+        for idx, chunk in candidates:
             text = chunk.text.strip()
             if not text:
                 continue
@@ -471,6 +515,41 @@ class SynthesisService:
             selected.append((idx, block))
             used_words += chunk_words
         return selected
+
+    @staticmethod
+    def _obligation_context_meta(
+        *,
+        answer_plan: AnswerPlan,
+        context_chunks: list[tuple[int, str]],
+    ) -> dict[str, object]:
+        supported: list[str] = []
+        unsupported_required: list[str] = []
+        support_map: dict[str, list[int]] = {}
+        for obligation in answer_plan.evidence_obligations:
+            anchors = [
+                anchor
+                for anchor, block in context_chunks
+                if evidence_obligation_score(
+                    obligation,
+                    SynthesisService._context_text(block),
+                ) >= 0.32
+            ]
+            support_map[obligation.key] = anchors
+            if anchors:
+                supported.append(obligation.key)
+            elif obligation.required:
+                unsupported_required.append(obligation.key)
+        required_count = sum(item.required for item in answer_plan.evidence_obligations)
+        supported_required = required_count - len(unsupported_required)
+        return {
+            "obligation_support_map": support_map,
+            "supported_obligations": supported,
+            "unsupported_required_obligations": unsupported_required,
+            "required_obligation_coverage": round(
+                supported_required / required_count,
+                3,
+            ) if required_count else 1.0,
+        }
 
     @staticmethod
     def _query_aware_context_excerpt(
@@ -513,16 +592,50 @@ class SynthesisService:
             )
             return (score, -sentence_index)
 
-        seed_index = max(enumerate(sentences), key=sentence_signal)[0]
+        seed_indices: list[int] = []
+        for obligation in answer_plan.evidence_obligations:
+            ranked_for_obligation = max(
+                enumerate(sentences),
+                key=lambda item: (
+                    evidence_obligation_score(obligation, item[1]),
+                    sentence_signal(item)[0],
+                    -item[0],
+                ),
+            )
+            if evidence_obligation_score(obligation, ranked_for_obligation[1]) >= 0.32:
+                seed_indices.append(ranked_for_obligation[0])
+        global_seed = max(enumerate(sentences), key=sentence_signal)[0]
+        seed_indices.append(global_seed)
+        seed_indices = list(dict.fromkeys(seed_indices))
+
+        candidate_indices: list[int] = []
+        seen_candidate_indices: set[int] = set()
+        for distance in range(len(sentences)):
+            for seed_index in seed_indices:
+                offsets = (0,) if distance == 0 else (distance, -distance)
+                for offset in offsets:
+                    sentence_index = seed_index + offset
+                    if (
+                        sentence_index < 0
+                        or sentence_index >= len(sentences)
+                        or sentence_index in seen_candidate_indices
+                    ):
+                        continue
+                    candidate_indices.append(sentence_index)
+                    seen_candidate_indices.add(sentence_index)
+        candidate_indices.extend(
+            sentence_index
+            for sentence_index, _ in sorted(
+                enumerate(sentences),
+                key=sentence_signal,
+                reverse=True,
+            )
+            if sentence_index not in seen_candidate_indices
+        )
+
         selected_indices: set[int] = set()
         selected_words = 0
-        offsets = [0]
-        for distance in range(1, len(sentences)):
-            offsets.extend((distance, -distance))
-        for offset in offsets:
-            sentence_index = seed_index + offset
-            if sentence_index < 0 or sentence_index >= len(sentences):
-                continue
+        for sentence_index in candidate_indices:
             sentence = sentences[sentence_index].strip()
             sentence_words = len(sentence.split())
             if selected_words + sentence_words > max_words:
@@ -559,10 +672,12 @@ class SynthesisService:
         bundle: RetrievalBundle,
         selected_context: list[tuple[int, str]],
     ) -> dict[str, object]:
-        selected_anchors = [anchor for anchor, _ in selected_context]
+        # Metadata keeps retrieval-rank ordering for API compatibility even
+        # when the prompt itself is reordered for obligation coverage.
+        selected_anchors = sorted(anchor for anchor, _ in selected_context)
         chunks_by_anchor = {
             anchor: chunk
-            for anchor, chunk in enumerate(bundle.chunks[:8], start=1)
+            for anchor, chunk in enumerate(bundle.chunks[:12], start=1)
             if anchor in set(selected_anchors)
         }
         cited_anchors = SynthesisService._answer_citation_anchors(answer, allowed_anchors=set(selected_anchors))
@@ -744,6 +859,19 @@ class SynthesisService:
                 context_chunks=context_chunks,
                 answer_plan=answer_plan,
             )
+        if answer_plan.answer_type == "enumeration":
+            return SynthesisService._fallback_enumeration_answer(
+                query=query,
+                context_chunks=context_chunks,
+                response_mode=response_mode,
+                answer_plan=answer_plan,
+            )
+        if answer_plan.answer_type == "concept_explanation" and re.search(r"\bwhy\b", query, re.I):
+            return SynthesisService._fallback_planned_answer(
+                query=query,
+                context_chunks=context_chunks,
+                answer_plan=answer_plan,
+            )
         if SynthesisService._is_list_or_algorithm_query(query):
             return SynthesisService._fallback_list_answer(
                 query=query,
@@ -769,6 +897,7 @@ class SynthesisService:
         if answer_plan.answer_type in {
             "mechanism_explanation",
             "procedure",
+            "workflow_placement",
             "recommendation",
             "interpretation",
             "comparison",
@@ -835,6 +964,21 @@ class SynthesisService:
             )
             if direct_factual_answer:
                 return direct_factual_answer
+        if answer_plan.answer_type == "comparison":
+            direct_comparison_answer = SynthesisService._fallback_comparison_answer(
+                context_chunks=context_chunks,
+                answer_plan=answer_plan,
+            )
+            if direct_comparison_answer:
+                return direct_comparison_answer
+        if answer_plan.answer_type == "interpretation":
+            direct_interpretation_answer = SynthesisService._fallback_interpretation_answer(
+                query=query,
+                context_chunks=context_chunks,
+                answer_plan=answer_plan,
+            )
+            if direct_interpretation_answer:
+                return direct_interpretation_answer
 
         subject_terms = {
             token
@@ -895,11 +1039,23 @@ class SynthesisService:
         chunk_core_positions: dict[int, list[int]] = {}
         chunk_anchor_positions: dict[int, list[int]] = {}
         chunk_plan_scores: dict[int, float] = {}
+        chunk_core_coverage: dict[int, float] = {}
+        chunk_obligation_coverage: dict[int, float] = {}
+        chunk_obligation_strength: dict[int, float] = {}
         for idx, text in prepared_context:
-            sentences = SynthesisService._split_sentences(text)[:18]
+            sentences = SynthesisService._planned_evidence_units(
+                text=text,
+                allow_roadmap_evidence=allow_roadmap_evidence,
+            )[:24]
             chunk_covers_core = bool(core_subject_terms) and (
                 SynthesisService._sentence_score(text, core_subject_terms) >= len(core_subject_terms)
             )
+            core_coverage = min(
+                1.0,
+                SynthesisService._sentence_score(text, core_subject_terms)
+                / max(len(core_subject_terms), 1),
+            ) if core_subject_terms else 1.0
+            chunk_core_coverage[idx] = core_coverage
             core_positions = [
                 position
                 for position, sentence in enumerate(sentences)
@@ -921,11 +1077,17 @@ class SynthesisService:
             focus_positions = [
                 position
                 for position, sentence in enumerate(sentences)
-                if SynthesisService._has_answer_focus_anchor(
-                    sentence=sentence,
-                    answer_type=answer_plan.answer_type,
-                    goal_terms=goal_terms,
-                    expanded_terms=expanded_scoring_terms,
+                if (
+                    SynthesisService._has_answer_focus_anchor(
+                        sentence=sentence,
+                        answer_type=answer_plan.answer_type,
+                        goal_terms=goal_terms,
+                        expanded_terms=expanded_scoring_terms,
+                    )
+                    or any(
+                        evidence_obligation_score(obligation, sentence) >= 0.32
+                        for obligation in answer_plan.evidence_obligations
+                    )
                 )
                 and (allow_roadmap_evidence or not SynthesisService._is_roadmap_sentence(sentence))
                 and not SynthesisService._is_low_value_evidence_sentence(sentence)
@@ -935,6 +1097,39 @@ class SynthesisService:
             chunk_sentences[idx] = sentences
             chunk_core_positions[idx] = core_positions
             chunk_anchor_positions[idx] = anchor_positions
+
+            supported_required = 0
+            required_count = 0
+            required_strengths: list[float] = []
+            for obligation in answer_plan.evidence_obligations:
+                if not obligation.required:
+                    continue
+                required_count += 1
+                obligation_strength = max(
+                    (
+                        evidence_obligation_score(obligation, sentence)
+                        if (
+                            SynthesisService._sentence_score(sentence, core_subject_terms) > 0
+                            or any(abs(position - sentence_index) <= 2 for position in core_positions)
+                            or core_coverage >= 0.75
+                        )
+                        else 0.0
+                        for sentence_index, sentence in enumerate(sentences)
+                    ),
+                    default=0.0,
+                )
+                required_strengths.append(obligation_strength)
+                obligation_supported = obligation_strength >= 0.32
+                supported_required += int(obligation_supported)
+            obligation_coverage = (
+                supported_required / required_count if required_count else 1.0
+            )
+            chunk_obligation_coverage[idx] = obligation_coverage
+            chunk_obligation_strength[idx] = (
+                sum(required_strengths) / len(required_strengths)
+                if required_strengths
+                else 1.0
+            )
 
             # Chapter roadmaps can mention the subject without answering the
             # question. Rank each chunk by its best local answer-bearing window.
@@ -980,6 +1175,7 @@ class SynthesisService:
                 precision_local_ranking = answer_plan.answer_type in {
                     "mechanism_explanation",
                     "procedure",
+                    "workflow_placement",
                     "recommendation",
                     "interpretation",
                 }
@@ -1022,6 +1218,8 @@ class SynthesisService:
                     + plan_cue_coverage_bonus
                     + expanded_coverage_bonus
                     + benefit_coverage_bonus
+                    + (6.0 * obligation_coverage)
+                    + (2.0 * core_coverage)
                     + (0.8 / max(idx, 1))
                 )
         prioritized_chunk_ids = {
@@ -1033,7 +1231,11 @@ class SynthesisService:
         }
         best_chunk_id = max(
             chunk_plan_scores,
-            key=lambda idx: (chunk_plan_scores[idx], -idx),
+            key=lambda idx: (
+                chunk_obligation_strength.get(idx, 0.0),
+                chunk_plan_scores[idx],
+                -idx,
+            ),
             default=None,
         )
         candidates: list[tuple[float, int, str]] = []
@@ -1043,7 +1245,13 @@ class SynthesisService:
                 continue
             chunk_subject_score = SynthesisService._sentence_score(text, scoring_terms)
             chunk_weighted_score = SynthesisService._weighted_sentence_score(text, term_weights)
-            sentences = chunk_sentences.get(idx, SynthesisService._split_sentences(text)[:18])
+            sentences = chunk_sentences.get(
+                idx,
+                SynthesisService._planned_evidence_units(
+                    text=text,
+                    allow_roadmap_evidence=allow_roadmap_evidence,
+                )[:24],
+            )
             core_positions = chunk_core_positions.get(idx, [])
             anchor_positions = chunk_anchor_positions.get(idx, core_positions)
             if core_subject_terms and not anchor_positions:
@@ -1092,6 +1300,17 @@ class SynthesisService:
                 weighted_query_score = SynthesisService._weighted_sentence_score(sentence, term_weights)
                 core_subject_score = SynthesisService._sentence_score(sentence, core_subject_terms)
                 chunk_core_subject_score = SynthesisService._sentence_score(text, core_subject_terms)
+                obligation_fit_score = max(
+                    (
+                        evidence_obligation_score(obligation, sentence)
+                        for obligation in answer_plan.evidence_obligations
+                    ),
+                    default=0.0,
+                )
+                nearby_core_passage = any(
+                    coverage >= 0.5 and abs(idx - anchor) <= 2
+                    for anchor, coverage in chunk_core_coverage.items()
+                )
                 near_core_subject = core_subject_score > 0 or SynthesisService._has_answer_focus_anchor(
                     sentence=sentence,
                     answer_type=answer_plan.answer_type,
@@ -1099,8 +1318,8 @@ class SynthesisService:
                     expanded_terms=expanded_scoring_terms,
                 ) or any(
                     0 <= sentence_index - position <= 3
-                    for position in anchor_positions
-                )
+                    for position in core_positions
+                ) or (obligation_fit_score >= 0.42 and nearby_core_passage)
                 if anchor_positions and not near_core_subject:
                     continue
                 plan_cue_score = answer_evidence_cue_score(answer_plan.answer_type, sentence)
@@ -1127,6 +1346,7 @@ class SynthesisService:
                 precision_intent = answer_plan.answer_type in {
                     "mechanism_explanation",
                     "procedure",
+                    "workflow_placement",
                     "recommendation",
                     "interpretation",
                 }
@@ -1137,12 +1357,14 @@ class SynthesisService:
                 if answer_plan.answer_type in {
                     "mechanism_explanation",
                     "procedure",
+                    "workflow_placement",
                     "recommendation",
                     "interpretation",
                     "limitations",
                 }:
                     if (
                         plan_cue_score <= 0
+                        and obligation_fit_score <= 0
                         and definition_score <= 0
                         and benefit_cue_score <= 0
                         and goal_score <= 0
@@ -1163,6 +1385,7 @@ class SynthesisService:
                     and goal_score <= 0
                     and expanded_query_score <= 0
                     and factual_cue_score <= 0
+                    and obligation_fit_score <= 0
                 ):
                     continue
                 rank_bonus = max(0, 11 - idx) * 0.04 + max(0, 14 - sentence_index) * 0.01
@@ -1183,6 +1406,9 @@ class SynthesisService:
                     + (core_weight * core_subject_score)
                     + (0.35 * min(chunk_core_subject_score, 2.0))
                     + (plan_weight * plan_cue_score)
+                    + (5.0 * obligation_fit_score)
+                    + (3.0 * chunk_obligation_coverage.get(idx, 0.0))
+                    + (1.5 * chunk_core_coverage.get(idx, 0.0))
                     + (2.4 * factual_cue_score)
                     + (1.6 * benefit_cue_score)
                     + definition_score
@@ -1199,35 +1425,146 @@ class SynthesisService:
         precision_first_types = {
             "mechanism_explanation",
             "procedure",
+            "workflow_placement",
             "recommendation",
             "interpretation",
             "limitations",
         }
-        selected_pool = (
-            passage_candidates
-            if passage_candidates
-            and (
-                len(passage_candidates) >= 2
-                or answer_plan.answer_type in precision_first_types
-            )
-            else candidates
+        obligation_selected = SynthesisService._select_obligation_sentences(
+            candidates=candidates,
+            answer_plan=answer_plan,
+            core_subject_terms=core_subject_terms,
+            chunk_core_coverage=chunk_core_coverage,
+            chunk_obligation_coverage=chunk_obligation_coverage,
+            core_passage_anchors={
+                anchor
+                for anchor, coverage in chunk_core_coverage.items()
+                if coverage >= 0.5
+            },
+            preferred_anchor=best_chunk_id,
+            limit=min(5, max(3, len(answer_plan.evidence_obligations) + 1)),
         )
-        selected = SynthesisService._dedupe_scored_sentences(
+        selected_pool = candidates if answer_plan.evidence_obligations else (
+            passage_candidates if len(passage_candidates) >= 2 else candidates
+        )
+        ranked_selected = SynthesisService._dedupe_scored_sentences(
             selected_pool,
-            limit=3 if answer_plan.answer_type in precision_first_types else 6,
+            limit=5 if answer_plan.answer_type in precision_first_types else 6,
             allow_low_value=answer_plan.answer_type == "factual_lookup",
         )
-        if answer_plan.answer_type in {"mechanism_explanation", "interpretation"} and len(selected) < 4:
+        selected = list(obligation_selected)
+        selected_keys = {
+            (anchor, re.sub(r"\W+", "", sentence.lower())[:120])
+            for anchor, sentence in selected
+        }
+        covered_obligation_keys = {
+            obligation.key
+            for obligation in answer_plan.evidence_obligations
+            if any(
+                evidence_obligation_score(obligation, sentence) >= 0.32
+                for _, sentence in selected
+            )
+        }
+        for anchor, sentence in ranked_selected:
+            key = (anchor, re.sub(r"\W+", "", sentence.lower())[:120])
+            if key in selected_keys:
+                continue
+            passage_core_coverage = chunk_core_coverage.get(anchor, 0.0)
+            sentence_core_score = SynthesisService._sentence_score(
+                sentence,
+                core_subject_terms,
+            )
+            if (
+                obligation_selected
+                and core_subject_terms
+                and passage_core_coverage < 0.5
+                and sentence_core_score <= 0
+            ):
+                continue
+            newly_supported = {
+                obligation.key
+                for obligation in answer_plan.evidence_obligations
+                if obligation.key not in covered_obligation_keys
+                and evidence_obligation_score(obligation, sentence) >= 0.32
+            }
+            if obligation_selected and not newly_supported:
+                current_position = candidate_positions.get(
+                    (anchor, SynthesisService._clean_evidence_sentence(sentence)),
+                    1_000_000,
+                )
+                selected_positions = [
+                    candidate_positions.get(
+                        (selected_anchor, SynthesisService._clean_evidence_sentence(selected_sentence)),
+                        1_000_000,
+                    )
+                    for selected_anchor, selected_sentence in selected
+                    if selected_anchor == anchor
+                ]
+                obligation_fit = max(
+                    (
+                        evidence_obligation_score(obligation, sentence)
+                        for obligation in answer_plan.evidence_obligations
+                    ),
+                    default=0.0,
+                )
+                same_passage_continuation = bool(
+                    answer_plan.answer_type == "mechanism_explanation"
+                    and selected_positions
+                    and min(
+                        (
+                            current_position - position
+                            for position in selected_positions
+                            if current_position > position
+                        ),
+                        default=1_000_000,
+                    ) <= 2
+                    and obligation_fit >= 0.42
+                )
+                if not same_passage_continuation:
+                    continue
+            selected.append((anchor, sentence))
+            selected_keys.add(key)
+            covered_obligation_keys.update(newly_supported)
+            if len(selected) >= (5 if answer_plan.answer_type in precision_first_types else 6):
+                break
+        focus_obligation = next(
+            (
+                obligation
+                for obligation in answer_plan.evidence_obligations
+                if obligation.key == "operation_focus"
+            ),
+            None,
+        )
+        required_obligations = [
+            obligation
+            for obligation in answer_plan.evidence_obligations
+            if obligation.required
+        ]
+        if (
+            answer_plan.answer_type == "mechanism_explanation"
+            and focus_obligation
+            and best_chunk_id is not None
+            and all(
+                any(
+                    anchor == best_chunk_id
+                    and evidence_obligation_score(obligation, sentence) >= 0.32
+                    for _, anchor, sentence in candidates
+                )
+                for obligation in required_obligations
+            )
+        ):
+            same_passage_selected = [
+                item for item in selected if item[0] == best_chunk_id
+            ]
+            if same_passage_selected:
+                selected = same_passage_selected
+        if answer_plan.answer_type == "interpretation" and len(selected) < 4:
             existing = {(anchor, sentence) for anchor, sentence in selected}
             continuations: list[tuple[float, int, str]] = []
             for score, anchor, sentence in candidates:
                 cleaned = SynthesisService._clean_evidence_sentence(sentence)
                 if (anchor, cleaned) in existing or anchor == best_chunk_id:
                     continue
-                continuation_has_core = SynthesisService._has_core_subject_anchor(
-                    cleaned,
-                    core_subject_terms,
-                )
                 continuation_has_focus = SynthesisService._has_answer_focus_anchor(
                     sentence=cleaned,
                     answer_type=answer_plan.answer_type,
@@ -1247,7 +1584,7 @@ class SynthesisService:
                 continuation_limit = 2 if answer_plan.answer_type == "interpretation" else 1
                 for _, anchor, sentence in sorted(continuations, reverse=True)[:continuation_limit]:
                     selected.append((anchor, sentence))
-        if len(passage_candidates) >= 2:
+        if len(passage_candidates) >= 2 and not obligation_selected:
             lead = selected[0]
             details = sorted(
                 selected[1:],
@@ -1257,7 +1594,9 @@ class SynthesisService:
                 ),
             )
             selected = [lead, *details]
-        if selected and answer_plan.answer_type in precision_first_types:
+        if selected and answer_plan.answer_type in precision_first_types and (
+            not obligation_selected or answer_plan.answer_type == "mechanism_explanation"
+        ):
             def lead_priority(item: tuple[int, str]) -> tuple[float, int]:
                 anchor, sentence = item
                 cue_score = answer_evidence_cue_score(answer_plan.answer_type, sentence)
@@ -1288,6 +1627,11 @@ class SynthesisService:
                         " decreasing ",
                     )
                 )
+                focus_bonus = (
+                    6.0 * evidence_obligation_score(focus_obligation, sentence)
+                    if focus_obligation
+                    else 0.0
+                )
                 score = (
                     (6.0 * cue_score)
                     + (2.0 * goal_score)
@@ -1295,6 +1639,7 @@ class SynthesisService:
                     + (0.5 * core_score)
                     + interpretation_bonus
                     + action_bonus
+                    + focus_bonus
                     - table_penalty
                 )
                 return score, -anchor
@@ -1320,6 +1665,7 @@ class SynthesisService:
         detail_labels = {
             "mechanism_explanation": "How it works",
             "procedure": "Steps from the source",
+            "workflow_placement": "Where it fits",
             "recommendation": "Recommendations from the source",
             "interpretation": "How to read it",
             "comparison": "Key differences",
@@ -1327,6 +1673,11 @@ class SynthesisService:
             "factual_lookup": "Supporting detail",
         }
         lead_anchor, lead_sentence = selected[0]
+        lead_sentence = SynthesisService._with_explicit_lead_subject(
+            sentence=lead_sentence,
+            answer_plan=answer_plan,
+            core_subject_terms=core_subject_terms,
+        )
         sections = ["Short answer", f"\n{lead_sentence} [{lead_anchor}]"]
         details = [item for item in selected[1:] if item[1] != lead_sentence]
         if answer_plan.answer_type in precision_first_types:
@@ -1336,6 +1687,10 @@ class SynthesisService:
                 if answer_evidence_cue_score(answer_plan.answer_type, sentence) >= 0.6
                 or SynthesisService._sentence_score(sentence, goal_terms) > 0
                 or SynthesisService._has_core_subject_anchor(sentence, core_subject_terms)
+                or any(
+                    evidence_obligation_score(obligation, sentence) >= 0.32
+                    for obligation in answer_plan.evidence_obligations
+                )
                 or (
                     answer_plan.answer_type == "recommendation"
                     and anchor == lead_anchor
@@ -1344,10 +1699,348 @@ class SynthesisService:
         if details:
             sections.append(f"\n{detail_labels.get(answer_plan.answer_type, 'Explanation')}")
             detail_limit = (
-                2 if answer_plan.answer_type in precision_first_types else 5
+                4 if answer_plan.answer_type in precision_first_types else 5
             )
             sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in details[:detail_limit])
         return "\n".join(sections)
+
+    @staticmethod
+    def _fallback_comparison_answer(
+        *,
+        context_chunks: list[tuple[int, str]],
+        answer_plan: AnswerPlan,
+    ) -> str | None:
+        """Build a comparison only when every named side has direct evidence."""
+
+        side_obligations = [
+            obligation
+            for obligation in answer_plan.evidence_obligations
+            if obligation.key.startswith("comparison_side_")
+        ]
+        if len(side_obligations) < 2:
+            return None
+
+        evidence_units: list[tuple[int, str]] = []
+        for anchor, block in context_chunks[:10]:
+            for sentence in SynthesisService._planned_evidence_units(
+                text=SynthesisService._context_text(block),
+                allow_roadmap_evidence=False,
+            ):
+                cleaned = SynthesisService._clean_evidence_sentence(sentence)
+                if (
+                    not cleaned
+                    or SynthesisService._is_low_value_evidence_sentence(cleaned)
+                    or SynthesisService._is_code_heavy_sentence(cleaned)
+                    or SynthesisService._is_roadmap_sentence(cleaned)
+                ):
+                    continue
+                evidence_units.append((anchor, cleaned))
+
+        explicit_contrast = re.compile(
+            r"\b(?:whereas|while|unlike|compared|versus|vice versa|in contrast)\b",
+            re.I,
+        )
+        for anchor, sentence in evidence_units:
+            if explicit_contrast.search(sentence) and all(
+                evidence_obligation_score(obligation, sentence) >= 0.32
+                for obligation in side_obligations
+            ):
+                return f"Direct comparison\n\n{sentence} [{anchor}]"
+
+        selected: list[tuple[str, int, str]] = []
+        used_sentences: set[str] = set()
+        for obligation in side_obligations:
+            ranked: list[tuple[float, int, str]] = []
+            side_terms = set(obligation.retrieval_terms)
+            for anchor, sentence in evidence_units:
+                normalized = re.sub(r"\W+", "", sentence.lower())[:160]
+                if normalized in used_sentences:
+                    continue
+                obligation_score = evidence_obligation_score(obligation, sentence)
+                if obligation_score < 0.32:
+                    continue
+                side_score = SynthesisService._sentence_score(sentence, side_terms)
+                word_count = len(sentence.split())
+                ranked.append(
+                    (
+                        (20.0 * obligation_score)
+                        + (2.0 * side_score)
+                        + answer_evidence_cue_score("concept_explanation", sentence)
+                        + max(0.0, 1.0 - (anchor * 0.03))
+                        - max(0.0, (word_count - 55) / 20),
+                        anchor,
+                        sentence,
+                    )
+                )
+            if not ranked:
+                return None
+            _, anchor, sentence = max(ranked)
+            used_sentences.add(re.sub(r"\W+", "", sentence.lower())[:160])
+            label = obligation.label.removeprefix("evidence for ").strip().capitalize()
+            selected.append((label, anchor, sentence))
+
+        lines = ["Direct comparison", ""]
+        lines.extend(
+            f"- {label}: {sentence} [{anchor}]"
+            for label, anchor, sentence in selected
+        )
+        return "\n".join(lines)
+
+    @staticmethod
+    def _fallback_interpretation_answer(
+        *,
+        query: str,
+        context_chunks: list[tuple[int, str]],
+        answer_plan: AnswerPlan,
+    ) -> str | None:
+        """Extract a complete local value mapping without mixing unrelated metrics."""
+
+        core_terms = SynthesisService._core_subject_terms(
+            query=query,
+            answer_plan=answer_plan,
+        )
+        prepared_blocks = [
+            (anchor, SynthesisService._context_text(block))
+            for anchor, block in context_chunks[:12]
+        ]
+        block_coverage = {
+            anchor: min(
+                1.0,
+                SynthesisService._sentence_score(text, core_terms) / max(len(core_terms), 1),
+            ) if core_terms else 1.0
+            for anchor, text in prepared_blocks
+        }
+        full_subject_available = any(coverage >= 0.75 for coverage in block_coverage.values())
+        endpoint_patterns = (
+            re.compile(r"(?<!\w)\+1(?!\w)"),
+            re.compile(r"(?<![\w-])0(?!\w)"),
+            re.compile(r"(?<!\w)-1(?!\w)"),
+        )
+        mapping_cues = (
+            " means ", " indicates ", " represents ", " close to ",
+            " ranges from ", " can vary between ", " boundary ",
+            " well inside ", " far from ",
+        )
+        candidates: list[tuple[float, int, int, str]] = []
+        for anchor, text in prepared_blocks:
+            if full_subject_available and block_coverage.get(anchor, 0.0) < 0.75:
+                continue
+            for sentence in SynthesisService._split_sentences(text):
+                cleaned = SynthesisService._clean_evidence_sentence(sentence)
+                if (
+                    not cleaned
+                    or SynthesisService._is_low_value_evidence_sentence(cleaned)
+                    or SynthesisService._is_code_heavy_sentence(cleaned)
+                    or SynthesisService._is_roadmap_sentence(cleaned)
+                ):
+                    continue
+                lowered = f" {cleaned.lower()} "
+                cue_count = sum(lowered.count(cue) for cue in mapping_cues)
+                endpoint_count = sum(bool(pattern.search(cleaned)) for pattern in endpoint_patterns)
+                obligation_strength = max(
+                    (
+                        evidence_obligation_score(obligation, cleaned)
+                        for obligation in answer_plan.evidence_obligations
+                    ),
+                    default=0.0,
+                )
+                if obligation_strength < 0.32 and cue_count <= 0:
+                    continue
+                candidates.append(
+                    (
+                        (8.0 * obligation_strength)
+                        + (2.0 * cue_count)
+                        + (2.5 * endpoint_count)
+                        + (1.5 * block_coverage.get(anchor, 0.0))
+                        + max(0.0, 1.0 - (anchor * 0.03)),
+                        endpoint_count,
+                        anchor,
+                        cleaned,
+                    )
+                )
+        if not candidates:
+            return None
+
+        ranked = sorted(candidates, reverse=True)
+        complete_scale = next((item for item in ranked if item[1] >= 3), None)
+        selected = [complete_scale] if complete_scale else ranked[:2]
+        lines = ["Interpretation", ""]
+        lines.extend(f"- {sentence} [{anchor}]" for _, _, anchor, sentence in selected)
+        return "\n".join(lines)
+
+    @staticmethod
+    def _with_explicit_lead_subject(
+        *,
+        sentence: str,
+        answer_plan: AnswerPlan,
+        core_subject_terms: set[str],
+    ) -> str:
+        """Name the queried mechanism when an extract starts with a pronoun or transition."""
+
+        if answer_plan.answer_type != "mechanism_explanation":
+            return sentence
+        if SynthesisService._sentence_score(sentence, core_subject_terms) > 0:
+            return sentence
+        subject = re.sub(r"\s+", " ", answer_plan.subject).strip(" ,.-")
+        if not subject or subject == "the user's requested topic" or len(subject.split()) > 8:
+            return sentence
+        clause = re.sub(
+            r"^(?:here\s+is\s+how\s+it\s+works|this\s+works\s+by)\s*:\s*",
+            "",
+            sentence,
+            flags=re.I,
+        ).strip()
+        if not clause:
+            return sentence
+        subject_label = subject[0].upper() + subject[1:]
+        return f"{subject_label} works as follows: {clause[0].lower() + clause[1:]}"
+
+    @staticmethod
+    def _select_obligation_sentences(
+        *,
+        candidates: list[tuple[float, int, str]],
+        answer_plan: AnswerPlan,
+        core_subject_terms: set[str],
+        chunk_core_coverage: dict[int, float],
+        chunk_obligation_coverage: dict[int, float],
+        core_passage_anchors: set[int],
+        preferred_anchor: int | None,
+        limit: int,
+    ) -> list[tuple[int, str]]:
+        """Select one direct sentence per supported evidence obligation first."""
+
+        selected: list[tuple[int, str]] = []
+        seen: set[str] = set()
+        for obligation in answer_plan.evidence_obligations:
+            if (
+                obligation.key not in {"operation", "value_mapping"}
+                and not obligation.key.startswith("comparison_side_")
+                and any(
+                    evidence_obligation_score(obligation, sentence) >= 0.32
+                    for _, sentence in selected
+                )
+            ):
+                continue
+            prefer_full_subject_coverage = obligation.key in {
+                "operation_focus",
+                "interpretive_relation",
+                "value_mapping",
+            } and any(
+                chunk_core_coverage.get(anchor, 0.0) >= 0.75
+                and evidence_obligation_score(obligation, sentence) >= 0.32
+                for _, anchor, sentence in candidates
+            )
+            ranked: list[tuple[float, int, str]] = []
+            for base_score, anchor, sentence in candidates:
+                cleaned = SynthesisService._clean_evidence_sentence(sentence)
+                obligation_score = evidence_obligation_score(obligation, cleaned)
+                if obligation_score < 0.32:
+                    continue
+                core_score = SynthesisService._sentence_score(cleaned, core_subject_terms)
+                passage_core_coverage = chunk_core_coverage.get(anchor, 0.0)
+                if prefer_full_subject_coverage and passage_core_coverage < 0.75:
+                    continue
+                if obligation.key == "operation" and selected:
+                    focus_obligation = next(
+                        (
+                            item
+                            for item in answer_plan.evidence_obligations
+                            if item.key == "operation_focus"
+                        ),
+                        None,
+                    )
+                    focus_anchors = {
+                        selected_anchor
+                        for selected_anchor, selected_sentence in selected
+                        if focus_obligation
+                        and evidence_obligation_score(
+                            focus_obligation,
+                            selected_sentence,
+                        ) >= 0.32
+                    }
+                    if (
+                        focus_anchors
+                        and anchor not in focus_anchors
+                        and passage_core_coverage < 0.75
+                    ):
+                        continue
+                if core_subject_terms and passage_core_coverage < 0.5 and core_score <= 0:
+                    nearby_continuation = bool(
+                        obligation_score >= 0.42
+                        and (
+                            any(abs(anchor - core_anchor) <= 2 for core_anchor in core_passage_anchors)
+                            or (
+                                selected
+                                and any(
+                                    abs(anchor - selected_anchor) <= 2
+                                    for selected_anchor, _ in selected
+                                )
+                            )
+                        )
+                    )
+                    if not nearby_continuation:
+                        continue
+                if obligation.key in {
+                    "identity",
+                    "placement",
+                    "workflow_action",
+                    "contrast",
+                } and core_score <= 0:
+                    continue
+                if obligation.key == "contrast":
+                    side_hit_count = sum(
+                        SynthesisService._sentence_score(
+                            cleaned,
+                            set(side_obligation.retrieval_terms),
+                        ) > 0
+                        for side_obligation in answer_plan.evidence_obligations
+                        if side_obligation.key.startswith("comparison_side_")
+                    )
+                    if side_hit_count < 2:
+                        continue
+                word_count = len(cleaned.split())
+                readability_penalty = max(0.0, (word_count - 55) / 20)
+                ranked.append(
+                    (
+                        base_score
+                        + (20.0 * obligation_score)
+                        + (2.0 * core_score)
+                        + (4.0 * chunk_obligation_coverage.get(anchor, 0.0))
+                        + (2.0 * passage_core_coverage)
+                        + (2.5 if preferred_anchor is not None and anchor == preferred_anchor else 0.0)
+                        - readability_penalty,
+                        anchor,
+                        cleaned,
+                    )
+                )
+            for _, anchor, sentence in sorted(ranked, reverse=True):
+                normalized = re.sub(r"\W+", "", sentence.lower())[:120]
+                if normalized in seen:
+                    continue
+                selected.append((anchor, sentence))
+                seen.add(normalized)
+                break
+            if len(selected) >= limit:
+                break
+        return selected
+
+    @staticmethod
+    def _planned_evidence_units(*, text: str, allow_roadmap_evidence: bool) -> list[str]:
+        """Split dense PDF roadmaps into usable clauses without changing evidence."""
+
+        units: list[str] = []
+        for sentence in SynthesisService._split_sentences(text):
+            if (
+                allow_roadmap_evidence
+                and len(sentence.split()) > 24
+                and SynthesisService._is_roadmap_sentence(sentence)
+            ):
+                roadmap_items = SynthesisService._enumeration_items_from_sentence(sentence)
+                if roadmap_items:
+                    units.extend(roadmap_items)
+                    continue
+            units.append(sentence)
+        return units
 
     @staticmethod
     def _fallback_factual_answer(
@@ -1939,7 +2632,21 @@ class SynthesisService:
 
     @staticmethod
     def _is_diagram_request(query: str) -> bool:
-        return bool(re.search(r"\b(diagram|diagrams|figure|figures|image|images|visual|visuals)\b", query, re.I))
+        visual = r"(?:diagram|diagrams|figure|figures|image|images|visual|visuals)"
+        return bool(
+            re.search(
+                rf"\b(?:provide|include|show|add|cite|attach|use|with)\b.{{0,28}}\b{visual}\b",
+                query,
+                re.I,
+            )
+            or re.search(rf"\b{visual}\s+references?\b", query, re.I)
+            or re.search(
+                rf"\b(?:explain|describe|interpret|open)\s+(?:the\s+)?{visual}\b",
+                query,
+                re.I,
+            )
+            or re.search(rf"\bwhat\b.{{0,24}}\b{visual}\b.{{0,16}}\bshow", query, re.I)
+        )
 
     @staticmethod
     def _best_evidence_sentences(
@@ -2595,6 +3302,11 @@ class SynthesisService:
         lowered = sentence.lower()
         if SynthesisService._is_low_value_summary_sentence(sentence):
             return True
+        if re.search(
+            r"(?:^|\?\s*\d{1,2}\.\s+)(?:practice|exercise)\b",
+            lowered,
+        ):
+            return True
         if any(
             marker in lowered
             for marker in (
@@ -2710,6 +3422,14 @@ class SynthesisService:
     def _clean_evidence_sentence(sentence: str) -> str:
         cleaned = re.sub(r"\s+", " ", sentence).strip(" -")
         cleaned = re.split(r"\s+>>>\s+", cleaned, maxsplit=1)[0].strip()
+        section_match = re.search(
+            r"(?:^|\s)\d+(?:\.\d+)+\s+"
+            r"(?:[A-Z][A-Za-z0-9/-]*\s+){1,8}?"
+            r"(?=(?:Since|Because|As|The|This|In|To|We|Our|Each)\b)",
+            cleaned,
+        )
+        if section_match:
+            cleaned = cleaned[section_match.end():].strip()
         cleaned = re.sub(
             r"^(?:[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,5})\s+"
             r"(?:\d+\s+){2,}(?=(?:A|An|The|This|It|All|Each|When|There|Typical)\b)",
@@ -2718,13 +3438,6 @@ class SynthesisService:
         ).strip()
         cleaned = re.sub(r"^#+\s+[^.?!]{0,180}?\s+(?=NIRMIQ\b)", "", cleaned, flags=re.I).strip()
         cleaned = re.sub(r"\s+#\s+.*$", "", cleaned).strip()
-        use_match = re.search(
-            r"\bgaussian mixture models?.*?\bcan be used for\s+([^.]+)",
-            cleaned,
-            flags=re.I,
-        )
-        if use_match:
-            cleaned = f"Gaussian mixture models can be used for {use_match.group(1).strip()}"
         cleaned = re.sub(
             r"^(?:(?:[A-Z][A-Za-z0-9'()./-]*)|&)(?:\s+(?:(?:[A-Z][A-Za-z0-9'()./-]*)|&)){0,5}\s+"
             r"(?=(?:A|An|The|This|It|All|Each|When|There|Typical)\b)",
@@ -2776,6 +3489,187 @@ class SynthesisService:
         return bool(
             re.search(r"\b(list|few|some|examples?|algorithms?|types?|methods?|techniques?)\b", normalized)
         )
+
+    @staticmethod
+    def _fallback_enumeration_answer(
+        *,
+        query: str,
+        context_chunks: list[tuple[int, str]],
+        response_mode: str,
+        answer_plan: AnswerPlan,
+    ) -> str:
+        query_terms = SynthesisService._query_terms(query)
+        obligation = answer_plan.evidence_obligations[0]
+        candidates: list[tuple[float, int, str]] = []
+        for anchor, block in context_chunks[:8]:
+            text = SynthesisService._context_text(block)
+            for position, sentence in enumerate(SynthesisService._split_sentences(text)[:12]):
+                if len(sentence.split()) < 5 or SynthesisService._is_code_heavy_sentence(sentence):
+                    continue
+                score = (
+                    (2.0 * SynthesisService._sentence_score(sentence, query_terms))
+                    + (5.0 * evidence_obligation_score(obligation, sentence))
+                    + (
+                        6.0
+                        * SynthesisService._structural_scope_score(
+                            query=query,
+                            text=sentence,
+                        )
+                    )
+                    + max(0, 10 - position) * 0.02
+                )
+                if score > 0:
+                    candidates.append((score, anchor, sentence))
+
+        items: list[tuple[int, str]] = []
+        seen: set[str] = set()
+        for _, anchor, sentence in sorted(candidates, reverse=True):
+            for item in SynthesisService._enumeration_items_from_sentence(sentence):
+                normalized = re.sub(r"\W+", "", item.lower())[:100]
+                if not normalized or normalized in seen:
+                    continue
+                seen.add(normalized)
+                items.append((anchor, item))
+                if len(items) >= 10:
+                    break
+            if len(items) >= 10:
+                break
+
+        if not items:
+            return SynthesisService._fallback_list_answer(
+                query=query,
+                context_chunks=context_chunks,
+                response_mode=response_mode,
+            )
+        items = SynthesisService._group_enumeration_items(items)
+        heading = SynthesisService._fallback_heading(response_mode)
+        return "\n".join(
+            [
+                heading,
+                f"\n{SynthesisService._enumeration_scope_label(query, answer_plan.subject)}:",
+                *(f"- {item} [{anchor}]" for anchor, item in items),
+            ]
+        )
+
+    @staticmethod
+    def _enumeration_items_from_sentence(sentence: str) -> list[str]:
+        """Turn dense source roadmaps into bounded, still-extractive list items."""
+
+        cleaned = SynthesisService._clean_evidence_sentence(sentence).strip(" -")
+        if not cleaned:
+            return []
+        lowered = cleaned.lower()
+        list_cues = ("following", "lists", "listed", "includes", "common", "types", "covers")
+        if ":" in cleaned and any(cue in lowered.split(":", 1)[0] for cue in list_cues):
+            cleaned = cleaned.split(":", 1)[1].strip()
+
+        # PDF extraction often removes bullets but leaves a gerund or a new
+        # determiner at each item boundary.
+        cleaned = re.sub(
+            r"(?<=[a-z0-9)])\s+(?=(?:The|Other)\s|[A-Z][a-z]+ing\b)",
+            "\n",
+            cleaned,
+        )
+        coarse_parts = [part.strip(" ,;.-") for part in re.split(r"[\n;]+", cleaned) if part.strip()]
+        expanded: list[str] = []
+        for part in coarse_parts:
+            if part.count(",") >= 3:
+                expanded.extend(
+                    fragment.strip(" ,;.-")
+                    for fragment in re.split(r",\s*(?:and\s+)?", part)
+                    if fragment.strip(" ,;.-")
+                )
+            else:
+                expanded.append(part)
+
+        items: list[str] = []
+        for item in expanded:
+            item = re.sub(r"^(?:and|or)\s+", "", item, flags=re.I).strip()
+            coordinated = re.fullmatch(
+                r"([a-zA-Z][\w-]+)\s+and\s+([a-zA-Z][\w-]+)\s+([a-zA-Z][\w-]+)",
+                item,
+            )
+            if coordinated:
+                first, second, noun = coordinated.groups()
+                item = f"{first} {noun} and {second} {noun}"
+            words = item.split()
+            if len(words) < 2:
+                continue
+            if len(words) > 34:
+                item = " ".join(words[:34]).rstrip(" ,;:")
+            items.append(item)
+        return items
+
+    @staticmethod
+    def _group_enumeration_items(items: list[tuple[int, str]]) -> list[tuple[int, str]]:
+        grouped: list[tuple[int, str]] = []
+        current_anchor: int | None = None
+        current_items: list[str] = []
+        current_words = 0
+
+        def flush() -> None:
+            nonlocal current_anchor, current_items, current_words
+            if current_anchor is not None and current_items:
+                grouped.append((current_anchor, "; ".join(current_items)))
+            current_anchor = None
+            current_items = []
+            current_words = 0
+
+        for anchor, item in items:
+            item_words = len(item.split())
+            if (
+                current_anchor is not None
+                and (anchor != current_anchor or len(current_items) >= 4 or current_words + item_words > 32)
+            ):
+                flush()
+            if current_anchor is None:
+                current_anchor = anchor
+            current_items.append(item)
+            current_words += item_words
+        flush()
+
+        if len(grouped) >= 2 and len(grouped[-1][1].split()) < 3:
+            last_anchor, last_item = grouped.pop()
+            previous_anchor, previous_item = grouped[-1]
+            if last_anchor == previous_anchor:
+                grouped[-1] = (previous_anchor, f"{previous_item}; {last_item}")
+            else:
+                grouped.append((last_anchor, last_item))
+        return grouped
+
+    @staticmethod
+    def _structural_scope_score(*, query: str, text: str) -> float:
+        pattern = re.compile(
+            r"\b(part|chapter|section|figure|table)\s+([ivxlcdm]+|\d+(?:\.\d+)*)\b",
+            flags=re.I,
+        )
+        requested = {(kind.lower(), value.lower()) for kind, value in pattern.findall(query)}
+        if not requested:
+            return 0.0
+        present = {(kind.lower(), value.lower()) for kind, value in pattern.findall(text)}
+        if requested & present:
+            return 1.0
+        if any(kind in {item[0] for item in requested} for kind, _ in present):
+            return -0.75
+        return 0.0
+
+    @staticmethod
+    def _enumeration_scope_label(query: str, subject: str) -> str:
+        match = re.search(
+            r"\b(part|chapter|section|figure|table)\s+([ivxlcdm]+|\d+(?:\.\d+)*)\b",
+            query,
+            flags=re.I,
+        )
+        if match:
+            clean_subject = re.sub(r"\s+", " ", subject).strip(" ,.-")
+            scoped_name = clean_subject if clean_subject else f"{match.group(1).title()} {match.group(2).upper()}"
+            return f"{scoped_name} covers these source-backed topics"
+        if re.search(r"\boverview\b", query, re.I):
+            clean_subject = re.sub(r"\s+", " ", subject).strip(" ,.-")
+            if clean_subject and len(clean_subject.split()) <= 10:
+                return f"The requested overview lists these {clean_subject}"
+            return "The requested overview lists these source-backed items"
+        return "The source lists these supported items"
 
     @staticmethod
     def _fallback_list_answer(
@@ -3236,7 +4130,6 @@ class SynthesisService:
             for idx, block in context_chunks
         }
         lines: list[str] = []
-        any_anchor = False
         for raw_line in answer.splitlines():
             line = raw_line.strip()
             if not line:
@@ -3246,13 +4139,11 @@ class SynthesisService:
                 continue
             if SynthesisService._contains_citation_anchor(line):
                 lines.append(raw_line)
-                any_anchor = True
                 continue
             anchored_sentences: list[str] = []
             for sentence in SynthesisService._split_sentences(line):
                 if SynthesisService._contains_citation_anchor(sentence):
                     anchored_sentences.append(sentence)
-                    any_anchor = True
                     continue
                 claim_terms = SynthesisService._claim_terms(sentence)
                 if len(claim_terms) < 3:
@@ -3269,7 +4160,6 @@ class SynthesisService:
                 if best_anchor is not None and (best_score >= 0.28 or matched_terms >= 3):
                     sentence = sentence.rstrip()
                     sentence = f"{sentence} [{best_anchor}]"
-                    any_anchor = True
                 anchored_sentences.append(sentence)
             lines.append(" ".join(anchored_sentences))
         anchored = "\n".join(lines).strip()

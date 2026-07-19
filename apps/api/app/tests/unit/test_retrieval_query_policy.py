@@ -1,3 +1,4 @@
+from app.domain.answer_intelligence import answer_subject_anchor_terms, build_answer_plan
 from app.services.retrieval_service import RetrievalService
 
 
@@ -44,6 +45,64 @@ def test_explanatory_queries_penalize_index_like_chunks() -> None:
 
     assert RetrievalService._chunk_noise_penalty(row=index_row, query=query) > 0.25
     assert RetrievalService._chunk_noise_penalty(row=body_row, query=query) == 0.0
+
+
+def test_exercise_prompt_is_not_treated_as_explanatory_evidence() -> None:
+    text = (
+        "What is dropout? 8. Practice training a deep neural network on the CIFAR10 "
+        "image dataset with ten classes."
+    )
+
+    assert RetrievalService._looks_like_exercise_question_chunk(text) is True
+    assert RetrievalService._chunk_noise_penalty(
+        row={"text": text, "heading": "Exercises", "section_path": "Chapter 11"},
+        query="How does dropout regularize a neural network during training?",
+    ) >= 0.32
+
+
+def test_required_obligation_candidate_survives_final_ranking() -> None:
+    selected = [f"chunk-{index}" for index in range(1, 9)]
+
+    preserved = RetrievalService._preserve_priority_candidates(
+        selected_ids=selected,
+        priority_ids=["chunk-required"],
+        limit=8,
+    )
+
+    assert len(preserved) == 8
+    assert "chunk-required" in preserved
+    assert preserved[:7] == selected[:7]
+
+
+def test_local_obligation_score_rejects_roadmap_only_subject_mentions() -> None:
+    query = "How does dropout regularize a neural network during training?"
+    plan = build_answer_plan(query, "research")
+    operation = next(item for item in plan.evidence_obligations if item.key == "operation")
+    core_terms = answer_subject_anchor_terms(query, plan)
+
+    roadmap_score = RetrievalService._local_obligation_evidence_score(
+        row={
+            "text": (
+                "In this section we will examine dropout and max-norm regularization. "
+                "Max-norm constrains the weights of each neuron."
+            )
+        },
+        obligation=operation,
+        core_subject_terms=core_terms,
+    )
+    direct_score = RetrievalService._local_obligation_evidence_score(
+        row={
+            "text": (
+                "Dropout is a regularization technique. At every training step, neurons may be "
+                "temporarily dropped and ignored, then active again at the next step."
+            )
+        },
+        obligation=operation,
+        core_subject_terms=core_terms,
+    )
+
+    assert roadmap_score == 0.0
+    assert direct_score >= 0.32
 
 
 def test_query_expansion_uses_document_acronym_definitions() -> None:
@@ -327,6 +386,24 @@ def test_dense_backmatter_cross_references_are_treated_as_index_noise() -> None:
     assert RetrievalService._looks_like_index_chunk(text.lower()) is True
 
 
+def test_dense_dotted_api_backmatter_is_treated_as_index_noise() -> None:
+    text = (
+        "sklearn.metrics.precision_score(), Precision and Recall, "
+        "sklearn.metrics.recall_score(), Precision and Recall, "
+        "sklearn.metrics.roc_curve(), The ROC Curve, "
+        "sklearn.model_selection.cross_val_predict(), Confusion Matrices, "
+        "sklearn.model_selection.cross_val_score(), Cross-Validation, "
+        "sklearn.model_selection.GridSearchCV, Grid Search, "
+        "sklearn.neighbors.KNeighborsClassifier, Classification, "
+        "sklearn.mixture.GaussianMixture, Gaussian Mixtures, "
+        "sklearn.mixture.BayesianGaussianMixture, Bayesian Mixtures, "
+        "sklearn.linear_model.SGDRegressor, Stochastic Gradient Descent, "
+        "sklearn.multiclass.OneVsRestClassifier, Multiclass Classification"
+    )
+
+    assert RetrievalService._looks_like_index_chunk(text.lower()) is True
+
+
 def test_sentence_like_chapter_heading_is_treated_as_answer_key_noise() -> None:
     row = {
         "heading": "Chapter 14, convolutional neural networks are far better suited than dense",
@@ -441,3 +518,100 @@ def test_concept_neighbor_rescue_recovers_adjacent_subsection() -> None:
     assert "pooling" in rescued
     assert "unrelated" not in rescued
     assert "far-away" not in rescued
+
+
+def test_neighbor_rescue_considers_each_strong_anchor_region() -> None:
+    chunks = [
+        {
+            "id": "first-anchor",
+            "page_start": 100,
+            "text": "Precision and recall are evaluation measures for classifiers.",
+        },
+        {
+            "id": "second-anchor",
+            "page_start": 200,
+            "text": "Recall measures how many positive instances are detected.",
+        },
+        {
+            "id": "definition",
+            "page_start": 199,
+            "text": (
+                "Precision is the ratio of positive predictions that are correct, while false "
+                "positive predictions reduce precision for a binary classifier evaluation."
+            ),
+        },
+    ]
+
+    rescued = RetrievalService._page_neighbor_rescue_candidate_ids(
+        anchor_ids=["first-anchor", "second-anchor"],
+        chunks=chunks,
+        existing_ids={"first-anchor", "second-anchor"},
+        query="Compare precision and recall",
+        answer_query="Compare precision and recall",
+        limit=4,
+        page_radius=2,
+    )
+
+    assert rescued == ["definition"]
+
+
+def test_structural_identifier_prefers_requested_part_and_penalizes_conflicts() -> None:
+    query = "Which topics does Part I cover?"
+
+    assert RetrievalService._structural_identifier_score(
+        query=query,
+        text="Part I covers the fundamentals.",
+    ) == 1.0
+    assert RetrievalService._structural_identifier_score(
+        query=query,
+        text="Part II covers advanced material.",
+    ) == -0.75
+
+
+def test_roadmap_rescue_respects_requested_document_scope() -> None:
+    rows = [
+        {
+            "id": "part-two",
+            "text": "Part II covers the following topics: advanced systems, deployment, and scaling.",
+            "page_start": 20,
+            "quality_score": 1.0,
+        },
+        {
+            "id": "part-one",
+            "text": "Part I covers the following topics: foundations, data preparation, and evaluation.",
+            "page_start": 8,
+            "quality_score": 1.0,
+        },
+    ]
+
+    rescued = RetrievalService._roadmap_rescue_candidate_ids(
+        query="Which topics does Part I cover?",
+        chunks=rows,
+        existing_ids=set(),
+        limit=2,
+    )
+
+    assert rescued == ["part-one"]
+
+
+def test_lexical_guardrail_keeps_clean_top_hits_in_final_context() -> None:
+    rows = {
+        f"chunk-{index}": {
+            "id": f"chunk-{index}",
+            "text": f"Readable evidence passage {index} with a complete sentence.",
+            "quality_score": 1.0,
+        }
+        for index in range(1, 10)
+    }
+
+    selected = RetrievalService._preserve_lexical_guardrail(
+        selected_ids=["chunk-6", "chunk-7", "chunk-8", "chunk-9"],
+        bm25_ranked_ids=["chunk-1", "chunk-2", "chunk-3", "chunk-4", "chunk-5"],
+        chunks_by_id=rows,
+        query="Explain the requested mechanism",
+        limit=6,
+        protected_limit=5,
+    )
+
+    assert set(selected) >= {"chunk-1", "chunk-2", "chunk-3", "chunk-4", "chunk-5"}
+    assert len(selected) == 6

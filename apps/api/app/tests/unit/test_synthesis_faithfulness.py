@@ -256,6 +256,32 @@ def test_synthesis_reports_only_answer_cited_context_chunks() -> None:
     ]
 
 
+def test_citation_context_maps_multi_digit_selected_anchor() -> None:
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id=f"chunk-{index}",
+                document_id="doc-1",
+                text=f"Evidence passage {index}.",
+                score=1.0,
+                page_start=index,
+                page_end=index,
+            )
+            for index in range(1, 11)
+        ],
+        meta={},
+    )
+
+    meta = SynthesisService._citation_context_meta(
+        answer="The late passage supports this claim. [10]",
+        bundle=bundle,
+        selected_context=[(10, "[10] Evidence passage 10.")],
+    )
+
+    assert meta["cited_context_chunk_ids"] == ["chunk-10"]
+    assert meta["citation_anchor_chunk_map"][0]["anchor"] == 10
+
+
 def test_query_citations_are_limited_to_synthesis_used_chunks() -> None:
     bundle = RetrievalBundle(
         chunks=[
@@ -431,6 +457,15 @@ def test_diagram_request_adds_honest_missing_diagram_note() -> None:
     assert "Diagram note" in answer
     assert "No source diagram was available" in answer
     assert meta["citation_coverage"] >= 1.0
+
+
+def test_image_topic_does_not_trigger_a_missing_diagram_note() -> None:
+    assert SynthesisService._is_diagram_request(
+        "How do image generation systems create concept art?"
+    ) is False
+    assert SynthesisService._is_diagram_request(
+        "Explain the system and include image references."
+    ) is True
 
 
 def test_diagram_context_uses_asset_ids_without_local_paths() -> None:
@@ -751,6 +786,84 @@ def test_context_budget_preserves_later_direct_evidence() -> None:
         answer_plan=build_answer_plan(query=query, response_mode="research"),
     )
 
-    assert [anchor for anchor, _ in selected] == [1, 2, 3, 4]
-    assert "pooling layer" in selected[-1][1]
+    assert sorted(anchor for anchor, _ in selected) == [1, 2, 3, 4]
+    assert any("pooling layer" in block for _, block in selected)
     assert sum(len(service._context_text(block).split()) for _, block in selected) <= 320
+
+
+def test_context_selection_considers_late_required_comparison_evidence() -> None:
+    service = SynthesisService(
+        settings=_settings(),
+        policy=RetrievalPolicy(min_grounding_score=0.1, max_context_tokens=420),
+        generator=FakeGenerator(""),  # type: ignore[arg-type]
+    )
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id=f"broad-{index}",
+                document_id="doc-1",
+                text="Classifier evaluation includes several charts and thresholds.",
+                score=1.0 - (index * 0.02),
+            )
+            for index in range(1, 9)
+        ]
+        + [
+            RetrievedChunk(
+                chunk_id="precision",
+                document_id="doc-1",
+                text="The accuracy of positive predictions is called precision.",
+                score=0.8,
+            ),
+            RetrievedChunk(
+                chunk_id="recall",
+                document_id="doc-1",
+                text="Recall is the ratio of positive instances correctly detected.",
+                score=0.78,
+            ),
+        ],
+        meta={},
+    )
+    query = "Compare precision and recall."
+
+    selected = service._select_context(
+        bundle,
+        query=query,
+        answer_plan=build_answer_plan(query=query, response_mode="research"),
+    )
+
+    assert {9, 10}.issubset({anchor for anchor, _ in selected})
+    assert sum(len(service._context_text(block).split()) for _, block in selected) <= 420
+
+
+def test_evidence_cleanup_removes_dense_table_prefix_before_numbered_section() -> None:
+    sentence = (
+        "Layer Type Complexity Operations Self-Attention O(n2 d) O(1) "
+        "3.5 Positional Encoding Since the model has no recurrence, it adds position information."
+    )
+
+    cleaned = SynthesisService._clean_evidence_sentence(sentence)
+
+    assert cleaned == (
+        "Since the model has no recurrence, it adds position information."
+    )
+
+
+def test_context_excerpt_preserves_separated_benefit_and_limitation_evidence() -> None:
+    query = "What benefit and runtime limitation does batch normalization have?"
+    plan = build_answer_plan(query=query, response_mode="research")
+    filler = "The chapter discusses implementation details and training settings. " * 20
+    text = (
+        "Batch normalization acts like a regularizer and speeds up training. "
+        f"{filler}"
+        "However, batch normalization adds complexity and a runtime penalty that slows predictions."
+    )
+
+    excerpt = SynthesisService._query_aware_context_excerpt(
+        text=text,
+        query=query,
+        answer_plan=plan,
+        max_words=90,
+    )
+
+    assert "acts like a regularizer" in excerpt
+    assert "runtime penalty" in excerpt

@@ -24,3 +24,41 @@ def test_bm25_matches_light_morphology_variants() -> None:
     hits = asyncio.run(BM25Index().search("How can overfit be reduced?", chunks, limit=2))
 
     assert {hit.chunk_id for hit in hits} == {"solution", "definition"}
+
+
+def test_bm25_search_many_matches_individual_searches() -> None:
+    index = BM25Index()
+    chunks = [
+        {
+            "id": "definition",
+            "document_id": "doc",
+            "text": "A model is a compact representation of patterns in data.",
+            "page_start": 1,
+            "page_end": 1,
+        },
+        {
+            "id": "operation",
+            "document_id": "doc",
+            "text": "Training updates model parameters to reduce prediction error.",
+            "page_start": 2,
+            "page_end": 2,
+        },
+    ]
+    queries = {
+        "identity": "model definition representation",
+        "operation": "training updates parameters",
+    }
+
+    batched = asyncio.run(index.search_many(queries=queries, chunks=chunks, limit=2))
+    individual = {
+        key: asyncio.run(index.search(query, chunks, limit=2))
+        for key, query in queries.items()
+    }
+
+    assert {
+        key: [(hit.chunk_id, hit.score) for hit in hits]
+        for key, hits in batched.items()
+    } == {
+        key: [(hit.chunk_id, hit.score) for hit in hits]
+        for key, hits in individual.items()
+    }

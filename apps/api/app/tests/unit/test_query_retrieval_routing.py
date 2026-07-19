@@ -36,3 +36,13 @@ def test_factual_lookup_does_not_mix_answer_format_words_into_retrieval() -> Non
     assert query == "explain CNN"
     assert "limitations" not in query
     assert "key points" not in query
+
+
+def test_comparison_retrieval_keeps_the_users_named_sides_focused() -> None:
+    intent = QueryIntent("compare", 0.9, "comparison_retrieval")
+    query = "Compare precision and recall for a binary classifier."
+
+    focused = QueryService._retrieval_query(query, "compare_concepts", {}, intent)
+
+    assert focused == query
+    assert "tradeoffs advantages limitations" not in focused
