@@ -89,6 +89,38 @@ def test_current_not_enough_direct_evidence_wording_counts_as_abstention() -> No
     assert result["passed"] is True
 
 
+def test_runtime_not_found_wording_counts_as_abstention() -> None:
+    result = evaluate_answer_quality(
+        query="What launch date is stated?",
+        answer="I could not find this in the uploaded sources.",
+        grounded=False,
+        retrieval_meta={},
+        answerability="unanswerable",
+    )
+
+    assert result["answerability_correct"] == 1.0
+    assert result["passed"] is True
+
+
+def test_symbolic_formula_satisfies_requested_equation_plan() -> None:
+    result = evaluate_answer_quality(
+        query="How is the stability margin calculated?",
+        answer=(
+            "The stability margin is calculated as "
+            "M = (target - measured) / max(abs(target), epsilon). [1]"
+        ),
+        grounded=True,
+        retrieval_meta=_supported_meta(),
+        required_concepts=[
+            ["target - measured"],
+            ["max(abs(target), epsilon)"],
+        ],
+    )
+
+    assert result["plan_checks"]["requested_equations"] is True
+    assert result["passed"] is True
+
+
 def test_orphan_fragment_reduces_readability_score() -> None:
     result = evaluate_answer_quality(
         query="Compare random forests and decision trees.",

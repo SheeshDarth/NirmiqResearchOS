@@ -16,6 +16,35 @@ See [`megasprint_one_answer_intelligence_plan.md`](megasprint_one_answer_intelli
 
 See [`megasprint_six_plan.md`](megasprint_six_plan.md) for the latest query-agnostic evidence-obligation architecture and verified 40-case result.
 
+See [`hard_document_eval.md`](hard_document_eval.md) for the generated OCR, handwriting, equation, table, and diagram reliability gate.
+
+## 2026-07-19 Hard-Document Reliability Audit
+
+Decision:
+
+- Challenge the post-MegaSprint-Six pipeline with structurally difficult files before beginning recursive summarization.
+- Keep the gate fully local and deterministic: BM25 only, no Ollama generation, vector store, embeddings, reranker, cloud service, or benchmark-specific answer text.
+
+Measured result:
+
+- Nine full-query cases: MRR `1.000`, Recall@3/8 `1.000`, expected citation coverage `1.000`.
+- Answer-quality pass `1.000`, faithfulness `0.978`, answerability correctness `1.000`.
+- Raster scan OCR, handwriting OCR, equation and table indexing, and embedded-diagram extraction all passed.
+- The existing 40-case academic regression remained `40/40` and improved MRR from `0.921` to `0.934`; Recall@8, citation coverage, quality pass, and answerability stayed `1.000`.
+
+General fixes validated:
+
+- Tesseract availability now requires a successful binary probe instead of Python-import presence alone.
+- Passive calculation questions preserve their subject and require formula evidence.
+- Comparison planning removes action/behavior wrappers and accepts locally labeled table rows for each named side.
+- Eval phrase matching ignores mathematical and decimal punctuation without changing runtime retrieval normalization.
+- The quality evaluator recognizes the product's canonical source-miss abstention and symbolic equations.
+
+Limit:
+
+- The fixture set is generated and compact. It protects hard-file invariants but does not prove arbitrary OCR, handwriting, layout, or textbook accuracy.
+- The 40-case regression required `310.8s`; correctness is green, but evaluator corpus/BM25 reuse remains measured performance debt.
+
 ## 2026-07-19 MegaSprint Six Closure Audit
 
 Decision:

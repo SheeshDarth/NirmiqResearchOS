@@ -164,6 +164,7 @@ Implemented in the current repository:
 - Run local smoke checks, backend tests, and frontend production build.
 - Evaluate retrieval on a bundled 30-question demo dataset.
 - Evaluate query behavior through `data/processed/eval/query_agnostic_rag_categories.jsonl`, covering definitions, explanations, comparisons, procedures, limitations, visuals, summaries, exam answers, paper drafting, and unanswerable prompts.
+- Rebuild and evaluate generated scans, handwriting, equations, tables, and an embedded diagram offline with `npm.cmd run eval:hard-docs`.
 - Run GitHub CI for backend tests, API compile, frontend build, and Docker Compose validation.
 - Run optional Docker dev containers with checked-in API and web Dockerfiles.
 - Use `/api/v1/*` routes while preserving the original local API route paths.
@@ -185,6 +186,8 @@ The golden demo is strong, and the harder real-world seed now shows measurable i
 | Full-query Hybrid answer path | 0.882 | 1.000 | 1.000 |
 | 40-case answer-quality BM25 path | 0.868 | 0.921 | 0.921 |
 | MegaSprint Six final offline BM25 path | **0.921** | **1.000** | **1.000** |
+| Hard-document OCR/structure gate | **1.000** | **1.000** | **1.000** |
+| Post-hard-document 40-case regression | **0.934** | **1.000** | **1.000** |
 
 The larger 40-case set covers definitions, explanations, mechanisms, comparisons, procedures, summaries, factual lookups, limitations, architecture questions, and unanswerable prompts. The final MegaSprint Six run passes all 40 quality cases with overall quality `0.937`, faithfulness `0.995`, readability `0.985`, and answerability correctness `1.000`. This is a strong measured result on the current corpus, not a production-grade arbitrary-document claim. BM25 remains the safest offline backbone, while hybrid remains optional support rather than the sole source of truth.
 
@@ -220,7 +223,7 @@ This work belongs to **MegaSprint One, Block B**, not the UI sprint. It is docum
 Remaining measured debt after MegaSprint Six:
 
 - Convert saved `Needs work` feedback into local eval candidates.
-- Grow beyond `40` cases with scanned PDFs, noisier notes, handwriting, equations, tables, and diagram-grounded questions.
+- Broaden the new generated hard-document gate with independent real scans, noisier notes, additional handwriting styles, equations, tables, diagrams, and textbooks.
 - Add full chapter-level hierarchical summarization; the current implementation selects representative original chunks across the hierarchy but does not recursively summarize every chapter.
 - Reduce the roughly two-minute strict offline benchmark runtime by reusing immutable corpus setup.
 - Keep BM25-only fallback fully usable for offline and low-end devices.
@@ -609,6 +612,14 @@ The current strict full-query benchmark scores expected evidence against the com
 | BM25 offline | 40 | 0.921 | 1.000 | 1.000 | 1.000 | 1.000 | 0.995 |
 
 The two deliberately unsupported prompts abstained correctly. The empty canonical failure file means no case in this particular labeled set is currently below the evaluator threshold; it does not mean every future document or query is solved.
+
+Run the separate hard-document gate after installing Tesseract OCR:
+
+```powershell
+npm.cmd run eval:hard-docs
+```
+
+It regenerates raster-only scans, a handwriting-style image, a formula page, a table, and an embedded diagram; ingests them through the real API; and evaluates nine offline query categories. The current result is MRR `1.000`, Recall@8 `1.000`, expected citation coverage `1.000`, answer-quality pass `1.000`, faithfulness `0.978`, and answerability correctness `1.000`. The separate 40-case academic regression also remains `40/40` and now records MRR `0.934`. See [`docs/hard_document_eval.md`](docs/hard_document_eval.md) for scope and limitations.
 
 ## Screenshots And GIFs
 

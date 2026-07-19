@@ -308,6 +308,40 @@ def test_explicit_mechanism_verb_becomes_the_required_operation() -> None:
     assert operation.required is False
 
 
+def test_passive_calculation_query_preserves_subject_and_formula_contract() -> None:
+    plan = build_answer_plan("How is the stability margin calculated?", "research")
+
+    assert plan.answer_type == "mechanism_explanation"
+    assert plan.subject == "the stability margin"
+    assert "equations" in plan.requested_elements
+    focus = next(item for item in plan.evidence_obligations if item.key == "operation_focus")
+    assert "calculated" in focus.retrieval_terms
+    assert evidence_obligation_score(
+        focus,
+        "The stability margin is calculated as M = (target - measured) / denominator.",
+    ) >= 0.32
+
+
+def test_comparison_action_wrapper_resolves_to_named_sides_and_table_rows() -> None:
+    plan = build_answer_plan(
+        "Compare the actions for low drift and high drift.",
+        "research",
+    )
+
+    assert plan.subject == "low drift and high drift"
+    low, high = plan.evidence_obligations[:2]
+    assert low.retrieval_terms == ("low",)
+    assert high.retrieval_terms == ("high",)
+    assert evidence_obligation_score(
+        low,
+        "Low drift | below the warning threshold | monitor normally.",
+    ) >= 0.32
+    assert evidence_obligation_score(
+        high,
+        "High drift | above the warning threshold | recalibrate immediately.",
+    ) >= 0.32
+
+
 def test_interpretation_query_uses_meaning_and_value_obligations() -> None:
     plan = build_answer_plan(
         "How should the silhouette coefficient be interpreted?",

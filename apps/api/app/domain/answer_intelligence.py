@@ -106,7 +106,8 @@ def _local_comparison_cue_hits(obligation: EvidenceObligation, text: str) -> int
         r"represents?\b|indicates?\b)"
     )
     action_relation_pattern = (
-        r"(?:adapts?\b|(?<!-)learns?\b|sensitive\b|causes?\b|makes?\b|has\b|have\b)"
+        r"(?:adapts?\b|(?<!-)learns?\b|sensitive\b|causes?\b|makes?\b|has\b|have\b|"
+        r"should\b|must\b|requires?\b|uses?\b|triggers?\b|leads?\s+to\b|results?\s+in\b)"
     )
     broad_action_terms = {"high", "low", "higher", "lower", "fast", "slow"}
     clauses = [
@@ -116,6 +117,7 @@ def _local_comparison_cue_hits(obligation: EvidenceObligation, text: str) -> int
     ]
     relation_hits = 0
     called_hits = 0
+    structured_row_hits = 0
     for term in normalized_terms:
         escaped_term = re.escape(term)
         action_gap = 12 if term in broad_action_terms else 4
@@ -146,7 +148,14 @@ def _local_comparison_cue_hits(obligation: EvidenceObligation, text: str) -> int
                 for clause in clauses
             )
         )
-    return min(2, relation_hits + called_hits)
+        structured_row_hits += int(
+            any(
+                re.search(rf"\b{escaped_term}\b[^.!?]{{0,160}}(?:\||->)", clause)
+                and len(re.findall(r"[a-z0-9]+", clause)) >= 4
+                for clause in clauses
+            )
+        )
+    return min(2, relation_hits + called_hits + structured_row_hits)
 
 
 def _obligation_term_stem(term: str) -> str:
@@ -164,6 +173,7 @@ def _verb_forms(verb: str) -> tuple[str, ...]:
         "calculate": ("calculation", "calculations"),
         "classify": ("classification", "classifications"),
         "compute": ("computation", "computations"),
+        "derive": ("derivation", "derivations"),
         "encode": ("encoding", "encodings"),
         "identify": ("identification", "identifications"),
         "interpret": ("interpretation", "interpretations"),
@@ -205,6 +215,12 @@ def _comparison_sides(query: str) -> tuple[str, str] | None:
         return None
     first = re.sub(r"^(?:a|an|the)\s+", "", match.group(1)).strip()
     second = re.sub(r"^(?:a|an|the)\s+", "", match.group(2)).strip()
+    axis_prefix = (
+        r"^(?:actions?|behaviou?r|effects?|outcomes?|results?|responses?|requirements?|"
+        r"recommendations?|steps?|procedures?)\s+(?:for|of|under|with)\s+"
+    )
+    first = re.sub(axis_prefix, "", first).strip()
+    second = re.sub(axis_prefix, "", second).strip()
     first_words = first.split()
     second_words = second.split()
     if len(first_words) == 1 and len(second_words) >= 2:
@@ -241,6 +257,10 @@ _ANSWER_EVIDENCE_CUES: dict[str, tuple[str, ...]] = {
         "computes ",
         "calculates ",
         "calculate ",
+        "calculated as",
+        "computed as",
+        "given by",
+        " equals ",
         "counts ",
         "count ",
         "divides ",
@@ -643,11 +663,12 @@ def _evidence_obligations(
         key="operation",
         label="core operation",
         retrieval_terms=(
-            "process", "operation", "compute", "apply", "transform", "divide",
+            "process", "operation", "compute", "calculate", "derive", "apply", "transform", "divide",
             "combine", "drop", "ignore", "active",
         ),
         evidence_cues=(
-            " works by ", " compute ", " computes ", " computed ", " apply ",
+            " works by ", " compute ", " computes ", " computed ", " calculated as ",
+            " computed as ", " derived as ", " given by ", " equals ", " apply ",
             " applies ", " applied ", " transform ", " transforms ", " transforming ",
             " divide ", " divides ", " combine ", " combines ",
             " refines ", " refining ", " process ", " processes ", " processing ",
@@ -749,16 +770,24 @@ def _evidence_obligations(
                 )
             )
         focus_match = re.search(
-            r"\b(compute|calculate|identify|mask|update|transform|represent|encode|detect|"
-            r"classify|predict|optimize|train|perform|fit)\b",
+            r"\b(comput(?:e|es|ed|ing)|calculat(?:e|es|ed|ing)|deriv(?:e|es|ed|ing)|"
+            r"identify|mask|update|transform|represent|encode|detect|classify|predict|"
+            r"optimize|train|perform|fit)\b",
             query,
         )
         if focus_match:
-            focus_forms = _verb_forms(focus_match.group(1))
+            focus_verb = focus_match.group(1)
+            if focus_verb.startswith("comput"):
+                focus_verb = "compute"
+            elif focus_verb.startswith("calculat"):
+                focus_verb = "calculate"
+            elif focus_verb.startswith("deriv"):
+                focus_verb = "derive"
+            focus_forms = _verb_forms(focus_verb)
             obligations.append(
                 EvidenceObligation(
                     key="operation_focus",
-                    label=f"requested {focus_match.group(1)} operation",
+                    label=f"requested {focus_verb} operation",
                     retrieval_terms=focus_forms,
                     evidence_cues=tuple(f" {form} " for form in focus_forms),
                 )
@@ -1052,7 +1081,11 @@ def _requested_elements(query: str) -> tuple[str, ...]:
             r"(?:image|images|diagram|diagrams|figure|figures|visuals?)\b|"
             r"\b(?:image|diagram|figure|visual)\s+references?\b)",
         ),
-        ("equations", r"\b(equation|equations|formula|formulas|derive|derivation)\b"),
+        (
+            "equations",
+            r"\b(equation|equations|formula|formulas|derive|derivation)\b|"
+            r"\bhow\s+(?:is|are)\b.{0,80}\b(?:calculated|computed|derived)\b",
+        ),
         ("comparison", r"\b(compare|contrast|difference|differences|versus|vs\.?)\b"),
     )
     for label, pattern in patterns:
@@ -1063,6 +1096,9 @@ def _requested_elements(query: str) -> tuple[str, ...]:
 
 def _subject(query: str) -> str:
     subject = re.sub(r"\s+", " ", query.strip()).strip(" ?.!")
+    comparison_sides = _comparison_sides(subject)
+    if comparison_sides:
+        return " and ".join(comparison_sides)
     owner_subject_match = re.match(
         r"^what\s+.+?\s+does\s+(.+?)\s+"
         r"(?:have|provide|offer|cause|add|require)$",
@@ -1106,7 +1142,8 @@ def _subject(query: str) -> str:
     else:
         subject = _LEADING_REQUEST.sub("", subject).strip()
     mechanism_subject_match = re.match(
-        r"^(.+?)\s+(?:work|works|compute|computes|represent|represents|identify|identifies|"
+        r"^(.+?)\s+(?:work|works|comput(?:e|es|ed|ing)|calculat(?:e|es|ed|ing)|"
+        r"deriv(?:e|es|ed|ing)|represent|represents|identify|identifies|"
         r"regularize|regularizes|transform|transforms|update|updates|mask|masks|reduce|reduces|"
         r"use|uses|apply|applies|select|selects|detect|detects|generate|generates|create|creates|"
         r"classify|classifies|predict|predicts|train|trains|perform|performs|fit|fits)\b",

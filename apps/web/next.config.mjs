@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.NIRMIQ_NEXT_DIST_DIR || ".next",
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   async headers() {
     return [

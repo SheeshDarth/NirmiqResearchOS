@@ -92,6 +92,7 @@ _ABSTENTION_PHRASES = (
     "not in the source",
     "not supported by",
     "unable to answer from",
+    "could not find this in",
 )
 
 
@@ -298,7 +299,12 @@ def _plan_compliance(
     for element in plan.requested_elements:
         pattern = requested_checks.get(element)
         if pattern:
-            checks[f"requested_{element.replace(' ', '_')}"] = bool(re.search(pattern, normalized))
+            matched = bool(re.search(pattern, normalized))
+            if element == "equations":
+                matched = matched or bool(
+                    re.search(r"\b[A-Za-z][A-Za-z0-9_]*\s*=\s*\S+", answer)
+                )
+            checks[f"requested_{element.replace(' ', '_')}"] = matched
 
     if plan.depth == "detailed":
         checks["requested_depth"] = len(answer.split()) >= 45

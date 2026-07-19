@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from app.api.routers import documents, exam, health, ingest, memory, query
-from app.core.config import Settings, get_settings
+from app.core.config import get_settings
 from app.core.deps import AppContainer
 from app.core.logging import configure_logging
 

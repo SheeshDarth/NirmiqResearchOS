@@ -1,3 +1,5 @@
+# ruff: noqa: E402
+
 import argparse
 import asyncio
 import json
@@ -18,7 +20,7 @@ from app.core.deps import AppContainer
 from app.api.schemas.ingest import IngestRequest
 from app.api.schemas.query import QueryRequest
 from app.domain.answer_quality import evaluate_answer_quality
-from app.domain.text_normalization import normalize_token_text
+from app.domain.text_normalization import normalize_phrase_match_text
 
 
 @dataclass(slots=True)
@@ -476,7 +478,7 @@ def contains_citation_anchor(text: str) -> bool:
 
 
 def normalize_eval_text(text: str) -> str:
-    return normalize_token_text(text)
+    return normalize_phrase_match_text(text)
 
 
 def first_id_rank(retrieved: list[str], expected: set[str]) -> int:

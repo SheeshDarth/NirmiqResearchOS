@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-19
 
-Current checkpoint: MegaSprint Six is complete on the current 40-case strict offline gate. See `## 2026-07-19 MegaSprint Six - Query-Agnostic Evidence Reliability` near the end of this file for the full implementation and verification record.
+Current checkpoint: MegaSprint Six remains complete. Remaining Job 1 is locally green and awaits one clean GitHub Actions run before closure; Job 2 remains locked. See `## 2026-07-19 Remaining Job 1 - Hard-Document Reliability` near the end of this file.
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
@@ -3999,3 +3999,58 @@ Implementation commit:
 - `77564e2c642e93395fb7c32801225b4810804418` - `Complete MegaSprint 6 RAG reliability`.
 - Scope: evidence-obligation planning/retrieval, query-shaped source-only fallbacks, hierarchy-aware summary seeds, tests, canonical metrics, architecture records, and release documentation.
 - Verification attached to this commit: Ruff passed; `202` unit tests passed; `10` integration tests passed; strict 40-case offline benchmark passed `40/40`; production web build passed; full ship gate passed with `212` backend tests and live local smoke checks.
+
+## 2026-07-19 Remaining Job 1 - Hard-Document Reliability
+
+Objective:
+
+- Complete the first of six remaining jobs before beginning recursive chapter summarization.
+- Exercise scans, handwriting, equations, tables, diagrams, and another textbook-like source through the real offline pipeline.
+
+Implementation:
+
+- Added deterministic fixture generation for a four-page academic PDF, two-page raster scan, handwriting-style image note, and embedded diagram.
+- Added a nine-case query dataset spanning definition, equation, table comparison, diagram/caption, scanned definition/procedure, handwriting procedure/correction, and unanswerable behavior.
+- Added transactional `npm.cmd run eval:hard-docs`; canonical metrics are copied only after every gate passes.
+- Added actual Tesseract binary discovery/probing and OCR unit/integration coverage.
+- Fixed generic passive-calculation planning, formula preservation, comparison-axis extraction, labeled-table-row evidence, symbolic equation validation, punctuation-insensitive eval phrases, and canonical abstention recognition.
+- Added pinned Windows CI installation of Tesseract `5.5.0.20241111` and the OCR extras, then runs the hard-document gate.
+- Added deterministic fixture SHA-256 fingerprints, runtime version/language records, and 30-day CI artifact retention keyed by commit SHA.
+- Added an opt-in `NIRMIQ_NEXT_DIST_DIR` build directory so production verification does not contend with an active local preview's `.next` cache.
+
+Measured result:
+
+- MRR, Recall@3, Recall@8, expected citation coverage, answer-quality pass, and answerability correctness: `1.000`.
+- Faithfulness: `0.978`.
+- OCR phrase checks, equation/table indexing, embedded-diagram extraction, and source-miss abstention all passed.
+- Post-change 40-case academic regression: `40/40`, MRR `0.934`, Recall@8 `1.000`, expected citation coverage `1.000`, quality pass `1.000`, faithfulness `0.995`, answerability `1.000`, and no failure records.
+- The 40-case run took `310.8s`; this is recorded for Remaining Job 4 rather than hidden by increasing performance claims.
+
+Guardrails and tradeoffs:
+
+- Runtime remains BM25-only and offline for this gate; no Ollama, embedding, vector, reranker, cloud, graph, or larger-model dependency was added.
+- Formula punctuation is relaxed only for benchmark phrase matching, not runtime retrieval.
+- The generated corpus is reproducible regression evidence, not proof of arbitrary real-world handwriting/OCR accuracy.
+- The post-job LLM Council found one remaining closure gate: the exact workflow must pass once on a clean remote runner. Job 2 remains locked until that evidence is retained.
+- Job 2 starts with a structural handoff smoke test for deterministic chapter/section order, headings, pages, equations, tables, diagram references, stable identifiers, and citation provenance. That is a Job 2 entry contract, not added Job 1 scope.
+
+Verification before council:
+
+- Focused planner/synthesis/OCR/quality suite: `72 passed`, then `69 passed` after the symbolic-equation correction.
+- Full backend suite with real OCR integration: `224 passed`, one third-party deprecation warning.
+- Ruff: passed.
+- Python compile: passed.
+- Next.js production build: passed through isolated `.next-verify`; first-load JavaScript `118 kB`.
+- Hard-document gate: passed all checks and all nine answer-quality cases.
+- Existing academic gate: passed all 40 answer-quality cases.
+- Fixture determinism: two independent generations produced identical SHA-256 fingerprints for all four assets.
+- Reproducibility report: Python `3.12.10`, PyMuPDF `1.27.2.3`, Pillow `12.0.0`, pytesseract `0.3.13`, Tesseract `5.5.0.20241111`, languages `eng` and `osd`.
+- Post-job council verdict: local scope is complete; remote CI is the sole remaining closure gate. No corpus, model, graph, or architecture expansion is required for Job 1.
+
+Canonical evidence:
+
+- `docs/hard_document_eval.md`.
+- `data/processed/eval/hard_document_qa.jsonl`.
+- `data/processed/eval/hard_document_metrics.json`.
+- `data/processed/eval/hard_document_pipeline_report.json`.
+- `data/processed/eval/hard_document_failures.jsonl` is empty.

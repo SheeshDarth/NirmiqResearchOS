@@ -188,3 +188,28 @@ Release interpretation:
 - NIRMIQ now has strong reproducible evidence for its strict offline textbook path.
 - The result does not establish arbitrary-document accuracy or replace real-user QA.
 - Next benchmark expansion should prioritize scans, tables, equations, diagrams, handwriting, additional textbooks, and natural questions not used during implementation.
+
+## 2026-07-19 Hard-Document Offline Gate
+
+This gate exercises the parser and query pipeline on generated files that are structurally different from the existing text-first corpus:
+
+- A four-page textbook-like PDF containing a definition, formula, table, and embedded diagram.
+- A two-page raster-only scanned PDF.
+- A handwriting-style image note.
+- One deliberately unsupported query.
+
+Command:
+
+```powershell
+npm.cmd run eval:hard-docs
+```
+
+| Samples | MRR | Recall@3 | Recall@8 | Expected citation coverage | Quality pass | Faithfulness | Answerability |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 9 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.978 | 1.000 |
+
+All OCR phrase, indexing, embedded-diagram extraction, retrieval, citation, answer-quality, and abstention gates passed. The evaluator uses BM25 with Ollama, vectors, embeddings, and reranking disabled, so it proves the low-memory offline path rather than GPU-assisted quality.
+
+Post-change regression against the existing 40-case academic set also passed `40/40`: MRR `0.934`, Recall@8 `1.000`, expected citation coverage `1.000`, quality pass `1.000`, faithfulness `0.995`, and answerability `1.000`. The run took `310.8s`, confirming immutable-corpus/BM25 setup reuse as a performance priority for Remaining Job 4.
+
+This is a deterministic engineering fixture, not a statistical or arbitrary-document benchmark. Its purpose is to prevent regressions in difficult file handling and generic equation/table reasoning. Independent real-user scans and textbooks remain necessary. Full methodology: [`hard_document_eval.md`](hard_document_eval.md).

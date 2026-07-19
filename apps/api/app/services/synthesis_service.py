@@ -1604,7 +1604,13 @@ class SynthesisService:
                 expanded_score = SynthesisService._sentence_score(sentence, expanded_scoring_terms)
                 core_score = SynthesisService._sentence_score(sentence, core_subject_terms)
                 word_count = len(sentence.split())
-                table_penalty = 5.0 if word_count > 65 or SynthesisService._is_formula_heavy_sentence(sentence) else 0.0
+                table_penalty = 5.0 if (
+                    word_count > 65
+                    or (
+                        "equations" not in requested_elements
+                        and SynthesisService._is_formula_heavy_sentence(sentence)
+                    )
+                ) else 0.0
                 lowered = f" {sentence.lower()} "
                 interpretation_bonus = 0.0
                 if answer_plan.answer_type == "interpretation":
@@ -1616,6 +1622,10 @@ class SynthesisService:
                     lowered.count(cue)
                     for cue in (
                         " compute ",
+                        " calculated as ",
+                        " computed as ",
+                        " derived as ",
+                        " equals ",
                         " apply ",
                         " add ",
                         " divide ",

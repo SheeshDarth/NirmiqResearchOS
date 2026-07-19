@@ -125,6 +125,53 @@ def test_comparison_fallback_covers_high_and_low_behavior() -> None:
     assert "less sensitive to noise" in answer
 
 
+def test_comparison_fallback_reads_actions_from_labeled_table_rows() -> None:
+    query = "Compare the actions for low drift and high drift."
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=3-3\n"
+                "Low drift | below 0.5 percent per hour | monitor normally. "
+                "High drift | above 2.0 percent per hour | recalibrate immediately.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=.8 source=bm25 pages=1-1\n"
+                "Rapid signals are sampled more often, while stable signals are sampled less often.",
+            ),
+        ],
+    )
+
+    assert answer.startswith("Direct comparison")
+    assert "monitor normally" in answer
+    assert "recalibrate immediately" in answer
+    assert "sampled more often" not in answer
+
+
+def test_mechanism_fallback_preserves_requested_formula() -> None:
+    query = "How is the stability margin calculated?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=2-2\n"
+                "The stability margin is calculated as M = (target - measured) / "
+                "max(abs(target), epsilon). A positive margin means the measured value "
+                "remains below the target.",
+            )
+        ],
+    )
+
+    assert "M = (target - measured)" in answer
+    assert "max(abs(target), epsilon)" in answer
+    assert "[1]" in answer
+
+
 def test_interpretation_fallback_prefers_explicit_value_mapping() -> None:
     query = "How should the silhouette coefficient be interpreted?"
     answer = SynthesisService._fallback_planned_answer(

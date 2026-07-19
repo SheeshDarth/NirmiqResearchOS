@@ -11,7 +11,7 @@ from app.adapters.parsing.tesseract_ocr import TesseractOCR
 from app.adapters.retrieval.bm25_index import BM25Index
 from app.adapters.storage.chroma_repo import ChromaRepo
 from app.adapters.storage.sqlite_repo import SQLiteRepo
-from app.core.config import Settings, get_settings
+from app.core.config import Settings
 from app.domain.retrieval_policy import RetrievalPolicy
 from app.services.documents_service import DocumentsService
 from app.services.exam_service import ExamService

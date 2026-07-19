@@ -33,6 +33,39 @@ Still open:
 - BM25 is deliberately retained as the reliable low-memory backbone; optional semantic retrieval must beat it on unseen data before becoming authoritative.
 - Further tuning against the same 40 labels is paused to avoid overfitting.
 
+## 2026-07-19 Resolved: Hard Files Passed Parsing But Lost Their Answer
+
+Symptoms:
+
+- OCR support could appear available even when no working Tesseract executable existed.
+- The retriever ranked a formula or table first, but deterministic synthesis discarded the formula or selected an unrelated contrast sentence.
+- Correct symbolic answers failed the quality gate because normalization removed `=` before equation detection.
+- The runtime abstained correctly, but the evaluator did not recognize the product's canonical source-miss sentence.
+
+Root causes:
+
+- OCR capability was inferred from imports rather than a binary probe.
+- Passive calculation verbs and comparison-axis wrappers polluted the planned subject/evidence obligations.
+- Formula-heavy evidence was filtered unless the query literally used `formula` or `equation`.
+- Comparison-side evidence recognized prose definitions but not labeled table rows.
+- Runtime and evaluator language contracts had drifted apart.
+
+Resolution:
+
+- Discover and probe Tesseract explicitly on Windows, PATH, or `TESSERACT_CMD`.
+- Treat `how is X calculated/computed/derived` as a formula-bearing mechanism request.
+- Derive comparison sides from the named entities and accept structured rows only when they locally describe each side.
+- Use punctuation-insensitive phrase normalization only in evaluation; keep runtime token normalization unchanged.
+- Add a transactional nine-case hard-document gate and publish results only after all parser, OCR, indexing, diagram, retrieval, answer, and abstention checks pass.
+
+Measured result:
+
+- MRR, Recall@3/8, expected citation coverage, answer-quality pass, and answerability correctness: `1.000`.
+- Faithfulness: `0.978`.
+- The existing 40-case academic regression remained `40/40` with MRR `0.934` and no failure records.
+- Remaining risk is breadth: independent real scans, handwriting, layouts, and textbooks are still required.
+- The strict academic regression took `310.8s`; immutable corpus and BM25 reuse is intentionally deferred to Remaining Job 4.
+
 ## 2026-07-13 Grounded Answer Intelligence Gap
 
 Latest diagnosis:

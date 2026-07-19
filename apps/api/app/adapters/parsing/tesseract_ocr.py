@@ -1,26 +1,80 @@
 from __future__ import annotations
 
 from io import BytesIO
+import os
 from pathlib import Path
+import shutil
 
 
 class TesseractOCR:
     """Optional OCR adapter with graceful fallback when deps are unavailable."""
 
-    def __init__(self) -> None:
+    def __init__(self, executable_path: str | Path | None = None) -> None:
         self._available: bool | None = None
+        self._executable_path = str(executable_path) if executable_path else None
+        self._resolved_command: str | None = None
 
     def is_available(self) -> bool:
         if self._available is not None:
             return self._available
         try:
-            import pytesseract  # type: ignore  # noqa: F401
+            import pytesseract  # type: ignore
             from PIL import Image  # type: ignore  # noqa: F401
         except Exception:
             self._available = False
             return False
-        self._available = True
-        return True
+
+        command = self._resolve_executable(self._executable_path)
+        if not command:
+            self._available = False
+            return False
+        pytesseract.pytesseract.tesseract_cmd = command
+        self._resolved_command = command
+        self._available = self._probe_executable(command)
+        return self._available
+
+    @staticmethod
+    def _resolve_executable(explicit_path: str | None = None) -> str | None:
+        candidates: list[str] = []
+        if explicit_path:
+            candidates.append(explicit_path)
+        configured = os.getenv("TESSERACT_CMD", "").strip()
+        if configured:
+            candidates.append(configured)
+        path_command = shutil.which("tesseract")
+        if path_command:
+            candidates.append(path_command)
+
+        for env_name in ("ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"):
+            root = os.getenv(env_name, "").strip()
+            if not root:
+                continue
+            if env_name == "LOCALAPPDATA":
+                candidates.append(str(Path(root) / "Programs" / "Tesseract-OCR" / "tesseract.exe"))
+            else:
+                candidates.append(str(Path(root) / "Tesseract-OCR" / "tesseract.exe"))
+
+        seen: set[str] = set()
+        for candidate in candidates:
+            path = Path(candidate).expanduser()
+            normalized = str(path.resolve(strict=False))
+            if normalized.lower() in seen:
+                continue
+            seen.add(normalized.lower())
+            if path.is_file():
+                return normalized
+        return None
+
+    @staticmethod
+    def _probe_executable(command: str) -> bool:
+        try:
+            import pytesseract  # type: ignore
+
+            pytesseract.pytesseract.tesseract_cmd = command
+            pytesseract.get_tesseract_version()
+            return True
+        except Exception:
+            return False
 
     async def extract_page(self, source_path: str, page_number: int = 1) -> str:
         path = Path(source_path)

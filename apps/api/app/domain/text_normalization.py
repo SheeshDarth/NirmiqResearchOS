@@ -42,3 +42,11 @@ def normalize_token_text(text: str) -> str:
     normalized = normalize_ocr_text(text).lower()
     normalized = re.sub(r"[^a-z0-9+.#-]+", " ", normalized)
     return re.sub(r"\s+", " ", normalized).strip()
+
+
+def normalize_phrase_match_text(text: str) -> str:
+    """Normalize source phrases for punctuation-insensitive eval matching."""
+
+    normalized = normalize_token_text(text)
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()

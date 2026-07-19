@@ -1,0 +1,56 @@
+{
+  "version": "hard-documents-v1",
+  "status": "passed",
+  "checks": {
+    "scan_definition_ocr": true,
+    "scan_procedure_ocr": true,
+    "handwriting_preparation_ocr": true,
+    "handwriting_correction_ocr": true,
+    "equation_indexed": true,
+    "table_bands_indexed": true,
+    "scan_text_indexed": true,
+    "handwriting_text_indexed": true,
+    "embedded_diagram_extracted": true,
+    "recall_at_8_gate": true,
+    "citation_coverage_gate": true,
+    "answer_quality_gate": true,
+    "answerability_gate": true
+  },
+  "failed_checks": [],
+  "fixture_counts": {
+    "textbook_chunks": 4,
+    "scan_chunks": 2,
+    "handwriting_chunks": 1,
+    "extracted_diagrams": 1
+  },
+  "metrics": {
+    "samples": 9,
+    "mrr": 1.0,
+    "recall@3": 1.0,
+    "recall@8": 1.0,
+    "citation_expected_coverage": 1.0,
+    "answer_quality_pass": 1.0,
+    "faithfulness": 0.978,
+    "answerability_correct": 1.0
+  },
+  "runtime": {
+    "offline": true,
+    "retrieval_mode": "bm25",
+    "ocr_engine": "tesseract",
+    "python": "3.12.10",
+    "pymupdf": "1.27.2.3",
+    "pillow": "12.0.0",
+    "pytesseract": "0.3.13",
+    "tesseract": "5.5.0.20241111",
+    "tesseract_languages": [
+      "eng",
+      "osd"
+    ]
+  },
+  "fixture_sha256": {
+    "textbook": "4697032c5169761e891cc4a445bbfb688473f70b1241ad063adf0d4937a33780",
+    "scan": "357cccd7bf2bbfff9d4199f3711c0d65b68d8ddd853d9c3f6d0c455222310d99",
+    "handwritten": "8f259bcd4f84e9858b9524456e905646a6978c75411cd8333d5426d02fa19dbd",
+    "diagram_source": "5e9fccc170753d419614b44572e045ed558c896253dbf8087517064a850dc0bc"
+  }
+}
