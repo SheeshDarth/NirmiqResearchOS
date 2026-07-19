@@ -3993,3 +3993,9 @@ Canonical plan and evidence:
 - `docs/megasprint_six_plan.md`.
 - `data/processed/eval/real_world_answer_quality_metrics.json`.
 - `data/processed/eval/real_world_answer_quality_failures.jsonl`.
+
+Implementation commit:
+
+- `77564e2c642e93395fb7c32801225b4810804418` - `Complete MegaSprint 6 RAG reliability`.
+- Scope: evidence-obligation planning/retrieval, query-shaped source-only fallbacks, hierarchy-aware summary seeds, tests, canonical metrics, architecture records, and release documentation.
+- Verification attached to this commit: Ruff passed; `202` unit tests passed; `10` integration tests passed; strict 40-case offline benchmark passed `40/40`; production web build passed; full ship gate passed with `212` backend tests and live local smoke checks.
