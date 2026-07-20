@@ -53,10 +53,14 @@ function Publish-EvaluationArtifact {
         [Parameter(Mandatory = $true)][string]$Destination
     )
 
+    $sourceBytes = [System.IO.File]::ReadAllBytes($Source)
     if (Test-Path -LiteralPath $Destination) {
-        $sourceHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
-        $destinationHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
-        if ($sourceHash -eq $destinationHash) {
+        $destinationBytes = [System.IO.File]::ReadAllBytes($Destination)
+        if (
+            $sourceBytes.Length -eq $destinationBytes.Length -and
+            [System.Convert]::ToBase64String($sourceBytes) -eq
+                [System.Convert]::ToBase64String($destinationBytes)
+        ) {
             return
         }
     }
@@ -65,7 +69,7 @@ function Publish-EvaluationArtifact {
     New-Item -ItemType Directory -Force -Path $destinationDirectory | Out-Null
     [System.IO.File]::WriteAllBytes(
         $Destination,
-        [System.IO.File]::ReadAllBytes($Source)
+        $sourceBytes
     )
 }
 

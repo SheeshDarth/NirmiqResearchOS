@@ -580,3 +580,5 @@ Resolution:
 - Disclose parser-missed chapter headings instead of fabricating titles.
 
 Measured result: a local 2,842-chunk textbook produced a 22-group cited guide from 2,608 readable chunks in `3.783 s`, then `0.191 s` from cache, with citation coverage `1.000`.
+
+CI portability note: the first Job 2 candidate run passed the hard-document quality report but failed while publishing unchanged artifacts because `Get-FileHash` was unavailable in that Windows PowerShell environment. The publisher now compares byte arrays through .NET and has no cmdlet/module dependency.

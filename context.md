@@ -4081,6 +4081,7 @@ Implementation:
 - Uses `RECURSIVE_SUMMARY_VERSION` inside cache identity, plus a normalized-query fingerprint for scoped summaries, so whole-document and scoped results cannot collide and renderer changes invalidate naturally.
 - Fixed citation-coverage parsing so Markdown headings and blank lines after anchors are structural rather than uncited claims.
 - Made retrieval/hard-document metric publication idempotent so unchanged successful artifacts do not end with false permission failures.
+- Clean-runner CI run `29721272286` proved all hard-document quality checks passed but exposed that legacy Windows PowerShell could not resolve `Get-FileHash`; artifact comparison now uses only cross-version .NET byte APIs and the complete local hard-document command passes again.
 
 Measured real-textbook smoke:
 
