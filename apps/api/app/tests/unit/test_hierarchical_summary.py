@@ -65,10 +65,34 @@ def test_hierarchical_summary_falls_back_to_document_regions_deterministically()
     ]
 
 
-def test_summary_cache_profile_invalidates_pre_hierarchy_answers() -> None:
+def test_summary_cache_profile_invalidates_pre_recursive_answers() -> None:
     profile = QueryService._summary_profile(
         retrieval_mode="bm25",
         retrieval_profile="balanced",
+        query="Summarize this document",
     )
 
-    assert profile == "bm25:balanced:v6-hierarchical"
+    assert profile == "bm25:balanced:recursive-extractive-v6:document"
+
+
+def test_summary_cache_profile_separates_scoped_questions() -> None:
+    methods = QueryService._summary_profile(
+        retrieval_mode="bm25",
+        retrieval_profile="balanced",
+        query="Summarize the methods",
+    )
+    limitations = QueryService._summary_profile(
+        retrieval_mode="bm25",
+        retrieval_profile="balanced",
+        query="Summarize the limitations",
+    )
+
+    assert methods != limitations
+    assert methods.startswith("bm25:balanced:recursive-extractive-v6:")
+
+
+def test_document_wide_summary_detection_keeps_scoped_requests_on_rag_path() -> None:
+    assert QueryService._is_document_wide_summary_query("Summarize this PDF") is True
+    assert QueryService._is_document_wide_summary_query("Explain the document") is True
+    assert QueryService._is_document_wide_summary_query("Summarize chapter 4") is False
+    assert QueryService._is_document_wide_summary_query("Summarize the methodology") is False

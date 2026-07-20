@@ -47,6 +47,28 @@ $candidateMetrics = Join-Path $evalRoot "hard-document-metrics.json"
 $candidateFailures = Join-Path $evalRoot "hard-document-failures.jsonl"
 $candidateReport = Join-Path $evalRoot "hard-document-pipeline-report.json"
 
+function Publish-EvaluationArtifact {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    if (Test-Path -LiteralPath $Destination) {
+        $sourceHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
+        $destinationHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
+        if ($sourceHash -eq $destinationHash) {
+            return
+        }
+    }
+
+    $destinationDirectory = Split-Path -Parent $Destination
+    New-Item -ItemType Directory -Force -Path $destinationDirectory | Out-Null
+    [System.IO.File]::WriteAllBytes(
+        $Destination,
+        [System.IO.File]::ReadAllBytes($Source)
+    )
+}
+
 python scripts/eval_retrieval.py `
     --dataset data/processed/eval/hard_document_qa.jsonl `
     --auto-ingest-sources `
@@ -67,8 +89,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "Hard-document pipeline verification failed."
 }
 
-Copy-Item -LiteralPath $candidateMetrics -Destination $MetricsOutput -Force
-Copy-Item -LiteralPath $candidateFailures -Destination $FailuresOutput -Force
-Copy-Item -LiteralPath $candidateReport -Destination $ReportOutput -Force
+Publish-EvaluationArtifact -Source $candidateMetrics -Destination $MetricsOutput
+Publish-EvaluationArtifact -Source $candidateFailures -Destination $FailuresOutput
+Publish-EvaluationArtifact -Source $candidateReport -Destination $ReportOutput
 
 Write-Output "HARD DOCUMENT CHECK PASS"

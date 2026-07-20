@@ -3,7 +3,7 @@ import re
 
 def citation_coverage(answer: str) -> dict[str, object]:
     normalized_answer = re.sub(
-        r"([.!?])\s+((?:\[\d+\]\s*)+)",
+        r"([.!?])[ \t]+((?:\[\d+\][ \t]*)+)",
         lambda match: f" {match.group(2).strip()}{match.group(1)} ",
         answer,
     )
@@ -77,6 +77,8 @@ def _is_claim_like(sentence: str) -> bool:
 def _is_structural_line(line: str) -> bool:
     lowered = re.sub(r"\s+", " ", line.strip().lower())
     if not lowered:
+        return True
+    if lowered.startswith("#"):
         return True
     if re.match(r"^q\d+\.", lowered):
         return True

@@ -213,3 +213,16 @@ All OCR phrase, indexing, embedded-diagram extraction, retrieval, citation, answ
 Post-change regression against the existing 40-case academic set also passed `40/40`: MRR `0.934`, Recall@8 `1.000`, expected citation coverage `1.000`, quality pass `1.000`, faithfulness `0.995`, and answerability `1.000`. The run took `310.8s`, confirming immutable-corpus/BM25 setup reuse as a performance priority for Remaining Job 4.
 
 This is a deterministic engineering fixture, not a statistical or arbitrary-document benchmark. Its purpose is to prevent regressions in difficult file handling and generic equation/table reasoning. Independent real-user scans and textbooks remain necessary. Full methodology: [`hard_document_eval.md`](hard_document_eval.md).
+
+## 2026-07-20 Recursive Summary Gate
+
+A selected 2,842-chunk local textbook was summarized through the final all-chunk recursive path:
+
+- `2,608` readable chunks inspected.
+- `723` section groups and `22` chapter/appendix groups.
+- `619` late non-content/index chunks excluded from displayed facts.
+- Citation coverage `1.000`.
+- First response `3.783 s`; cached response `0.191 s`.
+- Chapter 19 and Appendix D retained; a parser-missed Chapter 17 heading was disclosed.
+
+The final strict 40-case regression remained green: MRR `0.934`, Recall@8 `1.000`, expected citation coverage `1.000`, readability `0.985`, faithfulness `0.995`, and answerability `1.000`.

@@ -140,6 +140,15 @@ def load_samples(path: Path) -> list[EvalSample]:
     return samples
 
 
+def write_text_if_changed(path: Path, content: str) -> None:
+    """Avoid replacing tracked benchmark artifacts when the result is unchanged."""
+
+    if path.exists() and path.read_text(encoding="utf-8") == content:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
 def parse_required_concepts(value: object, *, line_no: int) -> list[list[str]]:
     if value in (None, []):
         return []
@@ -679,13 +688,11 @@ async def main_async() -> int:
     output = json.dumps(output_payload, indent=2)
     print(output)
     if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(output + "\n", encoding="utf-8")
+        write_text_if_changed(args.output, output + "\n")
     if args.failures_output:
-        args.failures_output.parent.mkdir(parents=True, exist_ok=True)
-        args.failures_output.write_text(
+        write_text_if_changed(
+            args.failures_output,
             "\n".join(json.dumps(record, ensure_ascii=False) for record in failure_records) + "\n",
-            encoding="utf-8",
         )
     return 0
 

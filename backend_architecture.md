@@ -429,3 +429,13 @@ Invariants:
 - Summary seed selection spans source sections or page groups and stores only original chunk references; it does not create a second vector/index truth source.
 
 Measured final gate: 40 strict offline BM25 queries reached MRR `0.921`, Recall@8 `1.000`, expected citation coverage `1.000`, answer-quality pass `1.000`, faithfulness `0.995`, and answerability correctness `1.000`.
+
+## 2026-07-20 Recursive Summary Path
+
+Whole-document summaries for a selected source no longer depend on top-K retrieval. `QueryService` loads active chunks in stable order and delegates to the pure `recursive_summary` domain module.
+
+The path retains every readable chunk in ordered provenance, filters non-content display noise, builds contiguous section and monotonic chapter/appendix groups, recursively reduces facts, and returns only original chunk/page citations. Front matter is excluded from the overview and a sustained late alphabetical-index region is removed from displayed facts while its filtered count remains in debug hierarchy metadata.
+
+Cache identity is `retrieval mode + profile + RECURSIVE_SUMMARY_VERSION + scope`. Scoped chapter/method summaries use a normalized-query fingerprint and remain on query-focused RAG. This avoids cache collisions, a database migration, and new runtime dependencies.
+
+Detailed architecture and measured latency: [`docs/recursive_summary_architecture.md`](docs/recursive_summary_architecture.md).

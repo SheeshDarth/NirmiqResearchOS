@@ -1,8 +1,8 @@
 # NIRMIQ Academic Intelligence Context
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
-Current checkpoint: MegaSprint Six and Remaining Job 1 are complete. Job 1 passed local, clean-runner, and post-completion council gates; Remaining Job 2 is unlocked. See `## 2026-07-19 Remaining Job 1 - Hard-Document Reliability` near the end of this file.
+Current checkpoint: Remaining Job 2 implementation and local verification are complete; commit/CI/council closure is in progress. Job 3 remains locked until the Job 2 council approves closure.
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
@@ -4062,3 +4062,51 @@ Canonical evidence:
 - `data/processed/eval/hard_document_metrics.json`.
 - `data/processed/eval/hard_document_pipeline_report.json`.
 - `data/processed/eval/hard_document_failures.jsonl` is empty.
+
+## 2026-07-20 Remaining Job 2 - Recursive Document Summarization
+
+Objective:
+
+- Replace representative top-passage summaries with a deterministic selected-document path that inspects all readable chunks and produces a cited chapter/section guide.
+- Keep scoped summaries on query-focused RAG and preserve the public query contract.
+
+Implementation:
+
+- Added `app.domain.recursive_summary`, a dependency-free map/reduce domain module.
+- Loads selected-document chunks in stable order, maps contiguous sections, detects monotonic chapters/appendices, recursively reduces facts, and renders progressive overview/chapter sections.
+- Preserves original chunk/page citations; no second vector/index truth source is created.
+- Filters front matter from the overview and detects sustained late alphabetical-index regions while reporting the filtered count in debug hierarchy metadata.
+- Rejects heading-only, dense index, and code-like fact fragments; repairs common PDF mojibake for displayed text.
+- Discloses missing parsed chapter headings as `heading unavailable` instead of inventing titles.
+- Uses `RECURSIVE_SUMMARY_VERSION` inside cache identity, plus a normalized-query fingerprint for scoped summaries, so whole-document and scoped results cannot collide and renderer changes invalidate naturally.
+- Fixed citation-coverage parsing so Markdown headings and blank lines after anchors are structural rather than uncited claims.
+- Made retrieval/hard-document metric publication idempotent so unchanged successful artifacts do not end with false permission failures.
+
+Measured real-textbook smoke:
+
+- Local indexed source: 2,842 chunks; source PDF remains untracked.
+- Readable chunks inspected: `2,608`.
+- Section groups: `723`; chapter/appendix groups: `22`.
+- Late non-content/index chunks filtered: `619`.
+- Chapter 19 and Appendix D retained; parser-missed Chapter 17 disclosed.
+- Citation coverage: `1.000`.
+- First summary: `3.783 s`; cached repeat: `0.191 s`.
+- No smoke-detected alphabetical-index phrase appeared in the answer.
+
+Verification before council:
+
+- Focused recursive summary/citation/cache tests: `18 passed`.
+- Full backend unit/integration suite: `238 passed`, one third-party deprecation warning.
+- Ruff and Python compile: passed.
+- Next.js production build: passed at `118 kB` first-load JavaScript.
+- Hard-document gate: `9/9`, MRR/Recall@8/citation coverage `1.000`.
+- Strict 40-case BM25-only full-query gate: `40/40`, MRR `0.934`, Recall@8 `1.000`, expected citation coverage `1.000`, readability `0.985`, faithfulness `0.995`, answerability `1.000`.
+
+Tradeoffs and boundaries:
+
+- Deterministic extractive output is less stylistically polished than unconstrained model prose but remains reproducible and source-faithful.
+- Parser-truncated chapter titles remain truncated rather than guessed.
+- A missing heading is represented as a combined numbered range with an explicit warning.
+- Job 3 is not started until commit/push, remote CI, and the required post-job LLM Council are complete.
+
+Canonical architecture: `docs/recursive_summary_architecture.md`.

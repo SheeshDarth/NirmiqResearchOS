@@ -107,6 +107,7 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 - [`docs/overnight_work_plan.md`](docs/overnight_work_plan.md): focused sprint plan for demo reliability, retrieval evaluation, citation selection, UI clarity, and release readiness.
 - [`docs/megasprint_five_plan.md`](docs/megasprint_five_plan.md): release confidence, desktop packaging, privacy recovery, and public proof.
 - [`docs/megasprint_six_plan.md`](docs/megasprint_six_plan.md): query-agnostic evidence obligations, hierarchical summary coverage, and the final 40-case offline reliability result.
+- [`docs/recursive_summary_architecture.md`](docs/recursive_summary_architecture.md): all-chunk document mapping, recursive chapter reduction, cache behavior, and measured long-textbook results.
 - [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md): current reproducible tests, retrieval metrics, offline proof, package result, and honest release boundary.
 - Ascension OS foundation now lives outside this repository at `C:\Users\Siddharth\Documents\Ascension OS` so NIRMIQ Academic Intelligence remains focused on academic document intelligence.
 
@@ -124,7 +125,7 @@ Implemented in the current repository:
 - Local answer feedback capture with `Good` / `Needs work` signals for future retrieval evaluation.
 - Upload PDFs, text, Markdown, and images.
 - Ingest local-path documents from trusted corpus roots.
-- Summarize selected PDFs with citations.
+- Summarize selected PDFs through an all-chunk recursive chapter/section map with original-page citations and content-hash caching.
 - Ask grounded questions against selected sources.
 - Inspect answer-used source passages and page references without exposing ranking metadata by default.
 - Use four workspaces: Research, Chat, Paper Lab, and Exam Lab.
@@ -208,7 +209,7 @@ Latest MegaSprint One reliability update:
 - A deterministic answer planner now identifies the requested subject, answer type, depth, and elements such as examples, comparisons, limitations, or diagram references.
 - Required evidence obligations now describe what a valid answer must prove, and bounded per-obligation BM25 searches protect direct definitions, mechanisms, comparisons, interpretations, procedures, and workflow placement from loose keyword matches.
 - Deterministic fallback synthesis assembles readable query-shaped answers only from obligation-satisfying passages and abstains when required evidence is missing.
-- Selected-document summaries now seed context across document sections or page spans instead of relying only on the first top-ranked passages.
+- Selected-document whole-summary requests now inspect every readable chunk, reduce section/chapter facts recursively, filter sustained late index noise, and cite original pages.
 - Exact source-derived acronym meanings lock query expansion so broad index/application terms cannot pull retrieval away from the requested concept.
 - The local model now receives a query-specific answer contract and is told to connect evidence instead of copying disconnected fragments.
 - Faithfulness handling now removes unsupported claims selectively and uses extractive fallback only when the repaired answer is not coherent.
@@ -224,7 +225,7 @@ Remaining measured debt after MegaSprint Six:
 
 - Convert saved `Needs work` feedback into local eval candidates.
 - Broaden the new generated hard-document gate with independent real scans, noisier notes, additional handwriting styles, equations, tables, diagrams, and textbooks.
-- Add full chapter-level hierarchical summarization; the current implementation selects representative original chunks across the hierarchy but does not recursively summarize every chapter.
+- Expand recursive-summary QA to more real books with malformed or missing heading metadata; parser-truncated titles remain visible rather than guessed.
 - Reduce the roughly two-minute strict offline benchmark runtime by reusing immutable corpus setup.
 - Keep BM25-only fallback fully usable for offline and low-end devices.
 - Track chunk-selection reasons, section candidates, citation coverage, unsupported claims, latency, and memory behavior.

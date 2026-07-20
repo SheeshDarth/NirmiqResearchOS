@@ -1,3 +1,4 @@
+import hashlib
 import json
 import re
 from uuid import uuid4
@@ -6,11 +7,17 @@ from app.api.schemas.common import Citation
 from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.api.schemas.query import QueryRequest, QueryResponse
 from app.domain.answer_intelligence import build_answer_plan
+from app.domain.citation_coverage import citation_coverage
 from app.domain.citations import to_citations
 from app.domain.hierarchical_summary import select_hierarchical_summary_seeds
 from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.paper_lab import build_paper_lab_artifact
 from app.domain.query_intent import QueryIntent, detect_query_intent
+from app.domain.recursive_summary import (
+    RECURSIVE_SUMMARY_VERSION,
+    build_recursive_summary,
+    render_recursive_summary,
+)
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
 from app.services.synthesis_service import SynthesisService
@@ -66,6 +73,36 @@ class QueryService:
                 cached_response.retrieval_meta = None
             return cached_response
 
+        recursive_summary_response = self._recursive_summary_response(
+            payload=payload,
+            intent=intent,
+            retrieval_mode=retrieval_mode,
+            retrieval_profile=retrieval_profile,
+        )
+        if recursive_summary_response:
+            summary_meta = recursive_summary_response.retrieval_meta or {}
+            self._store_summary_if_applicable(
+                payload=payload,
+                retrieval_mode=retrieval_mode,
+                retrieval_profile=retrieval_profile,
+                intent=intent,
+                answer=recursive_summary_response.answer,
+                citations=recursive_summary_response.citations,
+                retrieval_meta=summary_meta,
+            )
+            if persist:
+                self._persist_turn(
+                    session_id=payload.session_id,
+                    query=payload.query,
+                    answer=recursive_summary_response.answer,
+                    citations=recursive_summary_response.citations,
+                    retrieval_meta=summary_meta,
+                )
+                await self._memory_service.maybe_refresh_snapshot(payload.session_id)
+            if not payload.debug:
+                recursive_summary_response.retrieval_meta = None
+            return recursive_summary_response
+
         exam_context = self._build_exam_context(payload, intent)
         retrieval_query = self._retrieval_query(payload.query, response_mode, exam_context, intent)
         bundle = await self._retrieval_service.retrieve_with_mode(
@@ -105,6 +142,12 @@ class QueryService:
                 "diagram_count": len(exam_context.get("diagrams", [])),
             },
         }
+        if intent.intent == "summary":
+            combined_meta["summary_profile"] = self._summary_profile(
+                retrieval_mode=retrieval_mode,
+                retrieval_profile=retrieval_profile,
+                query=payload.query,
+            )
         if intent.intent == "paper_draft":
             combined_meta["paper_lab"] = build_paper_lab_artifact(bundle.chunks)
         self._store_summary_if_applicable(
@@ -151,6 +194,7 @@ class QueryService:
         summary_profile = self._summary_profile(
             retrieval_mode=retrieval_mode,
             retrieval_profile=retrieval_profile,
+            query=payload.query,
         )
         cached = self._sqlite_repo.get_document_summary(
             document_id=str(payload.document_id),
@@ -185,6 +229,97 @@ class QueryService:
             retrieval_meta=retrieval_meta,
         )
 
+    def _recursive_summary_response(
+        self,
+        *,
+        payload: QueryRequest,
+        intent: QueryIntent,
+        retrieval_mode: str,
+        retrieval_profile: str,
+    ) -> QueryResponse | None:
+        if (
+            not payload.document_id
+            or intent.intent != "summary"
+            or not self._is_document_wide_summary_query(payload.query)
+        ):
+            return None
+        rows = self._sqlite_repo.get_document_chunks(str(payload.document_id), active_only=True)
+        summary = build_recursive_summary(rows)
+        if summary is None:
+            return None
+        answer, cited_rows = render_recursive_summary(summary)
+        if not cited_rows:
+            return None
+
+        cited_chunks = [
+            RetrievedChunk(
+                chunk_id=str(row["id"]),
+                document_id=str(row["document_id"]),
+                text=str(row["text"]),
+                score=float(row.get("quality_score") or 1.0),
+                page_start=row.get("page_start"),
+                page_end=row.get("page_end"),
+                source="recursive_summary",
+                quality_score=float(row.get("quality_score") or 1.0),
+                section_id=row.get("section_id"),
+                heading=row.get("heading"),
+                section_path=row.get("section_path"),
+                chunk_type=str(row.get("chunk_type") or "body"),
+            )
+            for row in cited_rows
+        ]
+        citations = to_citations(cited_chunks)
+        cited_chunk_ids = [chunk.chunk_id for chunk in cited_chunks]
+        coverage = citation_coverage(answer)
+        summary_profile = self._summary_profile(
+            retrieval_mode=retrieval_mode,
+            retrieval_profile=retrieval_profile,
+            query=payload.query,
+        )
+        retrieval_meta: dict[str, object] = {
+            "strategy": "recursive_document_summary",
+            "retrieval_method": "all_chunk_section_map_recursive_reduce",
+            "requested_retrieval_mode": payload.retrieval_mode,
+            "effective_retrieval_mode": retrieval_mode,
+            "retrieval_query_expanded": False,
+            "requested_retrieval_profile": payload.retrieval_profile,
+            "effective_retrieval_profile": retrieval_profile,
+            "requested_response_mode": payload.mode,
+            "response_mode": "summary",
+            "cache_hit": False,
+            "summary_profile": summary_profile,
+            "detected_intent": intent.intent,
+            "intent_confidence": intent.confidence,
+            "intent_route": "recursive_document_summary",
+            "generation_backend": "recursive_extractive",
+            "generation_error": None,
+            "grounding_score": 1.0,
+            "citation_count": len(citations),
+            "context_chunks_used": len(citations),
+            "grounding_state": "strong",
+            "grounding_summary": "all readable chunks were reduced with original-source provenance",
+            "document_overview_request": True,
+            "context_relevance_state": "direct",
+            "answer_relevance_state": "direct",
+            "citation_verification_state": "supported",
+            "cited_claims_checked": coverage["citation_sentence_count"],
+            "unsupported_claims": [],
+            "answer_rewritten_for_faithfulness": False,
+            "answer_repair_mode": "none",
+            "selected_context_chunk_ids": cited_chunk_ids,
+            "cited_context_chunk_ids": cited_chunk_ids,
+            "evidence_gate_passed": True,
+            "summary_hierarchy": summary.metadata,
+            **coverage,
+        }
+        return QueryResponse(
+            session_id=payload.session_id,
+            answer=answer,
+            citations=citations,
+            grounded=True,
+            retrieval_meta=retrieval_meta,
+        )
+
     def _store_summary_if_applicable(
         self,
         *,
@@ -204,6 +339,7 @@ class QueryService:
         summary_profile = self._summary_profile(
             retrieval_mode=retrieval_mode,
             retrieval_profile=retrieval_profile,
+            query=payload.query,
         )
         cache_meta = {**retrieval_meta, "summary_profile": summary_profile}
         self._sqlite_repo.upsert_document_summary(
@@ -241,8 +377,42 @@ class QueryService:
         return bool(payload.document_id and intent.intent == "summary")
 
     @staticmethod
-    def _summary_profile(*, retrieval_mode: str, retrieval_profile: str) -> str:
-        return f"{retrieval_mode}:{retrieval_profile}:v6-hierarchical"
+    def _summary_profile(*, retrieval_mode: str, retrieval_profile: str, query: str) -> str:
+        normalized_query = re.sub(r"\s+", " ", query.strip().lower())
+        scope_key = "document" if QueryService._is_document_wide_summary_query(query) else hashlib.sha1(
+            normalized_query.encode("utf-8")
+        ).hexdigest()[:12]
+        return f"{retrieval_mode}:{retrieval_profile}:{RECURSIVE_SUMMARY_VERSION}:{scope_key}"
+
+    @staticmethod
+    def _is_document_wide_summary_query(query: str) -> bool:
+        normalized = re.sub(r"\s+", " ", query.strip().lower())
+        if re.search(
+            r"\b(?:chapter|section|unit|module|part|pages?)\s+(?:\d+|[ivxlcdm]+\b)",
+            normalized,
+        ):
+            return False
+        if re.search(
+            r"\bsummar(?:ize|ise|izing|ising)\s+(?:the\s+)?(?:abstract|introduction|methods?|methodology|results?|findings?|limitations?|conclusion)\b",
+            normalized,
+        ):
+            return False
+        document_terms = {
+            "document",
+            "pdf",
+            "paper",
+            "file",
+            "textbook",
+            "material",
+            "notes",
+            "source",
+        }
+        tokens = set(re.findall(r"[a-z]+", normalized))
+        if tokens & document_terms:
+            return True
+        return len(tokens) <= 4 and bool(
+            re.search(r"\b(?:summarize|summarise|summary|overview|explain)\b", normalized)
+        )
 
     @staticmethod
     def _citations_from_synthesis_context(

@@ -556,3 +556,27 @@ Measured result:
 
 - 40 strict offline BM25 full queries: MRR `0.868`, Recall@8 `0.921`, expected citation coverage `0.921`, answer-quality pass `0.825`, faithfulness `0.985`, answerability correctness `1.000`.
 - Remaining problems are preserved in `data/processed/eval/real_world_answer_quality_failures.jsonl`; the current sprint passed its gate but did not eliminate arbitrary-query risk.
+
+## 2026-07-20 Resolved: Long Summaries Used Only Retrieved Passages
+
+Symptom:
+
+- A whole-document summary could report a few top-ranked passages while omitting most chapters.
+- Early recursive-summary prototypes overselected front matter, alphabetical-index phrases, code fragments, and false headings such as sentences beginning with `Chapter`.
+
+Root causes:
+
+- The old path selected at most one representative chunk per hierarchy group before synthesis.
+- Heading heuristics accepted references as structure and discarded valid short chapter-title chunks.
+- Whole-document and scoped summaries needed stronger cache isolation.
+
+Resolution:
+
+- Inspect all readable chunks in stable order, build section/chapter maps, and reduce them recursively.
+- Require monotonic structured chapter/appendix boundaries and preserve short structural headings.
+- Filter front matter and sustained late index noise without hiding the filtered count.
+- Suppress heading-only, dense index, and code-like facts while preserving equations and original provenance.
+- Embed the summarizer version and query scope in the summary cache profile.
+- Disclose parser-missed chapter headings instead of fabricating titles.
+
+Measured result: a local 2,842-chunk textbook produced a 22-group cited guide from 2,608 readable chunks in `3.783 s`, then `0.191 s` from cache, with citation coverage `1.000`.

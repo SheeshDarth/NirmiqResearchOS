@@ -347,3 +347,19 @@ Validation:
 Next-data requirement:
 
 - Do not optimize further against only the current 40 labels. Expand with unseen textbooks, scans, handwriting, tables, equations, diagrams, and natural user feedback before changing retrieval thresholds.
+
+## 2026-07-20 Recursive Summary Requirements
+
+Requirements satisfied:
+
+- A selected-document whole summary inspects all readable active chunks in deterministic document order.
+- Bounded section/chapter map-reduce retains original chunk/page provenance.
+- Whole-document and scoped summary cache entries cannot collide.
+- Cache identity changes with the summarizer version and document content hash.
+- Front matter and sustained late alphabetical-index noise cannot dominate displayed facts.
+- Missing parsed chapter headings are disclosed rather than invented.
+- Summary claims carry paragraph-level citations with measured coverage.
+- The path works without Ollama, Chroma, embeddings, reranking, cloud APIs, agents, or graph databases.
+- The public query contract and metadata-hidden normal UI remain unchanged.
+
+Validation: `238` backend tests, clean Ruff/compile, production web build, `9/9` hard-document gate, `40/40` strict offline answer-quality gate, and a 2,608-readable-chunk real-textbook smoke with `1.000` citation coverage.

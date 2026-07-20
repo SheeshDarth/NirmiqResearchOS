@@ -814,3 +814,16 @@ Interpretation:
 - Full-query MRR improved from the prior `0.882` while preserving complete expected citation coverage on the current seed.
 - BM25 remains the strongest first-rank local backbone on this dataset.
 - These results validate the architectural correction on a small seed; they do not establish commercial production accuracy.
+
+## 2026-07-20 Recursive Whole-Document Summary Closure
+
+The previous hierarchy-aware seed path still summarized a small retrieved subset. Remaining Job 2 replaces that behavior for selected-document whole summaries with deterministic all-chunk section mapping and recursive chapter reduction.
+
+Measured proof:
+
+- Real textbook: 2,608 readable chunks, 723 section groups, 22 chapter/appendix groups.
+- First response: `3.783 s`; cache hit: `0.191 s`.
+- Paragraph citation coverage: `1.000`.
+- Strict offline regression: `40/40`, MRR `0.934`, Recall@8 `1.000`, expected citation coverage `1.000`, readability `0.985`, faithfulness `0.995`.
+
+Known boundary: PDF heading extraction can truncate titles or miss a heading. The summarizer exposes a missing chapter-number range as `heading unavailable` and never invents a title. See [`recursive_summary_architecture.md`](recursive_summary_architecture.md).
