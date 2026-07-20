@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -140,6 +141,81 @@ def test_ingest_and_query_roundtrip(tmp_path: Path) -> None:
         assert cached_summary_body["answer"] == summary_body["answer"]
         assert cached_summary_body["retrieval_meta"]["cache_hit"] is True
         assert cached_summary_body["retrieval_meta"]["intent_route"] == "summary_cache_hit"
+
+        document_row = app.state.container.sqlite_repo.get_document_by_id(document_id)
+        assert document_row is not None
+        app.state.container.sqlite_repo.upsert_document_summary(
+            summary_id="malformed-summary-cache",
+            document_id=document_id,
+            content_hash=str(document_row["content_hash"]),
+            summary_profile=summary_body["retrieval_meta"]["summary_profile"],
+            answer="This corrupted cache entry must never be returned.",
+            citations_json="{malformed",
+            retrieval_meta_json="{}",
+        )
+        malformed_cache_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Explain the document",
+                "document_id": document_id,
+                "mode": "summary",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert malformed_cache_response.status_code == 200
+        assert malformed_cache_response.json()["retrieval_meta"]["cache_hit"] is False
+        assert "corrupted cache entry" not in malformed_cache_response.json()["answer"]
+
+        refreshed_document_row = app.state.container.sqlite_repo.get_document_by_id(document_id)
+        assert refreshed_document_row is not None
+        app.state.container.sqlite_repo.upsert_document_summary(
+            summary_id="incomplete-summary-metadata",
+            document_id=document_id,
+            content_hash=str(refreshed_document_row["content_hash"]),
+            summary_profile=summary_body["retrieval_meta"]["summary_profile"],
+            answer=summary_body["answer"],
+            citations_json=json.dumps(summary_body["citations"]),
+            retrieval_meta_json=json.dumps({}),
+        )
+        incomplete_metadata_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Explain the document",
+                "document_id": document_id,
+                "mode": "summary",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert incomplete_metadata_response.status_code == 200
+        assert incomplete_metadata_response.json()["retrieval_meta"]["cache_hit"] is False
+
+        same_content_reindex_response = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Sample",
+                "mime_type": "text/plain",
+                "force_reindex": True,
+            },
+        )
+        assert same_content_reindex_response.status_code == 200
+        same_content_summary_response = client.post(
+            "/query",
+            json={
+                "session_id": "integration-session",
+                "query": "Explain the document",
+                "document_id": document_id,
+                "mode": "summary",
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+        assert same_content_summary_response.status_code == 200
+        assert same_content_summary_response.json()["retrieval_meta"]["cache_hit"] is False
 
         sample.write_text(
             (

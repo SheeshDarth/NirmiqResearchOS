@@ -1,12 +1,36 @@
 # Problems Faced And RAG Reliability Roadmap
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 This is the canonical engineering problem log for NIRMIQ ResearchOS. It documents what has failed, what is still failing, what may fail later, and how the next RAG Reliability Phase should resolve the core retrieval and hallucination issues.
 
 The main conclusion is simple:
 
 > The model hallucinates mostly because retrieval is not yet precise enough on large academic documents. If the right evidence does not enter context, the local model is forced to guess.
+
+## 2026-07-20 Remaining Job 3 Reliability Closure
+
+Resolved for the recursive selected-document summary path:
+
+- Adversarial structure fixtures now challenge contents/index noise, duplicate OCR
+  headings, mojibake, false chapter references, equations, tables, diagrams, and
+  limitations.
+- Citation presence is no longer the only summary trust check. Each cited claim sentence
+  is compared with its cited excerpt and invalid anchors are counted.
+- Cache hits validate the current recursive-summary version and citation support before
+  returning cached content.
+- Determinism, wall-clock latency, and Python allocation peak are now part of a local
+  repeatable gate.
+
+Measured result: `3/3` adversarial cases passed with citation-support coverage `1.000`,
+zero invalid anchors, zero unsupported cited sentences, and deterministic output. This
+does not prove semantic entailment or arbitrary-PDF accuracy; it closes the specific
+Job 3 regression surface and moves the next risk to independent real-user documents.
+
+Final Job 3 closure added selected-document scope validation for cache hits. This prevents
+an active chunk from another document from being accepted merely because its text and
+cache metadata look valid. The final council unanimously approved closure after this
+fix, and Job 4 is now the next sprint.
 
 ## 2026-07-19 MegaSprint Six Reliability Closure
 

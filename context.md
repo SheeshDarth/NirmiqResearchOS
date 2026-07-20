@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-20
 
-Current checkpoint: Remaining Job 2 is complete. Job 3 is unlocked and should start from `main` after the closure-doc commit.
+Current checkpoint: Remaining Job 3 is complete and verified. Job 4 is next, but must start only after the Job 3 closure commit is pushed.
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
@@ -4130,3 +4130,63 @@ Post-job LLM Council:
 - Formal status: `COMPLETE`.
 
 Canonical architecture: `docs/recursive_summary_architecture.md`.
+
+## 2026-07-20 Remaining Job 3 - Summary Reliability Gate
+
+Objective:
+
+- Pressure-test recursive summaries against hostile document structure.
+- Verify sentence-level citation support, deterministic output, cache-version discipline,
+  and bounded local runtime behavior without adding a model or cloud dependency.
+
+Implementation:
+
+- Added `app.domain.summary_reliability` with a conservative lexical
+  sentence-to-citation audit, cache validation, and stdlib-only wall-time/allocation
+  measurement.
+- Added three adversarial offline fixtures covering front/back matter and index noise,
+  duplicate OCR headings and mojibake, false chapter references, equations, tables,
+  diagrams, and limitations.
+- Added `npm.cmd run eval:summary-reliability`, which evaluates in a bounded temp folder
+  and publishes a tracked JSON evidence artifact.
+- Added the gate to GitHub Actions and retained its evidence artifact for 30 days.
+- Added cache-hit assertions to ensure cached summaries carry current hierarchy and
+  citation-support validation.
+
+Measured result:
+
+- `3/3` adversarial cases passed.
+- Deterministic output: `3/3`.
+- Citation-support coverage: `1.000`.
+- Invalid citation anchors: `0`; unsupported cited sentences: `0`.
+- Synthetic median latency: roughly `3-7 ms` across local runs; peak Python allocation:
+  `9.7-10.5 KiB`.
+- Focused summary-reliability tests: `5 passed`; summary/cache integration path: `10 passed`.
+
+Verification and boundaries:
+
+- The Job 3 report is [`docs/summary_reliability.md`](docs/summary_reliability.md).
+- Lexical citation support is a traceability guard, not semantic entailment.
+- Job 2's real-textbook result remains the relevant large-document baseline:
+  first summary `3.783 s`, cached repeat `0.191 s`.
+- The normal UI remains unchanged and raw diagnostics remain debug-only.
+- Job 4 inherits the need for real-user QA on additional long, OCR-heavy, visual, and
+  low-memory documents.
+
+Formal status: `COMPLETE`; Job 4 is unlocked after this closure is committed.
+
+Final council sign-off:
+
+- A first council round found cache provenance and metadata gaps; those findings were
+  implemented rather than waived.
+- The final five-advisor council unanimously approved closing Job 3 and unlocking Job 4
+  after selected-document scope validation was added.
+- The closure suite completed with `246 passed` and one accepted third-party timezone
+  deprecation warning.
+- Ruff, isolated Python compilation, and the exact `npm.cmd run eval:summary-reliability`
+  command passed. The evaluator remained `3/3`, citation-support coverage `1.000`, with
+  zero invalid or unsupported citations and all source/noise/resource thresholds green.
+- The fresh-output Next build passed at `118 kB` first-load JavaScript. Its temporary
+  output folder and generated tsconfig entry were removed after verification.
+- Job 4 inherits cache-integrity tests, evaluator thresholds, and the documented future
+  risks of semantic entailment and concurrent SQLite mutation.

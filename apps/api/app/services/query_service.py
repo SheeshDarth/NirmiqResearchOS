@@ -3,6 +3,8 @@ import json
 import re
 from uuid import uuid4
 
+from pydantic import ValidationError
+
 from app.api.schemas.common import Citation
 from app.adapters.storage.sqlite_repo import SQLiteRepo
 from app.api.schemas.query import QueryRequest, QueryResponse
@@ -17,6 +19,11 @@ from app.domain.recursive_summary import (
     RECURSIVE_SUMMARY_VERSION,
     build_recursive_summary,
     render_recursive_summary,
+)
+from app.domain.summary_reliability import (
+    audit_citation_support,
+    validate_cached_summary,
+    validate_persisted_summary_meta,
 )
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
@@ -148,6 +155,10 @@ class QueryService:
                 retrieval_profile=retrieval_profile,
                 query=payload.query,
             )
+            combined_meta["citation_support"] = audit_citation_support(
+                answer,
+                self._citation_source_rows(bundle, citations, synthesis_meta),
+            )
         if intent.intent == "paper_draft":
             combined_meta["paper_lab"] = build_paper_lab_artifact(bundle.chunks)
         self._store_summary_if_applicable(
@@ -203,11 +214,18 @@ class QueryService:
         )
         if not cached:
             return None
-        citations = [
-            Citation.model_validate(item)
-            for item in json.loads(str(cached["citations_json"]) or "[]")
-        ]
-        retrieval_meta = json.loads(str(cached["retrieval_meta_json"]) or "{}")
+        try:
+            raw_citations = json.loads(str(cached["citations_json"]) or "[]")
+            raw_retrieval_meta = json.loads(str(cached["retrieval_meta_json"]) or "{}")
+            if not isinstance(raw_citations, list) or not isinstance(raw_retrieval_meta, dict):
+                return None
+            persisted_meta_validation = validate_persisted_summary_meta(raw_retrieval_meta)
+            if not persisted_meta_validation["valid"]:
+                return None
+            citations = [Citation.model_validate(item) for item in raw_citations]
+            retrieval_meta = raw_retrieval_meta
+        except (json.JSONDecodeError, TypeError, ValueError, KeyError, ValidationError):
+            return None
         retrieval_meta.update(
             {
                 "cache_hit": True,
@@ -221,6 +239,22 @@ class QueryService:
                 "summary_profile": summary_profile,
             }
         )
+        cache_validation = validate_cached_summary(
+            str(cached["answer"]),
+            [citation.model_dump() for citation in citations],
+            retrieval_meta,
+            active_rows=self._sqlite_repo.get_document_chunks(
+                str(payload.document_id), active_only=True
+            ),
+            document_id=str(payload.document_id),
+        )
+        if not cache_validation["cache_consistent"]:
+            return None
+        retrieval_meta["citation_support"] = cache_validation["citation_support"]
+        retrieval_meta["cache_validation"] = {
+            "cache_consistent": cache_validation["cache_consistent"],
+            "issues": cache_validation["issues"],
+        }
         return QueryResponse(
             session_id=payload.session_id,
             answer=str(cached["answer"]),
@@ -271,6 +305,7 @@ class QueryService:
         citations = to_citations(cited_chunks)
         cited_chunk_ids = [chunk.chunk_id for chunk in cited_chunks]
         coverage = citation_coverage(answer)
+        citation_support = audit_citation_support(answer, cited_rows)
         summary_profile = self._summary_profile(
             retrieval_mode=retrieval_mode,
             retrieval_profile=retrieval_profile,
@@ -301,22 +336,25 @@ class QueryService:
             "document_overview_request": True,
             "context_relevance_state": "direct",
             "answer_relevance_state": "direct",
-            "citation_verification_state": "supported",
+            "citation_verification_state": (
+                "supported" if citation_support["cache_safe"] else "review"
+            ),
             "cited_claims_checked": coverage["citation_sentence_count"],
             "unsupported_claims": [],
             "answer_rewritten_for_faithfulness": False,
             "answer_repair_mode": "none",
             "selected_context_chunk_ids": cited_chunk_ids,
             "cited_context_chunk_ids": cited_chunk_ids,
-            "evidence_gate_passed": True,
+            "evidence_gate_passed": bool(citation_support["cache_safe"]),
             "summary_hierarchy": summary.metadata,
+            "citation_support": citation_support,
             **coverage,
         }
         return QueryResponse(
             session_id=payload.session_id,
             answer=answer,
             citations=citations,
-            grounded=True,
+            grounded=bool(citation_support["cache_safe"]),
             retrieval_meta=retrieval_meta,
         )
 
@@ -442,6 +480,40 @@ class QueryService:
             if chunk_id in chunks_by_id
         ]
         return to_citations(cited_chunks)
+
+    @staticmethod
+    def _citation_source_rows(
+        bundle: RetrievalBundle,
+        citations: list[Citation],
+        synthesis_meta: dict[str, object],
+    ) -> list[dict[str, object]]:
+        chunks_by_id = {chunk.chunk_id: chunk for chunk in bundle.chunks}
+        anchor_map = synthesis_meta.get("citation_anchor_chunk_map")
+        if isinstance(anchor_map, list):
+            mapped_chunks: dict[int, str] = {}
+            for item in anchor_map:
+                if not isinstance(item, dict):
+                    continue
+                try:
+                    anchor = int(item.get("anchor"))
+                except (TypeError, ValueError):
+                    continue
+                chunk_id = str(item.get("chunk_id") or "")
+                if anchor > 0 and chunk_id in chunks_by_id:
+                    mapped_chunks[anchor] = chunk_id
+            if mapped_chunks:
+                return [
+                    {"id": chunks_by_id[chunk_id].chunk_id, "text": chunks_by_id[chunk_id].text}
+                    for _, chunk_id in sorted(mapped_chunks.items())
+                ]
+        return [
+            {
+                "id": citation.chunk_id,
+                "text": chunks_by_id[citation.chunk_id].text,
+            }
+            for citation in citations
+            if citation.chunk_id in chunks_by_id
+        ]
 
     def _build_exam_context(self, payload: QueryRequest, intent: QueryIntent) -> dict[str, object]:
         if not payload.document_id:

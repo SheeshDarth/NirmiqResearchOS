@@ -53,6 +53,18 @@ jobs:
       - name: Hard-document offline evaluation
         run: npm.cmd run eval:hard-docs
 
+      - name: Recursive-summary reliability evaluation
+        run: npm.cmd run eval:summary-reliability
+
+      - name: Retain recursive-summary evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recursive-summary-evidence-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: data/processed/eval/recursive_summary_reliability_metrics.json
+
       - name: Retain hard-document evidence
         if: always()
         uses: actions/upload-artifact@v4

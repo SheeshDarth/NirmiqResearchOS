@@ -76,4 +76,4 @@ The preview retained Chapter 19 and Appendix D, disclosed the parser-missed Chap
 - Watch summary latency, readable-chunk count, filtered-chunk count, cache-hit rate, and citation validation signals when testing larger or malformed documents.
 - If a future summary change alters filtering, grouping, reduction, or renderer semantics, bump `RECURSIVE_SUMMARY_VERSION`.
 - If summaries regress after release, prefer a version bump or summary-cache purge before changing public APIs.
-- Job 3 should add adversarial document structures and sentence-level citation-support audits rather than retuning against only the current textbook smoke.
+- Job 3 is now closed by [`summary_reliability.md`](summary_reliability.md), which adds adversarial document structures, sentence-level citation-support audits, cache-version validation, and bounded local runtime checks rather than retuning against only the current textbook smoke.

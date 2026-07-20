@@ -1,12 +1,28 @@
 # NIRMIQ Technical Requirements Document
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 ## Project
 
 NIRMIQ Academic Intelligence is an offline-first academic workspace for grounded document research, general chat, paper drafting, and exam preparation. The implementation target is a solo-developer MVP that runs well on a local laptop with RTX 4050-class constraints.
 
 It belongs to the broader NIRMIQ ecosystem, but this repository must remain independently runnable and useful without NIRMIQ OS, Mirror, Intelligence Engine, Agent System, or Echo.
+
+## Summary Reliability Requirements
+
+- The selected-document recursive summary path must be evaluated against adversarial
+  structure fixtures without Ollama, vectors, reranking, or cloud services.
+- A developer-only citation audit must verify that each cited answer sentence has
+  meaningful lexical support in its cited excerpt and must report invalid anchors.
+- Cached summaries must validate the current summary algorithm version and citation
+  wiring before returning a cache hit.
+- The reliability gate must report deterministic repeatability, wall-clock latency, and
+  bounded Python allocation measurements while preserving the public `POST /query`
+  request and response shapes.
+- Failure of the reliability gate must fail CI; these signals are not shown in the
+  normal chat interface.
+- Cached citations and hierarchy source IDs must belong to the requested selected
+  document's active index; active membership across the corpus is not sufficient.
 
 ## Runtime Requirements
 

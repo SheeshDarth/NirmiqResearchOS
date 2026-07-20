@@ -571,6 +571,7 @@ Details:
 - [Benchmark report](docs/benchmark_report.md)
 - [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
 - [Engineering problem log and RAG Reliability roadmap](problems_faced.md)
+- [Recursive summary reliability gate](docs/summary_reliability.md)
 
 Real-world seed eval now also exists for actual local academic material:
 

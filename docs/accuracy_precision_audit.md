@@ -18,6 +18,18 @@ See [`megasprint_six_plan.md`](megasprint_six_plan.md) for the latest query-agno
 
 See [`hard_document_eval.md`](hard_document_eval.md) for the generated OCR, handwriting, equation, table, and diagram reliability gate.
 
+See [`summary_reliability.md`](summary_reliability.md) for the post-recursive-summary
+adversarial structure, sentence-level citation-support, cache validation, and local
+runtime gate.
+
+## 2026-07-20 Remaining Job 3 Closure Audit
+
+The recursive summary path passed three adversarial structure cases with deterministic
+output, citation-support coverage `1.000`, zero invalid anchors, and zero unsupported
+cited sentences. The gate also records synthetic latency and Python allocation peaks.
+This is a traceability and regression guard, not a semantic faithfulness proof; broader
+real-user document evaluation remains the next evidence-expansion requirement.
+
 ## 2026-07-19 Hard-Document Reliability Audit
 
 Decision:

@@ -59,6 +59,7 @@ def test_recursive_document_summary_and_scoped_cache_are_isolated(tmp_path: Path
         assert hierarchy["sections_considered"] == 4
         assert hierarchy["chapter_groups"] == 2
         assert first_body["retrieval_meta"]["citation_coverage"] == 1.0
+        assert first_body["retrieval_meta"]["citation_support"]["cache_safe"] is True
         assert first_body["citations"]
 
         cached = client.post("/query", json=request)
@@ -66,6 +67,7 @@ def test_recursive_document_summary_and_scoped_cache_are_isolated(tmp_path: Path
         cached_body = cached.json()
         assert cached_body["answer"] == first_body["answer"]
         assert cached_body["retrieval_meta"]["cache_hit"] is True
+        assert cached_body["retrieval_meta"]["cache_validation"]["cache_consistent"] is True
 
         scoped_request = {
             **request,
