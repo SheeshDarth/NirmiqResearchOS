@@ -827,3 +827,5 @@ Measured proof:
 - Strict offline regression: `40/40`, MRR `0.934`, Recall@8 `1.000`, expected citation coverage `1.000`, readability `0.985`, faithfulness `0.995`.
 
 Known boundary: PDF heading extraction can truncate titles or miss a heading. The summarizer exposes a missing chapter-number range as `heading unavailable` and never invents a title. See [`recursive_summary_architecture.md`](recursive_summary_architecture.md).
+
+Closure evidence: commit `5d685d0` passed GitHub Actions run `29721553535` after the artifact publisher was hardened for Windows runners without `Get-FileHash`. The post-job council approved closure, with the caveat that citation coverage is traceability rather than a complete semantic entailment proof.

@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-20
 
-Current checkpoint: Remaining Job 2 implementation and local verification are complete; commit/CI/council closure is in progress. Job 3 remains locked until the Job 2 council approves closure.
+Current checkpoint: Remaining Job 2 is complete. Job 3 is unlocked and should start from `main` after the closure-doc commit.
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
@@ -4103,11 +4103,30 @@ Verification before council:
 - Hard-document gate: `9/9`, MRR/Recall@8/citation coverage `1.000`.
 - Strict 40-case BM25-only full-query gate: `40/40`, MRR `0.934`, Recall@8 `1.000`, expected citation coverage `1.000`, readability `0.985`, faithfulness `0.995`, answerability `1.000`.
 
+Remote closure evidence:
+
+- Implementation commit: `fa1446e95dbc016772525b054b1e28114e81423c` - `Add recursive document summarization`.
+- Portability fix commit: `5d685d000d3c3de59c91ef085c1396072ac68412` - `Harden evaluation artifact publishing`.
+- Candidate CI run `29721272286` passed the quality gates but failed while publishing unchanged artifacts because `Get-FileHash` was unavailable in that Windows PowerShell environment.
+- Closure CI run `29721553535` passed on `main` for commit `5d685d0`.
+- Closure evidence URL: `https://github.com/SheeshDarth/NirmiqResearchOS/actions/runs/29721553535`.
+
 Tradeoffs and boundaries:
 
 - Deterministic extractive output is less stylistically polished than unconstrained model prose but remains reproducible and source-faithful.
 - Parser-truncated chapter titles remain truncated rather than guessed.
 - A missing heading is represented as a combined numbered range with an explicit warning.
-- Job 3 is not started until commit/push, remote CI, and the required post-job LLM Council are complete.
+- Citation coverage proves paragraphs are anchored; it is not a complete semantic proof that every compressed nuance is preserved.
+- Front/back matter filtering may over-filter unusual documents whose glossary, appendix, or index-like region contains useful concepts.
+- Very large, OCR-heavy, non-monotonic, legal/medical, supplement-heavy, or visually formatted PDFs need more adversarial coverage in later jobs.
+- Scoped chapter/method summaries remain query-focused RAG by design and do not yet have the same all-chunk recursive guarantee.
+- Future summary logic changes must bump `RECURSIVE_SUMMARY_VERSION`; stale summary concerns should be handled by version bump or cache purge rather than silent reuse.
+
+Post-job LLM Council:
+
+- All five advisors approved closing Remaining Job 2 and unlocking Job 3.
+- Peer review agreed that the missing closure artifact must record exact commit, CI run, known limits, cache-version assumptions, and rollback/debug expectations.
+- Job 3 handoff: treat recursive whole-document summarization as a stable baseline, but include adversarial document structure, citation-support checks, latency/memory monitoring, and cache-hit anomaly checks.
+- Formal status: `COMPLETE`.
 
 Canonical architecture: `docs/recursive_summary_architecture.md`.

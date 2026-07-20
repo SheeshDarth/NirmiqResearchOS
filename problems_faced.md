@@ -582,3 +582,13 @@ Resolution:
 Measured result: a local 2,842-chunk textbook produced a 22-group cited guide from 2,608 readable chunks in `3.783 s`, then `0.191 s` from cache, with citation coverage `1.000`.
 
 CI portability note: the first Job 2 candidate run passed the hard-document quality report but failed while publishing unchanged artifacts because `Get-FileHash` was unavailable in that Windows PowerShell environment. The publisher now compares byte arrays through .NET and has no cmdlet/module dependency.
+
+Closure note: commit `5d685d0` passed GitHub Actions run `29721553535`, and the post-job LLM Council approved closing Remaining Job 2.
+
+Risks carried forward:
+
+- Citation coverage confirms anchors, not complete semantic entailment.
+- Recursive reduction may compress away caveats, minority claims, formulas, or contradictions in hostile documents.
+- Front/back matter filtering can over-filter legitimate glossary, appendix, or index-like content.
+- Scoped chapter summaries still use query-focused RAG rather than all-chunk recursive summarization.
+- Job 3 should add adversarial document fixtures, sentence-level citation audits, summary latency/memory checks, cache-hit anomaly checks, and a clear cache-version bump/purge path.

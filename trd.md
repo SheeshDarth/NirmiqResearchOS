@@ -363,3 +363,5 @@ Requirements satisfied:
 - The public query contract and metadata-hidden normal UI remain unchanged.
 
 Validation: `238` backend tests, clean Ruff/compile, production web build, `9/9` hard-document gate, `40/40` strict offline answer-quality gate, and a 2,608-readable-chunk real-textbook smoke with `1.000` citation coverage.
+
+Closure: commit `5d685d0` passed GitHub Actions run `29721553535`; Remaining Job 2 is complete. Job 3 inherits the requirement to monitor summary latency, filtered-chunk counts, cache-version discipline, citation-support quality, and adversarial document behavior without changing the public query contract.
