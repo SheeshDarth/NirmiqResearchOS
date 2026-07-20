@@ -4173,7 +4173,8 @@ Verification and boundaries:
 - Job 4 inherits the need for real-user QA on additional long, OCR-heavy, visual, and
   low-memory documents.
 
-Formal status: `COMPLETE`; Job 4 is unlocked after this closure is committed.
+Formal status: `COMPLETE`; closure commit `7fd3bee` (`Close remaining job 3 reliability gate`)
+is pushed to `origin/main`; Job 4 is unlocked.
 
 Final council sign-off:
 
