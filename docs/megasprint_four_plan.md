@@ -64,7 +64,9 @@ Verification:
 
 ### Block 2: Representative Baseline
 
-Status: complete on the representative Windows/RTX 4050 path; broader query-set and Linux measurements remain in Block 4.
+Status: complete on the representative Windows/RTX 4050 path; Linux browser-mode
+validation is now tracked by Job 5, while broader low-end hardware measurements remain
+future work.
 
 - Record cold startup and warm readiness.
 - Measure BM25 fallback and local Ollama generation separately.
@@ -115,13 +117,14 @@ Status: implementation complete; representative concurrency tests are green.
 
 ### Block 4: Cross-Platform Hardening
 
-Status: Windows CPU-offline path complete; Linux script validation complete; real Linux-host smoke remains release follow-up.
+Status: Windows CPU-offline path complete; Linux browser-mode CI smoke added in Job 5.
 
 - A separate `cpu_offline` API returned a grounded, two-citation answer in approximately `70 ms` using BM25 and deterministic synthesis.
 - Readiness reported low-memory mode, no cloud requirement, and no Ollama generation dependency.
-- Linux start/stop scripts pass Bash syntax validation on Windows.
+- Linux start/stop scripts exist for browser-preview mode.
+- Job 5 adds an Ubuntu CI smoke that builds the web app on Linux, starts the API, ingests a local markdown source, and verifies a grounded BM25/citation answer with optional model services disabled.
 - Existing tests cover path, SQLite, Chroma-optional, OCR-adapter, and cleanup behavior; desktop smoke covers Windows shutdown cleanup.
-- Do not claim a full Linux runtime pass until the app is exercised on an actual Linux host or Linux CI runner.
+- Do not claim native Linux desktop packaging until it is packaged and exercised on an actual Linux host.
 
 ### Block 5: Release Enforcement
 

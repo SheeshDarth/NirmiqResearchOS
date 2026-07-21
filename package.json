@@ -8,6 +8,7 @@
     "start:golden": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_local.ps1 -GoldenDemo",
     "start:linux": "bash scripts/start_local.sh",
     "stop:linux": "bash scripts/stop_local.sh",
+    "smoke:linux": "bash scripts/linux_ci_smoke.sh",
     "doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release_doctor.ps1",
     "diagnostics": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export_diagnostics.ps1",
     "desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_desktop.ps1",

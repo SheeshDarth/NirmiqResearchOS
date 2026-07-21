@@ -4241,3 +4241,44 @@ Tradeoffs and remaining Job 4 work:
   candidate scoring rather than BM25 tokenization alone.
 - Next Job 4 blocks should add advisory performance budgets and stage-level tracing
   before attempting deeper scoring reuse.
+
+## 2026-07-21 Remaining Job 5 - Linux Browser-Mode Validation
+
+Objective:
+
+- Validate the Linux/low-end path without pretending native Linux desktop packaging is
+  already solved.
+- Prove the supported path: browser-preview mode, FastAPI loopback API, Next.js Linux
+  build, BM25/offline retrieval, citations, and no required Ollama/vector/reranker/cloud
+  dependency.
+
+Implementation:
+
+- Added `scripts/linux_ci_smoke.sh`.
+- Added `npm run smoke:linux`.
+- Added a GitHub Actions `ubuntu-latest` job named `Linux browser-mode offline smoke`.
+- The Linux job installs the backend, compiles backend code, syntax-checks the Linux
+  smoke script, installs/builds the Next.js web app on Linux, starts the local API, ingests
+  a local markdown source, asks a BM25 query through `POST /query`, and asserts a grounded
+  cited answer on the effective BM25 path.
+- Linux smoke logs are retained as short-lived CI artifacts.
+
+Local verification:
+
+- Git Bash syntax check for `scripts/linux_ci_smoke.sh`: passed.
+- Direct local HTTP smoke of the same offline/BM25 idea passed with a grounded response
+  and citations.
+- Backend compile with isolated pycache: passed.
+- Web production build: passed at `118 kB` first-load JavaScript.
+- Focused low-memory/retrieval/ingest tests: `16 passed`, one accepted third-party
+  timezone deprecation warning.
+- WSL Bash remains unavailable locally because no Linux distribution is installed; Ubuntu
+  CI is now the Linux-host validation surface.
+
+Boundaries:
+
+- Native Linux desktop packaging remains unverified and should not be claimed.
+- ARM Linux, very small RAM devices, and OCR-heavy Linux runs remain future validation.
+- This job validates runtime portability, not arbitrary-document accuracy.
+
+Canonical record: `docs/linux_runtime_validation.md`.

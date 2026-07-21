@@ -35,6 +35,26 @@ Still open:
 
 Canonical Job 4 record: [`docs/eval_runtime_optimization.md`](docs/eval_runtime_optimization.md).
 
+## 2026-07-21 Remaining Job 5 Linux Validation Boundary
+
+Resolved for browser-preview mode:
+
+- Added an Ubuntu CI smoke that builds the web app on Linux, starts the local FastAPI API,
+  ingests a local markdown source, and verifies a grounded BM25 answer with citations.
+- The smoke disables Ollama generation, embeddings, reranking, vector search, and cloud
+  dependencies to prove the low-end path.
+- Local Git Bash syntax validation passed; a local HTTP smoke of the same offline path
+  returned a grounded cited answer.
+
+Still open:
+
+- Native Linux desktop packaging is not validated.
+- ARM Linux and very small RAM devices remain untested.
+- OCR-heavy/scanned Linux workflows need separate coverage because this smoke deliberately
+  avoids Tesseract and proves the lowest-memory text path.
+
+Canonical Job 5 record: [`docs/linux_runtime_validation.md`](docs/linux_runtime_validation.md).
+
 ## 2026-07-20 Remaining Job 3 Reliability Closure
 
 Resolved for the recursive selected-document summary path:

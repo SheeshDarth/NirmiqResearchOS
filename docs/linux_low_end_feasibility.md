@@ -1,6 +1,6 @@
 # Linux And Low-End Device Feasibility
 
-Last updated: 2026-06-20
+Last updated: 2026-07-21
 
 ## Short Answer
 
@@ -35,6 +35,22 @@ Stop:
 ```bash
 bash scripts/stop_local.sh
 ```
+
+## Linux CI Smoke
+
+Job 5 adds a Linux browser-mode smoke path:
+
+```bash
+npm run smoke:linux
+```
+
+The smoke starts the FastAPI API on `127.0.0.1`, ingests a local markdown source,
+asks a BM25/offline query through `POST /query`, and checks that the answer is grounded
+with citations. It runs with Ollama generation, embeddings, reranking, and vector search
+disabled, so it validates the low-end local path rather than a GPU-assisted path.
+
+GitHub Actions now runs the same smoke on `ubuntu-latest` after installing the backend
+and building the Next.js frontend on Linux.
 
 ## Low-End Runtime Profile
 
@@ -105,14 +121,15 @@ RTX 4050 target:
 
 ## Validation Status
 
-Validated in the current Windows workspace:
+Validated:
 
 - The backend and web runtime are already cross-platform Python/Node code.
 - Docker Compose local config binds ports to `127.0.0.1`.
+- Git Bash syntax check for `scripts/linux_ci_smoke.sh` passed locally.
+- Ubuntu CI now builds the web app and runs the offline API/BM25 smoke.
 
 Not yet validated:
 
-- Bash runtime/syntax check in this workspace, because WSL is installed without a Linux distribution.
 - Native Linux desktop packaging.
 - Low-end ARM devices.
 - Very small RAM devices below 8 GB.

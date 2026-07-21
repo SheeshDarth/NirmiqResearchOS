@@ -103,7 +103,7 @@ Recommended proof assets:
 - Grow the 40-case answer-quality set with scans, diagrams, equations, and noisy notes.
 - Add chapter-wise summaries for long textbooks.
 - Obtain code signing only when a certificate is available.
-- Validate native Linux packaging on a real Linux host.
+- Validate native Linux desktop packaging on a real Linux host. Browser-preview mode is covered by the Ubuntu CI smoke.
 - Add hosted-auth design only if public multi-user deployment becomes a goal.
 
 ## Historical Release Evidence

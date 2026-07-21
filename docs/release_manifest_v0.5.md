@@ -104,5 +104,6 @@ Do not claim yet:
 
 - Accuracy on every arbitrary document or query.
 - Signed commercial Windows installer.
-- Native Linux desktop package verification.
+- Native Linux desktop package verification. Linux browser-preview mode has a CI smoke,
+  but the native desktop package remains Windows-first.
 - Hosted authentication, cloud sync, encrypted vault, or multi-user isolation.

@@ -40,7 +40,7 @@ Release type: local-first portfolio/demo MVP for Windows
 
 ## Known Limits
 
-- Native Linux desktop packaging is not yet verified; Linux browser mode remains the supported low-end path.
+- Native Linux desktop packaging is not yet verified; Linux browser mode remains the supported low-end path and now has an Ubuntu CI smoke.
 - The Windows executable is unsigned.
 - Arbitrary-document perfection is not claimed; scans, equations, diagrams, and noisy notes need a larger evaluation corpus.
 - Ollama is optional. Deterministic cited synthesis remains available when no local model is running.

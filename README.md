@@ -532,7 +532,13 @@ Stop:
 bash scripts/stop_local.sh
 ```
 
-Details: [Linux and low-end feasibility](docs/linux_low_end_feasibility.md).
+CI validation:
+
+```bash
+npm run smoke:linux
+```
+
+Details: [Linux and low-end feasibility](docs/linux_low_end_feasibility.md) and [Linux runtime validation](docs/linux_runtime_validation.md).
 
 ## Demo Dataset And Retrieval Results
 
@@ -570,6 +576,7 @@ Details:
 - [MegaSprint Six reliability plan and result](docs/megasprint_six_plan.md)
 - [Benchmark report](docs/benchmark_report.md)
 - [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
+- [Linux runtime validation](docs/linux_runtime_validation.md)
 - [Engineering problem log and RAG Reliability roadmap](problems_faced.md)
 - [Recursive summary reliability gate](docs/summary_reliability.md)
 
