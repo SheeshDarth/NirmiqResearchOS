@@ -4319,5 +4319,10 @@ Verification:
 - `npm.cmd run qa:real-user`: passed and exported `2` local `Needs work` candidates to
   ignored `temp/real_user_qa`.
 - `npm.cmd run build`: passed at `118 kB` first-load JavaScript.
+- GitHub Actions run `29822935910`: passed.
+- Remote jobs passed:
+  - `Linux browser-mode offline smoke`.
+  - `Backend tests and web build`.
 
-Formal status: `COMPLETE` locally; push/CI verification pending for the Job 6 commit.
+Formal status: `COMPLETE`; closure commit `930e612` (`Add real-user QA feedback loop`)
+is pushed to `origin/main`.

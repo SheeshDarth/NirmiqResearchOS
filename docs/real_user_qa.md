@@ -118,6 +118,8 @@ Validated on 2026-07-21:
 - `npm.cmd run qa:real-user`: passed and exported `2` local `Needs work` candidates
   into ignored `temp/real_user_qa`.
 - `npm.cmd run build`: passed at `118 kB` first-load JavaScript.
+- GitHub Actions run `29822935910`: passed, including Linux browser-mode smoke and
+  backend/web release checks.
 
 The generated feedback artifacts remain local and are not part of the committed release
 state.
