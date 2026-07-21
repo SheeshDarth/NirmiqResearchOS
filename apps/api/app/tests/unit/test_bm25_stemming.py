@@ -62,3 +62,61 @@ def test_bm25_search_many_matches_individual_searches() -> None:
         key: [(hit.chunk_id, hit.score) for hit in hits]
         for key, hits in individual.items()
     }
+
+
+def test_bm25_reuses_tokenized_corpus_for_same_chunks() -> None:
+    index = BM25Index()
+    chunks = [
+        {
+            "id": "chunk-1",
+            "document_id": "doc",
+            "chunk_hash": "hash-a",
+            "text": "Gaussian mixture models represent data using several Gaussian distributions.",
+            "page_start": 1,
+            "page_end": 1,
+        }
+    ]
+
+    first = asyncio.run(index.search("Gaussian mixture", chunks, limit=1))
+    assert first[0].chunk_id == "chunk-1"
+    assert index.last_cache_hit is False
+
+    second = asyncio.run(index.search("Gaussian distributions", chunks, limit=1))
+
+    assert second[0].chunk_id == "chunk-1"
+    assert index.last_cache_hit is True
+    assert index.stats()["cache_hits"] == 1
+    assert index.stats()["cache_misses"] == 1
+
+
+def test_bm25_cache_invalidates_when_chunk_hash_changes() -> None:
+    index = BM25Index()
+    original = [
+        {
+            "id": "chunk-1",
+            "document_id": "doc",
+            "chunk_hash": "hash-a",
+            "text": "The old passage explains clustering.",
+            "page_start": 1,
+            "page_end": 1,
+        }
+    ]
+    changed = [
+        {
+            "id": "chunk-1",
+            "document_id": "doc",
+            "chunk_hash": "hash-b",
+            "text": "The new passage explains convolutional networks.",
+            "page_start": 1,
+            "page_end": 1,
+        }
+    ]
+
+    assert asyncio.run(index.search("clustering", original, limit=1))[0].chunk_id == "chunk-1"
+    assert index.last_cache_hit is False
+
+    hits = asyncio.run(index.search("convolutional networks", changed, limit=1))
+
+    assert hits[0].chunk_id == "chunk-1"
+    assert index.last_cache_hit is False
+    assert index.stats()["cache_misses"] == 2

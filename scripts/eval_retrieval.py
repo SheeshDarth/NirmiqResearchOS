@@ -5,6 +5,7 @@ import asyncio
 import json
 import re
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -81,6 +82,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="Optional JSONL path for per-sample misses and weak retrieval hits.",
+    )
+    parser.add_argument(
+        "--sample-limit",
+        type=int,
+        default=0,
+        help="Optional local diagnostic limit. Defaults to the full dataset.",
     )
     return parser.parse_args()
 
@@ -277,8 +284,10 @@ async def run_eval_for_mode(
     retrieval_target_total = 0
     max_k = max(ks) if ks else 0
     review_rank_threshold = min(ks) if ks else 3
+    sample_latency_records: list[dict[str, object]] = []
 
     for index, sample in enumerate(samples):
+        sample_started_at = time.perf_counter()
         if full_query:
             response = await container.query_service.preview(
                 QueryRequest(
@@ -433,6 +442,14 @@ async def run_eval_for_mode(
         else:
             raise ValueError(f"Eval sample missing expectation target: {sample.query}")
 
+        sample_latency_records.append(
+            {
+                "sample_id": sample.sample_id,
+                "category": sample.category or "uncategorized",
+                "seconds": round(time.perf_counter() - sample_started_at, 3),
+            }
+        )
+
     target_level = "mixed"
     if level_counts["chunk"] and not level_counts["document"]:
         target_level = "chunk"
@@ -463,6 +480,7 @@ async def run_eval_for_mode(
         "citation_expected_coverage": (
             citation_expected_hits / retrieval_target_total if retrieval_target_total else 0.0
         ),
+        "latency_metrics": summarize_sample_latency(sample_latency_records),
     }
     if full_query:
         metrics["grounding_metrics"] = {
@@ -480,6 +498,44 @@ async def run_eval_for_mode(
         }
         metrics["answer_quality_metrics"] = summarize_answer_quality(quality_records)
     return metrics
+
+
+def summarize_sample_latency(records: list[dict[str, object]]) -> dict[str, object]:
+    if not records:
+        return {
+            "samples": 0,
+            "avg_seconds": 0.0,
+            "p50_seconds": 0.0,
+            "p95_seconds": 0.0,
+            "max_seconds": 0.0,
+            "slowest_samples": [],
+        }
+    values = sorted(float(record["seconds"]) for record in records)
+    return {
+        "samples": len(records),
+        "avg_seconds": round(sum(values) / len(values), 3),
+        "p50_seconds": round(percentile(values, 0.50), 3),
+        "p95_seconds": round(percentile(values, 0.95), 3),
+        "max_seconds": round(values[-1], 3),
+        "slowest_samples": sorted(
+            records,
+            key=lambda record: float(record["seconds"]),
+            reverse=True,
+        )[:5],
+    }
+
+
+def percentile(sorted_values: list[float], percentile_value: float) -> float:
+    if not sorted_values:
+        return 0.0
+    if len(sorted_values) == 1:
+        return sorted_values[0]
+    bounded = min(1.0, max(0.0, percentile_value))
+    index = bounded * (len(sorted_values) - 1)
+    lower = int(index)
+    upper = min(lower + 1, len(sorted_values) - 1)
+    fraction = index - lower
+    return sorted_values[lower] + ((sorted_values[upper] - sorted_values[lower]) * fraction)
 
 
 def contains_citation_anchor(text: str) -> bool:
@@ -648,6 +704,7 @@ def maybe_record_answer_quality_failure(
 
 
 async def main_async() -> int:
+    started_at = time.perf_counter()
     args = parse_args()
     ks = sorted(set(int(k) for k in args.k if int(k) > 0))
     if not ks:
@@ -659,18 +716,24 @@ async def main_async() -> int:
         raise ValueError("At least one valid mode is required: hybrid bm25 vector.")
 
     samples = load_samples(args.dataset)
+    if args.sample_limit > 0:
+        samples = samples[: args.sample_limit]
     settings = get_settings()
     container = AppContainer.from_settings(settings)
     container.sqlite_repo.init_db()
+    source_resolution_started_at = time.perf_counter()
     await resolve_sample_sources(
         samples=samples,
         container=container,
         auto_ingest_sources=bool(args.auto_ingest_sources),
     )
+    source_resolution_seconds = time.perf_counter() - source_resolution_started_at
 
     per_mode: dict[str, Any] = {}
+    runtime_by_mode: dict[str, float] = {}
     failure_records: list[dict[str, Any]] = []
     for mode in valid_modes:
+        mode_started_at = time.perf_counter()
         per_mode[mode] = await run_eval_for_mode(
             samples=samples,
             ks=ks,
@@ -679,10 +742,17 @@ async def main_async() -> int:
             full_query=bool(args.full_query),
             failure_records=failure_records if args.failures_output else None,
         )
+        runtime_by_mode[mode] = round(time.perf_counter() - mode_started_at, 3)
     output_payload: dict[str, Any] = {
         "dataset": str(args.dataset),
         "evaluation_mode": "full_query" if args.full_query else "retrieval",
         "modes": valid_modes,
+        "runtime": {
+            "source_resolution_seconds": round(source_resolution_seconds, 3),
+            "mode_seconds": runtime_by_mode,
+            "total_seconds": round(time.perf_counter() - started_at, 3),
+            "cache": container.retrieval_service.runtime_cache_stats(),
+        },
         "results": per_mode,
     }
     output = json.dumps(output_payload, indent=2)

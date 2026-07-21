@@ -1,12 +1,39 @@
 # Problems Faced And RAG Reliability Roadmap
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 This is the canonical engineering problem log for NIRMIQ ResearchOS. It documents what has failed, what is still failing, what may fail later, and how the next RAG Reliability Phase should resolve the core retrieval and hallucination issues.
 
 The main conclusion is simple:
 
 > The model hallucinates mostly because retrieval is not yet precise enough on large academic documents. If the right evidence does not enter context, the local model is forced to guess.
+
+## 2026-07-21 Remaining Job 4 Runtime Pressure
+
+Resolved for the first Job 4 block:
+
+- BM25 no longer retokenizes the same selected-document corpus for every query in a
+  single process.
+- The retriever can reuse selected-document active chunks and sections when the document
+  manifest is unchanged.
+- Evaluator output now records runtime, cache counters, and slowest samples so speed work
+  has evidence instead of anecdotes.
+
+Measured result: the strict BM25-only 40-case full-query gate remained `40/40` and local
+runtime moved from the recorded `310.8s` baseline to `274.3s`. The final telemetry run
+reported selected-document row cache `37` hits / `3` misses and BM25 corpus cache `37`
+hits / `3` misses / `0` evictions.
+
+Still open:
+
+- The strict gate is still slow for quick development loops.
+- Caches are process-local; they do not persist tokenized BM25 state across restarts.
+- The next likely hotspots are answer orchestration, section/directness scoring, and
+  repeated candidate inspection.
+- Hardware-sensitive latency budgets should remain advisory until Windows, Linux, and
+  low-end profiles are measured separately.
+
+Canonical Job 4 record: [`docs/eval_runtime_optimization.md`](docs/eval_runtime_optimization.md).
 
 ## 2026-07-20 Remaining Job 3 Reliability Closure
 

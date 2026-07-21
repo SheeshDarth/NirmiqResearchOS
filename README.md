@@ -226,7 +226,7 @@ Remaining measured debt after MegaSprint Six:
 - Convert saved `Needs work` feedback into local eval candidates.
 - Broaden the new generated hard-document gate with independent real scans, noisier notes, additional handwriting styles, equations, tables, diagrams, and textbooks.
 - Expand recursive-summary QA to more real books with malformed or missing heading metadata; parser-truncated titles remain visible rather than guessed.
-- Reduce the roughly two-minute strict offline benchmark runtime by reusing immutable corpus setup.
+- Continue Job 4 runtime optimization after the first BM25/selected-document cache block reduced the strict BM25 gate from `310.8s` to `274.3s`; details: [`docs/eval_runtime_optimization.md`](docs/eval_runtime_optimization.md).
 - Keep BM25-only fallback fully usable for offline and low-end devices.
 - Track chunk-selection reasons, section candidates, citation coverage, unsupported claims, latency, and memory behavior.
 - Measure answer relevance, completeness, claim faithfulness, readability, and abstention correctness separately from retrieval rank.

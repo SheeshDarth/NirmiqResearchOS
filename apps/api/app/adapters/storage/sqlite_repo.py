@@ -540,7 +540,7 @@ class SQLiteRepo:
 
     def list_active_chunks(self, document_id: str | None = None) -> list[dict[str, Any]]:
         query = """
-            SELECT id, document_id, page_start, page_end, text, token_count, quality_score,
+            SELECT id, document_id, page_start, page_end, text, token_count, chunk_hash, quality_score,
                    section_id, heading, section_path, chunk_type, key_terms_json
             FROM document_chunks
             WHERE is_active = 1
@@ -559,7 +559,7 @@ class SQLiteRepo:
         placeholders = ",".join("?" for _ in chunk_ids)
         query = (
             """
-            SELECT id, document_id, page_start, page_end, text, token_count, quality_score,
+            SELECT id, document_id, page_start, page_end, text, token_count, chunk_hash, quality_score,
                    section_id, heading, section_path, chunk_type, key_terms_json
             FROM document_chunks
             WHERE id IN (

@@ -226,3 +226,20 @@ A selected 2,842-chunk local textbook was summarized through the final all-chunk
 - Chapter 19 and Appendix D retained; a parser-missed Chapter 17 heading was disclosed.
 
 The final strict 40-case regression remained green: MRR `0.934`, Recall@8 `1.000`, expected citation coverage `1.000`, readability `0.985`, faithfulness `0.995`, and answerability `1.000`.
+
+## 2026-07-21 Job 4 Runtime Optimization Start
+
+The strict BM25-only full-query answer-quality gate was rerun after adding in-process
+BM25 corpus reuse, selected-document row reuse, and evaluator telemetry.
+
+| Samples | MRR | Recall@8 | Expected citation coverage | Quality pass | Faithfulness | Runtime |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 40 | 0.934 | 1.000 | 1.000 | 1.000 | 0.995 | `274.3s` |
+
+The previous recorded strict gate runtime was `310.8s`, so this is a roughly `11.7%`
+local reduction with no regression in the measured answer-quality gate. The final
+telemetry run reported selected-document row cache `37` hits / `3` misses and BM25
+corpus cache `37` hits / `3` misses / `0` evictions.
+
+This is not the end of Job 4. It is the first runtime block. The next speed work should
+profile answer orchestration and candidate scoring before adding any deeper cache.

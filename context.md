@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-20
 
-Current checkpoint: Remaining Job 3 is complete and verified. Job 4 is next, but must start only after the Job 3 closure commit is pushed.
+Current checkpoint: Remaining Job 4 has started. Job 3 is complete and pushed; Job 4 Block 1 added runtime caching and evaluator telemetry while preserving the strict 40-case BM25 answer-quality gate.
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
@@ -4191,3 +4191,53 @@ Final council sign-off:
   output folder and generated tsconfig entry were removed after verification.
 - Job 4 inherits cache-integrity tests, evaluator thresholds, and the documented future
   risks of semantic entailment and concurrent SQLite mutation.
+
+## 2026-07-21 Remaining Job 4 - Eval Runtime Optimization
+
+Objective:
+
+- Reduce the cost of the strict offline answer-quality gate without changing the public
+  query API, weakening answer quality, adding cloud dependencies, or increasing VRAM
+  pressure.
+
+Implementation:
+
+- Added a bounded in-process BM25 corpus cache keyed by BM25 parameters, ordered active
+  chunk IDs, document IDs, chunk text hashes, and searchable metadata.
+- Added selected-document active row reuse inside `RetrievalService`; cache hits validate
+  against document ID, content hash, status, updated timestamp, and active chunk count.
+- Added debug-only retrieval diagnostics for BM25 corpus cache and selected-document row
+  cache status.
+- Added evaluator runtime telemetry: source-resolution time, per-mode time, total time,
+  runtime cache counters, per-sample latency summaries, and an opt-in `--sample-limit`
+  for quick local diagnostics.
+- Added `npm run eval:answer-quality` as the package-level strict answer-quality gate.
+
+Measured result:
+
+- Strict BM25-only 40-case full-query gate remained green: MRR `0.934`, Recall@8
+  `1.000`, expected citation coverage `1.000`, answer-quality pass `1.000`,
+  faithfulness `0.995`, answerability `1.000`.
+- Local runtime improved from the recorded `310.8s` baseline to `274.3s`.
+- Selected-document row cache and BM25 corpus cache both reported `37` hits and `3`
+  misses on the final strict run; BM25 reported `0` evictions.
+- A three-sample diagnostic showed selected-document row cache `2` hits / `1` miss and
+  BM25 corpus cache `2` hits / `1` miss.
+
+Verification so far:
+
+- Focused BM25/runtime cache tests: `5 passed`.
+- Ruff on changed runtime/eval/test files: passed.
+- Isolated Python compile for changed retrieval/service/evaluator modules: passed.
+- Three-sample full-query BM25 diagnostic: passed `3/3`.
+
+Tradeoffs and remaining Job 4 work:
+
+- The cache is in-process and intentionally non-persistent; restart-level reuse remains
+  future work.
+- Timing budgets are reported but not yet enforced because hardware variance is still
+  high.
+- Remaining strict-gate runtime likely lives in answer orchestration and repeated
+  candidate scoring rather than BM25 tokenization alone.
+- Next Job 4 blocks should add advisory performance budgets and stage-level tracing
+  before attempting deeper scoring reuse.

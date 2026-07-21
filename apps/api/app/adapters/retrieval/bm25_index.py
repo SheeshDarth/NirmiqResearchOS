@@ -1,5 +1,8 @@
 import math
+from collections import OrderedDict
 from dataclasses import dataclass
+from hashlib import sha1
+from typing import NamedTuple
 
 
 @dataclass(slots=True)
@@ -12,15 +15,29 @@ class BM25Hit:
     page_end: int | None
 
 
+class _CachedCorpus(NamedTuple):
+    tokenized_docs: list[list[str]]
+    term_frequencies: list[dict[str, int]]
+    doc_freq: dict[str, int]
+    avgdl: float
+
+
 class BM25Index:
     """
     Lightweight in-process BM25 scorer.
-    Rebuilds per query from active chunks to keep Phase 1 simple and robust.
+    Reuses tokenized active corpora across repeated queries while keeping the
+    cache key tied to chunk identity and searchable metadata.
     """
 
-    def __init__(self, k1: float = 1.5, b: float = 0.75) -> None:
+    def __init__(self, k1: float = 1.5, b: float = 0.75, max_cached_corpora: int = 4) -> None:
         self._k1 = k1
         self._b = b
+        self._max_cached_corpora = max(1, max_cached_corpora)
+        self._corpus_cache: OrderedDict[str, _CachedCorpus] = OrderedDict()
+        self._cache_hits = 0
+        self._cache_misses = 0
+        self._cache_evictions = 0
+        self.last_cache_hit = False
 
     async def search(self, query: str, chunks: list[dict[str, object]], limit: int) -> list[BM25Hit]:
         results = await self.search_many(queries={"query": query}, chunks=chunks, limit=limit)
@@ -36,20 +53,15 @@ class BM25Index:
         """Score several evidence queries while tokenizing the corpus only once."""
 
         if not chunks or limit <= 0:
+            self.last_cache_hit = False
             return {key: [] for key in queries}
 
-        tokenized_docs: list[list[str]] = [self._tokenize(self._search_text(chunk)) for chunk in chunks]
+        corpus = self._get_or_build_corpus(chunks)
+        tokenized_docs = corpus.tokenized_docs
+        term_frequencies = corpus.term_frequencies
+        doc_freq = corpus.doc_freq
+        avgdl = corpus.avgdl
         doc_count = len(tokenized_docs)
-        avgdl = sum(len(doc) for doc in tokenized_docs) / max(doc_count, 1)
-        doc_freq: dict[str, int] = {}
-        term_frequencies: list[dict[str, int]] = []
-        for doc_tokens in tokenized_docs:
-            tf: dict[str, int] = {}
-            for token in doc_tokens:
-                tf[token] = tf.get(token, 0) + 1
-            term_frequencies.append(tf)
-            for token in set(doc_tokens):
-                doc_freq[token] = doc_freq.get(token, 0) + 1
 
         results: dict[str, list[BM25Hit]] = {}
         for key, query in queries.items():
@@ -88,6 +100,72 @@ class BM25Index:
             hits.sort(key=lambda item: item.score, reverse=True)
             results[key] = hits[:limit]
         return results
+
+    def stats(self) -> dict[str, int]:
+        return {
+            "cached_corpora": len(self._corpus_cache),
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "cache_evictions": self._cache_evictions,
+        }
+
+    def clear(self) -> None:
+        self._corpus_cache.clear()
+        self.last_cache_hit = False
+
+    def _get_or_build_corpus(self, chunks: list[dict[str, object]]) -> _CachedCorpus:
+        key = self._corpus_cache_key(chunks)
+        cached = self._corpus_cache.get(key)
+        if cached is not None:
+            self._corpus_cache.move_to_end(key)
+            self._cache_hits += 1
+            self.last_cache_hit = True
+            return cached
+
+        tokenized_docs = [self._tokenize(self._search_text(chunk)) for chunk in chunks]
+        doc_count = len(tokenized_docs)
+        avgdl = sum(len(doc) for doc in tokenized_docs) / max(doc_count, 1)
+        doc_freq: dict[str, int] = {}
+        term_frequencies: list[dict[str, int]] = []
+        for doc_tokens in tokenized_docs:
+            tf: dict[str, int] = {}
+            for token in doc_tokens:
+                tf[token] = tf.get(token, 0) + 1
+            term_frequencies.append(tf)
+            for token in set(doc_tokens):
+                doc_freq[token] = doc_freq.get(token, 0) + 1
+        corpus = _CachedCorpus(
+            tokenized_docs=tokenized_docs,
+            term_frequencies=term_frequencies,
+            doc_freq=doc_freq,
+            avgdl=avgdl,
+        )
+        self._corpus_cache[key] = corpus
+        self._cache_misses += 1
+        self.last_cache_hit = False
+        while len(self._corpus_cache) > self._max_cached_corpora:
+            self._corpus_cache.popitem(last=False)
+            self._cache_evictions += 1
+        return corpus
+
+    def _corpus_cache_key(self, chunks: list[dict[str, object]]) -> str:
+        digest = sha1()
+        digest.update(f"bm25:{self._k1}:{self._b}:v2:{len(chunks)}".encode("utf-8"))
+        for chunk in chunks:
+            digest.update(str(chunk.get("id") or "").encode("utf-8", "ignore"))
+            digest.update(b"\0")
+            digest.update(str(chunk.get("document_id") or "").encode("utf-8", "ignore"))
+            digest.update(b"\0")
+            text_hash = chunk.get("chunk_hash")
+            if text_hash:
+                digest.update(str(text_hash).encode("utf-8", "ignore"))
+            else:
+                digest.update(sha1(self._search_text(chunk).encode("utf-8", "ignore")).hexdigest().encode())
+            digest.update(b"\0")
+            for key in ("heading", "section_path", "chunk_type", "key_terms_json"):
+                digest.update(str(chunk.get(key) or "").encode("utf-8", "ignore"))
+                digest.update(b"\0")
+        return digest.hexdigest()
 
     @staticmethod
     def _tokenize(text: str) -> list[str]:

@@ -1,6 +1,7 @@
 import json
 import math
 import re
+from dataclasses import dataclass
 
 from app.adapters.llm.embedder import Embedder
 from app.adapters.llm.reranker import Reranker
@@ -18,6 +19,13 @@ from app.domain.answer_intelligence import (
 )
 from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.domain.retrieval_policy import RetrievalPolicy
+
+
+@dataclass(slots=True)
+class _ActiveDocumentRows:
+    manifest: tuple[str, str, str, str, int]
+    chunks: list[dict[str, object]]
+    sections: list[dict[str, object]]
 
 
 class RetrievalService:
@@ -38,6 +46,9 @@ class RetrievalService:
         self._reranker = reranker
         self._embedder = embedder
         self._chroma_repo = chroma_repo
+        self._active_document_cache: dict[str, _ActiveDocumentRows] = {}
+        self._active_document_cache_hits = 0
+        self._active_document_cache_misses = 0
 
     @property
     def settings(self) -> Settings:
@@ -66,9 +77,15 @@ class RetrievalService:
         requested_query = answer_query.strip() if answer_query and answer_query.strip() else query
         answer_plan = build_answer_plan(query=requested_query, response_mode=response_mode)
 
-        active_chunks = self._sqlite_repo.list_active_chunks(document_id=target_document_id)
+        document_rows_cache_hit = False
+        if target_document_id:
+            active_chunks, active_sections, document_rows_cache_hit = self._load_active_document_rows(
+                target_document_id
+            )
+        else:
+            active_chunks = self._sqlite_repo.list_active_chunks(document_id=None)
+            active_sections = self._sqlite_repo.list_active_sections(document_id=None)
         all_active_chunks = list(active_chunks)
-        active_sections = self._sqlite_repo.list_active_sections(document_id=target_document_id)
         document_acronym_expansion_terms = self._document_acronym_expansions(
             query=query,
             chunks=all_active_chunks,
@@ -137,6 +154,8 @@ class RetrievalService:
             chunks=active_chunks,
             limit=profile_config["bm25_k"],
         )
+        bm25_corpus_cache_hit = self._bm25_index.last_cache_hit
+        bm25_corpus_cache_stats = self._bm25_index.stats()
         bm25_hits = bm25_batches.get("__base__", [])
 
         vector_hits: list[dict[str, object]] = []
@@ -557,11 +576,15 @@ class RetrievalService:
                 "retrieval_diagnostics": {
                     "active_chunks_considered": len(all_active_chunks),
                     "active_sections_considered": len(active_sections),
+                    "document_rows_cache_hit": document_rows_cache_hit,
+                    "document_rows_cache_stats": self._active_document_cache_stats(),
                     "section_filter_applied": False,
                     "section_soft_ranking_applied": bool(section_candidate_ids),
                     "candidate_ids_after_fusion": len(candidate_ids),
                     "returned_chunks": len(chunks),
                     "obligation_candidate_count": len(obligation_recovery_ids),
+                    "bm25_corpus_cache_hit": bm25_corpus_cache_hit,
+                    "bm25_corpus_cache_stats": bm25_corpus_cache_stats,
                 },
                 "evidence_obligations": [
                     {
@@ -597,6 +620,51 @@ class RetrievalService:
                 "strategy": f"nirmiq_ehr_{normalized_mode}",
             },
         )
+
+    def _load_active_document_rows(
+        self, document_id: str
+    ) -> tuple[list[dict[str, object]], list[dict[str, object]], bool]:
+        document = self._sqlite_repo.get_document_by_id(document_id)
+        if not document:
+            self._active_document_cache.pop(document_id, None)
+            self._active_document_cache_misses += 1
+            return [], [], False
+
+        active_chunk_count = self._sqlite_repo.get_active_chunk_count(document_id)
+        manifest = (
+            document_id,
+            str(document.get("content_hash") or ""),
+            str(document.get("status") or ""),
+            str(document.get("updated_at") or ""),
+            active_chunk_count,
+        )
+        cached = self._active_document_cache.get(document_id)
+        if cached and cached.manifest == manifest:
+            self._active_document_cache_hits += 1
+            return cached.chunks, cached.sections, True
+
+        chunks = self._sqlite_repo.list_active_chunks(document_id=document_id)
+        sections = self._sqlite_repo.list_active_sections(document_id=document_id)
+        self._active_document_cache[document_id] = _ActiveDocumentRows(
+            manifest=manifest,
+            chunks=chunks,
+            sections=sections,
+        )
+        self._active_document_cache_misses += 1
+        return chunks, sections, False
+
+    def _active_document_cache_stats(self) -> dict[str, int]:
+        return {
+            "cached_documents": len(self._active_document_cache),
+            "cache_hits": self._active_document_cache_hits,
+            "cache_misses": self._active_document_cache_misses,
+        }
+
+    def runtime_cache_stats(self) -> dict[str, object]:
+        return {
+            "active_document_rows": self._active_document_cache_stats(),
+            "bm25_corpus": self._bm25_index.stats(),
+        }
 
     @staticmethod
     def _preserve_lexical_guardrail(

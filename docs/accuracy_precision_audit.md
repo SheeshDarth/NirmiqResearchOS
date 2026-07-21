@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-07-19
+Last updated: 2026-07-21
 
 ## Canonical Problem Log
 
@@ -21,6 +21,17 @@ See [`hard_document_eval.md`](hard_document_eval.md) for the generated OCR, hand
 See [`summary_reliability.md`](summary_reliability.md) for the post-recursive-summary
 adversarial structure, sentence-level citation-support, cache validation, and local
 runtime gate.
+
+See [`eval_runtime_optimization.md`](eval_runtime_optimization.md) for Job 4 runtime
+optimization, BM25 corpus reuse, selected-document row reuse, and evaluator telemetry.
+
+## 2026-07-21 Job 4 Runtime Note
+
+Job 4 Block 1 changed runtime behavior, not answer scoring rules. The strict
+BM25-only 40-case full-query gate remained green with MRR `0.934`, Recall@8 `1.000`,
+expected citation coverage `1.000`, answer-quality pass `1.000`, faithfulness `0.995`,
+and answerability `1.000`. Local runtime improved from the recorded `310.8s` baseline
+to `274.3s` through BM25 corpus reuse and selected-document row reuse.
 
 ## 2026-07-20 Remaining Job 3 Closure Audit
 
