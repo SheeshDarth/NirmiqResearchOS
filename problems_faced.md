@@ -663,3 +663,24 @@ Risks carried forward:
 - Front/back matter filtering can over-filter legitimate glossary, appendix, or index-like content.
 - Scoped chapter summaries still use query-focused RAG rather than all-chunk recursive summarization.
 - Job 3 should add adversarial document fixtures, sentence-level citation audits, summary latency/memory checks, cache-hit anomaly checks, and a clear cache-version bump/purge path.
+
+## 2026-07-21 Resolved Process Gap: Real User Feedback Was Not Measurable
+
+Symptom:
+
+- User testing could identify bad answers, but those observations were not automatically
+  converted into a repeatable local QA workflow.
+- Without a workflow, future fixes risked chasing anecdotes or overfitting the existing
+  40-case benchmark.
+
+Resolution:
+
+- Add `npm.cmd run qa:real-user`, which reads local SQLite answer feedback and exports
+  reviewable candidate labels to `temp/real_user_qa`.
+- Keep raw feedback out of Git by default.
+- Require human labeling before any candidate is promoted into tracked eval data.
+
+Remaining risk:
+
+- The tool creates candidates, not truth labels. A developer still must inspect the
+  source material and add expected evidence before using feedback as a regression gate.

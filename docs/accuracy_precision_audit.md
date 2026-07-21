@@ -25,6 +25,19 @@ runtime gate.
 See [`eval_runtime_optimization.md`](eval_runtime_optimization.md) for Job 4 runtime
 optimization, BM25 corpus reuse, selected-document row reuse, and evaluator telemetry.
 
+See [`real_user_qa.md`](real_user_qa.md) for Job 6's local feedback-to-eval loop.
+
+## 2026-07-21 Remaining Job 6 Real-User QA Loop
+
+Job 6 adds a local loop for converting real answer feedback into reviewable eval
+candidates. The tool reads the existing SQLite `answer_feedback` table, exports
+`Needs work` records into `temp/real_user_qa`, classifies each query into the current
+RAG taxonomy, and marks every candidate as needing human labels before promotion.
+
+This deliberately does not tune against private feedback automatically. The next
+accuracy improvements should promote scrubbed failures only after expected evidence,
+required concepts, source scope, and answerability labels are added.
+
 ## 2026-07-21 Job 4 Runtime Note
 
 Job 4 Block 1 changed runtime behavior, not answer scoring rules. The strict

@@ -101,6 +101,8 @@ Recommended proof assets:
 
 - Keep README screenshots current after UI changes and capture an optional GIF.
 - Grow the 40-case answer-quality set with scans, diagrams, equations, and noisy notes.
+- Use the real-user QA loop to convert local `Needs work` feedback into reviewed eval
+  candidates before making new retrieval changes.
 - Add chapter-wise summaries for long textbooks.
 - Obtain code signing only when a certificate is available.
 - Validate native Linux desktop packaging on a real Linux host. Browser-preview mode is covered by the Ubuntu CI smoke.

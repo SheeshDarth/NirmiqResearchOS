@@ -27,6 +27,7 @@
     "eval:answer-quality": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/eval_answer_quality.ps1",
     "eval:hard-docs": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/eval_hard_documents.ps1",
     "eval:summary-reliability": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/eval_summary_reliability.ps1",
+    "qa:real-user": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/real_user_qa.ps1",
     "benchmark:runtime": "python scripts/runtime_benchmark.py",
     "ship:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ship_check.ps1"
   },

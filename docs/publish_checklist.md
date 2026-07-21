@@ -239,5 +239,6 @@ Current known release debt:
 
 - README screenshots exist; a current optional GIF and final manual desktop/mobile visual acceptance remain.
 - Retrieval labels need to grow beyond the current 40-case quality set and include more scans, diagrams, equations, and noisy notes.
+- Real-user QA exports should stay under `temp/real_user_qa` until manually reviewed and scrubbed.
 - Desktop package uses the NIRMIQ icon but remains unsigned.
 - Linux browser-preview path has an Ubuntu CI smoke; native Linux packaging is not validated yet.

@@ -4282,3 +4282,42 @@ Boundaries:
 - This job validates runtime portability, not arbitrary-document accuracy.
 
 Canonical record: `docs/linux_runtime_validation.md`.
+
+## 2026-07-21 Remaining Job 6 - Real-User QA Loop
+
+Objective:
+
+- Close the final current remaining-job process gap by making natural user testing
+  measurable without committing private feedback or changing runtime APIs.
+- Convert local `Good` / `Needs work` answer feedback into reviewable eval candidates
+  so bad answers can become future regression labels only after human evidence review.
+
+Implementation:
+
+- Added `scripts/export_real_user_qa.py`.
+- Added `scripts/real_user_qa.ps1`.
+- Added `npm run qa:real-user`.
+- Added `docs/real_user_qa.md` as the canonical real-user QA protocol.
+- Added unit coverage for query classification, source-label path stripping, and local
+  report generation.
+- Updated README, accuracy audit, ship readiness, publish checklist, and problem log to
+  point at the new QA loop.
+
+Privacy and architecture boundary:
+
+- Raw feedback exports default to `temp/real_user_qa`, which is ignored by Git.
+- The script does not upload anything and does not call a model.
+- Every exported record is marked `needs_human_labels`; it is not automatically promoted
+  into tracked eval data.
+- Public query API shape remains unchanged.
+
+Verification:
+
+- Focused exporter unit test: `2 passed`.
+- Python compile for `scripts/export_real_user_qa.py` and the focused test: passed with
+  workspace pycache.
+- `npm.cmd run qa:real-user`: passed and exported `2` local `Needs work` candidates to
+  ignored `temp/real_user_qa`.
+- `npm.cmd run build`: passed at `118 kB` first-load JavaScript.
+
+Formal status: `COMPLETE` locally; push/CI verification pending for the Job 6 commit.

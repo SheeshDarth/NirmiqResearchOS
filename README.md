@@ -577,6 +577,7 @@ Details:
 - [Benchmark report](docs/benchmark_report.md)
 - [Linux and low-end feasibility](docs/linux_low_end_feasibility.md)
 - [Linux runtime validation](docs/linux_runtime_validation.md)
+- [Real-user QA loop](docs/real_user_qa.md)
 - [Engineering problem log and RAG Reliability roadmap](problems_faced.md)
 - [Recursive summary reliability gate](docs/summary_reliability.md)
 
@@ -613,6 +614,14 @@ Run:
 ```
 
 This seed set is intentionally harder than the golden demo and is the baseline for the RAG Reliability Phase. The goal is to improve retrieval precision and citation coverage before increasing model size, temperature, or context length.
+
+Turn local user feedback into reviewable eval candidates:
+
+```powershell
+npm.cmd run qa:real-user
+```
+
+This reads local `Good` / `Needs work` answer feedback from SQLite and writes scrub-required candidate records under `temp/real_user_qa`. See the [real-user QA loop](docs/real_user_qa.md). Do not commit raw feedback exports.
 
 The current strict full-query benchmark scores expected evidence against the complete chunks actually cited by each answer, not truncated UI previews or unused retrieval candidates:
 
