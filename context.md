@@ -4326,3 +4326,37 @@ Verification:
 
 Formal status: `COMPLETE`; closure commit `930e612` (`Add real-user QA feedback loop`)
 is pushed to `origin/main`.
+
+## 2026-07-22 GitHub Repository Polish
+
+Objective:
+
+- Improve the public GitHub presentation so recruiters/reviewers can quickly understand,
+  run, and evaluate NIRMIQ without digging through the full project history.
+
+Implementation:
+
+- Updated `README.md` with a reviewer snapshot, fastest golden-demo path, current remote
+  proof links, clearer prerequisites, and explicit "what not to claim yet" release
+  boundaries.
+- Removed the personal Ascension OS filesystem path from the README narrative.
+- Updated the remaining measured-debt language now that the real-user QA export loop
+  exists.
+- Added `CONTRIBUTING.md` with local setup, command checklist, local-first rules,
+  accuracy-change expectations, and privacy-safe contribution guidance.
+- Added root `SECURITY.md` pointing to the detailed security/privacy docs and clarifying
+  the local-first support scope.
+- Added `.github/pull_request_template.md`.
+- Added GitHub issue forms for bug reports and feature requests plus private security
+  contact guidance.
+
+Verification:
+
+- Markdown files read successfully.
+- GitHub issue form YAML parsed successfully with PyYAML.
+- `git diff --check`: passed.
+
+Boundary:
+
+- No runtime code or public API behavior changed.
+- Untracked `deep-research-report.md` remains untouched.

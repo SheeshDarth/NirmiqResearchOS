@@ -1,0 +1,42 @@
+name: Feature Request
+description: Suggest a focused improvement for NIRMIQ.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What student/research workflow pain does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Keep it MVP-friendly and local-first.
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Accuracy / hallucination reduction
+        - UI simplicity
+        - Offline reliability
+        - Performance / low memory
+        - Paper Lab
+        - Exam Lab
+        - Privacy / security
+        - Packaging / setup
+    validations:
+      required: true
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      options:
+        - label: This can work without a cloud/API dependency.
+        - label: This does not require a graph database, heavy agent framework, or Kubernetes.
+        - label: This keeps normal UI controls simple.

@@ -18,6 +18,39 @@ It is a grounded academic knowledge assistant that helps users upload documents,
 
 Core product direction: **NIRMIQ Academic Intelligence is the standalone academic workspace inside the broader NIRMIQ ecosystem.**
 
+## Reviewer Snapshot
+
+| Area | Current state |
+| --- | --- |
+| Primary use case | Local ChatGPT-style academic assistant for uploaded documents |
+| Runtime model | Offline-first FastAPI + Next.js + SQLite, with optional Ollama |
+| Retrieval method | Evidence-First Hierarchical Hybrid RAG with BM25 as the safe offline backbone |
+| Core workflows | Research, Chat, Paper Lab, Exam Lab, citations, exports, local data controls |
+| Trust behavior | Cited answers, evidence drawer, abstention when sources are weak |
+| Verification | CI, ship check, desktop smoke, golden demo, answer-quality evals, hard-document gate |
+| Release posture | Portfolio/demo MVP, not a hosted multi-user SaaS |
+
+Fastest review path:
+
+```powershell
+git clone https://github.com/SheeshDarth/NirmiqResearchOS.git
+cd NirmiqResearchOS
+.\scripts\bootstrap.ps1
+npm.cmd run start:golden
+```
+
+Then open `http://127.0.0.1:3002`, click `Load Golden Demo`, and ask:
+
+```text
+What problem does grounded retrieval solve for academic study?
+```
+
+Latest remote proof:
+
+- Main branch CI: [![NIRMIQ CI](https://github.com/SheeshDarth/NirmiqResearchOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SheeshDarth/NirmiqResearchOS/actions/workflows/ci.yml)
+- Latest release evidence: [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md)
+- Current problem log and RAG roadmap: [`problems_faced.md`](problems_faced.md)
+
 ## Why NIRMIQ Exists
 
 Students and early researchers increasingly use AI to understand PDFs, lecture notes, textbooks, slides, lab manuals, previous-year questions, screenshots, and research papers.
@@ -109,7 +142,7 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 - [`docs/megasprint_six_plan.md`](docs/megasprint_six_plan.md): query-agnostic evidence obligations, hierarchical summary coverage, and the final 40-case offline reliability result.
 - [`docs/recursive_summary_architecture.md`](docs/recursive_summary_architecture.md): all-chunk document mapping, recursive chapter reduction, cache behavior, and measured long-textbook results.
 - [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md): current reproducible tests, retrieval metrics, offline proof, package result, and honest release boundary.
-- Ascension OS foundation now lives outside this repository at `C:\Users\Siddharth\Documents\Ascension OS` so NIRMIQ Academic Intelligence remains focused on academic document intelligence.
+- Ascension OS foundation lives outside this repository so NIRMIQ Academic Intelligence remains focused on academic document intelligence.
 
 ## Current Release Foundation
 
@@ -221,9 +254,9 @@ MegaSprint One Block B now closes on a 40-case full-query benchmark. Query-aware
 
 This work belongs to **MegaSprint One, Block B**, not the UI sprint. It is documented in [`docs/megasprint_one_answer_intelligence_plan.md`](docs/megasprint_one_answer_intelligence_plan.md).
 
-Remaining measured debt after MegaSprint Six:
+Remaining measured debt after MegaSprint Six and the six follow-up reliability jobs:
 
-- Convert saved `Needs work` feedback into local eval candidates.
+- Use the real-user QA loop to promote scrubbed `Needs work` feedback into tracked eval labels.
 - Broaden the new generated hard-document gate with independent real scans, noisier notes, additional handwriting styles, equations, tables, diagrams, and textbooks.
 - Expand recursive-summary QA to more real books with malformed or missing heading metadata; parser-truncated titles remain visible rather than guessed.
 - Continue Job 4 runtime optimization after the first BM25/selected-document cache block reduced the strict BM25 gate from `310.8s` to `274.3s`; details: [`docs/eval_runtime_optimization.md`](docs/eval_runtime_optimization.md).
@@ -376,6 +409,14 @@ context.md              Current project memory and implementation log
 ```
 
 ## Quick Start
+
+Prerequisites:
+
+- Windows 10/11 for the primary desktop path.
+- Python `3.11+`.
+- Node.js `22+`.
+- Optional: Ollama for local model generation.
+- Optional: Tesseract OCR for scanned PDFs and image-heavy documents.
 
 Install once:
 
@@ -705,6 +746,14 @@ Current public-release posture:
 - Privacy recovery: explicit thread clear, indexed-material purge, full app-local reset, and diagnostics that contain no raw user content.
 - API stability: existing routes are preserved, with `/api/v1` aliases available for future clients.
 
+What not to claim yet:
+
+- Arbitrary-document perfect accuracy.
+- Signed commercial installer.
+- Hosted authentication or multi-user isolation.
+- Cloud sync or internet search.
+- Encrypted local vault.
+
 ## Golden Demo
 
 The fastest way to review NIRMIQ is the bundled offline golden demo.
@@ -802,6 +851,8 @@ Offline access over cloud dependency
 
 ## Important Docs
 
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
 - [Publish checklist](docs/publish_checklist.md)
 - [Ship readiness notes](docs/ship_readiness.md)
 - [Release manifest v0.5](docs/release_manifest_v0.5.md)
@@ -824,9 +875,7 @@ Offline access over cloud dependency
 
 ## Current Status
 
-This project is under active development.
-
-NIRMIQ Academic Intelligence is being built as a solo-developer AI systems project focused on practical student problems, local AI infrastructure, trustworthy document intelligence, and publishable portfolio value.
+NIRMIQ Academic Intelligence is a shippable local-first portfolio/demo MVP under active development. The current focus is expanding real-user evaluation coverage, keeping the UI simple, and improving retrieval reliability without adding cloud dependency or heavy infrastructure.
 
 ## Author
 
