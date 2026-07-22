@@ -4355,6 +4355,14 @@ Verification:
 - Markdown files read successfully.
 - GitHub issue form YAML parsed successfully with PyYAML.
 - `git diff --check`: passed.
+- GitHub repository metadata updated:
+  - description: `Offline-first academic document intelligence workspace with local RAG,
+    citations, Paper Lab, and Exam Lab.`
+  - topics: `academic-ai`, `bm25`, `document-ai`, `fastapi`, `local-ai`, `nextjs`,
+    `offline-first`, `ollama`, `rag`, `sqlite`.
+- GitHub Actions run `29908131753`: passed.
+- Closure commit: `a4f9f09` (`Polish GitHub repository presentation`) pushed to
+  `origin/main`.
 
 Boundary:
 
