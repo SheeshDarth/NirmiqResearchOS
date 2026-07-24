@@ -1,0 +1,121 @@
+{
+  "review_date": "2026-07-24",
+  "project": "NIRMIQ Academic Intelligence",
+  "repository": "SheeshDarth/NirmiqResearchOS",
+  "local_head": "31f663e",
+  "live_ci": {
+    "checked": true,
+    "run_id": 29908325987,
+    "conclusion": "success",
+    "head_sha": "31f663e1a382f9529b5f20532d669271043d1d99",
+    "jobs": [
+      "Backend tests and web build",
+      "Linux browser-mode offline smoke"
+    ]
+  },
+  "repo_metrics": {
+    "tracked_files": 313,
+    "backend_python_files": 102,
+    "frontend_tracked_files": 20,
+    "backend_test_files": 41,
+    "page_tsx_lines": 1588,
+    "page_model_ts_lines": 564,
+    "globals_css_lines": 3341,
+    "retrieval_service_lines": 2262,
+    "synthesis_service_lines": 4281,
+    "query_service_lines": 729
+  },
+  "evaluation_metrics": {
+    "demo_retrieval": {
+      "samples": 30,
+      "hybrid_mrr": 0.983,
+      "hybrid_recall_at_8": 1.0,
+      "bm25_mrr": 0.983,
+      "bm25_recall_at_8": 1.0,
+      "citation_expected_coverage": 1.0
+    },
+    "real_world_answer_quality": {
+      "samples": 40,
+      "mode": "bm25",
+      "mrr": 0.934,
+      "recall_at_8": 1.0,
+      "citation_expected_coverage": 1.0,
+      "pass_rate": 1.0,
+      "overall_score": 0.94,
+      "answer_relevance": 0.827,
+      "concept_coverage": 0.831,
+      "query_focus": 0.816,
+      "readability": 0.985,
+      "faithfulness": 0.995,
+      "answerability_correct": 1.0
+    },
+    "hard_document_gate": {
+      "samples": 9,
+      "mode": "bm25",
+      "mrr": 1.0,
+      "recall_at_8": 1.0,
+      "citation_expected_coverage": 1.0,
+      "overall_score": 0.974,
+      "answer_relevance": 0.911,
+      "concept_coverage": 0.972,
+      "query_focus": 0.767,
+      "faithfulness": 0.978
+    },
+    "recursive_summary_reliability": {
+      "case_count": 3,
+      "passed": true,
+      "citation_support_coverage": 1.0,
+      "failures": 0
+    }
+  },
+  "scores": {
+    "vision_alignment": 8.6,
+    "offline_first_contract": 9.1,
+    "rag_reliability": 8.1,
+    "answer_presentation": 7.4,
+    "ui_ux_simplicity": 7.0,
+    "backend_architecture": 7.3,
+    "maintainability": 7.2,
+    "security_privacy": 7.8,
+    "performance_local_runtime": 7.6,
+    "release_github_polish": 8.5,
+    "internship_impact": 8.7,
+    "weighted_overall": 8.0
+  },
+  "top_findings": [
+    {
+      "severity": "P1",
+      "title": "Strong metrics but limited generalization proof",
+      "risk": "The project may still fail on unseen textbooks, noisy notes, or uncommon question styles."
+    },
+    {
+      "severity": "P1",
+      "title": "Retrieval and synthesis services are too large",
+      "risk": "Future accuracy fixes can regress unrelated query categories."
+    },
+    {
+      "severity": "P2",
+      "title": "Advanced controls still leak into normal UX",
+      "risk": "Normal users may feel they are operating a RAG workbench instead of chatting with an academic assistant."
+    },
+    {
+      "severity": "P2",
+      "title": "Release manifest lags newer metrics",
+      "risk": "Public reviewers may see inconsistent reliability evidence."
+    },
+    {
+      "severity": "P2",
+      "title": "Human evaluation loop needs more real-user data",
+      "risk": "Automatic metrics may overstate perceived usefulness."
+    }
+  ],
+  "recommended_next_version": [
+    "Expand unseen reviewed eval data to at least 100-150 natural queries.",
+    "Refactor answer planning, evidence ranking, context packing, citation verification, and fallback composition into smaller backend modules.",
+    "Move retrieval controls and thread IDs behind an explicit developer/debug mode.",
+    "Upgrade answer presentation to feel simpler, more explanatory, and more student-friendly.",
+    "Publish a new release manifest after the next verified ship gate.",
+    "Refresh screenshots and GIFs after the next UI pass."
+  ],
+  "release_position": "Shippable as a local-first portfolio/demo MVP; not yet a commercial production-grade arbitrary-document system."
+}

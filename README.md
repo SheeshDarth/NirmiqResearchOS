@@ -49,6 +49,7 @@ Latest remote proof:
 
 - Main branch CI: [![NIRMIQ CI](https://github.com/SheeshDarth/NirmiqResearchOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SheeshDarth/NirmiqResearchOS/actions/workflows/ci.yml)
 - Latest release evidence: [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md)
+- Current project review and scorecard: [`docs/review_sprints_2026_07_24.md`](docs/review_sprints_2026_07_24.md)
 - Current problem log and RAG roadmap: [`problems_faced.md`](problems_faced.md)
 
 ## Why NIRMIQ Exists
@@ -142,6 +143,7 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 - [`docs/megasprint_six_plan.md`](docs/megasprint_six_plan.md): query-agnostic evidence obligations, hierarchical summary coverage, and the final 40-case offline reliability result.
 - [`docs/recursive_summary_architecture.md`](docs/recursive_summary_architecture.md): all-chunk document mapping, recursive chapter reduction, cache behavior, and measured long-textbook results.
 - [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md): current reproducible tests, retrieval metrics, offline proof, package result, and honest release boundary.
+- [`docs/review_sprints_2026_07_24.md`](docs/review_sprints_2026_07_24.md): current architecture, RAG, UI, security, performance, release, and vision-alignment review.
 - Ascension OS foundation lives outside this repository so NIRMIQ Academic Intelligence remains focused on academic document intelligence.
 
 ## Current Release Foundation

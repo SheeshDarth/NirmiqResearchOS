@@ -4368,3 +4368,92 @@ Boundary:
 
 - No runtime code or public API behavior changed.
 - Untracked `deep-research-report.md` remains untouched.
+
+## 2026-07-24 Multi-Sprint Project Review
+
+Objective:
+
+- Produce a detailed, evidence-based review before the next requirement update.
+- Score how well the project aligns with the NIRMIQ Academic Intelligence vision.
+- Identify architecture, RAG, UI, security, performance, release, and portfolio gaps
+  without making runtime behavior changes.
+
+Evidence collected:
+
+- Local branch: `main`.
+- Local HEAD before review artifacts: `31f663e` (`Record GitHub polish closure evidence`).
+- Live GitHub Actions run `29908325987`: successful.
+- Live CI jobs passed:
+  - `Backend tests and web build`.
+  - `Linux browser-mode offline smoke`.
+- Tracked repository size: `313` files.
+- Backend Python files: `102`.
+- Frontend app/component/public tracked files: `20`.
+- Backend test files: `41`.
+- Key size signals:
+  - `apps/web/app/page.tsx`: `1588` lines.
+  - `apps/web/app/page-model.ts`: `564` lines.
+  - `apps/web/app/globals.css`: `3341` lines.
+  - `apps/api/app/services/retrieval_service.py`: `2262` lines.
+  - `apps/api/app/services/synthesis_service.py`: `4281` lines.
+  - `apps/api/app/services/query_service.py`: `729` lines.
+- Local frontend verification: `npm run build` passed with `/` first-load JavaScript at
+  `118 kB`.
+
+Review outputs:
+
+- Added `docs/review_sprints_2026_07_24.md`.
+- Added `docs/project_scorecard_2026_07_24.json`.
+
+Scores:
+
+- Vision alignment: `8.6 / 10`.
+- Offline-first contract: `9.1 / 10`.
+- RAG reliability: `8.1 / 10`.
+- Answer presentation: `7.4 / 10`.
+- UI/UX simplicity: `7.0 / 10`.
+- Backend architecture: `7.3 / 10`.
+- Maintainability: `7.2 / 10`.
+- Security/privacy: `7.8 / 10`.
+- Performance/local runtime: `7.6 / 10`.
+- Release/GitHub polish: `8.5 / 10`.
+- Internship impact: `8.7 / 10`.
+- Weighted overall: `8.0 / 10`.
+
+Main verdict:
+
+- NIRMIQ is shippable as a local-first academic RAG portfolio/demo MVP.
+- It should not yet be marketed as a production-grade arbitrary-document academic
+  intelligence system.
+
+Top findings:
+
+- Current RAG metrics are strong, but the eval corpus is still too small to prove
+  arbitrary-document generalization.
+- `RetrievalService` and `SynthesisService` are too large and should be split before the
+  next major accuracy sprint.
+- The UI is closer to the ChatGPT-like vision, but advanced routing and retrieval controls
+  still leak into the normal user path.
+- Release documentation contains some stale metric evidence compared with later
+  MegaSprint Six results.
+- The real-user QA feedback loop exists, but needs more unseen human questions and reviewed
+  labels.
+
+Recommended next-version priorities:
+
+- Expand reviewed unseen eval coverage to at least `100-150` natural queries across
+  textbooks, notes, papers, slides, scanned pages, diagrams, formulas, tables, and
+  unanswerable prompts.
+- Refactor backend reasoning into smaller modules for answer planning, evidence ranking,
+  context packing, citation verification, and deterministic fallback composition while
+  keeping public APIs stable.
+- Move retrieval controls, thread IDs, and profiles behind an explicit developer/debug
+  mode.
+- Upgrade answer presentation to be simpler, more explanatory, and more student-friendly.
+- Refresh release evidence as `release_manifest_v0.6.md` after the next verified ship gate.
+
+Boundary:
+
+- No cloud dependency, graph database, heavy agent framework, or runtime API change was
+  introduced by this review work.
+- Existing untracked `deep-research-report.md` remains untouched.
