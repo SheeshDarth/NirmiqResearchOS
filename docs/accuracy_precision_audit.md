@@ -865,3 +865,46 @@ Measured proof:
 Known boundary: PDF heading extraction can truncate titles or miss a heading. The summarizer exposes a missing chapter-number range as `heading unavailable` and never invents a title. See [`recursive_summary_architecture.md`](recursive_summary_architecture.md).
 
 Closure evidence: commit `5d685d0` passed GitHub Actions run `29721553535` after the artifact publisher was hardened for Windows runners without `Get-FileHash`. The post-job council approved closure, with the caveat that citation coverage is traceability rather than a complete semantic entailment proof.
+
+## 2026-07-24 Next-Version Sprint One Gate
+
+Sprint 1A adds a generalization gate instead of another retrieval heuristic.
+
+New artifacts:
+
+- Gate manifest: `data/processed/eval/generalization_gate.json`.
+- Gate command: `npm.cmd run eval:generalization-gate`.
+- Validator: `scripts/validate_eval_gate.py`.
+- Report: `data/processed/eval/generalization_gate_report.json`.
+- Sprint doc: [`next_version_sprint_one_generalization_gate.md`](next_version_sprint_one_generalization_gate.md).
+
+Latest gate result:
+
+- Status: `PASS`.
+- Dataset: `40` reviewed full-query examples.
+- Source files: `3`.
+- Categories: `11`.
+- Unanswerable examples: `2`.
+- Mode: BM25-only offline path.
+- Runtime: `261.297 s`.
+- MRR: `0.934`.
+- Recall@8: `1.000`.
+- Expected citation coverage: `1.000`.
+- Answer-quality pass rate: `1.000`.
+- Overall answer score: `0.940`.
+- Answer relevance: `0.827`.
+- Concept coverage: `0.831`.
+- Query focus: `0.816`.
+- Readability: `0.985`.
+- Faithfulness: `0.995`.
+- Answerability correctness: `1.000`.
+
+Interpretation:
+
+- The current gate is green and useful for preventing regression.
+- This is still not a broad arbitrary-document claim.
+- The next quality improvement should expand reviewed unseen examples toward `100-150`
+  labels across more textbooks, notes, papers, scanned pages, tables, equations, diagrams,
+  and noisy handwritten material.
+- Lower-scoring category signals worth expanding first: architecture, procedure,
+  limitations, factual lookup, and summaries.

@@ -1,0 +1,49 @@
+{
+  "version": "generalization-gate-v1",
+  "description": "Current Sprint 1A gate for query-agnostic academic RAG reliability. This gate validates the committed 40-case corpus now and records the expansion target for the next sprint slices.",
+  "dataset_path": "data/processed/eval/real_world_answer_quality.jsonl",
+  "metrics_path": "data/processed/eval/generalization_gate_metrics.json",
+  "failures_path": "data/processed/eval/generalization_gate_failures.jsonl",
+  "report_path": "data/processed/eval/generalization_gate_report.json",
+  "mode": "bm25",
+  "dataset_requirements": {
+    "min_samples": 40,
+    "target_samples_next": 100,
+    "target_samples_stretch": 150,
+    "min_source_files": 3,
+    "target_source_files_next": 5,
+    "min_unanswerable": 2,
+    "required_categories": [
+      "architecture",
+      "comparison",
+      "definition",
+      "enumeration",
+      "explanation",
+      "factual_lookup",
+      "limitations",
+      "mechanism",
+      "procedure",
+      "summary",
+      "unanswerable"
+    ]
+  },
+  "thresholds": {
+    "mrr": 0.7,
+    "recall@8": 0.85,
+    "citation_expected_coverage": 0.9,
+    "grounding_metrics.citation_anchor_rate": 0.9,
+    "answer_quality_metrics.pass_rate": 0.9,
+    "answer_quality_metrics.overall_score": 0.85,
+    "answer_quality_metrics.answer_relevance": 0.75,
+    "answer_quality_metrics.concept_coverage": 0.75,
+    "answer_quality_metrics.query_focus": 0.7,
+    "answer_quality_metrics.readability": 0.9,
+    "answer_quality_metrics.faithfulness": 0.95,
+    "answer_quality_metrics.answerability_correct": 1.0
+  },
+  "notes": [
+    "This is a gate scaffold, not proof of arbitrary-document production accuracy.",
+    "The next sprint slices should expand reviewed, unseen labels before changing retrieval heuristics.",
+    "BM25 remains the default gate mode because it is the safest offline and low-memory baseline."
+  ]
+}

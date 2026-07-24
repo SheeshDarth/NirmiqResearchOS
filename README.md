@@ -141,6 +141,7 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 - [`docs/overnight_work_plan.md`](docs/overnight_work_plan.md): focused sprint plan for demo reliability, retrieval evaluation, citation selection, UI clarity, and release readiness.
 - [`docs/megasprint_five_plan.md`](docs/megasprint_five_plan.md): release confidence, desktop packaging, privacy recovery, and public proof.
 - [`docs/megasprint_six_plan.md`](docs/megasprint_six_plan.md): query-agnostic evidence obligations, hierarchical summary coverage, and the final 40-case offline reliability result.
+- [`docs/next_version_sprint_one_generalization_gate.md`](docs/next_version_sprint_one_generalization_gate.md): next-version RAG generalization gate, validator, thresholds, and dataset expansion path.
 - [`docs/recursive_summary_architecture.md`](docs/recursive_summary_architecture.md): all-chunk document mapping, recursive chapter reduction, cache behavior, and measured long-textbook results.
 - [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md): current reproducible tests, retrieval metrics, offline proof, package result, and honest release boundary.
 - [`docs/review_sprints_2026_07_24.md`](docs/review_sprints_2026_07_24.md): current architecture, RAG, UI, security, performance, release, and vision-alignment review.
@@ -201,6 +202,7 @@ Implemented in the current repository:
 - Evaluate retrieval on a bundled 30-question demo dataset.
 - Evaluate query behavior through `data/processed/eval/query_agnostic_rag_categories.jsonl`, covering definitions, explanations, comparisons, procedures, limitations, visuals, summaries, exam answers, paper drafting, and unanswerable prompts.
 - Rebuild and evaluate generated scans, handwriting, equations, tables, and an embedded diagram offline with `npm.cmd run eval:hard-docs`.
+- Run the next-version generalization gate with `npm.cmd run eval:generalization-gate`.
 - Run GitHub CI for backend tests, API compile, frontend build, and Docker Compose validation.
 - Run optional Docker dev containers with checked-in API and web Dockerfiles.
 - Use `/api/v1/*` routes while preserving the original local API route paths.

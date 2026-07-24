@@ -4466,3 +4466,67 @@ Closure:
 - Remote jobs passed:
   - `Backend tests and web build`.
   - `Linux browser-mode offline smoke`.
+
+## 2026-07-24 Next-Version Sprint One - RAG Generalization Gate
+
+Objective:
+
+- Start the next sprint sequence by adding a reusable RAG generalization gate before
+  tuning retrieval again.
+- Measure whether the current offline BM25/full-query path still passes explicit
+  dataset and answer-quality thresholds.
+
+Implementation:
+
+- Added `data/processed/eval/generalization_gate.json`.
+- Added `scripts/validate_eval_gate.py`.
+- Added `scripts/eval_generalization_gate.ps1`.
+- Added `npm run eval:generalization-gate`.
+- Added `apps/api/app/tests/unit/test_generalization_gate_validator.py`.
+- Added `docs/next_version_sprint_one_generalization_gate.md`.
+- Updated README and accuracy audit to link the new gate.
+
+Verification:
+
+- Focused validator tests: `2 passed`.
+- `python -m compileall scripts\validate_eval_gate.py`: passed.
+- `python scripts\validate_eval_gate.py` against generated metrics without `--output`: passed.
+- `npm.cmd run build`: passed with `/` first-load JavaScript at `118 kB`.
+- First `npm run eval:generalization-gate` attempt failed before execution because
+  PowerShell blocked `npm.ps1`.
+- `npm.cmd run eval:generalization-gate` completed the full eval but the sandbox denied
+  artifact writes under `data/processed/eval`.
+- Escalated `npm.cmd run eval:generalization-gate` passed and wrote the gate artifacts.
+
+Gate result:
+
+- Status: `PASS`.
+- Dataset: `40` reviewed examples.
+- Source files: `3`.
+- Categories: `11`.
+- Unanswerable examples: `2`.
+- Mode: BM25-only offline path.
+- Runtime: `261.297 s`.
+- MRR: `0.934`.
+- Recall@8: `1.000`.
+- Expected citation coverage: `1.000`.
+- Answer-quality pass: `1.000`.
+- Overall answer score: `0.940`.
+- Answer relevance: `0.827`.
+- Concept coverage: `0.831`.
+- Query focus: `0.816`.
+- Readability: `0.985`.
+- Faithfulness: `0.995`.
+- Answerability correctness: `1.000`.
+
+Next sprint slice:
+
+- Expand from `40` labels toward at least `100` reviewed unseen labels.
+- Add at least `5` source files.
+- Prioritize lower-signal categories: architecture, procedure, limitations, factual lookup,
+  summaries, diagrams, tables, equations, scans, and noisy notes.
+
+Boundary:
+
+- No cloud dependency, graph database, agent framework, model-size escalation, or public API
+  change was added.
