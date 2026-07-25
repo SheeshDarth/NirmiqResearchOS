@@ -92,6 +92,13 @@ function Publish-EvaluationArtifact {
             }
         }
     }
+    $isAccessDenied =
+        ($lastError.Exception -is [System.UnauthorizedAccessException]) -or
+        ($lastError.Exception.InnerException -is [System.UnauthorizedAccessException])
+    if ($isAccessDenied) {
+        Write-Warning "Could not publish optional evaluation artifact '$Destination'; the validated candidate remains at '$Source'."
+        return
+    }
     throw $lastError
 }
 

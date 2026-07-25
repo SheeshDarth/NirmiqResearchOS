@@ -4716,8 +4716,9 @@ Retry follow-up:
   `1.000`.
 - The wrapper initially returned exit code `1` only because Windows briefly denied the tracked
   metrics file while the evaluation process released its file handle. The publisher now retries
-  up to five times with bounded backoff; this changes release-script reliability only, not RAG
-  behavior.
+  up to five times with bounded backoff and treats a host-level access denial as a warning after
+  validation; the validated candidate path is retained. This changes release-script reliability
+  only, not RAG behavior.
 - The fresh run remained at `8` low-answer-relevance cases, concentrated in explanation and
   factual-lookup prompts. These remain the next quality target and are not hidden by the gate.
 
