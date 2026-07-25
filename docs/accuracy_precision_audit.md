@@ -908,3 +908,41 @@ Interpretation:
   and noisy handwritten material.
 - Lower-scoring category signals worth expanding first: architecture, procedure,
   limitations, factual lookup, and summaries.
+
+## 2026-07-25 Sprint One Dataset Audit
+
+Sprint 1B adds an eval dataset audit so the next labels are selected by coverage gaps,
+not by intuition.
+
+New artifacts:
+
+- Audit command: `npm.cmd run eval:dataset-audit`.
+- Audit script: `scripts/audit_eval_dataset.py`.
+- JSON audit: `data/processed/eval/generalization_dataset_audit.json`.
+- Markdown audit: [`generalization_dataset_audit.md`](generalization_dataset_audit.md).
+
+Latest audit result:
+
+- Current gate samples: `40`.
+- Source files used: `3`.
+- Existing source files: `3`.
+- Missing source files: `0`.
+- Raw local sources found: `16`.
+- Raw local sources unused by the current gate: `13`.
+- Samples to next target: `60` of `100`.
+- Source files to next target: `2` of `5`.
+- Unanswerable prompts to target: `8` of `10`.
+- Missing target categories: `diagram`, `equation`, `exam`, `handwriting`,
+  `paper_draft`, `scanned_pdf`, `table`.
+- Underrepresented current categories: `architecture`, `enumeration`, `limitations`,
+  `summary`, `unanswerable`.
+- Label-quality warnings: none for duplicate queries, missing expected answers, missing
+  expected phrases, or missing required concepts.
+
+Interpretation:
+
+- Sprint 1A proves the current gate is green.
+- Sprint 1B proves the next problem is coverage, not another ranking tweak.
+- The next implementation slice should add reviewed labels from unused local source
+  families, especially prompt-engineering material, technical guides, hard-document
+  fixtures, diagram/table/equation cases, and more unanswerable prompts.

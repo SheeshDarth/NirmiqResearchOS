@@ -1,6 +1,6 @@
 # Next-Version Sprint One - RAG Generalization Gate
 
-Status: Sprint 1A implemented and verified.
+Status: Sprint 1A and Sprint 1B implemented and verified.
 
 Last updated: 2026-07-24
 
@@ -26,6 +26,15 @@ The review sprint found that NIRMIQ is already strong as a local-first portfolio
 - Added `scripts/eval_generalization_gate.ps1` to run the full BM25/offline answer-quality path and then validate the gate.
 - Added `npm run eval:generalization-gate`.
 - Added unit tests for the validator.
+
+## Implemented In Sprint 1B
+
+- Added `scripts/audit_eval_dataset.py`.
+- Added `scripts/eval_dataset_audit.ps1`.
+- Added `npm run eval:dataset-audit`.
+- Added `data/processed/eval/generalization_dataset_audit.json`.
+- Added [`generalization_dataset_audit.md`](generalization_dataset_audit.md).
+- Added unit tests for dataset coverage and label-quality warnings.
 
 ## Current Gate
 
@@ -85,6 +94,30 @@ Outputs:
 - `data/processed/eval/generalization_gate_metrics.json`
 - `data/processed/eval/generalization_gate_failures.jsonl`
 - `data/processed/eval/generalization_gate_report.json`
+
+## Dataset Audit Command
+
+```powershell
+npm.cmd run eval:dataset-audit
+```
+
+Outputs:
+
+- `data/processed/eval/generalization_dataset_audit.json`
+- `docs/generalization_dataset_audit.md`
+
+Latest audit:
+
+- Samples: `40`
+- Source files used: `3`
+- Raw local sources found: `16`
+- Raw local sources unused by the current gate: `13`
+- Samples to next target: `60`
+- Source files to next target: `2`
+- Unanswerable prompts to target: `8`
+- Missing target categories: `diagram`, `equation`, `exam`, `handwriting`, `paper_draft`, `scanned_pdf`, `table`
+- Underrepresented categories: `architecture`, `enumeration`, `limitations`, `summary`, `unanswerable`
+- Label quality warnings: `0` duplicate queries, `0` missing expected answers, `0` missing required concepts, `0` missing expected phrases
 
 ## Next Slices
 

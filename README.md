@@ -203,6 +203,7 @@ Implemented in the current repository:
 - Evaluate query behavior through `data/processed/eval/query_agnostic_rag_categories.jsonl`, covering definitions, explanations, comparisons, procedures, limitations, visuals, summaries, exam answers, paper drafting, and unanswerable prompts.
 - Rebuild and evaluate generated scans, handwriting, equations, tables, and an embedded diagram offline with `npm.cmd run eval:hard-docs`.
 - Run the next-version generalization gate with `npm.cmd run eval:generalization-gate`.
+- Audit eval coverage and label gaps with `npm.cmd run eval:dataset-audit`.
 - Run GitHub CI for backend tests, API compile, frontend build, and Docker Compose validation.
 - Run optional Docker dev containers with checked-in API and web Dockerfiles.
 - Use `/api/v1/*` routes while preserving the original local API route paths.

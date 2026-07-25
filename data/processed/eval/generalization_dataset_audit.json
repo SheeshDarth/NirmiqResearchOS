@@ -1,0 +1,177 @@
+{
+  "version": "eval-dataset-audit-v1",
+  "dataset": {
+    "samples": 40,
+    "categories": {
+      "architecture": 1,
+      "comparison": 3,
+      "definition": 8,
+      "enumeration": 2,
+      "explanation": 5,
+      "factual_lookup": 5,
+      "limitations": 1,
+      "mechanism": 9,
+      "procedure": 3,
+      "summary": 1,
+      "unanswerable": 2
+    },
+    "category_count": 11,
+    "answerability": {
+      "answerable": 38,
+      "unanswerable": 2
+    },
+    "response_modes": {
+      "research": 40
+    },
+    "source_file_count": 3,
+    "source_files": [
+      "data/raw/attention_is_all_you_need.pdf",
+      "data/raw/uploads/Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-5b287bd745.pdf",
+      "data/raw/uploads/mod-5-gen-ai-708567b729.pdf"
+    ],
+    "source_extension_counts": {
+      "pdf": 3
+    },
+    "source_family_counts": {
+      "module_notes": 1,
+      "research_paper": 1,
+      "textbook": 1
+    },
+    "existing_source_count": 3,
+    "missing_source_files": []
+  },
+  "label_quality": {
+    "answerable_rows": 38,
+    "missing_expected_answer": [],
+    "missing_required_concepts": [],
+    "missing_expected_phrases": [],
+    "duplicate_queries": []
+  },
+  "raw_corpus": {
+    "root": "data\\raw",
+    "source_count": 16,
+    "unused_source_count": 13,
+    "unused_sources": [
+      {
+        "path": "data\\raw\\demo_pdfs\\nirmiq_exam_reference.pdf",
+        "extension": "pdf",
+        "family": "demo_pdf",
+        "size_bytes": 3291
+      },
+      {
+        "path": "data\\raw\\demo_pdfs\\nirmiq_rag_reference.pdf",
+        "extension": "pdf",
+        "family": "demo_pdf",
+        "size_bytes": 3654
+      },
+      {
+        "path": "data\\raw\\golden_demo\\01_grounded_rag_notes.md",
+        "extension": "md",
+        "family": "golden_demo",
+        "size_bytes": 1859
+      },
+      {
+        "path": "data\\raw\\golden_demo\\02_offline_privacy_runtime.md",
+        "extension": "md",
+        "family": "golden_demo",
+        "size_bytes": 1968
+      },
+      {
+        "path": "data\\raw\\golden_demo\\03_exam_lab_question_bank.md",
+        "extension": "md",
+        "family": "golden_demo",
+        "size_bytes": 1907
+      },
+      {
+        "path": "data\\raw\\golden_demo\\04_paper_lab_research_brief.md",
+        "extension": "md",
+        "family": "golden_demo",
+        "size_bytes": 2091
+      },
+      {
+        "path": "data\\raw\\uploads\\Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-909b7b2911.pdf",
+        "extension": "pdf",
+        "family": "textbook",
+        "size_bytes": 74498701,
+        "same_size_extension_group_size": 4
+      },
+      {
+        "path": "data\\raw\\uploads\\Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-b89b8920e5.pdf",
+        "extension": "pdf",
+        "family": "textbook",
+        "size_bytes": 74498701,
+        "same_size_extension_group_size": 4
+      },
+      {
+        "path": "data\\raw\\uploads\\Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-b8c335d0db.pdf",
+        "extension": "pdf",
+        "family": "textbook",
+        "size_bytes": 74498701,
+        "same_size_extension_group_size": 4
+      },
+      {
+        "path": "data\\raw\\uploads\\Prompt-Engineering-82e3f5c783.pdf",
+        "extension": "pdf",
+        "family": "prompt_engineering",
+        "size_bytes": 7773415
+      },
+      {
+        "path": "data\\raw\\uploads\\upload-smoke-706c590eff.txt",
+        "extension": "txt",
+        "family": "other",
+        "size_bytes": 59
+      },
+      {
+        "path": "data\\raw\\uploads\\website-building-guide-826cde89ad.pdf",
+        "extension": "pdf",
+        "family": "technical_guide",
+        "size_bytes": 1899083,
+        "same_size_extension_group_size": 2
+      },
+      {
+        "path": "data\\raw\\uploads\\website-building-guide-cc71c73b51.pdf",
+        "extension": "pdf",
+        "family": "technical_guide",
+        "size_bytes": 1899083,
+        "same_size_extension_group_size": 2
+      }
+    ]
+  },
+  "expansion_gap": {
+    "target_samples_next": 100,
+    "samples_to_target": 60,
+    "target_source_files_next": 5,
+    "source_files_to_target": 2,
+    "target_unanswerable_next": 10,
+    "unanswerable_to_target": 8,
+    "min_per_category_next": 3,
+    "underrepresented_categories": {
+      "architecture": 1,
+      "enumeration": 2,
+      "limitations": 1,
+      "summary": 1,
+      "unanswerable": 2
+    },
+    "missing_target_categories": [
+      "diagram",
+      "equation",
+      "exam",
+      "handwriting",
+      "paper_draft",
+      "scanned_pdf",
+      "table"
+    ],
+    "missing_source_families": [
+      "prompt_engineering",
+      "technical_guide",
+      "hard_fixture"
+    ]
+  },
+  "next_labeling_priorities": [
+    "Add reviewed labels for missing target categories: diagram, equation, exam, handwriting, paper_draft, scanned_pdf, table.",
+    "Raise thin categories to at least three labels each: architecture(1), enumeration(2), limitations(1), summary(1), unanswerable(2).",
+    "Review unused local source families for fresh labels: golden_demo, textbook, demo_pdf, technical_guide, prompt_engineering.",
+    "Add more unanswerable and partial-answer prompts to test abstention.",
+    "Keep at least one blind holdout split that is not tuned after failures are seen."
+  ]
+}

@@ -5,6 +5,8 @@
   "metrics_path": "data/processed/eval/generalization_gate_metrics.json",
   "failures_path": "data/processed/eval/generalization_gate_failures.jsonl",
   "report_path": "data/processed/eval/generalization_gate_report.json",
+  "audit_report_path": "data/processed/eval/generalization_dataset_audit.json",
+  "audit_markdown_path": "docs/generalization_dataset_audit.md",
   "mode": "bm25",
   "dataset_requirements": {
     "min_samples": 40,
@@ -25,6 +27,41 @@
       "procedure",
       "summary",
       "unanswerable"
+    ]
+  },
+  "expansion_requirements": {
+    "target_samples_next": 100,
+    "target_samples_stretch": 150,
+    "target_source_files_next": 5,
+    "target_unanswerable_next": 10,
+    "min_per_category_next": 3,
+    "target_categories_next": [
+      "architecture",
+      "comparison",
+      "definition",
+      "diagram",
+      "enumeration",
+      "equation",
+      "exam",
+      "explanation",
+      "factual_lookup",
+      "handwriting",
+      "limitations",
+      "mechanism",
+      "paper_draft",
+      "procedure",
+      "scanned_pdf",
+      "summary",
+      "table",
+      "unanswerable"
+    ],
+    "target_source_families_next": [
+      "research_paper",
+      "textbook",
+      "module_notes",
+      "prompt_engineering",
+      "technical_guide",
+      "hard_fixture"
     ]
   },
   "thresholds": {

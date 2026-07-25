@@ -4538,3 +4538,64 @@ Closure:
 - Remote jobs passed:
   - `Backend tests and web build`.
   - `Linux browser-mode offline smoke`.
+
+## 2026-07-25 Next-Version Sprint One B - Eval Dataset Audit
+
+Objective:
+
+- Continue Sprint 1 by adding a coverage audit before expanding labels.
+- Make the next 60+ labels guided by source/category gaps rather than overfitting the
+  current 40 examples.
+
+Implementation:
+
+- Added `scripts/audit_eval_dataset.py`.
+- Added `scripts/eval_dataset_audit.ps1`.
+- Added `npm run eval:dataset-audit`.
+- Added `apps/api/app/tests/unit/test_eval_dataset_audit.py`.
+- Extended `data/processed/eval/generalization_gate.json` with audit outputs and
+  expansion targets.
+- Generated `data/processed/eval/generalization_dataset_audit.json`.
+- Generated `docs/generalization_dataset_audit.md`.
+- Updated README, Sprint 1 docs, and accuracy audit.
+
+Audit result:
+
+- Current gate samples: `40`.
+- Source files used: `3`.
+- Categories: `11`.
+- Existing source files: `3`.
+- Missing source files: `0`.
+- Raw local sources found: `16`.
+- Raw local sources unused by current gate: `13`.
+- Samples to next target: `60`.
+- Source files to next target: `2`.
+- Unanswerable prompts to target: `8`.
+- Missing target categories: `diagram`, `equation`, `exam`, `handwriting`,
+  `paper_draft`, `scanned_pdf`, `table`.
+- Underrepresented categories: `architecture`, `enumeration`, `limitations`, `summary`,
+  `unanswerable`.
+- Label-quality warnings: `0` duplicate queries, `0` missing expected answers,
+  `0` missing expected phrases, and `0` missing required concepts.
+
+Verification:
+
+- Focused audit and gate validator tests: `4 passed`.
+- `python -m compileall scripts\audit_eval_dataset.py scripts\validate_eval_gate.py`
+  passed with `PYTHONPYCACHEPREFIX=C:\tmp\nirmiq-pycache`.
+- `python scripts\audit_eval_dataset.py` non-writing audit run passed.
+- `npm.cmd run eval:dataset-audit` passed with escalation to write the tracked audit
+  artifacts, then passed again after documentation updates.
+- `npm.cmd run build`: passed with `/` first-load JavaScript at `118 kB`.
+
+Next sprint slice:
+
+- Add reviewed labels from unused local sources and hard-document fixtures.
+- Prioritize diagram, equation, exam, handwriting, paper draft, scanned PDF, table, and
+  unanswerable coverage.
+- Keep the current 40-case gate thresholds unchanged.
+
+Boundary:
+
+- No retrieval heuristic, model, public API, UI, cloud dependency, graph database, or agent
+  behavior changed.
