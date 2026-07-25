@@ -4721,6 +4721,17 @@ Retry follow-up:
   only, not RAG behavior.
 - The fresh run remained at `8` low-answer-relevance cases, concentrated in explanation and
   factual-lookup prompts. These remain the next quality target and are not hidden by the gate.
+- Final post-fix command verification completed with exit code `0`:
+  - MRR `0.893`;
+  - Recall@8 `0.920`;
+  - expected citation coverage `0.920`;
+  - answer-quality pass rate `0.927`;
+  - faithfulness `0.998`;
+  - answerability correctness `1.000`.
+- In this managed Windows environment the optional tracked-artifact writes still emit warnings,
+  but they no longer fail the gate. The candidate artifacts remain available under
+  `temp/generalization-gate-eval`, and the last manually published metrics artifact remains
+  schema-valid.
 
 Next sprint direction:
 
