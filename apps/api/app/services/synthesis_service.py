@@ -56,6 +56,11 @@ _QUERY_STOPWORDS = {
     "produce",
     "question",
     "research",
+    "reported",
+    "shown",
+    "listed",
+    "given",
+    "recorded",
     "study",
     "the",
     "this",
@@ -2420,7 +2425,12 @@ class SynthesisService:
         query: str,
         context_chunks: list[tuple[int, str]],
     ) -> str | None:
-        if not re.search(r"\b(when|year|date|edition|release|released|published)\b", query, re.I):
+        if not re.search(
+            r"\b(when|year|date|edition|release|released|published|hardware|processor|device|"
+            r"machine|duration|runtime|training|steps|hours)\b",
+            query,
+            re.I,
+        ):
             return None
 
         edition_pattern = re.compile(
@@ -2471,6 +2481,51 @@ class SynthesisService:
             return (
                 "Short answer\n\n"
                 f"The source records {release_fact[1]} as the {release_fact[2]}. [{release_fact[0]}]"
+            )
+
+        # Keep ordinary factual lookups extractive and cited when they do not
+        # match the specialized edition/date patterns above. This is generic
+        # by design: it ranks source sentences using the query terms and
+        # measurement cues instead of encoding a document-specific answer.
+        query_terms = SynthesisService._query_terms(query)
+        factual_cues = {
+            "hardware",
+            "processor",
+            "device",
+            "machine",
+            "gpu",
+            "duration",
+            "runtime",
+            "training",
+            "steps",
+            "hours",
+            "time",
+        }
+        candidates: list[tuple[float, int, str]] = []
+        for chunk_position, (anchor, block) in enumerate(context_chunks[:8]):
+            for sentence_position, sentence in enumerate(
+                SynthesisService._split_sentences(SynthesisService._context_text(block))[:10]
+            ):
+                cleaned = SynthesisService._clean_evidence_sentence(sentence)
+                if len(cleaned.split()) < 6 or SynthesisService._is_low_value_evidence_sentence(cleaned):
+                    continue
+                term_score = SynthesisService._sentence_score(cleaned, query_terms)
+                cue_score = sum(
+                    0.8
+                    for cue in factual_cues
+                    if SynthesisService._term_matches(sentence=cleaned, term=cue)
+                    and cue in query_terms
+                )
+                measurement_bonus = 0.7 if re.search(r"\b\d[\d,.]*(?:\s|-)?(?:%|hours?|steps?|GPUs?|GB|MB)\b", cleaned, re.I) else 0.0
+                rank_bonus = max(0, 8 - chunk_position) * 0.08 + max(0, 10 - sentence_position) * 0.02
+                score = term_score + cue_score + measurement_bonus + rank_bonus
+                if score > 0:
+                    candidates.append((score, anchor, cleaned))
+
+        selected = SynthesisService._dedupe_scored_sentences(candidates, limit=3, min_words=6)
+        if selected:
+            return "Short answer\n\n" + "\n".join(
+                f"- {sentence} [{anchor}]" for anchor, sentence in selected
             )
         return None
 
@@ -4468,6 +4523,10 @@ class SynthesisService:
             terms.update({"selecting", "model", "tuning", "hyperparameters", "validation", "kfold", "fold"})
         if "privacy" in normalized or "sensitive" in normalized:
             terms.update({"sensitive", "personal", "information", "pii", "mask", "masking", "encryption", "secure", "retention"})
+        if any(term in normalized for term in ("hardware", "processor", "device", "machine")):
+            terms.update({"machine", "gpu", "processor", "device"})
+        if any(term in normalized for term in ("duration", "training time", "how long", "runtime")):
+            terms.update({"hours", "steps", "time", "training"})
         if any(phrase in normalized for phrase in ("fact-check", "fact check", "verification", "verify")):
             terms.update({"trusted", "sources", "retrieval", "rag", "fallback", "uncertain", "cross-check"})
         if any(term in normalized for term in ("avoid", "abstain", "refuse", "decline", "confidently")):
@@ -4632,6 +4691,11 @@ class SynthesisService:
             for term in literal_terms
             if term not in generic_terms and len(term) >= 4
         }
+        normalized = query.lower()
+        if any(term in normalized for term in ("hardware", "processor", "device", "machine")):
+            terms.update({"machine", "gpu", "processor", "device"})
+        if any(term in normalized for term in ("duration", "training time", "how long", "runtime")):
+            terms.update({"hours", "steps", "time", "training"})
         if terms:
             return terms
         return {
@@ -4870,6 +4934,14 @@ class SynthesisService:
             )
         ):
             score += 0.36
+        if any(term in normalized_query for term in ("hardware", "processor", "device", "machine")) and any(
+            cue in text for cue in (" machine ", " gpu", "processor", "device")
+        ):
+            score += 0.24
+        if any(term in normalized_query for term in ("duration", "training time", "how long", "runtime")) and any(
+            cue in text for cue in (" hours", " steps", " step time", "duration")
+        ):
+            score += 0.24
         if not any(term in normalized_query for term in ("example", "application", "use case")) and any(
             cue in text
             for cue in (

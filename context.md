@@ -4739,3 +4739,66 @@ Next sprint direction:
 - Add unseen sources and fresh user-like prompts in the same weak categories.
 - Prioritize explanation/factual/mechanism quality, source-section precision, and response
   readability while preserving abstention correctness.
+
+## 2026-07-25 Next-Version Sprint Two - Explanation and Factual Precision Slice
+
+The next reliability slice was implemented and verified without changing the public API.
+The goal was to improve generic query understanding and citation-preserving answers, not
+to make the model more willing to guess.
+
+Implementation completed:
+
+- Generic subject extraction now handles focus phrases such as `central idea behind PCA`
+  and `reported for the base Transformer model`.
+- Mechanism planning preserves operation noun phrases such as `perform multiclass
+  classification`, instead of reducing the query to only a model name.
+- Retrieval and synthesis query expansion now recognizes generic hardware, processor,
+  device, machine, training duration, steps, hours, and runtime language.
+- Factual answer planning can request optional fact evidence without forcing ordinary
+  facts to match a definition-shaped sentence.
+- The fallback synthesizer now extracts and cites measurement/configuration sentences
+  for generic factual lookups, while preserving the existing specialized edition/date
+  behavior.
+- The generic fallback remains bounded: at most three readable bullets, no outside facts,
+  and no answer when no citation-preserving source sentence is available.
+
+Verification:
+
+- Focused unit suite: `117 passed`.
+- Full command: `npm.cmd run eval:generalization-gate`.
+- Gate: `PASS`.
+- Dataset: `110` reviewed full-query cases, `14` source files, `18` categories, and `10`
+  unanswerable cases.
+- Mode: BM25-only offline path with low-memory mode enabled and Ollama/vector/reranker
+  disabled.
+- Runtime: `431.783 s`.
+- MRR: `0.903`.
+- Recall@8: `0.940`.
+- Expected citation coverage: `0.940`.
+- Answer-quality pass rate: `0.955`.
+- Overall answer score: `0.946`.
+- Answer relevance: `0.854`.
+- Concept coverage: `0.876`.
+- Query focus: `0.802`.
+- Readability: `0.990`.
+- Faithfulness: `0.998`.
+- Answerability correctness: `1.000`.
+
+The validated candidate metrics, failures, and report remain available under
+`temp/generalization-gate-eval/`. The managed Windows host still warns when the wrapper
+tries to publish optional copies to `data/processed/eval/`; validation itself passed and
+the prior tracked artifacts were not overwritten.
+
+Honest residuals:
+
+- Five answer-quality cases remain low-relevance, concentrated in explanation, factual
+  wording, and limitations.
+- Six phrase-level retrieval misses remain in long-textbook explanation/mechanism cases.
+- These are the next target for section-aware retrieval and answer planning, using unseen
+  documents and fresh user-like prompts rather than rules for the current sample IDs.
+
+Decision:
+
+- This slice is complete and safe to push.
+- The next slice should improve section-aware candidate retrieval, then rerun the same
+  gate plus unseen-source checks.

@@ -601,7 +601,8 @@ def _answer_type(query: str, mode: str) -> str:
     if re.search(r"\b(interpret|interprets|interpreted|interpretation|what\s+does\b.+\bmean)\b", query):
         return "interpretation"
     if re.search(
-        r"\b(when|who|how\s+many|what\s+year|which\s+year|release\s+date|which\s+edition)\b",
+        r"\b(when|who|how\s+many|what\s+year|which\s+year|release\s+date|which\s+edition|"
+        r"hardware|training\s+duration)\b",
         query,
     ):
         return "factual_lookup"
@@ -760,6 +761,35 @@ def _evidence_obligations(
                 evidence_cues=(" selecting ", " evaluate ", " evaluated ", " tuning ", " tune ", " using ", " used to "),
             ),
         )
+    if answer_type == "factual_lookup":
+        subject_terms = tuple(
+            token
+            for token in re.findall(r"[a-z][a-z0-9_-]{2,}", _subject(query))
+            if token not in {"the", "this", "that"}
+        )
+        query_terms = tuple(
+            token
+            for token in re.findall(r"[a-z][a-z0-9_-]{2,}", query)
+            if token not in {
+                "what", "which", "when", "where", "who", "are", "is", "was", "were",
+                "the", "a", "an", "and", "for", "from", "reported", "shown", "listed",
+                "given", "recorded", "displayed", "published",
+            }
+        )
+        retrieval_terms = tuple(dict.fromkeys((*subject_terms, *query_terms)))[:14]
+        return (
+            EvidenceObligation(
+                key="requested_facts",
+                label="requested factual details",
+                retrieval_terms=retrieval_terms or ("fact", "details"),
+                evidence_cues=(
+                    " reported ", " shown ", " listed ", " given ", " recorded ",
+                    " published ", " released ", " edition ", " date ", " duration ",
+                    " hardware ", " gpu", " machine ", " steps ", " hours ",
+                ),
+                required=False,
+            ),
+        )
     if answer_type == "mechanism_explanation":
         obligations: list[EvidenceObligation] = []
         if re.search(r"\bwhy\b", query):
@@ -795,6 +825,18 @@ def _evidence_obligations(
             elif focus_verb.startswith("deriv"):
                 focus_verb = "derive"
             focus_forms = _verb_forms(focus_verb)
+            operation_tail_match = re.search(
+                r"\b(?:perform|performs|performed|performing|apply|applies|applied|"
+                r"use|uses|used|employ|employs|employed)\s+(.+?)(?:\?|$)",
+                query,
+            )
+            if operation_tail_match:
+                tail_terms = tuple(
+                    token
+                    for token in re.findall(r"[a-z][a-z0-9_-]{2,}", operation_tail_match.group(1))
+                    if token not in {"the", "a", "an", "to", "on", "in", "for", "and"}
+                )
+                focus_forms = tuple(dict.fromkeys((*focus_forms, *tail_terms)))
             obligations.append(
                 EvidenceObligation(
                     key="operation_focus",
@@ -861,7 +903,8 @@ def _evidence_obligations(
         elif re.search(
             r"\b(result|output|effect|produce|produces|form|forms|create|creates|"
             r"generate|generates|identify|identifies|detect|detects|label|labels|yield|yields|"
-            r"update|updates|regularize|regularizes|reduce|reduces|prevent|prevents)\b",
+            r"update|updates|regularize|regularizes|reduce|reduces|prevent|prevents|"
+            r"perform|performs|classify|classifies|predict|predicts)\b",
             query,
         ):
             obligations.append(result)
@@ -1140,6 +1183,12 @@ def _subject(query: str) -> str:
         subject,
         flags=re.I,
     )
+    focus_tail_match = re.match(
+        r"^(?:what|which)\s+.+?\s+(?:behind|reported\s+for|shown\s+for|"
+        r"given\s+for|recorded\s+for)\s+(?:the\s+)?(.+)$",
+        subject,
+        flags=re.I,
+    )
     should_include_match = re.match(
         r"^what\s+(.+?)\s+should\s+.+?\s+(?:include|mention|contain|show)$",
         subject,
@@ -1155,6 +1204,8 @@ def _subject(query: str) -> str:
         subject = topic_scope_match.group(1).strip()
     elif listed_subject_match:
         subject = listed_subject_match.group(1).strip()
+    elif focus_tail_match:
+        subject = focus_tail_match.group(1).strip()
     elif should_include_match:
         subject = should_include_match.group(1).strip()
     else:

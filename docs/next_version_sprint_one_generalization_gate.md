@@ -185,6 +185,29 @@ Recommended next focus:
 4. Limitation answers that separate true limitations from adjacent context.
 5. Faster eval runtime through safe corpus reuse without weakening isolation.
 
+## Follow-Up Precision Slice: 2026-07-25
+
+The first reliability slice after Sprint One is complete. It added generic subject
+extraction, mechanism operation focus, factual query expansion, and a citation-preserving
+fallback for ordinary factual measurements. The implementation is documented in
+[`next_version_sprint_two_explanation_factual_precision.md`](next_version_sprint_two_explanation_factual_precision.md).
+
+The full 110-case gate remains green with the following latest metrics:
+
+- MRR: `0.903`.
+- Recall@8: `0.940`.
+- Expected citation coverage: `0.940`.
+- Answer-quality pass rate: `0.955`.
+- Answer relevance: `0.854`.
+- Concept coverage: `0.876`.
+- Query focus: `0.802`.
+- Faithfulness: `0.998`.
+- Answerability correctness: `1.000`.
+
+The current residuals are visible rather than suppressed: explanation quality and
+phrase-level retrieval still need section-aware candidate selection for long textbook
+passages. The next work should use unseen sources and fresh queries to avoid overfitting.
+
 ## Acceptance Boundary
 
 This sprint did not:

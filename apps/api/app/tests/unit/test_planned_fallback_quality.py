@@ -329,6 +329,29 @@ def test_factual_claim_verification_keeps_exact_edition_and_release_date() -> No
     assert SynthesisService._verify_cited_claims(answer, context)["state"] == "supported"
 
 
+def test_factual_fallback_extracts_measurements_with_citations() -> None:
+    answer = SynthesisService._fallback_factual_answer(
+        query="What hardware and training duration are reported for the base Transformer model?",
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=1-1\nAbstract unrelated to the requested training setup.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=.9 source=bm25 pages=7-7\n"
+                "Hardware and Schedule We trained our models on one machine with 8 NVIDIA P100 GPUs. "
+                "We trained the base models for a total of 100,000 steps or 12 hours.",
+            ),
+        ],
+    )
+
+    assert answer is not None
+    assert "NVIDIA P100" in answer
+    assert "100,000" in answer
+    assert "[2]" in answer
+
+
 def test_mechanism_fallback_prefers_requested_focus_without_repeating_model_name() -> None:
     query = "How does the Transformer represent token positions?"
     answer = SynthesisService._fallback_planned_answer(

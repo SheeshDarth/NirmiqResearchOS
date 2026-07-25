@@ -1078,6 +1078,26 @@ class RetrievalService:
                 ),
             ),
             (
+                ("hardware", "gpu", "processor", "device", "machine"),
+                (
+                    "hardware",
+                    "machine",
+                    "gpu",
+                    "processor",
+                    "device",
+                ),
+            ),
+            (
+                ("duration", "training duration", "training time", "how long", "runtime"),
+                (
+                    "duration",
+                    "time",
+                    "hours",
+                    "steps",
+                    "training",
+                ),
+            ),
+            (
                 ("summary", "summarize", "overview", "main idea", "what is this about"),
                 (
                     "introduction",

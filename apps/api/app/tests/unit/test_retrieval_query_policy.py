@@ -21,6 +21,17 @@ def test_query_expansion_adds_privacy_terms() -> None:
     assert "hyperparameters" not in expanded
 
 
+def test_query_expansion_adds_generic_measurement_terms() -> None:
+    expanded = RetrievalService._expand_query(
+        "What hardware and training duration are reported for the base model?"
+    )
+
+    assert "machine" in expanded
+    assert "gpu" in expanded
+    assert "hours" in expanded
+    assert "steps" in expanded
+
+
 def test_explanatory_queries_penalize_index_like_chunks() -> None:
     index_row = {
         "text": (

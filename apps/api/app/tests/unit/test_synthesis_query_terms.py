@@ -26,6 +26,17 @@ def test_synthesis_query_terms_expand_privacy_language() -> None:
     assert "retention" in terms
 
 
+def test_synthesis_query_terms_expand_hardware_and_duration_language() -> None:
+    terms = SynthesisService._query_terms(
+        "What hardware and training duration are reported for the base Transformer model?"
+    )
+
+    assert "machine" in terms
+    assert "gpu" in terms
+    assert "hours" in terms
+    assert "steps" in terms
+
+
 def test_synthesis_query_terms_expand_fact_checking_language() -> None:
     terms = SynthesisService._query_terms(
         "What does the module recommend for fact-checking and verification?"

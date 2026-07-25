@@ -142,6 +142,20 @@ def test_date_question_gets_factual_lookup_contract() -> None:
     assert plan.sections == ("Direct answer", "Supporting detail")
 
 
+def test_focus_phrase_extracts_subject_after_reason_or_reported_context() -> None:
+    concept = build_answer_plan("What is the central idea behind PCA?", "research")
+    factual = build_answer_plan(
+        "What hardware and training duration are reported for the base Transformer model?",
+        "research",
+    )
+
+    assert concept.subject == "PCA"
+    assert factual.answer_type == "factual_lookup"
+    assert factual.subject == "base Transformer model"
+    assert factual.evidence_obligations[0].key == "requested_facts"
+    assert factual.evidence_obligations[0].required is False
+
+
 def test_subject_anchor_extracts_named_model_from_generic_mechanism_predicate() -> None:
     query = "How does softmax regression perform multiclass classification?"
     plan = build_answer_plan(query, "research")
@@ -214,6 +228,18 @@ def test_mechanism_plan_adds_query_derived_operation_focus() -> None:
         focus,
         "The decoder masks illegal connections before softmax.",
     ) == 0
+
+
+def test_mechanism_plan_preserves_operation_noun_phrase() -> None:
+    plan = build_answer_plan(
+        "How does softmax regression perform multiclass classification?",
+        "research",
+    )
+    focus = next(item for item in plan.evidence_obligations if item.key == "operation_focus")
+
+    assert "multiclass" in focus.retrieval_terms
+    assert "classification" in focus.retrieval_terms
+    assert any(item.key == "result" for item in plan.evidence_obligations)
 
 
 def test_comparison_plan_requires_evidence_for_both_named_sides() -> None:
