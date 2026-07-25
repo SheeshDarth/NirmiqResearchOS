@@ -141,7 +141,11 @@ def audit_dataset(
             missing_sources.append(source)
 
     raw_sources = raw_source_inventory(resolve_path(raw_root))
-    used_source_keys = {normalize_source_key(source) for source in source_files}
+    used_source_keys = {
+        key
+        for source in source_files
+        for key in comparable_source_keys(source)
+    }
     unused_sources = [
         source
         for source in raw_sources
@@ -330,6 +334,16 @@ def next_labeling_priorities(
 
 def normalize_source_key(path: str) -> str:
     return path.replace("\\", "/").lower().lstrip("./")
+
+
+def comparable_source_keys(path: str) -> set[str]:
+    """Return stable keys for comparing absolute and repo-relative source paths."""
+    keys = {normalize_source_key(path)}
+    try:
+        keys.add(normalize_source_key(relative_or_absolute(resolve_path(path))))
+    except OSError:
+        keys.add(normalize_source_key(str(resolve_path(path))))
+    return {key for key in keys if key}
 
 
 def relative_or_absolute(path: Path) -> str:

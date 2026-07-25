@@ -4599,3 +4599,15 @@ Boundary:
 
 - No retrieval heuristic, model, public API, UI, cloud dependency, graph database, or agent
   behavior changed.
+
+CI follow-up:
+
+- Initial GitHub Actions run `30142906410` failed in
+  `test_eval_dataset_audit_reports_expansion_gaps` because CI stores pytest temp paths
+  inside the repo, making raw inventory paths repo-relative while sample labels were
+  absolute.
+- Fixed `scripts/audit_eval_dataset.py` to compare both absolute and repo-relative canonical source keys.
+- Local verification after the fix:
+  - Focused audit/gate tests: `4 passed`.
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_api.ps1`: `255 passed`.
+  - `npm.cmd run build`: passed.
