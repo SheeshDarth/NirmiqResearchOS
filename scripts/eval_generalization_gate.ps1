@@ -78,10 +78,21 @@ function Publish-EvaluationArtifact {
 
     $sourcePath = [System.IO.Path]::GetFullPath($Source)
     $destinationPath = [System.IO.Path]::GetFullPath($Destination)
-    [System.IO.File]::WriteAllBytes(
-        $destinationPath,
-        [System.IO.File]::ReadAllBytes($sourcePath)
-    )
+    $payload = [System.IO.File]::ReadAllBytes($sourcePath)
+    $lastError = $null
+    for ($attempt = 1; $attempt -le 5; $attempt++) {
+        try {
+            [System.IO.File]::WriteAllBytes($destinationPath, $payload)
+            return
+        }
+        catch {
+            $lastError = $_
+            if ($attempt -lt 5) {
+                Start-Sleep -Milliseconds (200 * $attempt)
+            }
+        }
+    }
+    throw $lastError
 }
 
 $evalArgs = @(

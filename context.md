@@ -4709,6 +4709,18 @@ Boundary:
 - The 110-case gate is stronger than the earlier 40-case gate, but it is still a measured
   local corpus signal rather than a universal arbitrary-document accuracy guarantee.
 
+Retry follow-up:
+
+- The 2026-07-25 rerun again passed all gate thresholds with MRR `0.903`, Recall@8 `0.930`,
+  expected citation coverage `0.930`, faithfulness `0.998`, and answerability correctness
+  `1.000`.
+- The wrapper initially returned exit code `1` only because Windows briefly denied the tracked
+  metrics file while the evaluation process released its file handle. The publisher now retries
+  up to five times with bounded backoff; this changes release-script reliability only, not RAG
+  behavior.
+- The fresh run remained at `8` low-answer-relevance cases, concentrated in explanation and
+  factual-lookup prompts. These remain the next quality target and are not hidden by the gate.
+
 Next sprint direction:
 
 - Do not tune only the 8 known failures.

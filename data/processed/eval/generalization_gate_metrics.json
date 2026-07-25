@@ -5,11 +5,11 @@
     "bm25"
   ],
   "runtime": {
-    "source_resolution_seconds": 134.823,
+    "source_resolution_seconds": 206.693,
     "mode_seconds": {
-      "bm25": 322.214
+      "bm25": 360.331
     },
-    "total_seconds": 457.262,
+    "total_seconds": 567.225,
     "cache": {
       "active_document_rows": {
         "cached_documents": 14,
@@ -34,42 +34,42 @@
       "recall@3": 0.93,
       "recall@5": 0.93,
       "recall@8": 0.93,
-      "ndcg@3": 0.7596891994065197,
-      "ndcg@5": 0.7552464703827355,
-      "ndcg@8": 0.7552464703827355,
+      "ndcg@3": 0.7567283802968611,
+      "ndcg@5": 0.7527834464953282,
+      "ndcg@8": 0.7527834464953282,
       "citation_presence_rate": 1.0,
       "citation_expected_coverage": 0.93,
       "latency_metrics": {
         "samples": 110,
-        "avg_seconds": 2.929,
-        "p50_seconds": 0.077,
-        "p95_seconds": 16.959,
-        "max_seconds": 28.433,
+        "avg_seconds": 3.276,
+        "p50_seconds": 0.112,
+        "p95_seconds": 18.848,
+        "max_seconds": 27.115,
         "slowest_samples": [
+          {
+            "sample_id": "aq-book-020",
+            "category": "mechanism",
+            "seconds": 27.115
+          },
           {
             "sample_id": "aq-book-003",
             "category": "procedure",
-            "seconds": 28.433
+            "seconds": 26.716
           },
           {
             "sample_id": "aq-book-004",
             "category": "enumeration",
-            "seconds": 23.496
+            "seconds": 22.56
           },
           {
-            "sample_id": "aq-book-006",
-            "category": "factual_lookup",
-            "seconds": 18.898
+            "sample_id": "aq-book-017",
+            "category": "comparison",
+            "seconds": 19.968
           },
           {
-            "sample_id": "aq-book-001",
-            "category": "summary",
-            "seconds": 18.217
-          },
-          {
-            "sample_id": "aq-book-005",
-            "category": "explanation",
-            "seconds": 18.035
+            "sample_id": "aq-unanswerable-001",
+            "category": "unanswerable",
+            "seconds": 19.565
           }
         ]
       },
@@ -77,7 +77,7 @@
         "grounded_response_rate": 0.9090909090909091,
         "abstention_rate": 0.09090909090909094,
         "citation_anchor_rate": 0.9090909090909091,
-        "avg_grounding_score": 10.628804144330957,
+        "avg_grounding_score": 10.6241674245103,
         "avg_citation_count": 4.463636363636364,
         "grounding_state_rates": {
           "strong": 0.9090909090909091,
@@ -93,9 +93,9 @@
       "answer_quality_metrics": {
         "samples": 110,
         "pass_rate": 0.927,
-        "overall_score": 0.941,
-        "answer_relevance": 0.841,
-        "concept_coverage": 0.864,
+        "overall_score": 0.94,
+        "answer_relevance": 0.838,
+        "concept_coverage": 0.859,
         "query_focus": 0.788,
         "plan_compliance": 0.997,
         "readability": 0.99,
@@ -121,9 +121,9 @@
           "comparison": {
             "samples": 7,
             "pass_rate": 1.0,
-            "overall_score": 0.967,
-            "answer_relevance": 0.906,
-            "concept_coverage": 0.907,
+            "overall_score": 0.947,
+            "answer_relevance": 0.848,
+            "concept_coverage": 0.824,
             "query_focus": 0.904,
             "plan_compliance": 1.0,
             "readability": 1.0,
