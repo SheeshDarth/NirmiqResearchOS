@@ -225,6 +225,7 @@ def audit_dataset(
             missing_target_categories=missing_target_categories,
             underrepresented_categories=underrepresented_categories,
             unused_sources=unused_sources,
+            represented_source_families=set(source_family_counts),
         ),
     }
 
@@ -245,12 +246,6 @@ def source_extension(path: str) -> str:
 
 def source_family(path: str) -> str:
     normalized = normalize_source_key(path)
-    if "/golden_demo/" in normalized:
-        return "golden_demo"
-    if "/demo_pdfs/" in normalized:
-        return "demo_pdf"
-    if normalized.startswith("temp/hard-document-fixtures/"):
-        return "hard_fixture"
     if "hands-on-machine-learning" in normalized:
         return "textbook"
     if "attention_is_all_you_need" in normalized:
@@ -261,6 +256,12 @@ def source_family(path: str) -> str:
         return "prompt_engineering"
     if "website-building-guide" in normalized:
         return "technical_guide"
+    if normalized.startswith("temp/hard-document-fixtures/") or "/hard_fixtures/" in normalized:
+        return "hard_fixture"
+    if "/golden_demo/" in normalized:
+        return "golden_demo"
+    if "/demo_pdfs/" in normalized:
+        return "demo_pdf"
     return "other"
 
 
@@ -303,6 +304,7 @@ def next_labeling_priorities(
     missing_target_categories: list[str],
     underrepresented_categories: dict[str, int],
     unused_sources: list[dict[str, object]],
+    represented_source_families: set[str],
 ) -> list[str]:
     priorities: list[str] = []
     if missing_target_categories:
@@ -318,7 +320,9 @@ def next_labeling_priorities(
         priorities.append(f"Raise thin categories to at least three labels each: {ranked}.")
     unused_by_family = Counter(str(source["family"]) for source in unused_sources)
     candidate_families = [
-        family for family, count in unused_by_family.most_common() if family not in {"other"}
+        family
+        for family, count in unused_by_family.most_common()
+        if family not in {"other"} and family not in represented_source_families
     ]
     if candidate_families:
         priorities.append(
@@ -326,6 +330,8 @@ def next_labeling_priorities(
             + ", ".join(candidate_families[:5])
             + "."
         )
+    elif unused_sources:
+        priorities.append("Reserve remaining unused local sources for future holdout expansion.")
     if categories.get("unanswerable", 0) < 10:
         priorities.append("Add more unanswerable and partial-answer prompts to test abstention.")
     priorities.append("Keep at least one blind holdout split that is not tuned after failures are seen.")

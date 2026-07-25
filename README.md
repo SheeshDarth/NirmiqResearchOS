@@ -141,7 +141,7 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 - [`docs/overnight_work_plan.md`](docs/overnight_work_plan.md): focused sprint plan for demo reliability, retrieval evaluation, citation selection, UI clarity, and release readiness.
 - [`docs/megasprint_five_plan.md`](docs/megasprint_five_plan.md): release confidence, desktop packaging, privacy recovery, and public proof.
 - [`docs/megasprint_six_plan.md`](docs/megasprint_six_plan.md): query-agnostic evidence obligations, hierarchical summary coverage, and the final 40-case offline reliability result.
-- [`docs/next_version_sprint_one_generalization_gate.md`](docs/next_version_sprint_one_generalization_gate.md): next-version RAG generalization gate, validator, thresholds, and dataset expansion path.
+- [`docs/next_version_sprint_one_generalization_gate.md`](docs/next_version_sprint_one_generalization_gate.md): completed 110-case RAG generalization gate, validator, thresholds, and remaining weak-category work.
 - [`docs/recursive_summary_architecture.md`](docs/recursive_summary_architecture.md): all-chunk document mapping, recursive chapter reduction, cache behavior, and measured long-textbook results.
 - [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md): current reproducible tests, retrieval metrics, offline proof, package result, and honest release boundary.
 - [`docs/review_sprints_2026_07_24.md`](docs/review_sprints_2026_07_24.md): current architecture, RAG, UI, security, performance, release, and vision-alignment review.
@@ -227,8 +227,9 @@ The golden demo is strong, and the harder real-world seed now shows measurable i
 | MegaSprint Six final offline BM25 path | **0.921** | **1.000** | **1.000** |
 | Hard-document OCR/structure gate | **1.000** | **1.000** | **1.000** |
 | Post-hard-document 40-case regression | **0.934** | **1.000** | **1.000** |
+| Next-Version Sprint One 110-case gate | **0.903** | **0.930** | **0.930** |
 
-The larger 40-case set covers definitions, explanations, mechanisms, comparisons, procedures, summaries, factual lookups, limitations, architecture questions, and unanswerable prompts. The final MegaSprint Six run passes all 40 quality cases with overall quality `0.937`, faithfulness `0.995`, readability `0.985`, and answerability correctness `1.000`. This is a strong measured result on the current corpus, not a production-grade arbitrary-document claim. BM25 remains the safest offline backbone, while hybrid remains optional support rather than the sole source of truth.
+The expanded 110-case next-version gate covers `18` query categories across `14` local source files, including definitions, explanations, mechanisms, comparisons, procedures, summaries, factual lookups, limitations, architecture questions, exams, paper drafting, diagrams, equations, tables, scans, handwriting, and unanswerable prompts. The latest offline BM25 gate passes with answer-quality pass rate `0.927`, overall answer score `0.941`, answer relevance `0.841`, concept coverage `0.864`, readability `0.990`, faithfulness `0.998`, and answerability correctness `1.000`. This is a strong measured result on the current corpus, not a production-grade arbitrary-document claim. BM25 remains the safest offline backbone, while hybrid remains optional support rather than the sole source of truth.
 
 The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
 
@@ -259,9 +260,10 @@ MegaSprint One Block B now closes on a 40-case full-query benchmark. Query-aware
 
 This work belongs to **MegaSprint One, Block B**, not the UI sprint. It is documented in [`docs/megasprint_one_answer_intelligence_plan.md`](docs/megasprint_one_answer_intelligence_plan.md).
 
-Remaining measured debt after MegaSprint Six and the six follow-up reliability jobs:
+Remaining measured debt after MegaSprint Six, the six follow-up reliability jobs, and the expanded Sprint One gate:
 
 - Use the real-user QA loop to promote scrubbed `Needs work` feedback into tracked eval labels.
+- Resolve the remaining `8/110` low-answer-relevance cases without tuning only to those exact prompts; weakest categories are explanation, factual lookup, limitations, and mechanism.
 - Broaden the new generated hard-document gate with independent real scans, noisier notes, additional handwriting styles, equations, tables, diagrams, and textbooks.
 - Expand recursive-summary QA to more real books with malformed or missing heading metadata; parser-truncated titles remain visible rather than guessed.
 - Continue Job 4 runtime optimization after the first BM25/selected-document cache block reduced the strict BM25 gate from `310.8s` to `274.3s`; details: [`docs/eval_runtime_optimization.md`](docs/eval_runtime_optimization.md).
@@ -669,13 +671,27 @@ npm.cmd run qa:real-user
 
 This reads local `Good` / `Needs work` answer feedback from SQLite and writes scrub-required candidate records under `temp/real_user_qa`. See the [real-user QA loop](docs/real_user_qa.md). Do not commit raw feedback exports.
 
-The current strict full-query benchmark scores expected evidence against the complete chunks actually cited by each answer, not truncated UI previews or unused retrieval candidates:
+The earlier strict 40-case full-query benchmark scores expected evidence against the complete chunks actually cited by each answer, not truncated UI previews or unused retrieval candidates:
 
 | Mode | Samples | MRR | Recall@3 | Recall@8 | Citation expected coverage | Quality pass | Faithfulness |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | BM25 offline | 40 | 0.921 | 1.000 | 1.000 | 1.000 | 1.000 | 0.995 |
 
 The two deliberately unsupported prompts abstained correctly. The empty canonical failure file means no case in this particular labeled set is currently below the evaluator threshold; it does not mean every future document or query is solved.
+
+The current next-version generalization gate expands that evaluation to more query families and source families:
+
+| Mode | Samples | Sources | Categories | MRR | Recall@8 | Citation expected coverage | Quality pass | Faithfulness |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| BM25 offline | 110 | 14 | 18 | 0.903 | 0.930 | 0.930 | 0.927 | 0.998 |
+
+Run it with:
+
+```powershell
+npm.cmd run eval:generalization-gate
+```
+
+The 110-case gate is the active reliability signal. It still records `8` low-answer-relevance cases, mainly in explanation, factual lookup, limitations, and mechanism prompts, so future accuracy work should target unseen sources in those categories rather than overfitting exact prompts.
 
 Run the separate hard-document gate after installing Tesseract OCR:
 

@@ -1,6 +1,6 @@
 # Golden Demo Source 03: Exam Lab Study Notes
 
-Exam Lab exists because academic answers are not all the same shape. A two-mark answer should be short and direct. A five-mark answer should include definition, key points, and one example. A ten-mark answer should include an introduction, structured headings, explanation, limitations or applications, and a concise conclusion. The answer should still come from the uploaded source material.
+Exam Lab exists because academic answers are not all the same shape. A two-mark answer should be short and direct: it should give a compact definition and one key point. A five-mark answer should include definition, key points, and one example. A ten-mark answer should include an introduction, structured headings, explanation, limitations or applications, and a concise conclusion. The answer should still come from the uploaded source material.
 
 For a ten-mark answer on citation-grounded retrieval, the expected structure is:
 

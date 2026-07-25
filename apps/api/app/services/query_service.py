@@ -675,6 +675,7 @@ class QueryService:
     @staticmethod
     def _exam_modes() -> set[str]:
         return {
+            "exam",
             "exam_answer",
             "revision_notes",
             "important_questions",
@@ -685,6 +686,7 @@ class QueryService:
     @staticmethod
     def _uses_exam_context(mode: str, intent: QueryIntent) -> bool:
         return intent.intent == "exam" or mode.strip().lower() in {
+            "exam",
             "exam_answer",
             "revision_notes",
             "important_questions",

@@ -14,6 +14,7 @@ _CONTENT_STOPWORDS = {
     "also",
     "an",
     "and",
+    "action",
     "are",
     "as",
     "at",
@@ -27,9 +28,12 @@ _CONTENT_STOPWORDS = {
     "describe",
     "does",
     "document",
+    "expected",
     "explain",
     "for",
     "from",
+    "include",
+    "includes",
     "how",
     "in",
     "into",
@@ -37,11 +41,15 @@ _CONTENT_STOPWORDS = {
     "it",
     "its",
     "model",
+    "mention",
+    "mentioned",
     "of",
     "on",
     "or",
     "paper",
+    "reported",
     "source",
+    "shown",
     "that",
     "the",
     "their",
@@ -53,6 +61,11 @@ _CONTENT_STOPWORDS = {
     "which",
     "why",
     "with",
+    "listed",
+    "provided",
+    "recommended",
+    "recommends",
+    "structure",
 }
 
 _STRUCTURAL_HEADINGS = {
@@ -60,14 +73,17 @@ _STRUCTURAL_HEADINGS = {
     "conclusion",
     "direct answer",
     "direct comparison",
+    "equation or reason from the source",
     "equations",
     "evidence",
     "evidence note",
+    "exam-ready answer",
     "examples",
     "explanation",
     "finding",
     "goal",
     "how it works",
+    "important questions",
     "key differences",
     "key points",
     "limitations",
@@ -76,7 +92,9 @@ _STRUCTURAL_HEADINGS = {
     "practical takeaway",
     "short answer",
     "source diagram references",
+    "source note",
     "steps",
+    "steps from the source",
     "what it is used for",
     "why it matters",
 }
@@ -127,7 +145,12 @@ def evaluate_answer_quality(
         answerability=normalized_answerability,
         answerability_score=answerability_score,
     )
-    query_focus_score = _query_focus_score(query=query, answer=answer)
+    query_focus_score = _query_focus_score(
+        query=query,
+        answer=answer,
+        answerability=normalized_answerability,
+        answerability_score=answerability_score,
+    )
     plan_score, plan_checks = _plan_compliance(
         query=query,
         answer=answer,
@@ -241,7 +264,15 @@ def _concept_coverage(
     return round(hits / len(expected_terms), 3), hits, len(expected_terms)
 
 
-def _query_focus_score(*, query: str, answer: str) -> float:
+def _query_focus_score(
+    *,
+    query: str,
+    answer: str,
+    answerability: str,
+    answerability_score: float,
+) -> float:
+    if answerability == "unanswerable":
+        return answerability_score
     plan = build_answer_plan(query=query, response_mode="research")
     subject_terms = _content_terms(plan.subject)
     if not subject_terms:
@@ -276,7 +307,7 @@ def _plan_compliance(
         )
     elif plan.answer_type == "procedure":
         checks["ordered_process"] = bullet_count >= 2 or bool(
-            re.search(r"\b(?:first|then|next|finally|step)\b", normalized)
+            re.search(r"\b(?:first|then|next|finally|step|pipeline)\b", normalized)
         )
     elif plan.answer_type == "limitations":
         checks["limitations_addressed"] = bool(
@@ -291,7 +322,7 @@ def _plan_compliance(
         "examples": r"\bexamples?\b",
         "applications": r"\b(?:applications?|used for|use cases?)\b",
         "limitations": r"\b(?:limitations?|drawbacks?|caveats?|not available)\b",
-        "steps": r"\b(?:steps?|first|then|next|finally)\b",
+        "steps": r"\b(?:steps?|first|then|next|finally|pipeline)\b",
         "diagram references": r"\b(?:images?|diagrams?|figures?|visual|not available)\b",
         "equations": r"\b(?:equations?|formulas?|derivation)\b|=",
         "comparison": r"\b(?:whereas|while|comparison|differences?|both|unlike|versus|vs)\b",
@@ -303,7 +334,7 @@ def _plan_compliance(
             if element == "equations":
                 matched = matched or bool(
                     re.search(r"\b[A-Za-z][A-Za-z0-9_]*\s*=\s*\S+", answer)
-                )
+                ) or " equals " in normalized
             checks[f"requested_{element.replace(' ', '_')}"] = matched
 
     if plan.depth == "detailed":

@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-07-21
+Last updated: 2026-07-25
 
 ## Canonical Problem Log
 
@@ -26,6 +26,46 @@ See [`eval_runtime_optimization.md`](eval_runtime_optimization.md) for Job 4 run
 optimization, BM25 corpus reuse, selected-document row reuse, and evaluator telemetry.
 
 See [`real_user_qa.md`](real_user_qa.md) for Job 6's local feedback-to-eval loop.
+
+## 2026-07-25 Next-Version Sprint One Generalization Gate
+
+Decision:
+
+- Replace the earlier 40-case comfort zone with a broader query-agnostic gate.
+- Keep the active reliability gate local-first: BM25 only, low-memory, no Ollama
+  generation, no vector store, no reranker, no cloud dependency.
+- Treat failures as retrieval/answer-relevance evidence, not as a reason to increase model
+  size first.
+
+Measured offline BM25 result:
+
+| Samples | Sources | Categories | MRR | Recall@3 | Recall@8 | Expected citation coverage | Quality pass | Relevance | Readability | Faithfulness | Answerability |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 110 | 14 | 18 | 0.903 | 0.930 | 0.930 | 0.930 | 0.927 | 0.841 | 0.990 | 0.998 | 1.000 |
+
+Coverage:
+
+- Query categories include architecture, comparison, definition, diagram, enumeration,
+  equation, exam, explanation, factual lookup, handwriting, limitations, mechanism,
+  paper draft, procedure, scanned PDF, summary, table, and unanswerable prompts.
+- Source families include demo PDFs, golden-demo notes, prompt-engineering notes,
+  technical-guide notes, hard fixtures, module notes, a research paper, and a local
+  textbook sample.
+
+Remaining measured risk:
+
+- `8/110` cases remain below the answer-relevance threshold.
+- Weakest categories are explanation, factual lookup, limitations, and mechanism.
+- The right next move is unseen source expansion in those categories, not prompt-specific
+  overfitting or model-size escalation.
+
+Verification:
+
+- Backend unit and integration suite: `255 passed`.
+- API/script compile: passed with Python cache redirected to `C:\tmp`.
+- Web production build: passed.
+- Dataset audit: passed with no duplicate queries or missing expected labels.
+- Published gate validation: passed against `data/processed/eval/generalization_gate_metrics.json`.
 
 ## 2026-07-21 Remaining Job 6 Real-User QA Loop
 
@@ -901,7 +941,7 @@ Latest gate result:
 
 Interpretation:
 
-- The current gate is green and useful for preventing regression.
+- At this Sprint 1A checkpoint, the 40-case gate was green and useful for preventing regression.
 - This is still not a broad arbitrary-document claim.
 - The next quality improvement should expand reviewed unseen examples toward `100-150`
   labels across more textbooks, notes, papers, scanned pages, tables, equations, diagrams,
@@ -921,18 +961,18 @@ New artifacts:
 - JSON audit: `data/processed/eval/generalization_dataset_audit.json`.
 - Markdown audit: [`generalization_dataset_audit.md`](generalization_dataset_audit.md).
 
-Latest audit result:
+Audit result at this Sprint 1B checkpoint:
 
-- Current gate samples: `40`.
+- Gate samples before Sprint 1C expansion: `40`.
 - Source files used: `3`.
 - Existing source files: `3`.
 - Missing source files: `0`.
 - Raw local sources found: `16`.
-- Raw local sources unused by the current gate: `13`.
-- Samples to next target: `60` of `100`.
-- Source files to next target: `2` of `5`.
-- Unanswerable prompts to target: `8` of `10`.
-- Missing target categories: `diagram`, `equation`, `exam`, `handwriting`,
+- Raw local sources unused by the gate at that point: `13`.
+- Samples to next target at that point: `60` of `100`.
+- Source files to next target at that point: `2` of `5`.
+- Unanswerable prompts to target at that point: `8` of `10`.
+- Missing target categories at that point: `diagram`, `equation`, `exam`, `handwriting`,
   `paper_draft`, `scanned_pdf`, `table`.
 - Underrepresented current categories: `architecture`, `enumeration`, `limitations`,
   `summary`, `unanswerable`.
@@ -941,7 +981,7 @@ Latest audit result:
 
 Interpretation:
 
-- Sprint 1A proves the current gate is green.
+- Sprint 1A proved the initial gate was green.
 - Sprint 1B proves the next problem is coverage, not another ranking tweak.
 - The next implementation slice should add reviewed labels from unused local source
   families, especially prompt-engineering material, technical guides, hard-document

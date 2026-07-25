@@ -1,47 +1,73 @@
 {
   "version": "eval-dataset-audit-v1",
   "dataset": {
-    "samples": 40,
+    "samples": 110,
     "categories": {
-      "architecture": 1,
-      "comparison": 3,
-      "definition": 8,
-      "enumeration": 2,
-      "explanation": 5,
+      "architecture": 4,
+      "comparison": 7,
+      "definition": 15,
+      "diagram": 3,
+      "enumeration": 6,
+      "equation": 3,
+      "exam": 4,
+      "explanation": 9,
       "factual_lookup": 5,
-      "limitations": 1,
-      "mechanism": 9,
-      "procedure": 3,
-      "summary": 1,
-      "unanswerable": 2
+      "handwriting": 3,
+      "limitations": 7,
+      "mechanism": 12,
+      "paper_draft": 4,
+      "procedure": 8,
+      "scanned_pdf": 3,
+      "summary": 4,
+      "table": 3,
+      "unanswerable": 10
     },
-    "category_count": 11,
+    "category_count": 18,
     "answerability": {
-      "answerable": 38,
-      "unanswerable": 2
+      "answerable": 100,
+      "unanswerable": 10
     },
     "response_modes": {
-      "research": 40
+      "exam": 9,
+      "paper": 5,
+      "research": 96
     },
-    "source_file_count": 3,
+    "source_file_count": 14,
     "source_files": [
       "data/raw/attention_is_all_you_need.pdf",
+      "data/raw/demo_pdfs/nirmiq_exam_reference.pdf",
+      "data/raw/demo_pdfs/nirmiq_rag_reference.pdf",
+      "data/raw/golden_demo/01_grounded_rag_notes.md",
+      "data/raw/golden_demo/02_offline_privacy_runtime.md",
+      "data/raw/golden_demo/03_exam_lab_question_bank.md",
+      "data/raw/golden_demo/04_paper_lab_research_brief.md",
+      "data/raw/golden_demo/05_prompt-engineering-lab.md",
+      "data/raw/golden_demo/06_website-building-guide-notes.md",
+      "data/raw/golden_demo/07_mod-5-gen-ai-notes.md",
+      "data/raw/hard_fixtures/hard_fixture_transcripts.md",
+      "data/raw/hard_fixtures/nirmiq_hard_textbook.pdf",
       "data/raw/uploads/Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-5b287bd745.pdf",
       "data/raw/uploads/mod-5-gen-ai-708567b729.pdf"
     ],
     "source_extension_counts": {
-      "pdf": 3
+      "md": 8,
+      "pdf": 6
     },
     "source_family_counts": {
-      "module_notes": 1,
+      "demo_pdf": 2,
+      "golden_demo": 4,
+      "hard_fixture": 2,
+      "module_notes": 2,
+      "prompt_engineering": 1,
       "research_paper": 1,
+      "technical_guide": 1,
       "textbook": 1
     },
-    "existing_source_count": 3,
+    "existing_source_count": 14,
     "missing_source_files": []
   },
   "label_quality": {
-    "answerable_rows": 38,
+    "answerable_rows": 100,
     "missing_expected_answer": [],
     "missing_required_concepts": [],
     "missing_expected_phrases": [],
@@ -49,44 +75,26 @@
   },
   "raw_corpus": {
     "root": "data\\raw",
-    "source_count": 16,
-    "unused_source_count": 13,
+    "source_count": 24,
+    "unused_source_count": 10,
     "unused_sources": [
       {
-        "path": "data\\raw\\demo_pdfs\\nirmiq_exam_reference.pdf",
+        "path": "data\\raw\\hard_fixtures\\feedback_chain.png",
+        "extension": "png",
+        "family": "hard_fixture",
+        "size_bytes": 7225
+      },
+      {
+        "path": "data\\raw\\hard_fixtures\\nirmiq_handwritten_note.png",
+        "extension": "png",
+        "family": "hard_fixture",
+        "size_bytes": 70394
+      },
+      {
+        "path": "data\\raw\\hard_fixtures\\nirmiq_scanned_notes.pdf",
         "extension": "pdf",
-        "family": "demo_pdf",
-        "size_bytes": 3291
-      },
-      {
-        "path": "data\\raw\\demo_pdfs\\nirmiq_rag_reference.pdf",
-        "extension": "pdf",
-        "family": "demo_pdf",
-        "size_bytes": 3654
-      },
-      {
-        "path": "data\\raw\\golden_demo\\01_grounded_rag_notes.md",
-        "extension": "md",
-        "family": "golden_demo",
-        "size_bytes": 1859
-      },
-      {
-        "path": "data\\raw\\golden_demo\\02_offline_privacy_runtime.md",
-        "extension": "md",
-        "family": "golden_demo",
-        "size_bytes": 1968
-      },
-      {
-        "path": "data\\raw\\golden_demo\\03_exam_lab_question_bank.md",
-        "extension": "md",
-        "family": "golden_demo",
-        "size_bytes": 1907
-      },
-      {
-        "path": "data\\raw\\golden_demo\\04_paper_lab_research_brief.md",
-        "extension": "md",
-        "family": "golden_demo",
-        "size_bytes": 2091
+        "family": "hard_fixture",
+        "size_bytes": 55185
       },
       {
         "path": "data\\raw\\uploads\\Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-909b7b2911.pdf",
@@ -139,39 +147,18 @@
   },
   "expansion_gap": {
     "target_samples_next": 100,
-    "samples_to_target": 60,
+    "samples_to_target": 0,
     "target_source_files_next": 5,
-    "source_files_to_target": 2,
+    "source_files_to_target": 0,
     "target_unanswerable_next": 10,
-    "unanswerable_to_target": 8,
+    "unanswerable_to_target": 0,
     "min_per_category_next": 3,
-    "underrepresented_categories": {
-      "architecture": 1,
-      "enumeration": 2,
-      "limitations": 1,
-      "summary": 1,
-      "unanswerable": 2
-    },
-    "missing_target_categories": [
-      "diagram",
-      "equation",
-      "exam",
-      "handwriting",
-      "paper_draft",
-      "scanned_pdf",
-      "table"
-    ],
-    "missing_source_families": [
-      "prompt_engineering",
-      "technical_guide",
-      "hard_fixture"
-    ]
+    "underrepresented_categories": {},
+    "missing_target_categories": [],
+    "missing_source_families": []
   },
   "next_labeling_priorities": [
-    "Add reviewed labels for missing target categories: diagram, equation, exam, handwriting, paper_draft, scanned_pdf, table.",
-    "Raise thin categories to at least three labels each: architecture(1), enumeration(2), limitations(1), summary(1), unanswerable(2).",
-    "Review unused local source families for fresh labels: golden_demo, textbook, demo_pdf, technical_guide, prompt_engineering.",
-    "Add more unanswerable and partial-answer prompts to test abstention.",
+    "Reserve remaining unused local sources for future holdout expansion.",
     "Keep at least one blind holdout split that is not tuned after failures are seen."
   ]
 }

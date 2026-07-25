@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import hashlib
 import json
 import re
 import sys
@@ -185,7 +186,16 @@ async def resolve_sample_sources(
         else:
             source_path = source_path.resolve()
         row = container.sqlite_repo.get_document_by_source_path(str(source_path))
-        if not row and auto_ingest_sources:
+        current_hash = hash_file(source_path) if source_path.exists() else ""
+        needs_refresh = bool(
+            auto_ingest_sources
+            and (
+                not row
+                or str(row.get("content_hash") or "") != current_hash
+                or str(row.get("status") or "") != "indexed"
+            )
+        )
+        if needs_refresh:
             response = await container.ingestion_service.ingest(
                 IngestRequest(
                     source_path=str(source_path),
@@ -198,6 +208,14 @@ async def resolve_sample_sources(
             sample.document_id = str(row["id"])
             if not sample.expected_document_ids and sample.answerability != "unanswerable":
                 sample.expected_document_ids = [sample.document_id]
+
+
+def hash_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def reciprocal_rank(retrieved: list[str], expected: set[str]) -> float:

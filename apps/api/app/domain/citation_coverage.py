@@ -45,6 +45,10 @@ def _is_claim_like(sentence: str) -> bool:
         "direct answer",
         "key points",
         "evidence note",
+        "equation or reason from the source",
+        "exam-ready answer",
+        "source note",
+        "steps from the source",
         "useful caveats / details",
         "diagram note",
     }:
@@ -52,9 +56,16 @@ def _is_claim_like(sentence: str) -> bool:
     if lowered.startswith(
         (
             "document summary from",
+            "exam-ready answer",
             "study guide from",
             "if you want",
             "open sources",
+            "source note",
+            "evidence note open sources",
+            "equation or reason from the source",
+            "exam-ready answer",
+            "important questions",
+            "steps from the source",
             "where this came from",
             "why this matters",
             "study takeaway",

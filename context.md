@@ -4559,19 +4559,19 @@ Implementation:
 - Generated `docs/generalization_dataset_audit.md`.
 - Updated README, Sprint 1 docs, and accuracy audit.
 
-Audit result:
+Audit result at this Sprint 1B checkpoint:
 
-- Current gate samples: `40`.
+- Gate samples before Sprint 1C expansion: `40`.
 - Source files used: `3`.
 - Categories: `11`.
 - Existing source files: `3`.
 - Missing source files: `0`.
 - Raw local sources found: `16`.
-- Raw local sources unused by current gate: `13`.
-- Samples to next target: `60`.
-- Source files to next target: `2`.
-- Unanswerable prompts to target: `8`.
-- Missing target categories: `diagram`, `equation`, `exam`, `handwriting`,
+- Raw local sources unused by the gate at that point: `13`.
+- Samples to next target at that point: `60`.
+- Source files to next target at that point: `2`.
+- Unanswerable prompts to target at that point: `8`.
+- Missing target categories at that point: `diagram`, `equation`, `exam`, `handwriting`,
   `paper_draft`, `scanned_pdf`, `table`.
 - Underrepresented categories: `architecture`, `enumeration`, `limitations`, `summary`,
   `unanswerable`.
@@ -4593,7 +4593,7 @@ Next sprint slice:
 - Add reviewed labels from unused local sources and hard-document fixtures.
 - Prioritize diagram, equation, exam, handwriting, paper draft, scanned PDF, table, and
   unanswerable coverage.
-- Keep the current 40-case gate thresholds unchanged.
+- Keep the then-current 40-case gate thresholds unchanged until the expansion slice.
 
 Boundary:
 
@@ -4611,3 +4611,107 @@ CI follow-up:
   - Focused audit/gate tests: `4 passed`.
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_api.ps1`: `255 passed`.
   - `npm.cmd run build`: passed.
+
+## 2026-07-25 Next-Version Sprint One C - 110-Case Generalization Gate Closure
+
+Objective:
+
+- Finish Sprint One by expanding the query-agnostic RAG gate from `40` reviewed examples
+  to `110` reviewed full-query examples.
+- Keep the gate local-first, BM25-only, low-memory, and independent of Ollama/vector/reranker
+  availability.
+- Improve answer relevance and presentation without exposing raw retrieval metadata in the
+  normal user flow.
+
+Implementation:
+
+- Expanded `data/processed/eval/real_world_answer_quality.jsonl` to `110` labels.
+- Raised `data/processed/eval/generalization_gate.json` dataset requirements to:
+  - minimum samples: `100`;
+  - minimum source files: `5`;
+  - minimum unanswerable prompts: `10`;
+  - required categories: `18`.
+- Added new committed source fixtures:
+  - prompt-engineering notes;
+  - website-building notes;
+  - generative-AI module notes;
+  - hard-document PDFs/images/transcripts for scan, handwriting, diagram, equation, and table-like cases.
+- Updated the eval dataset audit to detect source families before broad golden-demo grouping,
+  preserve remaining unused local sources as holdout expansion candidates, and publish artifacts
+  safely.
+- Updated the generalization gate runner to use isolated temp SQLite/Chroma/uploads/cache paths
+  and byte-stable artifact publishing.
+- Updated `scripts/eval_retrieval.py` so auto-ingested eval sources reindex when source
+  `content_hash` changes, preventing stale local eval databases from hiding source edits.
+- Tightened deterministic intent and synthesis behavior for:
+  - exam mode aliases;
+  - paper mode aliases;
+  - factual/list-style prompts;
+  - step/procedure prompts;
+  - local-first privacy/control prompts;
+  - equation requests;
+  - limitation requests;
+  - generated-text mechanism questions;
+  - question-bank extraction.
+- Improved answer-quality scoring so correct abstentions and structural headings do not
+  falsely reduce query-focus/readability scores.
+
+Latest gate result:
+
+- Command: `npm.cmd run eval:generalization-gate`.
+- Status: `PASS`.
+- Dataset: `110` reviewed examples.
+- Source files: `14`.
+- Categories: `18`.
+- Unanswerable examples: `10`.
+- Mode: BM25-only offline path.
+- Runtime: `457.262 s`.
+- MRR: `0.903`.
+- Recall@3: `0.930`.
+- Recall@5: `0.930`.
+- Recall@8: `0.930`.
+- Expected citation coverage: `0.930`.
+- Answer-quality pass rate: `0.927`.
+- Overall answer score: `0.941`.
+- Answer relevance: `0.841`.
+- Concept coverage: `0.864`.
+- Query focus: `0.788`.
+- Readability: `0.990`.
+- Faithfulness: `0.998`.
+- Answerability correctness: `1.000`.
+- Remaining failures: `8` low-answer-relevance cases.
+
+Weakest remaining categories:
+
+- `explanation`: `5/9` pass rate, still the biggest quality target.
+- `factual_lookup`: `3/5` pass rate.
+- `limitations`: `6/7` pass rate.
+- `mechanism`: `11/12` pass rate.
+
+Verification:
+
+- Backend unit and integration tests:
+  - `255 passed`, `1 warning`.
+- Compile:
+  - `python -m compileall apps\api\app scripts` passed with `PYTHONPYCACHEPREFIX`
+    redirected to `C:\tmp`.
+- Web:
+  - `npm.cmd run build` passed; `/` first-load JavaScript remains `118 kB`.
+- Dataset audit:
+  - `npm.cmd run eval:dataset-audit` passed.
+- Published gate validation:
+  - `python scripts\validate_eval_gate.py --manifest data\processed\eval\generalization_gate.json --dataset data\processed\eval\real_world_answer_quality.jsonl --metrics data\processed\eval\generalization_gate_metrics.json --output temp\generalization-gate-eval\published-validation-report.json` passed.
+
+Boundary:
+
+- No cloud dependency, graph database, agent framework, large model dependency, or public API
+  change was added.
+- The 110-case gate is stronger than the earlier 40-case gate, but it is still a measured
+  local corpus signal rather than a universal arbitrary-document accuracy guarantee.
+
+Next sprint direction:
+
+- Do not tune only the 8 known failures.
+- Add unseen sources and fresh user-like prompts in the same weak categories.
+- Prioritize explanation/factual/mechanism quality, source-section precision, and response
+  readability while preserving abstention correctness.

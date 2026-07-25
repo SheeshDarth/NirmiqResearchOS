@@ -561,14 +561,25 @@ def build_answer_plan(
 
 
 def _answer_type(query: str, mode: str) -> str:
-    if mode == "research_paper":
+    if mode in {"paper", "research_paper"} and re.search(
+        r"\b(?:draft|write|compose|paper\s+section|research\s+paper|related\s+work|methodology|abstract)\b",
+        query,
+    ):
         return "academic_draft"
-    if mode in {"exam_answer", "revision_notes", "important_questions", "study_guide"}:
+    if mode in {"exam", "exam_answer", "revision_notes", "important_questions", "study_guide"}:
         return "exam_response"
     if _is_document_summary_task(query=query, mode=mode):
         return "document_summary"
-    if mode == "compare_concepts" or re.search(r"\b(compare|contrast|difference|differences|versus|vs\.?|distinguish)\b", query):
+    if mode == "compare_concepts" or re.search(
+        r"\b(compare|compared|contrast|difference|differences|versus|vs\.?|distinguish)\b",
+        query,
+    ):
         return "comparison"
+    if re.search(
+        r"\bwhen\s+should\b.{0,120}\b(?:avoid|abstain|refuse|decline|not\s+answer|say|prefer)\b",
+        query,
+    ):
+        return "recommendation"
     if re.search(r"\b(?:recommend|recommends|recommended|recommendation|recommendations)\b", query):
         return "recommendation"
     if re.search(
@@ -580,7 +591,7 @@ def _answer_type(query: str, mode: str) -> str:
     ):
         return "workflow_placement"
     if re.search(
-        r"\b(?:how\s+to|steps?|procedure|process\s+for|workflow\s+(?:for|of)|"
+        r"\b(?:how\s+to|steps?|procedure|pipeline|process\s+for|workflow\s+(?:for|of)|"
         r"(?:outline|describe)\b.{0,40}\bworkflow)\b",
         query,
     ):
@@ -1053,7 +1064,7 @@ def _answer_depth(
 ) -> str:
     if re.search(r"\b(brief|briefly|concise|short|in\s+one\s+sentence)\b", query):
         return "brief"
-    if mode in {"deep_research", "research_paper", "study_guide"} or re.search(
+    if mode in {"deep_research", "paper", "research_paper", "study_guide"} or re.search(
         r"\b(in\s+detail|detailed|deeply|comprehensive|thorough|elaborate)\b",
         query,
     ):
@@ -1074,7 +1085,7 @@ def _requested_elements(query: str) -> tuple[str, ...]:
         ("applications", r"\b(application|applications|use\s+cases?|used\s+for)\b"),
         ("benefits", r"\b(benefit|benefits|advantage|advantages)\b"),
         ("limitations", r"\b(limitation|limitations|drawback|drawbacks|disadvantage|caveat)\b"),
-        ("steps", r"\b(?:step|steps|procedure|how\s+to|workflow\s+(?:for|of))\b"),
+        ("steps", r"\b(?:step|steps|procedure|pipeline|how\s+to|workflow\s+(?:for|of))\b"),
         (
             "diagram references",
             r"(?:\b(?:provide|include|show|with|add|cite)\s+(?:an?\s+)?"
@@ -1129,6 +1140,11 @@ def _subject(query: str) -> str:
         subject,
         flags=re.I,
     )
+    should_include_match = re.match(
+        r"^what\s+(.+?)\s+should\s+.+?\s+(?:include|mention|contain|show)$",
+        subject,
+        flags=re.I,
+    )
     if recommendation_subject_match:
         subject = recommendation_subject_match.group(1).strip()
     elif owner_subject_match:
@@ -1139,6 +1155,8 @@ def _subject(query: str) -> str:
         subject = topic_scope_match.group(1).strip()
     elif listed_subject_match:
         subject = listed_subject_match.group(1).strip()
+    elif should_include_match:
+        subject = should_include_match.group(1).strip()
     else:
         subject = _LEADING_REQUEST.sub("", subject).strip()
     mechanism_subject_match = re.match(

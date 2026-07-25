@@ -27,6 +27,10 @@ data/raw/*
 !data/raw/golden_demo/*.md
 !data/raw/demo_pdfs/
 !data/raw/demo_pdfs/*.pdf
+!data/raw/hard_fixtures/
+!data/raw/hard_fixtures/*.pdf
+!data/raw/hard_fixtures/*.png
+!data/raw/hard_fixtures/*.md
 data/processed/diagrams/*
 !data/processed/.gitkeep
 data/indexes/chroma/*

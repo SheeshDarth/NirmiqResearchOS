@@ -9,7 +9,7 @@ class QueryIntent:
     route: str
 
 
-_EXAM_MODES = {"exam_answer", "revision_notes", "important_questions", "compare_concepts", "study_guide"}
+_EXAM_MODES = {"exam", "exam_answer", "revision_notes", "important_questions", "compare_concepts", "study_guide"}
 
 
 def detect_query_intent(query: str, mode: str) -> QueryIntent:
@@ -23,7 +23,7 @@ def detect_query_intent(query: str, mode: str) -> QueryIntent:
         return QueryIntent("exam", 0.95, "exam_grounded")
     if _looks_like_exam_request(normalized_query, tokens):
         return QueryIntent("exam", 0.86, "exam_grounded")
-    if normalized_mode == "research_paper" or _has_phrase(
+    if normalized_mode in {"paper", "research_paper"} or _has_phrase(
         normalized_query, ("research paper", "related work", "methodology", "paper section")
     ):
         return QueryIntent("paper_draft", 0.92, "paper_grounded")
@@ -35,7 +35,26 @@ def detect_query_intent(query: str, mode: str) -> QueryIntent:
         return QueryIntent("compare", 0.88, "comparison_grounded")
     if normalized_mode == "general_chat":
         return QueryIntent("general_chat", 0.8, "local_chat")
-    if _has_any(tokens, {"what", "which", "who", "why", "how", "when", "where", "define", "explain"}):
+    if _has_any(
+        tokens,
+        {
+            "what",
+            "which",
+            "who",
+            "why",
+            "how",
+            "when",
+            "where",
+            "define",
+            "explain",
+            "list",
+            "name",
+            "types",
+            "kinds",
+            "examples",
+            "steps",
+        },
+    ):
         return QueryIntent("factual_lookup", 0.68, "default_grounded_retrieval")
     return QueryIntent("unanswerable_or_unclear", 0.45, "abstain_if_weak")
 

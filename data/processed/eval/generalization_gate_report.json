@@ -4,33 +4,53 @@
   "passed": true,
   "dataset": {
     "path": "data\\processed\\eval\\real_world_answer_quality.jsonl",
-    "samples": 40,
+    "samples": 110,
     "categories": {
-      "architecture": 1,
-      "comparison": 3,
-      "definition": 8,
-      "enumeration": 2,
-      "explanation": 5,
+      "architecture": 4,
+      "comparison": 7,
+      "definition": 15,
+      "diagram": 3,
+      "enumeration": 6,
+      "equation": 3,
+      "exam": 4,
+      "explanation": 9,
       "factual_lookup": 5,
-      "limitations": 1,
-      "mechanism": 9,
-      "procedure": 3,
-      "summary": 1,
-      "unanswerable": 2
+      "handwriting": 3,
+      "limitations": 7,
+      "mechanism": 12,
+      "paper_draft": 4,
+      "procedure": 8,
+      "scanned_pdf": 3,
+      "summary": 4,
+      "table": 3,
+      "unanswerable": 10
     },
-    "category_count": 11,
+    "category_count": 18,
     "answerability": {
-      "answerable": 38,
-      "unanswerable": 2
+      "answerable": 100,
+      "unanswerable": 10
     },
-    "source_file_count": 3,
+    "source_file_count": 14,
     "source_files": [
       "data/raw/attention_is_all_you_need.pdf",
+      "data/raw/demo_pdfs/nirmiq_exam_reference.pdf",
+      "data/raw/demo_pdfs/nirmiq_rag_reference.pdf",
+      "data/raw/golden_demo/01_grounded_rag_notes.md",
+      "data/raw/golden_demo/02_offline_privacy_runtime.md",
+      "data/raw/golden_demo/03_exam_lab_question_bank.md",
+      "data/raw/golden_demo/04_paper_lab_research_brief.md",
+      "data/raw/golden_demo/05_prompt-engineering-lab.md",
+      "data/raw/golden_demo/06_website-building-guide-notes.md",
+      "data/raw/golden_demo/07_mod-5-gen-ai-notes.md",
+      "data/raw/hard_fixtures/hard_fixture_transcripts.md",
+      "data/raw/hard_fixtures/nirmiq_hard_textbook.pdf",
       "data/raw/uploads/Hands-On-Machine-Learning-with-Scikit-Learn-Keras-and-TensorFlow-3rd-Ed.---Annot-5b287bd745.pdf",
       "data/raw/uploads/mod-5-gen-ai-708567b729.pdf"
     ],
     "response_modes": {
-      "research": 40
+      "exam": 9,
+      "paper": 5,
+      "research": 96
     }
   },
   "checked_metric_count": 12,
@@ -40,15 +60,15 @@
     {
       "kind": "dataset",
       "name": "min_samples",
-      "actual": 40,
-      "threshold": 40,
+      "actual": 110,
+      "threshold": 100,
       "passed": true
     },
     {
       "kind": "dataset",
       "name": "min_source_files",
-      "actual": 3,
-      "threshold": 3,
+      "actual": 14,
+      "threshold": 5,
       "passed": true
     },
     {
@@ -58,26 +78,40 @@
         "architecture",
         "comparison",
         "definition",
+        "diagram",
         "enumeration",
+        "equation",
+        "exam",
         "explanation",
         "factual_lookup",
+        "handwriting",
         "limitations",
         "mechanism",
+        "paper_draft",
         "procedure",
+        "scanned_pdf",
         "summary",
+        "table",
         "unanswerable"
       ],
       "threshold": [
         "architecture",
         "comparison",
         "definition",
+        "diagram",
         "enumeration",
+        "equation",
+        "exam",
         "explanation",
         "factual_lookup",
+        "handwriting",
         "limitations",
         "mechanism",
+        "paper_draft",
         "procedure",
+        "scanned_pdf",
         "summary",
+        "table",
         "unanswerable"
       ],
       "passed": true,
@@ -88,14 +122,14 @@
     {
       "kind": "dataset",
       "name": "min_unanswerable",
-      "actual": 2,
-      "threshold": 2,
+      "actual": 10,
+      "threshold": 10,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.answer_relevance",
-      "actual": 0.827,
+      "actual": 0.841,
       "threshold": 0.75,
       "passed": true
     },
@@ -109,70 +143,70 @@
     {
       "kind": "metric",
       "name": "answer_quality_metrics.concept_coverage",
-      "actual": 0.831,
+      "actual": 0.864,
       "threshold": 0.75,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.faithfulness",
-      "actual": 0.995,
+      "actual": 0.998,
       "threshold": 0.95,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.overall_score",
-      "actual": 0.94,
+      "actual": 0.941,
       "threshold": 0.85,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.pass_rate",
-      "actual": 1.0,
+      "actual": 0.927,
       "threshold": 0.9,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.query_focus",
-      "actual": 0.816,
+      "actual": 0.788,
       "threshold": 0.7,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.readability",
-      "actual": 0.985,
+      "actual": 0.99,
       "threshold": 0.9,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "citation_expected_coverage",
-      "actual": 1.0,
+      "actual": 0.93,
       "threshold": 0.9,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "grounding_metrics.citation_anchor_rate",
-      "actual": 0.95,
+      "actual": 0.909091,
       "threshold": 0.9,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "mrr",
-      "actual": 0.934211,
+      "actual": 0.903333,
       "threshold": 0.7,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "recall@8",
-      "actual": 1.0,
+      "actual": 0.93,
       "threshold": 0.85,
       "passed": true
     }
