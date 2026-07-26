@@ -1058,6 +1058,14 @@ class SynthesisService:
             )
             if limitations_answer:
                 return limitations_answer
+        if answer_plan.answer_type == "recommendation":
+            recommendation_answer = SynthesisService._fallback_recommendation_answer(
+                query=query,
+                context_chunks=context_chunks,
+                answer_plan=answer_plan,
+            )
+            if recommendation_answer:
+                return recommendation_answer
         if answer_plan.answer_type == "mechanism_explanation":
             mechanism_answer = SynthesisService._fallback_text_generation_answer(
                 query=query,
@@ -1734,6 +1742,8 @@ class SynthesisService:
                         " decreasing ",
                     )
                 )
+                focus_weight = 2.0 if answer_plan.answer_type in precision_first_types else 0.5
+                expansion_weight = 0.15 if answer_plan.answer_type in precision_first_types else 0.3
                 focus_bonus = (
                     6.0 * evidence_obligation_score(focus_obligation, sentence)
                     if focus_obligation
@@ -1742,8 +1752,8 @@ class SynthesisService:
                 score = (
                     (6.0 * cue_score)
                     + (2.0 * goal_score)
-                    + (0.3 * expanded_score)
-                    + (0.5 * core_score)
+                    + (expansion_weight * expanded_score)
+                    + (focus_weight * core_score)
                     + interpretation_bonus
                     + action_bonus
                     + focus_bonus
@@ -1809,6 +1819,76 @@ class SynthesisService:
                 4 if answer_plan.answer_type in precision_first_types else 5
             )
             sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in details[:detail_limit])
+        return "\n".join(sections)
+
+    @staticmethod
+    def _fallback_recommendation_answer(
+        *,
+        query: str,
+        context_chunks: list[tuple[int, str]],
+        answer_plan: AnswerPlan,
+    ) -> str | None:
+        """Keep recommendation answers anchored to the requested subject."""
+
+        core_terms = SynthesisService._core_subject_terms(
+            query=query,
+            answer_plan=answer_plan,
+        )
+        query_terms = SynthesisService._query_terms(query)
+        candidates: list[tuple[float, int, str]] = []
+        for anchor, block in context_chunks[:10]:
+            for position, sentence in enumerate(
+                SynthesisService._split_sentences(SynthesisService._context_text(block))[:20]
+            ):
+                cleaned = SynthesisService._clean_evidence_sentence(sentence)
+                if (
+                    len(cleaned.split()) < 6
+                    or SynthesisService._is_low_value_evidence_sentence(cleaned)
+                    or SynthesisService._is_code_heavy_sentence(cleaned)
+                ):
+                    continue
+                subject_score = SynthesisService._sentence_score(cleaned, core_terms)
+                query_score = SynthesisService._sentence_score(cleaned, query_terms)
+                recommendation_score = answer_evidence_cue_score("recommendation", cleaned)
+                obligation_score = max(
+                    (
+                        evidence_obligation_score(obligation, cleaned)
+                        for obligation in answer_plan.evidence_obligations
+                    ),
+                    default=0.0,
+                )
+                if subject_score <= 0 and obligation_score < 0.6 and query_score < 2:
+                    continue
+                score = (
+                    (5.0 * subject_score)
+                    + (4.0 * obligation_score)
+                    + (4.0 * recommendation_score)
+                    + (0.7 * query_score)
+                    + max(0, 12 - position) * 0.02
+                )
+                candidates.append((score, anchor, cleaned))
+
+        selected = SynthesisService._dedupe_scored_sentences(candidates, limit=4)
+        if not selected:
+            return None
+        lead_anchor, lead_sentence = selected[0]
+        details = [
+            (anchor, sentence)
+            for anchor, sentence in selected[1:]
+            if (
+                anchor == lead_anchor
+                or evidence_obligation_score(
+                    answer_plan.evidence_obligations[0],
+                    sentence,
+                ) >= 0.8
+                or SynthesisService._sentence_score(sentence, core_terms) > 0
+                or answer_evidence_cue_score("recommendation", sentence) >= 0.6
+            )
+        ]
+        sections = ["Short answer", f"\n{lead_sentence} [{lead_anchor}]"]
+        if details:
+            sections.append("\nRecommendations from the source")
+            sections.extend(f"- {sentence} [{anchor}]" for anchor, sentence in details[:3])
         return "\n".join(sections)
 
     @staticmethod
@@ -2309,6 +2389,11 @@ class SynthesisService:
             "small local model": 3.2,
             "less fluently": 2.6,
             "grounded correctness over style": 2.8,
+            "avoid ": 3.4,
+            "rather than": 2.8,
+            "should not": 3.2,
+            "must not": 3.2,
+            "not suitable": 3.0,
         }
         generic_limitation_cues = (
             "limitations should be honest",
@@ -2319,6 +2404,11 @@ class SynthesisService:
             "limitations",
             "caveat",
             "drawback",
+            "avoid",
+            "rather than",
+            "should not",
+            "must not",
+            "not suitable",
         )
         candidates: list[tuple[float, int, str]] = []
         for anchor, block in context_chunks[:8]:
@@ -4525,6 +4615,8 @@ class SynthesisService:
         for line in content_lines:
             stripped = line.strip()
             if not stripped:
+                continue
+            if stripped.lower().startswith("source heading:"):
                 continue
             if stripped.startswith("#"):
                 stripped = re.sub(

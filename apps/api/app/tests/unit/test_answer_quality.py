@@ -121,6 +121,20 @@ def test_symbolic_formula_satisfies_requested_equation_plan() -> None:
     assert result["passed"] is True
 
 
+def test_plural_limitations_heading_satisfies_limitation_plan() -> None:
+    result = evaluate_answer_quality(
+        query="Which animation choices should a low-end laptop avoid?",
+        answer=(
+            "The interface should avoid large animation libraries and oversized images. [1]\n\n"
+            "Limitations\n- It should avoid constant background effects. [1]"
+        ),
+        grounded=True,
+        retrieval_meta=_supported_meta(),
+    )
+
+    assert result["plan_checks"]["limitations_addressed"] is True
+
+
 def test_orphan_fragment_reduces_readability_score() -> None:
     result = evaluate_answer_quality(
         query="Compare random forests and decision trees.",

@@ -46,6 +46,34 @@ def test_mechanism_query_does_not_force_unrequested_sections() -> None:
     assert "Applications" not in plan.sections
 
 
+def test_should_action_queries_use_recommendation_or_limitation_contracts() -> None:
+    first_screen = build_answer_plan(
+        "What should the first screen of an academic product website communicate?",
+        "research",
+    )
+    low_end = build_answer_plan(
+        "Which animation choices should a low-end laptop avoid?",
+        "research",
+    )
+
+    assert first_screen.answer_type == "recommendation"
+    assert first_screen.subject == "the first screen"
+    assert low_end.answer_type == "limitations"
+    assert low_end.subject == "animation choices"
+
+    evidence_boundary = build_answer_plan(
+        "What must prompt engineering not override in document-grounded work?",
+        "research",
+    )
+    assert evidence_boundary.answer_type == "limitations"
+
+
+def test_mechanism_cues_cover_causal_and_pattern_language() -> None:
+    text = "A chat-first layout works well because students follow a familiar pattern."
+
+    assert answer_evidence_cue_score("mechanism_explanation", text) >= 0.6
+
+
 def test_comparison_and_procedure_queries_get_different_contracts() -> None:
     comparison = build_answer_plan("Compare supervised and unsupervised learning", "research")
     procedure = build_answer_plan("How to evaluate a classifier step by step", "research")

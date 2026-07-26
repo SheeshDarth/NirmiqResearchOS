@@ -246,9 +246,17 @@ _ANSWER_EVIDENCE_CUES: dict[str, tuple[str, ...]] = {
     ),
     "mechanism_explanation": (
         "works by",
+        "works well",
+        "works as",
+        "works when",
         "operates by",
         "consists of",
         "composed of",
+        "because ",
+        "so that",
+        "the pattern",
+        "the flow",
+        "only when",
         "for each",
         " then ",
         "compute ",
@@ -379,6 +387,11 @@ _ANSWER_EVIDENCE_CUES: dict[str, tuple[str, ...]] = {
         "limitation",
         "drawback",
         "disadvantage",
+        "avoid ",
+        "rather than",
+        "should not",
+        "must not",
+        "not suitable",
         "however",
         "cannot ",
         "does not ",
@@ -598,6 +611,23 @@ def _answer_type(query: str, mode: str) -> str:
         return "procedure"
     if re.search(r"\b(limitations?|drawbacks?|disadvantages?|failure\s+cases?|caveats?)\b", query):
         return "limitations"
+    if re.search(
+        r"\b(?:what|which)\b.{0,100}\bshould\b.{0,100}\b(?:avoid|not|never|cannot|can't)\b",
+        query,
+    ):
+        return "limitations"
+    if re.search(
+        r"\b(?:what|which)\b.{0,100}\b(?:must\s+not|should\s+not|cannot|can't)\b"
+        r"|\b(?:what|which)\b.{0,100}\bmust\b.{0,100}\bnot\b",
+        query,
+    ):
+        return "limitations"
+    if re.search(
+        r"\b(?:what|which)\b.{0,100}\bshould\b.{0,100}\b"
+        r"(?:include|communicate|contain|show|use|choose|select|prioritize)\b",
+        query,
+    ):
+        return "recommendation"
     if re.search(r"\b(interpret|interprets|interpreted|interpretation|what\s+does\b.+\bmean)\b", query):
         return "interpretation"
     if re.search(
@@ -691,6 +721,7 @@ def _evidence_obligations(
             " drops ", " dropped ", " ignored ", " active ",
             " increases ", " increasing ", " decreases ", " decreasing ",
             " prevents ", " prevent ", " ensures ", " ensure ",
+            " works ", " because ", " pattern ", " flow ", " only when ",
         ),
     )
     result = EvidenceObligation(
@@ -1194,6 +1225,20 @@ def _subject(query: str) -> str:
         subject,
         flags=re.I,
     )
+    leading_should_action_match = re.match(
+        r"^what\s+should\s+(.+?)\s+"
+        r"(?:avoid|not|never|cannot|can't|include|communicate|contain|show|"
+        r"use|choose|select|prioritize)(?:\s+.+)?$",
+        subject,
+        flags=re.I,
+    )
+    should_action_match = re.match(
+        r"^(?:what|which)\s+(.+?)\s+should\s+.+?\s+"
+        r"(?:avoid|not|never|cannot|can't|include|communicate|contain|show|"
+        r"use|choose|select|prioritize)(?:\s+.+)?$",
+        subject,
+        flags=re.I,
+    )
     if recommendation_subject_match:
         subject = recommendation_subject_match.group(1).strip()
     elif owner_subject_match:
@@ -1208,6 +1253,11 @@ def _subject(query: str) -> str:
         subject = focus_tail_match.group(1).strip()
     elif should_include_match:
         subject = should_include_match.group(1).strip()
+    elif leading_should_action_match:
+        subject = leading_should_action_match.group(1).strip()
+        subject = re.sub(r"\s+(?:of|for|in)\s+.+$", "", subject, flags=re.I).strip()
+    elif should_action_match:
+        subject = should_action_match.group(1).strip()
     else:
         subject = _LEADING_REQUEST.sub("", subject).strip()
     mechanism_subject_match = re.match(

@@ -311,7 +311,7 @@ def _plan_compliance(
         )
     elif plan.answer_type == "limitations":
         checks["limitations_addressed"] = bool(
-            re.search(r"\b(?:limitation|drawback|caveat|struggle|however)\b", normalized)
+            re.search(r"\b(?:limitations?|drawbacks?|caveats?|struggle|however)\b", normalized)
         )
     elif plan.answer_type == "enumeration":
         checks["multiple_items"] = bullet_count >= 2

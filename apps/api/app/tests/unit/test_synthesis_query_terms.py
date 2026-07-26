@@ -2,6 +2,19 @@ from app.domain.models import RetrievalBundle, RetrievedChunk
 from app.services.synthesis_service import SynthesisService
 
 
+def test_context_text_ignores_transport_source_heading() -> None:
+    block = (
+        "[1] doc=doc score=1 source=bm25 pages=1-1\n"
+        "Source heading: Interface Notes\n"
+        "The first screen should explain the product and the next action."
+    )
+
+    context = SynthesisService._context_text(block)
+
+    assert "Source heading:" not in context
+    assert "The first screen should explain" in context
+
+
 def test_synthesis_query_terms_expand_token_positions() -> None:
     terms = SynthesisService._query_terms("How does the Transformer represent token positions?")
 

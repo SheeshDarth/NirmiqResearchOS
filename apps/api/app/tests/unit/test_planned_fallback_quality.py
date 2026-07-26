@@ -53,6 +53,82 @@ def test_mechanism_fallback_prefers_complete_requested_operation() -> None:
     assert "[1]" in answer
 
 
+def test_mechanism_fallback_prefers_causal_chat_first_flow() -> None:
+    query = "How does a chat-first layout reduce cognitive load?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=1-1\n"
+                "Good interface design reduces cognitive load. Primary actions should be visible, "
+                "while advanced controls should stay hidden until the user asks for them.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=.9 source=bm25 pages=2-2\n"
+                "A chat-first layout works well because students already understand the pattern: "
+                "upload a source, type a question, read the answer, and open sources only when verification is needed.",
+            ),
+        ],
+    )
+
+    assert "chat-first layout works well because" in answer
+    assert "upload a source" in answer
+    assert "[2]" in answer
+
+
+def test_limitation_fallback_collects_avoidance_constraints() -> None:
+    query = "Which animation choices should a low-end laptop avoid?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=1-1\n"
+                "Smooth transitions should use lightweight CSS transforms rather than heavy scripts. "
+                "The interface should avoid large animation libraries, oversized images, and constant background effects.",
+            )
+        ],
+    )
+
+    assert "heavy scripts" in answer
+    assert "large animation libraries" in answer
+    assert "oversized images" in answer
+    assert "background effects" in answer
+    assert "[1]" in answer
+
+
+def test_recommendation_fallback_keeps_the_requested_subject_in_front() -> None:
+    query = "What should the first screen of an academic product website communicate?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        additional_terms={
+            "performance",
+            "transitions",
+            "lightweight",
+            "scripts",
+            "animation",
+            "privacy",
+        },
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=1-1\n"
+                "A useful academic product website should make the value proposition clear before showing complex controls. "
+                "The first screen should explain what the product does, who it helps, and what action the user should take next. "
+                "Smooth transitions should use lightweight CSS transforms rather than heavy scripts.",
+            )
+        ],
+    )
+
+    assert answer.startswith("Short answer\n\nThe first screen should explain")
+    assert "Smooth transitions should use" not in answer.split("Recommendations from the source", 1)[0]
+
+
 def test_comparison_fallback_selects_explicit_contrast() -> None:
     query = "Compare precision and recall"
     answer = SynthesisService._fallback_planned_answer(

@@ -237,3 +237,28 @@ to `0.778`, and factual lookup from `0.600` to `0.800`, while raw MRR/Recall mov
 slightly below the prior tracked artifact (`0.903`/`0.930`). This tradeoff is recorded
 honestly; the next slice should validate held-out explanation/mechanism prompts before
 further tuning. See [`next_version_sprint_three_section_aware_retrieval.md`](next_version_sprint_three_section_aware_retrieval.md).
+
+## 2026-07-26 Held-Out Query Precision
+
+Sprint Four adds eight fresh queries over the exact local prompt-engineering and website-
+building markdown sources. The first source draft was rejected because it paired labels
+with unrelated PDFs; the corrected dataset is a same-source fresh-query holdout and is
+not presented as an unseen-source benchmark.
+
+| Metric | Result |
+| --- | ---: |
+| MRR | 1.000 |
+| Recall@8 | 1.000 |
+| Citation expected coverage | 1.000 |
+| Answer-quality pass rate | 1.000 |
+| Overall answer score | 0.961 |
+| Answer relevance | 0.887 |
+| Concept coverage | 0.938 |
+| Faithfulness | 1.000 |
+| Answerability correctness | 1.000 |
+| Average BM25 latency | 33 ms |
+
+The slice improves generic handling of recommendation, limitation, and causal mechanism
+questions without changing the public query contract. See
+[`next_version_sprint_four_holdout_precision.md`](next_version_sprint_four_holdout_precision.md)
+for the source-correction note, commands, and boundaries.

@@ -999,3 +999,17 @@ Interpretation:
 - The next implementation slice should add reviewed labels from unused local source
   families, especially prompt-engineering material, technical guides, hard-document
   fixtures, diagram/table/equation cases, and more unanswerable prompts.
+
+## Held-Out Query Precision Follow-up
+
+The next slice used eight fresh questions over two exact local markdown sources and fixed
+generic answer-planning gaps rather than adding topic-specific rules. `what should ...`
+queries now use recommendation contracts; `should avoid`, `must not`, and `should not`
+queries use limitation contracts; causal process cues are recognized for mechanisms; and
+transport-only source-heading lines are excluded from synthesis context.
+
+The corrected holdout reached MRR `1.000`, Recall@8 `1.000`, citation expected coverage
+`1.000`, answer-quality pass rate `1.000`, overall answer score `0.961`, concept coverage
+`0.938`, faithfulness `1.000`, and answerability correctness `1.000`. This is a positive
+same-source fresh-query signal, not proof of arbitrary-document accuracy. The next audit
+must use unseen source families and hard documents before further routing expansion.

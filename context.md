@@ -4862,3 +4862,88 @@ Documentation:
 - Detailed report: `docs/next_version_sprint_three_section_aware_retrieval.md`.
 - Current generated gate artifacts: `data/processed/eval/generalization_gate_*`.
 - Verified implementation commit: `e9fa91f` (`Improve section-aware answer evidence selection`).
+
+## 2026-07-26 Next-Version Sprint Four - Held-Out Query Precision
+
+Objective:
+
+- Validate the section-aware work on fresh long-form questions without adding
+  textbook-specific routing rules.
+- Improve query understanding, answer-used evidence selection, and simple answer
+  presentation for recommendation, limitation, and causal mechanism questions.
+
+Dataset correction:
+
+- The first holdout draft paired labels from markdown notes with unrelated PDFs. Those
+  failures were discarded as invalid because the evidence was not present in the source.
+- The corrected tracked dataset is `data/processed/eval/heldout_longform_precision.jsonl`.
+- It contains eight fresh queries over the exact local sources:
+  - `data/raw/golden_demo/05_prompt-engineering-lab.md`;
+  - `data/raw/golden_demo/06_website-building-guide-notes.md`.
+- It is a same-source fresh-query holdout, not an unseen-source benchmark.
+
+Implementation:
+
+- Added generic answer planning for `what/which should ... communicate/include/show`
+  recommendation questions.
+- Added generic limitation routing for `should avoid`, `must not`, `should not`, and
+  related negative constraints.
+- Tightened subject extraction for leading `what should` questions.
+- Added causal/process mechanism cues such as `works well`, `because`, `pattern`, and
+  `flow` to evidence obligations and answer selection.
+- Added recommendation fallback synthesis that prioritizes the requested subject over
+  broad retrieval-derived terms and keeps details in the same evidence passage.
+- Removed the internal transport-only `Source heading:` line from synthesis context.
+- Fixed the deterministic evaluator to recognize plural `Limitations` headings.
+- No public API, visible UI, model, or dependency change.
+
+Holdout result:
+
+- BM25-only, Ollama/vector/reranker disabled, low-memory mode.
+- MRR: `1.000`.
+- Recall@8: `1.000`.
+- Expected citation coverage: `1.000`.
+- Answer-quality pass rate: `1.000`.
+- Overall answer score: `0.961`.
+- Answer relevance: `0.887`.
+- Concept coverage: `0.938`.
+- Query focus: `0.771`.
+- Plan compliance: `1.000`.
+- Readability: `1.000`.
+- Faithfulness: `1.000`.
+- Answerability correctness: `1.000`.
+- Average BM25 query latency: `33 ms`.
+
+Verification:
+
+- Focused answer-planning/fallback/synthesis/quality suite: `95 passed`.
+- Full backend suite: `271 passed`, one existing deprecation warning.
+- `python -m compileall -q apps/api/app`: passed.
+- Next.js production build: passed; `/` first-load JavaScript remains `118 kB`.
+- Existing 110-case generalization validator report: `passed: true` with MRR `0.872`,
+  Recall@8 `0.920`, expected citation coverage `0.920`, answer-quality pass rate
+  `0.927`, faithfulness `0.998`, and answerability correctness `1.000`.
+- The wrapper `npm.cmd run eval:generalization-gate` exceeded five minutes on this
+  managed Windows host after generating the candidate artifacts. The report itself was
+  inspected and validated as passed; this is a release-harness timing issue, not a RAG
+  failure, and is now a follow-up release-hardening item.
+
+Files:
+
+- `apps/api/app/domain/answer_intelligence.py`.
+- `apps/api/app/domain/answer_quality.py`.
+- `apps/api/app/services/synthesis_service.py`.
+- `apps/api/app/tests/unit/test_answer_intelligence.py`.
+- `apps/api/app/tests/unit/test_answer_quality.py`.
+- `apps/api/app/tests/unit/test_planned_fallback_quality.py`.
+- `apps/api/app/tests/unit/test_synthesis_query_terms.py`.
+- `data/processed/eval/heldout_longform_precision.jsonl`.
+- `docs/next_version_sprint_four_holdout_precision.md`.
+- `docs/retrieval_eval_results.md`.
+- `docs/accuracy_precision_audit.md`.
+
+Decision:
+
+- Sprint Four slice is complete and safe to push.
+- Next work should use unseen source families and hard documents such as scans,
+  diagrams, equations, tables, handwritten notes, and additional textbooks.

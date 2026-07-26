@@ -109,10 +109,10 @@ next slice should reduce any broad-ranking tradeoff on unseen documents.
 
 ## Remaining Work
 
-- Add unseen long-document explanation and mechanism labels before adding more rescue
-  rules.
-- Compare section-component rescue against the previous baseline on a held-out corpus,
-  not only the current 110-case gate.
+- The held-out explanation/mechanism and query-agnostic precision check is now recorded
+  in `next_version_sprint_four_holdout_precision.md`.
+- Compare section-component rescue against genuinely unseen source families, not only
+  the same-source holdout and current 110-case gate.
 - Improve enumeration and limitation answer selection, which remain weaker categories
   in the current failure file.
 - Keep raw section/debug details behind developer/deep-research inspection only.
