@@ -218,3 +218,22 @@ Interpretation:
 - MRR: rewards placing the first expected evidence chunk earlier.
 - nDCG@K: rewards ranking multiple expected evidence phrases near the top.
 - Citation expected coverage: whether returned evidence/citations contain expected support.
+
+## 2026-07-26 Section-Aware Evidence Selection
+
+The third next-version reliability slice improved answer-used evidence selection for
+long textbook explanations. The isolated CNN case previously cited related passages
+without using the exact pooling mechanism; after the slice, the answer used pages 615
+and 628 and explained the source-backed mechanism.
+
+Full generalization gate (`110` cases, BM25-only, low-memory):
+
+| MRR | Recall@8 | Citation expected coverage | Answer pass | Answer relevance | Concept coverage | Faithfulness |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.872 | 0.920 | 0.920 | 0.927 | 0.833 | 0.839 | 0.998 |
+
+The gate passed all acceptance thresholds. Explanation pass rate improved from `0.556`
+to `0.778`, and factual lookup from `0.600` to `0.800`, while raw MRR/Recall moved
+slightly below the prior tracked artifact (`0.903`/`0.930`). This tradeoff is recorded
+honestly; the next slice should validate held-out explanation/mechanism prompts before
+further tuning. See [`next_version_sprint_three_section_aware_retrieval.md`](next_version_sprint_three_section_aware_retrieval.md).

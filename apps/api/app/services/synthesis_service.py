@@ -263,10 +263,12 @@ class SynthesisService:
                 },
             )
 
+        retrieval_evidence_terms = self._retrieval_evidence_terms(bundle)
         selected = self._select_context(
             bundle,
             query=query,
             answer_plan=answer_plan,
+            additional_terms=retrieval_evidence_terms,
         )
         obligation_context_meta = self._obligation_context_meta(
             answer_plan=answer_plan,
@@ -298,6 +300,7 @@ class SynthesisService:
                 response_mode=response_mode,
                 exam_profile=exam_profile,
                 exam_context=exam_context,
+                additional_terms=retrieval_evidence_terms,
             )
             used_fallback_answer = True
         else:
@@ -331,6 +334,7 @@ class SynthesisService:
                     response_mode=response_mode,
                     exam_profile=exam_profile,
                     exam_context=exam_context,
+                    additional_terms=retrieval_evidence_terms,
                 )
                 generated = self._with_diagram_grounding_note(
                     answer=generated,
@@ -378,6 +382,7 @@ class SynthesisService:
                     "grounding_score": top_grounding_score,
                     "citation_count": citation_count,
                     "context_chunks_used": len(selected),
+                    "synthesis_retrieval_terms": sorted(retrieval_evidence_terms),
                     "grounding_state": "weak",
                     "grounding_summary": "evidence reliability gate blocked the answer",
                     "document_overview_request": overview_query,
@@ -412,6 +417,7 @@ class SynthesisService:
             "grounding_score": top_grounding_score,
             "citation_count": citation_count,
             "context_chunks_used": len(selected),
+            "synthesis_retrieval_terms": sorted(retrieval_evidence_terms),
             "grounding_state": grounding_state,
             "grounding_summary": self._grounding_summary(grounding_state, top_grounding_score, citation_count),
             "document_overview_request": overview_query,
@@ -437,6 +443,33 @@ class SynthesisService:
         }
         return (generated, True, meta)
 
+    @staticmethod
+    def _retrieval_evidence_terms(bundle: RetrievalBundle) -> set[str]:
+        """Return bounded document-local terms for answer-side evidence selection."""
+
+        terms: list[str] = []
+        for key in ("document_query_expansion_terms", "query_expansion_terms"):
+            value = bundle.meta.get(key)
+            if not isinstance(value, list):
+                continue
+            terms.extend(
+                str(item).strip().lower()
+                for item in value
+                if str(item).strip()
+            )
+        # Retrieval expansion is intentionally broad. Add a small lexical
+        # window from the leading evidence so synthesis can distinguish a
+        # direct mechanism passage from a merely related example.
+        for chunk in bundle.chunks[:2]:
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{5,}", chunk.text.lower()):
+                if token not in _QUERY_STOPWORDS:
+                    terms.append(token)
+        return {
+            term
+            for term in dict.fromkeys(terms)
+            if len(term) >= 3 and term not in _ANSWER_TASK_TERMS
+        }
+
     def _generation_temperature(
         self,
         *,
@@ -456,6 +489,7 @@ class SynthesisService:
         *,
         query: str,
         answer_plan: AnswerPlan,
+        additional_terms: set[str] | None = None,
     ) -> list[tuple[int, str]]:
         selected: list[tuple[int, str]] = []
         used_words = 0
@@ -507,16 +541,19 @@ class SynthesisService:
                 text=text,
                 query=query,
                 answer_plan=answer_plan,
+                additional_terms=additional_terms,
                 max_words=min(per_chunk_budget, remaining_words),
             )
             if not excerpt:
                 continue
             chunk_words = len(excerpt.split())
-            block = (
+            header = (
                 f"[{idx}] doc={chunk.document_id} score={chunk.score:.3f} "
-                f"source={chunk.source} pages={chunk.page_start or '?'}-{chunk.page_end or '?'}\n"
-                f"{excerpt}"
+                f"source={chunk.source} pages={chunk.page_start or '?'}-{chunk.page_end or '?'}"
             )
+            if chunk.heading:
+                header += f"\nSource heading: {chunk.heading}"
+            block = f"{header}\n{excerpt}"
             selected.append((idx, block))
             used_words += chunk_words
         return selected
@@ -563,6 +600,7 @@ class SynthesisService:
         query: str,
         answer_plan: AnswerPlan,
         max_words: int,
+        additional_terms: set[str] | None = None,
     ) -> str:
         """Keep a complete local evidence window instead of a chunk's arbitrary head."""
 
@@ -578,7 +616,10 @@ class SynthesisService:
             return " ".join(words[:max_words]).strip()
 
         core_terms = SynthesisService._core_subject_terms(query=query, answer_plan=answer_plan)
-        expanded_terms = SynthesisService._query_terms(query) - _ANSWER_TASK_TERMS
+        expanded_terms = (
+            SynthesisService._query_terms(query)
+            | (additional_terms or set())
+        ) - _ANSWER_TASK_TERMS
         literal_terms = {
             token
             for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", query.lower())
@@ -831,6 +872,7 @@ class SynthesisService:
         response_mode: str = "research",
         exam_profile: dict[str, object] | None = None,
         exam_context: dict[str, object] | None = None,
+        additional_terms: set[str] | None = None,
     ) -> str:
         mode = response_mode.strip().lower()
         answer_plan = build_answer_plan(
@@ -871,6 +913,7 @@ class SynthesisService:
                 query=query,
                 context_chunks=context_chunks,
                 answer_plan=answer_plan,
+                additional_terms=additional_terms,
             )
         if answer_plan.answer_type == "enumeration":
             return SynthesisService._fallback_enumeration_answer(
@@ -884,6 +927,7 @@ class SynthesisService:
                 query=query,
                 context_chunks=context_chunks,
                 answer_plan=answer_plan,
+                additional_terms=additional_terms,
             )
         if SynthesisService._is_list_or_algorithm_query(query):
             return SynthesisService._fallback_list_answer(
@@ -911,6 +955,7 @@ class SynthesisService:
                 query=query,
                 context_chunks=context_chunks,
                 response_mode=response_mode,
+                additional_terms=additional_terms,
             )
         if answer_plan.answer_type in {
             "mechanism_explanation",
@@ -925,6 +970,7 @@ class SynthesisService:
                 query=query,
                 context_chunks=context_chunks,
                 answer_plan=answer_plan,
+                additional_terms=additional_terms,
             )
 
         query_terms = SynthesisService._query_terms(query)
@@ -972,6 +1018,7 @@ class SynthesisService:
         query: str,
         context_chunks: list[tuple[int, str]],
         answer_plan: AnswerPlan,
+        additional_terms: set[str] | None = None,
     ) -> str:
         """Build a readable extractive answer around the query's evidence contract."""
 
@@ -1037,7 +1084,10 @@ class SynthesisService:
             for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", query.lower())
             if token not in _QUERY_STOPWORDS
         }
-        expanded_query_terms = SynthesisService._query_terms(query)
+        expanded_query_terms = (
+            SynthesisService._query_terms(query)
+            | (additional_terms or set())
+        )
         core_subject_terms = SynthesisService._core_subject_terms(query=query, answer_plan=answer_plan)
         scoring_terms = core_subject_terms or subject_terms or literal_query_terms
         goal_terms = literal_query_terms - core_subject_terms - _ANSWER_TASK_TERMS
@@ -3468,10 +3518,25 @@ class SynthesisService:
         query: str,
         context_chunks: list[tuple[int, str]],
         response_mode: str,
+        additional_terms: set[str] | None = None,
     ) -> str:
         answer_plan = build_answer_plan(query=query, response_mode=response_mode)
         requested_elements = set(answer_plan.requested_elements)
-        query_terms = SynthesisService._query_terms(query)
+        literal_query_terms = SynthesisService._query_terms(query)
+        document_terms = additional_terms or set()
+        query_terms = literal_query_terms | document_terms
+        prepared_context_texts = [
+            SynthesisService._context_text(block)
+            for _, block in context_chunks[:10]
+        ]
+        document_component_terms = {
+            term
+            for term in document_terms - literal_query_terms
+            if sum(
+                SynthesisService._term_matches(sentence=text, term=term)
+                for text in prepared_context_texts
+            ) <= 2
+        }
         subject_terms = {
             token
             for token in re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", answer_plan.subject.lower())
@@ -3570,6 +3635,11 @@ class SynthesisService:
                         re.search(rf"\b{re.escape(acronym)}s?\b", candidate, flags=re.I)
                         for acronym in acronym_subjects
                     )
+                    or (
+                        additional_terms
+                        and SynthesisService._sentence_score(candidate, additional_terms) > 0
+                        and any(cue in f" {candidate.lower()} " for cue in working_cues)
+                    )
                 )
             ]
             for sentence_index, sentence in enumerate(sentences):
@@ -3641,6 +3711,20 @@ class SynthesisService:
                         )
                     )
                     + (1.5 * answer_evidence_cue_score("mechanism_explanation", sentence))
+                    + min(
+                        8.0,
+                        1.8 * SynthesisService._sentence_score(
+                            sentence,
+                            document_component_terms,
+                        ),
+                    )
+                    + (
+                        2.5
+                        if document_component_terms
+                        and SynthesisService._sentence_score(sentence, document_component_terms) >= 2
+                        and answer_evidence_cue_score("mechanism_explanation", sentence) >= 0.6
+                        else 0.0
+                    )
                     - boundary_penalty
                 )
                 if not requested_elements & {"examples", "applications"} and re.match(

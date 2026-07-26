@@ -219,6 +219,36 @@ def test_document_acronym_expansion_drives_section_ranking() -> None:
     assert ranked[0]["section_id"] == "cnn"
 
 
+def test_document_acronym_expansion_adds_component_terms_from_matching_section() -> None:
+    sections = [
+        {
+            "id": "cnn",
+            "heading": "CNN Architectures",
+            "section_path": "Chapter 14 / CNN Architectures",
+            "key_terms_json": '["convolutional", "pooling", "layers", "kernel"]',
+            "page_start": 633,
+            "page_end": 634,
+        }
+    ]
+    chunks = [
+        {
+            "text": "Convolutional neural networks (CNNs) use convolutional and pooling layers.",
+            "heading": "CNN Architectures",
+            "section_path": "Chapter 14",
+        }
+    ]
+
+    terms = RetrievalService._document_aware_expansion_terms(
+        query="Explain CNN",
+        chunks=chunks,
+        sections=sections,
+    )
+
+    assert terms[:3] == ["convolutional", "neural", "networks"]
+    assert "pooling" in terms
+    assert "layers" in terms
+
+
 def test_acronym_expansion_does_not_drift_into_broad_section_terms() -> None:
     sections = [
         {
@@ -529,6 +559,56 @@ def test_concept_neighbor_rescue_recovers_adjacent_subsection() -> None:
     assert "pooling" in rescued
     assert "unrelated" not in rescued
     assert "far-away" not in rescued
+
+
+def test_section_component_rescue_keeps_direct_neighboring_component() -> None:
+    sections = [
+        {
+            "id": "architecture",
+            "page_start": 100,
+            "page_end": 102,
+        }
+    ]
+    chunks = [
+        {
+            "id": "architecture-chunk",
+            "page_start": 100,
+            "section_id": "architecture",
+            "text": "CNN architectures stack convolutional layers followed by pooling layers.",
+            "quality_score": 1.0,
+        },
+        {
+            "id": "component",
+            "page_start": 104,
+            "section_id": "pooling",
+            "heading": "Pooling Layers",
+            "section_path": "CNN / Pooling Layers",
+            "chunk_type": "body",
+            "text": (
+                "The second common building block is the pooling layer. Its goal is to subsample "
+                "feature maps and reduce the computational load."
+            ),
+            "quality_score": 1.0,
+        },
+        {
+            "id": "far-away",
+            "page_start": 160,
+            "section_id": "unrelated",
+            "text": "A pooling layer can also appear in a distant unrelated chapter with more details.",
+            "quality_score": 1.0,
+        },
+    ]
+
+    rescued = RetrievalService._section_component_rescue_candidate_ids(
+        section_candidates=sections,
+        chunks=chunks,
+        existing_ids={"architecture-chunk"},
+        query="Explain CNN convolutional neural networks pooling layers",
+        answer_query="Explain CNN",
+        limit=2,
+    )
+
+    assert rescued == ["component"]
 
 
 def test_neighbor_rescue_considers_each_strong_anchor_region() -> None:

@@ -1,8 +1,10 @@
 # NIRMIQ Academic Intelligence Context
 
-Last updated: 2026-07-20
+Last updated: 2026-07-26
 
-Current checkpoint: Remaining Job 4 has started. Job 3 is complete and pushed; Job 4 Block 1 added runtime caching and evaluator telemetry while preserving the strict 40-case BM25 answer-quality gate.
+Current checkpoint: Next-Version Sprint Three section-aware evidence selection is complete
+for this slice and has passed the 110-case offline generalization gate. The next quality
+target is held-out explanation/mechanism precision, not larger models or broader UI.
 Current branch: `main`
 Repository target: `https://github.com/SheeshDarth/NirmiqResearchOS`
 Local workspace: `C:\Nirmiq-researchOS`
@@ -4802,3 +4804,61 @@ Decision:
 - This slice is complete and safe to push.
 - The next slice should improve section-aware candidate retrieval, then rerun the same
   gate plus unseen-source checks.
+
+## 2026-07-26 Next-Version Sprint Three - Section-Aware Evidence Selection
+
+Objective:
+
+- Make long-document explanations use the passage that directly answers the query,
+  especially when an acronym or broad topic has multiple nearby subsections.
+- Preserve local BM25 operation, answer-used citations, abstention behavior, and the
+  public query API.
+
+Implemented:
+
+- Production acronym expansion now adds bounded section-anchor terms from matched
+  sections instead of stopping at the long-form acronym expansion.
+- Section-component rescue retains direct nearby component chunks for explanation,
+  mechanism, procedure, and related answer plans, with a small structural priority
+  bonus and debug-only rescue metadata.
+- Synthesis now receives bounded retrieval evidence terms internally, includes retrieved
+  section headings in internal context, and ranks rare terms from the leading evidence
+  above broad repeated topic words.
+- The fallback definition composer now uses document-local component evidence, so the
+  CNN answer selects the page-628 pooling passage instead of unrelated sequence text.
+
+Targeted proof:
+
+- The isolated `Explain CNN` case improved from Recall@8 `0.000` and expected citation
+  coverage `0.000` to `1.000` for both, with answer relevance `0.883`, concept coverage
+  `0.833`, and faithfulness `1.000`.
+- The answer-used citations are pages `615` and `628`; the response explains
+  convolutional layers and pooling as a way to shrink feature maps and reduce
+  computation.
+
+Full gate proof:
+
+- Command: `npm.cmd run eval:generalization-gate`.
+- Status: `PASS` on `110` reviewed cases, `14` source files, `18` categories, and `10`
+  unanswerable cases using BM25-only low-memory execution.
+- MRR `0.872`; Recall@8 `0.920`; expected citation coverage `0.920`.
+- Answer-quality pass rate `0.927`; overall score `0.938`; answer relevance `0.833`;
+  concept coverage `0.839`; query focus `0.820`; readability `0.989`; faithfulness
+  `0.998`; answerability correctness `1.000`.
+- Focused tests: `112 passed`.
+
+Honest tradeoff:
+
+- Explanation category pass rate improved from `0.556` to `0.778`, and factual lookup
+  from `0.600` to `0.800` against the prior tracked gate artifact.
+- Raw retrieval MRR/Recall moved from `0.903`/`0.930` to `0.872`/`0.920`, while all
+  acceptance thresholds remained green. This slice is therefore a direct-answer
+  precision improvement, not proof that every retrieval category improved.
+- The next slice must use held-out long-document explanation/mechanism prompts to
+  reduce this tradeoff before adding more rescue heuristics.
+
+Documentation:
+
+- Detailed report: `docs/next_version_sprint_three_section_aware_retrieval.md`.
+- Current generated gate artifacts: `data/processed/eval/generalization_gate_*`.
+- Commit hash will be recorded in the follow-up context update after the verified push.

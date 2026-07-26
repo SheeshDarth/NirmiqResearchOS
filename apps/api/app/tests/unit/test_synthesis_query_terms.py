@@ -10,6 +10,29 @@ def test_synthesis_query_terms_expand_token_positions() -> None:
     assert "embeddings" in terms
 
 
+def test_retrieval_evidence_terms_include_leading_passage_specific_terms() -> None:
+    bundle = RetrievalBundle(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="pooling",
+                document_id="doc",
+                text=(
+                    "Pooling Layers. Their goal is to subsample and shrink the input image "
+                    "to reduce computational load."
+                ),
+                score=1.0,
+            )
+        ],
+        meta={"document_query_expansion_terms": ["pooling", "layers"]},
+    )
+
+    terms = SynthesisService._retrieval_evidence_terms(bundle)
+
+    assert "pooling" in terms
+    assert "subsample" in terms
+    assert "computational" in terms
+
+
 def test_synthesis_query_terms_expand_multi_head_attention() -> None:
     terms = SynthesisService._query_terms("Why does the paper use multi-head attention?")
 
@@ -113,6 +136,32 @@ def test_definition_fallback_uses_acronym_definition_without_false_limitation() 
     assert "Convolutional neural networks (CNNs)" in answer
     assert "Typical CNN architectures stack" in answer
     assert "\nLimitation\n" not in answer
+
+
+def test_definition_fallback_uses_document_terms_for_component_evidence() -> None:
+    answer = SynthesisService._fallback_definition_answer(
+        query="Explain CNN",
+        response_mode="research",
+        additional_terms={"pooling", "pooling layers", "subsample", "shrink", "computational"},
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1.000 source=bm25 pages=615-615\n"
+                "Convolutional neural networks are a class of deep neural networks that use "
+                "convolutional layers to process images.",
+            ),
+            (
+                2,
+                "[2] doc=doc score=0.900 source=bm25 pages=628-628\n"
+                "Pooling Layers Once you understand how convolutional layers work, pooling layers "
+                "subsample (i.e., shrink) the input image in order to reduce the computational load.",
+            ),
+        ],
+    )
+
+    assert "subsample" in answer
+    assert "reduce the computational load" in answer
+    assert "[2]" in answer
 
 
 def test_context_relevance_marks_loose_mentions_as_weak_related() -> None:

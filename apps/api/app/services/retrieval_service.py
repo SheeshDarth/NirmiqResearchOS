@@ -92,7 +92,12 @@ class RetrievalService:
             sections=active_sections,
         )
         if document_acronym_expansion_terms:
-            document_query_expansion_terms = list(document_acronym_expansion_terms)
+            document_query_expansion_terms = self._document_aware_expansion_terms(
+                query=query,
+                chunks=all_active_chunks,
+                sections=active_sections,
+                acronym_expansions=document_acronym_expansion_terms,
+            )
         else:
             document_query_expansion_terms = self._document_topic_terms(
                 query=query,
@@ -341,6 +346,21 @@ class RetrievalService:
                 )
                 if ranked_neighbors and ranked_neighbors[0][0] >= 0.32:
                     neighbor_obligation_priority_ids.append(ranked_neighbors[0][1])
+        section_component_rescue_ids: list[str] = []
+        if target_document_id and answer_plan.answer_type in neighbor_answer_types:
+            section_component_rescue_ids = self._section_component_rescue_candidate_ids(
+                section_candidates=section_candidates,
+                chunks=all_active_chunks,
+                existing_ids=set(candidate_ids),
+                query=expanded_query,
+                answer_query=requested_query,
+                limit=min(3, profile_config["rerank_k"]),
+            )
+            candidate_ids.extend(
+                chunk_id
+                for chunk_id in section_component_rescue_ids
+                if chunk_id not in candidate_ids
+            )
         if target_document_id and not asks_for_exercise_content:
             exercise_chunk_ids = {
                 str(row.get("id") or "")
@@ -432,6 +452,7 @@ class RetrievalService:
                 obligation_score_map=obligation_score_map,
                 obligation_keys_by_id=obligation_keys_by_id,
                 roadmap_rescue_ids=set(roadmap_rescue_ids),
+                section_component_rescue_ids=set(section_component_rescue_ids),
             ),
             reverse=True,
         )
@@ -471,6 +492,7 @@ class RetrievalService:
                 *local_obligation_priority_ids,
                 *required_obligation_ids,
                 *neighbor_obligation_priority_ids,
+                *section_component_rescue_ids,
             ],
             limit=profile_config["rerank_k"],
         )
@@ -609,6 +631,8 @@ class RetrievalService:
                 "anchor_rescue_count": len(anchor_rescue_ids),
                 "neighbor_rescue_applied": bool(neighbor_rescue_ids),
                 "neighbor_rescue_count": len(neighbor_rescue_ids),
+                "section_component_rescue_applied": bool(section_component_rescue_ids),
+                "section_component_rescue_count": len(section_component_rescue_ids),
                 "retrieval_noise_policy": "enabled",
                 "average_chunk_quality": avg_quality,
                 "quality_weighting": "enabled",
@@ -818,6 +842,7 @@ class RetrievalService:
         obligation_score_map: dict[str, float] | None = None,
         obligation_keys_by_id: dict[str, list[str]] | None = None,
         roadmap_rescue_ids: set[str] | None = None,
+        section_component_rescue_ids: set[str] | None = None,
     ) -> float:
         row = chunks_by_id.get(chunk_id)
         if not row:
@@ -871,6 +896,14 @@ class RetrievalService:
             text=str(row.get("text") or ""),
         )
         roadmap_bonus = 0.7 if roadmap_rescue_ids and chunk_id in roadmap_rescue_ids else 0.0
+        section_component_bonus = 0.0
+        if section_component_rescue_ids and chunk_id in section_component_rescue_ids:
+            section_component_bonus = 0.72
+            if any(
+                cue in str(row.get("text") or "").lower()
+                for cue in ("building block", "goal is to", "works by", "consists of", "composed of")
+            ):
+                section_component_bonus += 0.32
         return (
             (0.30 * rerank_score)
             + (0.22 * lexical_score)
@@ -884,6 +917,7 @@ class RetrievalService:
             + (0.04 * obligation_diversity)
             + (0.42 * structural_score)
             + roadmap_bonus
+            + section_component_bonus
             - noise_penalty
         )
 
@@ -1139,17 +1173,24 @@ class RetrievalService:
         query: str,
         chunks: list[dict[str, object]],
         sections: list[dict[str, object]],
+        acronym_expansions: list[str] | None = None,
     ) -> list[str]:
-        acronym_expansions = RetrievalService._document_acronym_expansions(
+        acronym_expansions = acronym_expansions or RetrievalService._document_acronym_expansions(
             query=query,
             chunks=chunks,
             sections=sections,
         )
         if acronym_expansions:
-            # Exact acronym expansion is already a strong document-local subject
-            # signal. Adding every key term from the first matching section causes
-            # circular drift into broad application/index sections.
-            return acronym_expansions[:24]
+            # Exact acronym expansion is a strong document-local subject signal.
+            # Add only high-signal terms from the top acronym-matched sections so
+            # broad questions can recover component passages (for example,
+            # pooling under a CNN section) without scanning unrelated topics.
+            section_terms = RetrievalService._section_anchor_terms(
+                query=query,
+                acronym_expansions=acronym_expansions,
+                sections=sections,
+            )
+            return RetrievalService._dedupe_terms([*acronym_expansions, *section_terms])[:24]
 
         expansions: list[str] = []
         seen: set[str] = set()
@@ -1158,6 +1199,55 @@ class RetrievalService:
                 expansions.append(term)
                 seen.add(term)
         return expansions[:24]
+
+    @staticmethod
+    def _section_anchor_terms(
+        *,
+        query: str,
+        acronym_expansions: list[str],
+        sections: list[dict[str, object]],
+    ) -> list[str]:
+        """Extract bounded component terms from the strongest acronym sections."""
+
+        if not acronym_expansions or not sections:
+            return []
+        ranked_sections = RetrievalService._rank_sections(
+            query=RetrievalService._expand_query(query, acronym_expansions),
+            sections=sections,
+        )
+        query_terms = RetrievalService._metadata_terms(query)
+        expanded_terms = set(acronym_expansions)
+        term_weights = RetrievalService._section_term_weights(
+            query_terms=RetrievalService._metadata_terms(" ".join(acronym_expansions)),
+            sections=sections,
+        )
+        selected: list[str] = []
+        seen: set[str] = set()
+        for ranked in ranked_sections[:3]:
+            if not ranked.get("matched_acronyms"):
+                continue
+            section = next(
+                (
+                    item
+                    for item in sections
+                    if str(item.get("id") or "") == str(ranked.get("section_id") or "")
+                ),
+                None,
+            )
+            if not section:
+                continue
+            key_terms = RetrievalService._decode_key_terms(section.get("key_terms_json"))
+            candidates = RetrievalService._metadata_terms(
+                " ".join(key_terms)
+            ) - query_terms - expanded_terms
+            for term in sorted(candidates, key=lambda value: (-term_weights.get(value, 1.0), value)):
+                if term in seen or len(term) < 5:
+                    continue
+                seen.add(term)
+                selected.append(term)
+                if len(selected) >= 8:
+                    return selected
+        return selected
 
     @staticmethod
     def _document_acronym_expansions(
@@ -1737,6 +1827,124 @@ class RetrievalService:
                 )
             )
         return [chunk_id for _, chunk_id in sorted(scored, reverse=True)[:limit]]
+
+    @staticmethod
+    def _section_component_rescue_candidate_ids(
+        *,
+        section_candidates: list[dict[str, object]],
+        chunks: list[dict[str, object]],
+        existing_ids: set[str],
+        query: str,
+        answer_query: str,
+        limit: int,
+    ) -> list[str]:
+        """Keep one direct component passage near the strongest matched sections."""
+
+        if not section_candidates or not chunks or limit <= 0:
+            return []
+        section_ranges: list[tuple[int, int]] = []
+        for section in section_candidates[:4]:
+            try:
+                start = int(section.get("page_start") or 0)
+                end = int(section.get("page_end") or start)
+            except (TypeError, ValueError):
+                continue
+            if start > 0:
+                section_ranges.append((min(start, end), max(start, end)))
+        if not section_ranges:
+            return []
+        matched_section_ids = {
+            str(section.get("section_id") or "")
+            for section in section_candidates[:4]
+            if section.get("section_id") and section.get("matched_acronyms")
+        }
+
+        query_terms = RetrievalService._metadata_terms(query)
+        scored: list[tuple[float, int, int, int, str, str]] = []
+        for row in chunks:
+            chunk_id = str(row.get("id") or "")
+            if not chunk_id:
+                continue
+            section_id = str(row.get("section_id") or "")
+            if section_id and section_id in matched_section_ids:
+                continue
+            try:
+                page = int(row.get("page_start") or 0)
+            except (TypeError, ValueError):
+                continue
+            if page <= 0:
+                continue
+            distance = min(
+                0 if start <= page <= end else min(abs(page - start), abs(page - end))
+                for start, end in section_ranges
+            )
+            if distance > 18:
+                continue
+            text = str(row.get("text") or "")
+            lowered = text.lower()
+            if (
+                len(re.sub(r"\s+", " ", text).split()) < 18
+                or RetrievalService._looks_like_index_chunk(lowered)
+                or RetrievalService._looks_like_answer_key_chunk(row)
+                or RetrievalService._chunk_noise_penalty(row=row, query=answer_query) >= 0.5
+            ):
+                continue
+            directness = RetrievalService._chunk_answer_relevance(
+                row=row,
+                query=query,
+                answer_query=answer_query,
+            )
+            if directness < 0.32:
+                continue
+            text_terms = RetrievalService._metadata_terms(text)
+            term_overlap = len(query_terms & text_terms) / max(len(query_terms), 1)
+            heading_terms = RetrievalService._metadata_terms(
+                f"{row.get('heading') or ''} {row.get('section_path') or ''}"
+            )
+            heading_overlap = sum(
+                1
+                for term in query_terms
+                if term in heading_terms
+                or any(len(term) >= 5 and candidate.startswith(term[:6]) for candidate in heading_terms)
+            )
+            component_cues = sum(
+                cue in lowered
+                for cue in (
+                    "building block",
+                    "goal is to",
+                    "works by",
+                    "consists of",
+                    "composed of",
+                    "at each",
+                    "first common",
+                    "second common",
+                )
+            )
+            proximity = 1.0 - (distance / 19.0)
+            quality = RetrievalService._normalize_quality(row.get("quality_score"))
+            score = (
+                directness
+                + (0.24 * term_overlap)
+                + (0.24 * min(component_cues, 2))
+                + (0.16 * proximity)
+                + (0.08 * quality)
+            )
+            scored.append((score, heading_overlap, component_cues, distance, chunk_id, section_id))
+
+        selected: list[str] = []
+        selected_sections: set[str] = set()
+        for _, heading_overlap, component_cues, _, chunk_id, section_id in sorted(
+            scored,
+            key=lambda item: (-item[1], -int(item[2] > 0), -item[2], -item[0], item[3], item[4]),
+        ):
+            if section_id and section_id in selected_sections:
+                continue
+            selected.append(chunk_id)
+            if section_id:
+                selected_sections.add(section_id)
+            if len(selected) >= limit:
+                break
+        return selected
 
     @staticmethod
     def _anchor_rescue_priority_bonus(

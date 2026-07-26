@@ -865,6 +865,19 @@ Verification:
 - API compile check: passed with a workspace-local bytecode cache.
 - The next reliability step is dataset expansion and abstention evaluation, not further tuning against this small seed.
 
+## Active Reliability Slice - Section-Aware Answer Evidence
+
+The current Sprint Three slice connects section-aware retrieval to synthesis rather than
+letting the fallback composer rank only raw query words. It adds bounded section-component
+rescue and leading-evidence terms, then preserves the existing citation verification and
+evidence gate. The isolated CNN explanation now uses the exact pooling passage on page 628.
+
+The full 110-case gate remains green: MRR `0.872`, Recall@8 `0.920`, expected citation
+coverage `0.920`, answer relevance `0.833`, concept coverage `0.839`, faithfulness `0.998`,
+and answerability correctness `1.000`. Explanation and factual lookup category pass rates
+improved, but the small raw retrieval movement is recorded as a tradeoff rather than
+hidden. See [`next_version_sprint_three_section_aware_retrieval.md`](next_version_sprint_three_section_aware_retrieval.md).
+
 ## 2026-07-13 Subject Relevance And Acronym Reliability
 
 The live `explain CNN` failure demonstrated that citation coverage and lexical faithfulness do not prove answer relevance. The system could faithfully cite an object-detection passage that mentioned a CNN while failing to explain a CNN.
