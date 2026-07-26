@@ -4861,4 +4861,4 @@ Documentation:
 
 - Detailed report: `docs/next_version_sprint_three_section_aware_retrieval.md`.
 - Current generated gate artifacts: `data/processed/eval/generalization_gate_*`.
-- Commit hash will be recorded in the follow-up context update after the verified push.
+- Verified implementation commit: `e9fa91f` (`Improve section-aware answer evidence selection`).
