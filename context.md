@@ -4945,5 +4945,6 @@ Files:
 Decision:
 
 - Sprint Four slice is complete and safe to push.
+- Verified implementation commit: `271f434` (`Improve held-out query answer precision`).
 - Next work should use unseen source families and hard documents such as scans,
   diagrams, equations, tables, handwritten notes, and additional textbooks.
