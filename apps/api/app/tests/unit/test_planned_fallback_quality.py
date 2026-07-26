@@ -620,6 +620,85 @@ def test_enumeration_fallback_splits_dense_source_list_into_cited_items() -> Non
     assert answer.count("[1]") >= 1
 
 
+def test_enumeration_fallback_recovers_a_heading_only_final_item() -> None:
+    query = "What are the five principles of prompting?"
+    answer = SynthesisService._fallback_enumeration_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        response_mode="research",
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=ocr pages=5-5\n"
+                "Source heading: Give Direction / Specify Format / Provide Examples / Evaluate Quality\n"
+                "Give Direction Describe the desired style. Specify Format Define the required structure."
+            ),
+            (
+                2,
+                "[2] doc=doc score=.9 source=ocr pages=5-6\n"
+                "Source heading: Divide Labor\n"
+                "Divide Labor Split tasks into multiple steps. These principles are model-agnostic."
+            ),
+        ],
+    )
+
+    assert "Give Direction [1]" in answer
+    assert "Evaluate Quality [1]" in answer
+    assert "Divide Labor [2]" in answer
+    assert answer.count("[1]") >= 4
+
+
+def test_recommendation_fallback_prefers_direct_optimization_instructions() -> None:
+    query = "How should the website assets and animations be optimized?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=bm25 pages=7-7\n"
+                "Audit /public: convert all images to WebP, add lazy loading. "
+                "Preload hero font."
+            ),
+            (
+                2,
+                "[2] doc=doc score=.9 source=bm25 pages=7-8\n"
+                "Images: lazy loading and explicit width attributes. Animations: add @media "
+                "(prefers-reduced-motion)."
+            ),
+        ],
+        additional_terms={"assets", "animations", "optimize"},
+    )
+
+    assert "WebP" in answer
+    assert "lazy loading" in answer
+    assert "Preload hero font" in answer
+
+
+def test_how_can_fallback_prefers_direct_action_evidence() -> None:
+    query = "How can a prompt give direction to an AI model?"
+    answer = SynthesisService._fallback_planned_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=ocr pages=5-5\n"
+                "Source heading: Give Direction / Specify Format\n"
+                "Give Direction Describe the desired style in detail, or reference a relevant persona."
+            ),
+            (
+                2,
+                "[2] doc=doc score=.8 source=ocr pages=1-1\n"
+                "A prompt is the input you provide when interfacing with an AI model."
+            ),
+        ],
+    )
+
+    assert "desired style" in answer
+    assert "relevant persona" in answer
+
+
 def test_hyphenated_focus_term_does_not_match_only_its_first_word() -> None:
     assert SynthesisService._sentence_score(
         "Learning long-range dependencies is difficult.",

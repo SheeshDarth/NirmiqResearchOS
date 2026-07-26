@@ -107,6 +107,29 @@ def test_fallback_definition_prefers_subject_called_definition() -> None:
     assert "Direct answer\n- Ridge regression" not in answer
 
 
+def test_fallback_definition_strips_ocr_chapter_prefix_before_subject() -> None:
+    answer = SynthesisService._fallback_definition_answer(
+        query="What is prompt engineering?",
+        context_chunks=[
+            (
+                1,
+                "[1] doc=doc score=1 source=ocr pages=1-1\n"
+                "al a CHAPTER 1 The Five Principles of Prompting Prompt engineering is the process "
+                "of discovering prompts that reliably yield useful or desired results."
+            ),
+            (
+                2,
+                "[2] doc=doc score=.9 source=ocr pages=1-1\n"
+                "Here is a simple example of a prompt input for a product name generator."
+            ),
+        ],
+        response_mode="research",
+    )
+
+    assert "Prompt engineering is the process" in answer
+    assert "Here is a simple example" not in answer.split("How it works", 1)[0]
+
+
 def test_fallback_definition_prefers_subject_led_cnn_explanation() -> None:
     context_chunks = [
         (

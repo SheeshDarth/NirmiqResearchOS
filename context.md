@@ -4948,3 +4948,60 @@ Decision:
 - Verified implementation commit: `271f434` (`Improve held-out query answer precision`).
 - Next work should use unseen source families and hard documents such as scans,
   diagrams, equations, tables, handwritten notes, and additional textbooks.
+
+## 2026-07-26 Next-Version Sprint Five - Unseen OCR Source Reliability
+
+Objective:
+
+- Validate generic retrieval and answer selection on two independently sourced,
+  image-only local PDFs that are not part of the tracked synthetic hard-document gate.
+- Improve answer precision without adding cloud dependencies, heavy models, graph storage,
+  or public API changes.
+
+Implemented:
+
+- Coalesced short same-page OCR fragments into bounded 320-token chunks and normalized
+  narrow `AI`/`A1` OCR acronym variants.
+- Prevented zero-chunk indexed rows from becoming permanent ingestion cache hits.
+- Added bounded morphology aliases for deployment/deploy, optimization/optimize,
+  assets/asset, animations/animation, prompting/prompt, and principles/principle.
+- Improved generic definition, enumeration, recommendation, and `how can` evidence
+  selection; short cited list bullets are now independently verified.
+- Preserved fail-closed evidence gating and the public `POST /query` contract.
+
+Unseen holdout result (`temp/unseen_source_qa.jsonl`, 12 samples, BM25/hybrid local path):
+
+- MRR: `0.850`.
+- Recall@8: `0.900`.
+- Expected citation coverage: `0.900`.
+- Answer-quality pass rate: `0.833`.
+- Overall answer score: `0.893`.
+- Answer relevance: `0.814`.
+- Concept coverage: `0.835`.
+- Faithfulness: `0.967`.
+- Answerability correctness: `1.000`.
+- Average latency: `1.076 s`; p95 `4.468 s`.
+
+Verification:
+
+- Backend unit/integration suite: `282 passed`, one existing dateutil deprecation warning.
+- `python -m compileall -q apps/api/app`: passed.
+- `git diff --check`: passed.
+- No new dependency or public API shape change.
+
+Honest boundary:
+
+- One dense scanned-page limitations case remains noisy under default Tesseract PSM 3.
+  PSM 6/11 recover alternate words but degrade other pages, so the global default was
+  not changed. Per-page OCR quality selection is the next hard-document opportunity.
+- The source PDFs are local ignored files and are not committed; this result is not a
+  reproducible public benchmark. The tracked synthetic hard-document gate remains the
+  reproducible regression suite.
+
+Decision:
+
+- Sprint Five reliability slice is complete and meets the current retrieval acceptance
+  targets on the unseen local holdout.
+- Next sprint should add per-page OCR quality selection and independent labels for scans,
+  tables, diagrams, equations, and noisy notes without tuning to one document.
+- Detailed record: [`docs/next_version_sprint_five_unseen_ocr_sources.md`](docs/next_version_sprint_five_unseen_ocr_sources.md).

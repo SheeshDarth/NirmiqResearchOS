@@ -51,6 +51,7 @@ class IndexingService:
         self._chunk_tokens = 180
         self._chunk_overlap = 30
         self._min_page_text_chars = 80
+        self._ocr_applied_pages: set[int] = set()
 
     async def index_document(self, document_id: str) -> None:
         document = self._sqlite_repo.get_document_by_id(document_id)
@@ -137,6 +138,7 @@ class IndexingService:
     async def _apply_ocr_fallback(
         self, source_path: str, pages: list[tuple[int, str]]
     ) -> list[tuple[int, str]]:
+        self._ocr_applied_pages = set()
         if not pages or not self._ocr.is_available():
             return pages
         enriched: list[tuple[int, str]] = []
@@ -148,6 +150,7 @@ class IndexingService:
             ocr_text = await self._ocr.extract_page(source_path=source_path, page_number=page_number)
             ocr_normalized = self._normalize_text(ocr_text)
             if len(ocr_normalized) > len(normalized):
+                self._ocr_applied_pages.add(page_number)
                 enriched.append((page_number, ocr_text))
             else:
                 enriched.append((page_number, page_text))
@@ -200,7 +203,7 @@ class IndexingService:
         flush()
 
         if sections:
-            return sections
+            return self._coalesce_ocr_fragments(sections)
         normalized_pages = [(page_no, self._normalize_text(text)) for page_no, text in pages if text.strip()]
         if not normalized_pages:
             return []
@@ -217,9 +220,80 @@ class IndexingService:
             )
         ]
 
+    def _coalesce_ocr_fragments(self, sections: list[SectionDraft]) -> list[SectionDraft]:
+        """Join short same-page OCR labels so retrieval sees complete evidence blocks.
+
+        Scanned layouts often put every visual label on its own OCR line. The normal
+        heading heuristic correctly recognizes those labels, but treating each one as
+        an independent retrieval section creates tiny, low-context chunks. This repair
+        is limited to pages where OCR replaced the parser output and never crosses a
+        page boundary or the chunk token budget.
+        """
+
+        if not getattr(self, "_ocr_applied_pages", set()):
+            return sections
+
+        fragment_limit = 45
+        merged: list[SectionDraft] = []
+        for section in sections:
+            if not merged:
+                merged.append(section)
+                continue
+
+            previous = merged[-1]
+            same_ocr_page = (
+                previous.page_start == previous.page_end == section.page_start == section.page_end
+                and section.page_start in self._ocr_applied_pages
+            )
+            previous_words = previous.text.split()
+            current_words = section.text.split()
+            combined_words = len(previous_words) + len(current_words)
+            should_merge = (
+                same_ocr_page
+                and combined_words <= self._ocr_chunk_tokens()
+                and (len(previous_words) < fragment_limit or len(current_words) < fragment_limit)
+            )
+            if not should_merge:
+                merged.append(section)
+                continue
+
+            headings = [heading for heading in (previous.heading, section.heading) if heading]
+            combined_heading = " / ".join(dict.fromkeys(headings))
+            merged[-1] = SectionDraft(
+                section_index=previous.section_index,
+                heading=combined_heading[:180],
+                section_path=combined_heading[:180],
+                page_start=min(previous.page_start, section.page_start),
+                page_end=max(previous.page_end, section.page_end),
+                text=f"{previous.text} {section.text}".strip(),
+                key_terms=list(dict.fromkeys(previous.key_terms + section.key_terms))[:12],
+            )
+
+        return [
+            SectionDraft(
+                section_index=index,
+                heading=section.heading,
+                section_path=section.section_path,
+                page_start=section.page_start,
+                page_end=section.page_end,
+                text=section.text,
+                key_terms=section.key_terms,
+            )
+            for index, section in enumerate(merged)
+        ]
+
+    def _ocr_chunk_tokens(self) -> int:
+        """Use a wider bounded window for OCR pages whose labels are fragmented."""
+
+        if getattr(self, "_ocr_applied_pages", set()):
+            return max(self._chunk_tokens, min(self._chunk_tokens + 120, 320))
+        return self._chunk_tokens
+
     def _chunk_sections(self, sections: list[SectionDraft]) -> list[ChunkDraft]:
         drafts: list[ChunkDraft] = []
-        stride = max(self._chunk_tokens - self._chunk_overlap, 1)
+        chunk_tokens = self._ocr_chunk_tokens()
+        chunk_overlap = min(self._chunk_overlap + 30, chunk_tokens // 3)
+        stride = max(chunk_tokens - chunk_overlap, 1)
         chunk_index = 0
         for section in sections:
             words = section.text.split()
@@ -227,7 +301,7 @@ class IndexingService:
                 continue
             chunk_type = "definition" if self._looks_like_definition(section.text) else "body"
             for start in range(0, len(words), stride):
-                window = words[start : start + self._chunk_tokens]
+                window = words[start : start + chunk_tokens]
                 if not window:
                     break
                 chunk_text = " ".join(window)
@@ -245,7 +319,7 @@ class IndexingService:
                     )
                 )
                 chunk_index += 1
-                if start + self._chunk_tokens >= len(words):
+                if start + chunk_tokens >= len(words):
                     break
         return drafts
 

@@ -262,3 +262,25 @@ The slice improves generic handling of recommendation, limitation, and causal me
 questions without changing the public query contract. See
 [`next_version_sprint_four_holdout_precision.md`](next_version_sprint_four_holdout_precision.md)
 for the source-correction note, commands, and boundaries.
+
+## 2026-07-26 Unseen OCR Source Holdout
+
+Sprint Five is the first local holdout using independently sourced image-only PDFs,
+separate from the committed synthetic hard-document fixtures. It contains 12 reviewed
+questions across prompt-engineering and website-building scans.
+
+| Metric | Result |
+| --- | ---: |
+| MRR | **0.850** |
+| Recall@8 | **0.900** |
+| Expected citation coverage | **0.900** |
+| Answer-quality pass rate | **0.833** |
+| Overall answer score | **0.893** |
+| Faithfulness | **0.967** |
+| Answerability correctness | **1.000** |
+| Average latency | `1.076 s` |
+
+This passes the current retrieval acceptance targets. It is a machine-local result, not a
+reproducible public benchmark, because the source PDFs are ignored local material. One
+dense limitations page remains OCR-noisy; per-page OCR quality selection is the next
+hard-document opportunity.

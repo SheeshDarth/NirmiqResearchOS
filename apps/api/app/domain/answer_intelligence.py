@@ -150,7 +150,7 @@ def _local_comparison_cue_hits(obligation: EvidenceObligation, text: str) -> int
         )
         structured_row_hits += int(
             any(
-                re.search(rf"\b{escaped_term}\b[^.!?]{{0,160}}(?:\||->)", clause)
+                re.search(rf"\b{escaped_term}\b[^.!?]{{0,160}}(?:\||->|>)", clause)
                 and len(re.findall(r"[a-z0-9]+", clause)) >= 4
                 for clause in clauses
             )
@@ -209,6 +209,12 @@ def _comparison_sides(query: str) -> tuple[str, str] | None:
     if not match:
         match = re.match(
             r"^(?:what\s+is\s+)?(?:the\s+)?difference\s+between\s+(.+?)\s+and\s+(.+)$",
+            normalized,
+        )
+    if not match:
+        match = re.match(
+            r"^how\s+(?:does|do|is|are)\s+(.+?)\s+differ(?:s|ence|ent)?\s+from\s+"
+            r"(.+?)(?:\s+(?:for|in|on|during|within)\b.*|$)",
             normalized,
         )
     if not match:
@@ -521,7 +527,7 @@ def answer_subject_anchor_terms(query: str, answer_plan: AnswerPlan) -> set[str]
 
 _LEADING_REQUEST = re.compile(
     r"^(?:please\s+)?(?:can\s+you\s+|could\s+you\s+|would\s+you\s+)?"
-    r"(?:what\s+(?:is|are)|how\s+(?:does|do|is|are)|why\s+(?:does|do|is|are)|"
+    r"(?:what\s+(?:is|are)|how\s+(?:does|do|is|are|can|should)|why\s+(?:does|do|is|are)|"
     r"explain|define|describe|summarize|compare|contrast|list|outline|discuss|tell\s+me\s+about)\s+",
     flags=re.I,
 )
@@ -584,7 +590,8 @@ def _answer_type(query: str, mode: str) -> str:
     if _is_document_summary_task(query=query, mode=mode):
         return "document_summary"
     if mode == "compare_concepts" or re.search(
-        r"\b(compare|compared|contrast|difference|differences|versus|vs\.?|distinguish)\b",
+        r"\b(compare|compared|contrast|difference|differences|versus|vs\.?|distinguish)\b|"
+        r"\bdiffer(?:s|ence|ent)?\s+from\b",
         query,
     ):
         return "comparison"
@@ -594,6 +601,13 @@ def _answer_type(query: str, mode: str) -> str:
     ):
         return "recommendation"
     if re.search(r"\b(?:recommend|recommends|recommended|recommendation|recommendations)\b", query):
+        return "recommendation"
+    if re.search(
+        r"\b(?:guidance|best\s+practices?)\b|"
+        r"\b(?:what\s+deployment|how\s+should)\b.{0,120}\b"
+        r"(?:optimi[sz]|deploy|handle|configure|improve|use)\w*\b",
+        query,
+    ):
         return "recommendation"
     if re.search(
         r"\b(?:book|document|module|paper|source|textbook)\b.{0,64}"
@@ -646,7 +660,7 @@ def _answer_type(query: str, mode: str) -> str:
     if re.match(r"^(?:what\s+(?:is|are)|define)\b", query):
         return "concept_explanation"
     if re.search(
-        r"\b(how\s+does|how\s+do|how\s+is|how\s+should|why\s+does|why\s+do|working|mechanism|"
+        r"\b(how\s+does|how\s+do|how\s+is|how\s+can|how\s+should|why\s+does|why\s+do|working|mechanism|"
         r"what\s+does\b.{0,60}\b(?:consist\s+of|contain|transform))\b",
         query,
     ):
@@ -1074,11 +1088,32 @@ def _evidence_obligations(
                     ),
                 )
             )
+        subject_terms = tuple(
+            token
+            for token in re.findall(r"[a-z][a-z0-9_-]{2,}", _subject(query).lower())
+            if token not in {"the", "this", "that", "with", "from"}
+        )
         obligations.append(
             EvidenceObligation(
                 key="limitation",
                 label="limitation or runtime cost",
-                retrieval_terms=("limitation", "drawback", "penalty", "overhead", "runtime", "slower"),
+                retrieval_terms=tuple(
+                    dict.fromkeys(
+                        (
+                            "limitation",
+                            "drawback",
+                            "penalty",
+                            "overhead",
+                            "runtime",
+                            "slower",
+                            "trade-off",
+                            "reliability",
+                            "creativity",
+                            "diversity",
+                            *subject_terms,
+                        )
+                    )
+                )[:18],
                 evidence_cues=(
                     " limitation ", " drawback ", " however ", " penalty ", " overhead ",
                     " runtime ", " slower ", " slows ", " complexity ", " expensive ",
@@ -1184,6 +1219,31 @@ def _subject(query: str) -> str:
     comparison_sides = _comparison_sides(subject)
     if comparison_sides:
         return " and ".join(comparison_sides)
+    limitation_of_match = re.match(
+        r"^(?:what|which)\s+is\s+(?:a|an|the)\s+"
+        r"(?:limitation|drawback|disadvantage|caveat)\s+of\s+(.+)$",
+        subject,
+        flags=re.I,
+    )
+    how_can_match = re.match(
+        r"^how\s+can\s+(?:a|an|the)\s+(.+?)\s+"
+        r"(give|gives|provide|provides|use|uses|apply|applies|improve|improves|"
+        r"handle|handles|configure|configures|optimize|optimizes)\s+(.+?)"
+        r"(?:\s+to\s+(?:a|an|the)\s+.+)?$",
+        subject,
+        flags=re.I,
+    )
+    how_should_match = re.match(
+        r"^how\s+should\s+(.+?)\s+be\s+"
+        r"(?:optimized|handled|configured|improved|deployed|used|applied)$",
+        subject,
+        flags=re.I,
+    )
+    guidance_match = re.match(
+        r"^what\s+(.+?)\s+guidance\s+does\s+.+?\s+give$",
+        subject,
+        flags=re.I,
+    )
     owner_subject_match = re.match(
         r"^what\s+.+?\s+does\s+(.+?)\s+"
         r"(?:have|provide|offer|cause|add|require)$",
@@ -1239,7 +1299,15 @@ def _subject(query: str) -> str:
         subject,
         flags=re.I,
     )
-    if recommendation_subject_match:
+    if limitation_of_match:
+        subject = limitation_of_match.group(1).strip()
+    elif how_can_match:
+        subject = f"{how_can_match.group(1)} {how_can_match.group(2)} {how_can_match.group(3)}".strip()
+    elif how_should_match:
+        subject = how_should_match.group(1).strip()
+    elif guidance_match:
+        subject = guidance_match.group(1).strip()
+    elif recommendation_subject_match:
         subject = recommendation_subject_match.group(1).strip()
     elif owner_subject_match:
         subject = owner_subject_match.group(1).strip()

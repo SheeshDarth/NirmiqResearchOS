@@ -187,12 +187,18 @@ async def resolve_sample_sources(
             source_path = source_path.resolve()
         row = container.sqlite_repo.get_document_by_source_path(str(source_path))
         current_hash = hash_file(source_path) if source_path.exists() else ""
+        active_chunk_count = (
+            container.sqlite_repo.get_active_chunk_count(str(row["id"]))
+            if row
+            else 0
+        )
         needs_refresh = bool(
             auto_ingest_sources
             and (
                 not row
                 or str(row.get("content_hash") or "") != current_hash
                 or str(row.get("status") or "") != "indexed"
+                or active_chunk_count <= 0
             )
         )
         if needs_refresh:

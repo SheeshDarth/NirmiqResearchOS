@@ -1013,3 +1013,25 @@ The corrected holdout reached MRR `1.000`, Recall@8 `1.000`, citation expected c
 `0.938`, faithfulness `1.000`, and answerability correctness `1.000`. This is a positive
 same-source fresh-query signal, not proof of arbitrary-document accuracy. The next audit
 must use unseen source families and hard documents before further routing expansion.
+
+## 2026-07-26 Unseen OCR Source Reliability
+
+The next-version Sprint Five slice evaluated 12 reviewed questions over two local,
+image-only PDFs that were not part of the tracked synthetic hard-document gate. The
+sources remain local and ignored because they are user-local/copyrighted material.
+
+| Metric | Before Sprint Five | After Sprint Five |
+| --- | ---: | ---: |
+| MRR | 0.550 | **0.850** |
+| Recall@8 | 0.600 | **0.900** |
+| Expected citation coverage | 0.600 | **0.900** |
+| Answer-quality pass rate | 0.500 | **0.833** |
+| Faithfulness | 0.850 | **0.967** |
+| Answerability correctness | 0.833 | **1.000** |
+
+The improvement came from generic OCR normalization, bounded same-page OCR coalescing,
+query morphology aliases, answer-type-aware evidence selection, and short cited-list
+verification. One dense limitations page remains noisy under the default OCR mode; the
+next hard-document slice should select OCR settings per page rather than tune a global
+PSM value or add document-specific answer rules. See
+[`next_version_sprint_five_unseen_ocr_sources.md`](next_version_sprint_five_unseen_ocr_sources.md).

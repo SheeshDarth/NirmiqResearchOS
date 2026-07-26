@@ -34,6 +34,34 @@ def test_section_detection_extracts_textbook_headings_and_key_terms() -> None:
     assert chunks[-1].section_path == "1.1 Unsupervised Learning"
 
 
+def test_ocr_page_fragments_are_coalesced_into_bounded_evidence() -> None:
+    service = IndexingService.__new__(IndexingService)
+    service._chunk_tokens = 180
+    service._chunk_overlap = 30
+    service._ocr_applied_pages = {1}
+    pages = [
+        (
+            1,
+            "\n".join(
+                [
+                    "PIPELINE STEPS",
+                    "Brief Reference Build Style",
+                    "Assets Animations Optimize Deploy",
+                    "The guide turns a visual reference into a deployable website.",
+                ]
+            ),
+        )
+    ]
+
+    sections = service._section_pages(pages)
+    chunks = service._chunk_sections(sections)
+
+    assert len(sections) == 1
+    assert "Brief Reference" in sections[0].text
+    assert "deployable website" in chunks[0].text
+    assert len(chunks[0].text.split()) <= 320
+
+
 def test_sqlite_chunk_section_metadata_is_additive(tmp_path: Path) -> None:
     repo = SQLiteRepo(tmp_path / "nirmiq.db")
     repo.init_db()

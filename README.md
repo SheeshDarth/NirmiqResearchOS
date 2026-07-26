@@ -142,6 +142,7 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 - [`docs/megasprint_five_plan.md`](docs/megasprint_five_plan.md): release confidence, desktop packaging, privacy recovery, and public proof.
 - [`docs/megasprint_six_plan.md`](docs/megasprint_six_plan.md): query-agnostic evidence obligations, hierarchical summary coverage, and the final 40-case offline reliability result.
 - [`docs/next_version_sprint_one_generalization_gate.md`](docs/next_version_sprint_one_generalization_gate.md): completed 110-case RAG generalization gate, validator, thresholds, and remaining weak-category work.
+- [`docs/next_version_sprint_five_unseen_ocr_sources.md`](docs/next_version_sprint_five_unseen_ocr_sources.md): unseen local scan holdout, OCR hardening, measured gains, and residual risk.
 - [`docs/recursive_summary_architecture.md`](docs/recursive_summary_architecture.md): all-chunk document mapping, recursive chapter reduction, cache behavior, and measured long-textbook results.
 - [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md): current reproducible tests, retrieval metrics, offline proof, package result, and honest release boundary.
 - [`docs/review_sprints_2026_07_24.md`](docs/review_sprints_2026_07_24.md): current architecture, RAG, UI, security, performance, release, and vision-alignment review.
@@ -228,10 +229,17 @@ The golden demo is strong, and the harder real-world seed now shows measurable i
 | Hard-document OCR/structure gate | **1.000** | **1.000** | **1.000** |
 | Post-hard-document 40-case regression | **0.934** | **1.000** | **1.000** |
 | Next-Version Sprint One 110-case gate | **0.903** | **0.930** | **0.930** |
+| Next-Version Sprint Five unseen OCR holdout | **0.850** | **0.900** | **0.900** |
 
 The expanded 110-case next-version gate covers `18` query categories across `14` local source files, including definitions, explanations, mechanisms, comparisons, procedures, summaries, factual lookups, limitations, architecture questions, exams, paper drafting, diagrams, equations, tables, scans, handwriting, and unanswerable prompts. The latest offline BM25 gate passes with answer-quality pass rate `0.927`, overall answer score `0.941`, answer relevance `0.841`, concept coverage `0.864`, readability `0.990`, faithfulness `0.998`, and answerability correctness `1.000`. This is a strong measured result on the current corpus, not a production-grade arbitrary-document claim. BM25 remains the safest offline backbone, while hybrid remains optional support rather than the sole source of truth.
 
 The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
+
+The latest local-only unseen scan holdout improved from MRR `0.550` / Recall@8 `0.600` /
+expected citation coverage `0.600` to `0.850` / `0.900` / `0.900` after generic OCR
+normalization, bounded same-page coalescing, and query-shaped answer selection. The
+holdout is not committed because it uses local copyrighted PDFs; the result and its
+limits are recorded in [`docs/next_version_sprint_five_unseen_ocr_sources.md`](docs/next_version_sprint_five_unseen_ocr_sources.md).
 
 Chosen RAG method: [`NIRMIQ Evidence-First Hierarchical Hybrid RAG`](docs/nirmiq_rag_method.md). This keeps BM25 as the offline backbone, uses section/page-first narrowing when metadata exists, treats vector search as optional support, rescues buried direct evidence in legacy documents, and verifies citations before showing a confident answer.
 

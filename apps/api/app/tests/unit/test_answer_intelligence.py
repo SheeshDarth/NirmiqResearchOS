@@ -84,6 +84,47 @@ def test_comparison_and_procedure_queries_get_different_contracts() -> None:
     assert procedure.sections[:2] == ("Goal", "Steps")
 
 
+def test_natural_comparison_wording_is_routed_to_comparison() -> None:
+    plan = build_answer_plan(
+        "How does Claude Code differ from Antigravity in the guide?",
+        "research",
+    )
+
+    assert plan.answer_type == "comparison"
+    assert plan.subject == "claude code and antigravity"
+
+
+def test_how_can_question_keeps_the_requested_action_in_focus() -> None:
+    plan = build_answer_plan(
+        "How can a prompt give direction to an AI model?",
+        "research",
+    )
+
+    assert plan.answer_type == "mechanism_explanation"
+    assert "prompt" in plan.subject
+    assert "direction" in plan.subject
+
+
+def test_limitation_of_wording_extracts_the_limited_topic() -> None:
+    plan = build_answer_plan(
+        "What is a limitation of providing too many examples?",
+        "research",
+    )
+
+    assert plan.answer_type == "limitations"
+    assert plan.subject == "providing too many examples"
+
+
+def test_deployment_guidance_is_routed_to_a_recommendation_contract() -> None:
+    plan = build_answer_plan(
+        "What deployment guidance does the guide give?",
+        "research",
+    )
+
+    assert plan.answer_type == "recommendation"
+    assert plan.subject == "deployment"
+
+
 def test_document_workflow_question_gets_placement_obligations() -> None:
     plan = build_answer_plan(
         "How does the book place validation in the training workflow?",

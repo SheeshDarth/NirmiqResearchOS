@@ -1,6 +1,6 @@
 # Hard-Document Offline Evaluation
 
-Last updated: 2026-07-19
+Last updated: 2026-07-26
 
 ## Purpose
 
@@ -103,3 +103,4 @@ An empty failure file means this specific gate passed. It does not mean every fu
 - Formula coverage is textual; mathematical layout understanding is not yet a symbolic math engine.
 - Diagram coverage verifies extraction and caption-grounded lookup, not computer-vision interpretation.
 - Independent real textbooks, scans, and user questions are still required before broad accuracy claims.
+- Sprint Five adds a separate local-only unseen scan holdout for prompt-engineering and website-building PDFs; see [`next_version_sprint_five_unseen_ocr_sources.md`](next_version_sprint_five_unseen_ocr_sources.md). It improves confidence on two real scan sources but does not replace this reproducible gate.

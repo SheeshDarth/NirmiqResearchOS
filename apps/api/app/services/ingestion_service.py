@@ -54,10 +54,16 @@ class IngestionService:
 
         existing = self._sqlite_repo.get_document_by_source_path(str(source))
         current_hash = self._hash_file(source)
+        active_chunk_count = (
+            self._sqlite_repo.get_active_chunk_count(str(existing["id"]))
+            if existing
+            else 0
+        )
         if (
             existing
             and existing["content_hash"] == current_hash
             and existing["status"] == "indexed"
+            and active_chunk_count > 0
             and not payload.force_reindex
         ):
             return IngestResponse(document_id=existing["id"], status="indexed", indexed=True)

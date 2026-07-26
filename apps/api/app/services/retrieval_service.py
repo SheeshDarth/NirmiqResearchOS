@@ -76,6 +76,22 @@ class RetrievalService:
         profile_config = self._profile_config(normalized_profile)
         requested_query = answer_query.strip() if answer_query and answer_query.strip() else query
         answer_plan = build_answer_plan(query=requested_query, response_mode=response_mode)
+        if target_document_id and normalized_profile != "fast" and answer_plan.answer_type in {
+            "comparison",
+            "enumeration",
+            "limitations",
+            "mechanism_explanation",
+            "procedure",
+            "recommendation",
+        }:
+            # Evidence-heavy answer contracts need a wider lexical candidate
+            # pool; synthesis still applies the shared context budget.
+            profile_config = {
+                **profile_config,
+                "bm25_k": max(profile_config["bm25_k"], 32),
+                "fused_k": max(profile_config["fused_k"], 16),
+                "rerank_k": max(profile_config["rerank_k"], 12),
+            }
 
         document_rows_cache_hit = False
         if target_document_id:
@@ -222,7 +238,11 @@ class RetrievalService:
                     query=expanded_query,
                     answer_query=requested_query,
                 )
-                if obligation.key.startswith("comparison_side_") and cue_score < 0.32:
+                if (
+                    obligation.key.startswith("comparison_side_")
+                    and cue_score < 0.32
+                    and not (directness >= 0.45 and core_hits >= 1)
+                ):
                     continue
                 core_hits = sum(1 for term in core_subject_terms if term in lowered)
                 core_coverage = core_hits / max(len(core_subject_terms), 1)

@@ -35,6 +35,11 @@ def normalize_ocr_text(text: str) -> str:
     normalized = unicodedata.normalize("NFKC", text)
     for needle, replacement in _OCR_REPLACEMENTS.items():
         normalized = normalized.replace(needle, replacement)
+    # Tesseract commonly reads the capitalized acronym AI as "Al" in scanned
+    # headings. Keep this narrow to the standalone token so normal words are
+    # unaffected while query terms can match OCR-derived evidence.
+    normalized = re.sub(r"\bAl\b", "AI", normalized)
+    normalized = re.sub(r"\bA1\b", "AI", normalized)
     return normalized
 
 

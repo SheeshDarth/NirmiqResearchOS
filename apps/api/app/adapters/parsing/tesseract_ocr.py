@@ -76,6 +76,14 @@ class TesseractOCR:
         except Exception:
             return False
 
+    @staticmethod
+    def _page_config() -> str:
+        """Allow local installs to select a layout mode for multi-column scans."""
+
+        raw_psm = os.getenv("TESSERACT_PSM", "3").strip()
+        psm = raw_psm if raw_psm.isdigit() and 0 <= int(raw_psm) <= 13 else "3"
+        return f"--psm {psm}"
+
     async def extract_page(self, source_path: str, page_number: int = 1) -> str:
         path = Path(source_path)
         suffix = path.suffix.lower()
@@ -104,7 +112,7 @@ class TesseractOCR:
             pix = page.get_pixmap(dpi=220)
             image_bytes = pix.tobytes("png")
             image = Image.open(BytesIO(image_bytes))
-            return str(pytesseract.image_to_string(image)).strip()
+            return str(pytesseract.image_to_string(image, config=self._page_config())).strip()
         except Exception:
             return ""
         finally:
@@ -120,6 +128,6 @@ class TesseractOCR:
             return ""
         try:
             image = Image.open(source_path)
-            return str(pytesseract.image_to_string(image)).strip()
+            return str(pytesseract.image_to_string(image, config=self._page_config())).strip()
         except Exception:
             return ""

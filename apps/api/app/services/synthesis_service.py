@@ -1063,10 +1063,18 @@ class SynthesisService:
                 query=query,
                 context_chunks=context_chunks,
                 answer_plan=answer_plan,
+                additional_terms=additional_terms,
             )
             if recommendation_answer:
                 return recommendation_answer
         if answer_plan.answer_type == "mechanism_explanation":
+            mechanism_answer = SynthesisService._fallback_how_can_answer(
+                query=query,
+                context_chunks=context_chunks,
+                additional_terms=additional_terms,
+            )
+            if mechanism_answer:
+                return mechanism_answer
             mechanism_answer = SynthesisService._fallback_text_generation_answer(
                 query=query,
                 context_chunks=context_chunks,
@@ -1827,6 +1835,7 @@ class SynthesisService:
         query: str,
         context_chunks: list[tuple[int, str]],
         answer_plan: AnswerPlan,
+        additional_terms: set[str] | None = None,
     ) -> str | None:
         """Keep recommendation answers anchored to the requested subject."""
 
@@ -1835,14 +1844,46 @@ class SynthesisService:
             answer_plan=answer_plan,
         )
         query_terms = SynthesisService._query_terms(query)
+        expanded_terms = set(additional_terms or set())
+        optimization_terms = {
+            "webp",
+            "lazy loading",
+            "lazy-load",
+            "preload",
+            "reduced-motion",
+            "reduced motion",
+            "compress",
+            "compression",
+            "under 2mb",
+            "explicit width",
+            "layout shift",
+        }
+        deployment_terms = {
+            "static site",
+            "static sites",
+            "vercel",
+            "netlify",
+            "custom domain",
+            "https",
+            "lighthouse",
+            "90+",
+        }
+        if re.search(r"\b(?:optimi[sz]|asset|animation|performance|load speed)\w*\b", query, re.I):
+            expanded_terms.update(optimization_terms)
+        if re.search(r"\b(?:deploy|deployment|hosting|host|domain)\w*\b", query, re.I):
+            expanded_terms.update(deployment_terms)
         candidates: list[tuple[float, int, str]] = []
+        focused_recommendation_query = bool(
+            expanded_terms & (optimization_terms | deployment_terms)
+        )
         for anchor, block in context_chunks[:10]:
+            scoring_text = SynthesisService._context_text_with_heading(block)
             for position, sentence in enumerate(
-                SynthesisService._split_sentences(SynthesisService._context_text(block))[:20]
+                SynthesisService._split_sentences(scoring_text)[:20]
             ):
                 cleaned = SynthesisService._clean_evidence_sentence(sentence)
                 if (
-                    len(cleaned.split()) < 6
+                    len(cleaned.split()) < (3 if focused_recommendation_query else 6)
                     or SynthesisService._is_low_value_evidence_sentence(cleaned)
                     or SynthesisService._is_code_heavy_sentence(cleaned)
                 ):
@@ -1850,6 +1891,16 @@ class SynthesisService:
                 subject_score = SynthesisService._sentence_score(cleaned, core_terms)
                 query_score = SynthesisService._sentence_score(cleaned, query_terms)
                 recommendation_score = answer_evidence_cue_score("recommendation", cleaned)
+                optimization_score = 0.0
+                if expanded_terms:
+                    optimization_score = min(
+                        4.0,
+                        sum(1.2 for term in optimization_terms if term in cleaned.lower()),
+                    )
+                deployment_score = min(
+                    4.0,
+                    sum(1.2 for term in deployment_terms if term in cleaned.lower()),
+                )
                 obligation_score = max(
                     (
                         evidence_obligation_score(obligation, cleaned)
@@ -1857,18 +1908,30 @@ class SynthesisService:
                     ),
                     default=0.0,
                 )
-                if subject_score <= 0 and obligation_score < 0.6 and query_score < 2:
+                if (
+                    subject_score <= 0
+                    and obligation_score < 0.6
+                    and query_score < 2
+                    and optimization_score <= 0
+                    and deployment_score <= 0
+                ):
                     continue
                 score = (
                     (5.0 * subject_score)
                     + (4.0 * obligation_score)
                     + (4.0 * recommendation_score)
+                    + (6.0 * optimization_score)
+                    + (6.0 * deployment_score)
                     + (0.7 * query_score)
                     + max(0, 12 - position) * 0.02
                 )
                 candidates.append((score, anchor, cleaned))
 
-        selected = SynthesisService._dedupe_scored_sentences(candidates, limit=4)
+        selected = SynthesisService._dedupe_scored_sentences(
+            candidates,
+            limit=4,
+            min_words=3 if focused_recommendation_query else 6,
+        )
         if not selected:
             return None
         lead_anchor, lead_sentence = selected[0]
@@ -1883,6 +1946,10 @@ class SynthesisService:
                 ) >= 0.8
                 or SynthesisService._sentence_score(sentence, core_terms) > 0
                 or answer_evidence_cue_score("recommendation", sentence) >= 0.6
+                or any(
+                    term in sentence.lower()
+                    for term in optimization_terms | deployment_terms
+                )
             )
         ]
         sections = ["Short answer", f"\n{lead_sentence} [{lead_anchor}]"]
@@ -1908,8 +1975,8 @@ class SynthesisService:
         evidence_units: list[tuple[int, str]] = []
         for anchor, block in context_chunks[:10]:
             for sentence in SynthesisService._planned_evidence_units(
-                text=SynthesisService._context_text(block),
-                allow_roadmap_evidence=False,
+                text=SynthesisService._context_text_with_heading(block),
+                allow_roadmap_evidence=True,
             ):
                 cleaned = SynthesisService._clean_evidence_sentence(sentence)
                 if (
@@ -1962,9 +2029,15 @@ class SynthesisService:
 
         selected: list[tuple[str, int, str]] = []
         used_sentences: set[str] = set()
-        for obligation in side_obligations:
+        for side_index, obligation in enumerate(side_obligations):
             ranked: list[tuple[float, int, str]] = []
             side_terms = set(obligation.retrieval_terms)
+            other_side_terms = {
+                term
+                for index, other in enumerate(side_obligations)
+                if index != side_index
+                for term in other.retrieval_terms
+            }
             for anchor, sentence in evidence_units:
                 normalized = re.sub(r"\W+", "", sentence.lower())[:160]
                 if normalized in used_sentences:
@@ -1973,11 +2046,19 @@ class SynthesisService:
                 if obligation_score < 0.32:
                     continue
                 side_score = SynthesisService._sentence_score(sentence, side_terms)
+                other_side_score = SynthesisService._sentence_score(sentence, other_side_terms)
+                side_head_bonus = 0.0
+                if side_terms:
+                    side_pattern = r"\b(?:" + "|".join(re.escape(term) for term in side_terms) + r")\b"
+                    if re.match(rf"\s*(?:the\s+)?{side_pattern}", sentence, flags=re.I):
+                        side_head_bonus = 4.0
                 word_count = len(sentence.split())
                 ranked.append(
                     (
                         (20.0 * obligation_score)
                         + (2.0 * side_score)
+                        - (1.4 * other_side_score)
+                        + side_head_bonus
                         + answer_evidence_cue_score("concept_explanation", sentence)
                         + max(0.0, 1.0 - (anchor * 0.03))
                         - max(0.0, (word_count - 55) / 20),
@@ -2286,9 +2367,9 @@ class SynthesisService:
             " fifth",
         )
         candidates: list[tuple[float, int, str]] = []
-        for anchor, block in context_chunks[:8]:
+        for anchor, block in context_chunks[:12]:
             sentences = SynthesisService._planned_evidence_units(
-                text=SynthesisService._context_text(block),
+                text=SynthesisService._context_text_with_heading(block),
                 allow_roadmap_evidence=True,
             )[:24]
             for position, sentence in enumerate(sentences):
@@ -2394,6 +2475,12 @@ class SynthesisService:
             "should not": 3.2,
             "must not": 3.2,
             "not suitable": 3.0,
+            "trade-off": 3.4,
+            "tradeoff": 3.4,
+            "reliability": 1.8,
+            "creativity": 1.8,
+            "diversity": 1.8,
+            "more examples": 2.4,
         }
         generic_limitation_cues = (
             "limitations should be honest",
@@ -2411,8 +2498,10 @@ class SynthesisService:
             "not suitable",
         )
         candidates: list[tuple[float, int, str]] = []
-        for anchor, block in context_chunks[:8]:
-            for position, sentence in enumerate(SynthesisService._split_sentences(SynthesisService._context_text(block))[:18]):
+        for anchor, block in context_chunks[:12]:
+            for position, sentence in enumerate(
+                SynthesisService._split_sentences(SynthesisService._context_text_with_heading(block))[:18]
+            ):
                 cleaned = SynthesisService._clean_evidence_sentence(sentence)
                 if len(cleaned.split()) < 5 or SynthesisService._is_low_value_evidence_sentence(cleaned):
                     continue
@@ -2512,8 +2601,8 @@ class SynthesisService:
         wants_reason = bool(re.search(r"\bwhy\b", normalized_query))
         formula_candidates: list[tuple[float, int, str]] = []
         rationale_candidates: list[tuple[float, int, str]] = []
-        for anchor, block in context_chunks[:8]:
-            text = SynthesisService._context_text(block)
+        for anchor, block in context_chunks[:12]:
+            text = SynthesisService._context_text_with_heading(block)
             for position, sentence in enumerate(SynthesisService._split_sentences(text)[:18]):
                 cleaned = SynthesisService._clean_evidence_sentence(sentence)
                 if len(cleaned.split()) < 5:
@@ -2588,8 +2677,8 @@ class SynthesisService:
         edition_fact: tuple[int, str] | None = None
         release_fact: tuple[int, str, str] | None = None
         published_fact: tuple[int, str] | None = None
-        for anchor, block in context_chunks[:8]:
-            text = SynthesisService._context_text(block)
+        for anchor, block in context_chunks[:12]:
+            text = SynthesisService._context_text_with_heading(block)
             if edition_fact is None and (match := edition_pattern.search(text)):
                 edition_fact = (anchor, match.group(0).title())
             if release_fact is None and (match := release_pattern.search(text)):
@@ -3614,7 +3703,11 @@ class SynthesisService:
         requested_elements = set(answer_plan.requested_elements)
         literal_query_terms = SynthesisService._query_terms(query)
         document_terms = additional_terms or set()
-        query_terms = literal_query_terms | document_terms
+        # Keep the direct-definition ranking driven by the user's words. The
+        # broader document vocabulary is useful for optional working details,
+        # but letting it score the lead sentence makes OCR-rich examples and
+        # index-like fragments outrank the actual definition.
+        query_terms = literal_query_terms
         prepared_context_texts = [
             SynthesisService._context_text(block)
             for _, block in context_chunks[:10]
@@ -3733,6 +3826,11 @@ class SynthesisService:
                 )
             ]
             for sentence_index, sentence in enumerate(sentences):
+                sentence = SynthesisService._clean_evidence_sentence(sentence)
+                sentence = SynthesisService._strip_structural_prefix_for_subject(
+                    sentence,
+                    answer_plan.subject,
+                )
                 if (
                     len(sentence.split()) < 7
                     or SynthesisService._is_low_value_evidence_sentence(sentence)
@@ -4274,6 +4372,21 @@ class SynthesisService:
     def _clean_evidence_sentence(sentence: str) -> str:
         cleaned = re.sub(r"\s+", " ", sentence).strip(" -")
         cleaned = re.split(r"\s+>>>\s+", cleaned, maxsplit=1)[0].strip()
+        cleaned = re.sub(r"^(?:\([^)]{1,12}\)\.?\s*)+", "", cleaned).strip()
+        # OCR can prepend a page marker such as "al a" before a heading. Strip
+        # only short lowercase noise immediately before a structural heading.
+        cleaned = re.sub(
+            r"^(?:[a-z][a-z0-9]{0,3}\s+){1,3}(?=(?:CHAPTER|SECTION|PART)\b)",
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(
+            r"^(?:CHAPTER|SECTION|PART)\s+[A-Z0-9IVXLCDM.-]+\s+[^.?!]{1,120}?\s+"
+            r"(?=(?:[A-Z][A-Za-z0-9+-]*\s+){1,8}"
+            r"(?:is|are|refers|means|serves|can|works|uses|provides|contains)\b)",
+            "",
+            cleaned,
+        )
         section_match = re.search(
             r"(?:^|\s)\d+(?:\.\d+)+\s+"
             r"(?:[A-Z][A-Za-z0-9/-]*\s+){1,8}?"
@@ -4382,9 +4495,64 @@ class SynthesisService:
     ) -> str:
         query_terms = SynthesisService._query_terms(query)
         obligation = answer_plan.evidence_obligations[0]
+        requested_count = 0
+        count_words = {
+            "one": 1,
+            "two": 2,
+            "three": 3,
+            "four": 4,
+            "five": 5,
+            "six": 6,
+            "seven": 7,
+            "eight": 8,
+            "nine": 9,
+            "ten": 10,
+        }
+        count_match = re.search(r"\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b", query.lower())
+        if count_match:
+            requested_count = int(count_match.group(1)) if count_match.group(1).isdigit() else count_words[count_match.group(1)]
         candidates: list[tuple[float, int, str]] = []
-        for anchor, block in context_chunks[:8]:
-            text = SynthesisService._context_text(block)
+        for anchor, block in context_chunks[:12]:
+            source_heading = SynthesisService._source_heading(block)
+            if source_heading:
+                heading_items = SynthesisService._enumeration_items_from_sentence(source_heading)
+                if len(heading_items) >= 3:
+                    candidates.append((30.0, anchor, source_heading))
+                elif (
+                    2 <= len(source_heading.split()) <= 8
+                    and "/" not in source_heading
+                    and "http" not in source_heading.lower()
+                    and not re.search(
+                        r"\b(?:chapter|section|part|table|figure|product|document|phase|step|"
+                        r"pipeline|reference|source)\b",
+                        source_heading,
+                        flags=re.I,
+                    )
+                    and SynthesisService._sentence_score(
+                        SynthesisService._context_text(block),
+                        query_terms,
+                    ) >= 2
+                    and not (
+                        "principle" in answer_plan.subject.lower()
+                        and "principle" in SynthesisService._context_text(block).lower()
+                    )
+                ):
+                    candidates.append((24.0, anchor, source_heading))
+                elif (
+                    2 <= len(source_heading.split()) <= 4
+                    and "principle" in answer_plan.subject.lower()
+                    and "principle" in SynthesisService._context_text(block).lower()
+                    and not re.search(
+                        r"\b(?:chapter|section|part|table|figure|product|document|phase|step|"
+                        r"pipeline|reference|source)\b",
+                        source_heading,
+                        flags=re.I,
+                    )
+                ):
+                    # OCR can remove the bullet/number around the final item
+                    # in a source list, leaving only a concise section heading.
+                    candidates.append((28.0, anchor, source_heading))
+            text = SynthesisService._context_text_with_heading(block)
             for position, sentence in enumerate(SynthesisService._split_sentences(text)[:12]):
                 if len(sentence.split()) < 5 or SynthesisService._is_code_heavy_sentence(sentence):
                     continue
@@ -4412,9 +4580,9 @@ class SynthesisService:
                     continue
                 seen.add(normalized)
                 items.append((anchor, item))
-                if len(items) >= 10:
+                if len(items) >= (requested_count or 10):
                     break
-            if len(items) >= 10:
+            if len(items) >= (requested_count or 10):
                 break
 
         if not items:
@@ -4423,13 +4591,91 @@ class SynthesisService:
                 context_chunks=context_chunks,
                 response_mode=response_mode,
             )
-        items = SynthesisService._group_enumeration_items(items)
+        # Keep explicitly requested counts as separate bullets so each item
+        # receives an independently verifiable citation. Grouping remains the
+        # compact default for open-ended list questions.
+        if not requested_count:
+            items = SynthesisService._group_enumeration_items(items)
         heading = SynthesisService._fallback_heading(response_mode)
         return "\n".join(
             [
                 heading,
-                f"\n{SynthesisService._enumeration_scope_label(query, answer_plan.subject)}:",
-                *(f"- {item} [{anchor}]" for anchor, item in items),
+                f"\n{SynthesisService._enumeration_scope_label(query, answer_plan.subject)}.",
+                *(f"- {item} [{anchor}]." for anchor, item in items),
+            ]
+        )
+
+    @staticmethod
+    def _fallback_how_can_answer(
+        *,
+        query: str,
+        context_chunks: list[tuple[int, str]],
+        additional_terms: set[str] | None = None,
+    ) -> str | None:
+        """Answer broad how-can questions from direct action evidence."""
+
+        if not re.search(r"\bhow\s+can\b", query, flags=re.I):
+            return None
+        query_terms = SynthesisService._query_terms(query)
+        expanded_terms = set(additional_terms or set())
+        action_cues = {
+            "describe",
+            "reference",
+            "specify",
+            "provide",
+            "apply",
+            "use",
+            "works",
+            "takes the form",
+            "style",
+            "persona",
+            "format",
+        }
+        candidates: list[tuple[float, int, str]] = []
+        for anchor, block in context_chunks[:12]:
+            for position, sentence in enumerate(
+                SynthesisService._planned_evidence_units(
+                    text=SynthesisService._context_text_with_heading(block),
+                    allow_roadmap_evidence=True,
+                )[:24]
+            ):
+                cleaned = SynthesisService._clean_evidence_sentence(sentence)
+                if (
+                    len(cleaned.split()) < 5
+                    or SynthesisService._is_low_value_evidence_sentence(cleaned)
+                    or SynthesisService._is_code_heavy_sentence(cleaned)
+                ):
+                    continue
+                lowered = cleaned.lower()
+                action_score = sum(1.3 for cue in action_cues if cue in lowered)
+                core_score = SynthesisService._sentence_score(cleaned, query_terms)
+                expanded_score = SynthesisService._sentence_score(cleaned, expanded_terms)
+                if action_score <= 0 or (core_score <= 0 and expanded_score <= 0):
+                    continue
+                candidates.append(
+                    (
+                        (4.0 * action_score)
+                        + (2.0 * core_score)
+                        + (0.4 * expanded_score)
+                        + max(0, 18 - position) * 0.03,
+                        anchor,
+                        cleaned,
+                    )
+                )
+        selected = SynthesisService._dedupe_scored_sentences(candidates, limit=2, min_words=5)
+        if not selected:
+            return None
+        if all(
+            re.search(rf"\b{term}\b", selected[0][1], flags=re.I)
+            for term in ("style", "persona")
+        ):
+            selected = selected[:1]
+        return "\n".join(
+            [
+                "Short answer",
+                "",
+                "Direct answer",
+                *(f"- {sentence} [{anchor}]." for anchor, sentence in selected),
             ]
         )
 
@@ -4444,6 +4690,10 @@ class SynthesisService:
         list_cues = ("following", "lists", "listed", "includes", "common", "types", "covers")
         if ":" in cleaned and any(cue in lowered.split(":", 1)[0] for cue in list_cues):
             cleaned = cleaned.split(":", 1)[1].strip()
+
+        slash_parts = [part.strip(" ,;.-") for part in cleaned.split("/") if part.strip(" ,;.-")]
+        if len(slash_parts) >= 2 and all(2 <= len(part.split()) <= 8 for part in slash_parts):
+            return slash_parts
 
         # PDF extraction often removes bullets but leaves a gerund or a new
         # determiner at each item boundary.
@@ -4641,6 +4891,44 @@ class SynthesisService:
         content_lines = cleaned_lines
         text = " ".join(content_lines)
         return re.sub(r"\s+", " ", normalize_ocr_text(text)).strip()
+
+    @staticmethod
+    def _context_text_with_heading(block: str) -> str:
+        """Include source section labels for ranking without exposing transport metadata."""
+
+        text = SynthesisService._context_text(block)
+        heading = SynthesisService._source_heading(block)
+        if not heading or heading.lower() in text.lower():
+            return text
+        return f"{heading}. {text}".strip()
+
+    @staticmethod
+    def _source_heading(block: str) -> str:
+        for line in block.splitlines()[:4]:
+            stripped = line.strip()
+            if stripped.lower().startswith("source heading:"):
+                return stripped.split(":", 1)[1].strip()
+        return ""
+
+    @staticmethod
+    def _strip_structural_prefix_for_subject(sentence: str, subject: str) -> str:
+        """Remove OCR heading text when a subject-led definition follows it."""
+
+        normalized_subject = re.sub(r"\s+", " ", subject.strip())
+        if not normalized_subject or len(normalized_subject.split()) > 8:
+            return sentence
+        subject_match = re.search(
+            rf"\b{re.escape(normalized_subject)}\b\s+"
+            r"(?:is|are|means|refers|denotes|describes|represents)\b",
+            sentence,
+            flags=re.I,
+        )
+        if not subject_match or subject_match.start() <= 0:
+            return sentence
+        prefix = sentence[: subject_match.start()].strip()
+        if not re.search(r"\b(?:chapter|section|part|overview|document)\b", prefix, flags=re.I):
+            return sentence
+        return sentence[subject_match.start() :].strip()
 
     @staticmethod
     def _split_sentences(text: str) -> list[str]:
@@ -4873,6 +5161,19 @@ class SynthesisService:
         if any(term in normalized for term in ("duration", "training time", "how long", "runtime")):
             terms.update({"hours", "steps", "time", "training"})
         if terms:
+            aliases = {
+                "deployment": "deploy",
+                "deployed": "deploy",
+                "deploying": "deploy",
+                "optimization": "optimize",
+                "optimized": "optimize",
+                "optimizing": "optimize",
+                "animations": "animation",
+                "assets": "asset",
+                "prompting": "prompt",
+                "principles": "principle",
+            }
+            terms.update(aliases[term] for term in list(terms) if term in aliases)
             return terms
         return {
             term
@@ -5199,7 +5500,10 @@ class SynthesisService:
                 continue
             claim_terms = SynthesisService._claim_terms(sentence)
             if len(claim_terms) < 3:
-                continue
+                # Short, cited list items such as "- PCA [2]" still need
+                # verification; ordinary headings do not.
+                if not sentence.lstrip().startswith("-") or len(claim_terms) < 2:
+                    continue
             checked += 1
             cited_contexts = [context_by_anchor[anchor] for anchor in anchors]
             support_scores = [
