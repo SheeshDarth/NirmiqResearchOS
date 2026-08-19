@@ -4508,7 +4508,11 @@ class SynthesisService:
             "nine": 9,
             "ten": 10,
         }
-        count_match = re.search(r"\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b", query.lower())
+        count_match = re.search(
+            r"^(?:what\s+are|which\s+are|name|list)\s+(?:the\s+)?"
+            r"(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b",
+            query.lower().strip(),
+        )
         if count_match:
             requested_count = int(count_match.group(1)) if count_match.group(1).isdigit() else count_words[count_match.group(1)]
         candidates: list[tuple[float, int, str]] = []
@@ -4556,6 +4560,14 @@ class SynthesisService:
             for position, sentence in enumerate(SynthesisService._split_sentences(text)[:12]):
                 if len(sentence.split()) < 5 or SynthesisService._is_code_heavy_sentence(sentence):
                     continue
+                enumerated_item_count = len(
+                    SynthesisService._enumeration_items_from_sentence(sentence)
+                )
+                list_completeness_bonus = 0.0
+                if requested_count and enumerated_item_count >= requested_count:
+                    list_completeness_bonus = 28.0
+                elif enumerated_item_count >= 2:
+                    list_completeness_bonus = min(12.0, 3.0 * enumerated_item_count)
                 score = (
                     (2.0 * SynthesisService._sentence_score(sentence, query_terms))
                     + (5.0 * evidence_obligation_score(obligation, sentence))
@@ -4566,6 +4578,7 @@ class SynthesisService:
                             text=sentence,
                         )
                     )
+                    + list_completeness_bonus
                     + max(0, 10 - position) * 0.02
                 )
                 if score > 0:
@@ -4574,7 +4587,8 @@ class SynthesisService:
         items: list[tuple[int, str]] = []
         seen: set[str] = set()
         for _, anchor, sentence in sorted(candidates, reverse=True):
-            for item in SynthesisService._enumeration_items_from_sentence(sentence):
+            sentence_items = SynthesisService._enumeration_items_from_sentence(sentence)
+            for item in sentence_items:
                 normalized = re.sub(r"\W+", "", item.lower())[:100]
                 if not normalized or normalized in seen:
                     continue
@@ -4582,6 +4596,12 @@ class SynthesisService:
                 items.append((anchor, item))
                 if len(items) >= (requested_count or 10):
                     break
+            if (
+                not requested_count
+                and len(sentence_items) >= 2
+                and SynthesisService._structural_scope_score(query=query, text=sentence) >= 1.0
+            ):
+                break
             if len(items) >= (requested_count or 10):
                 break
 
@@ -4687,8 +4707,36 @@ class SynthesisService:
         if not cleaned:
             return []
         lowered = cleaned.lower()
-        list_cues = ("following", "lists", "listed", "includes", "common", "types", "covers")
-        if ":" in cleaned and any(cue in lowered.split(":", 1)[0] for cue in list_cues):
+        paired_items = re.search(
+            r"\b(?:the\s+)?first\s+(?:is|are|contains?|uses?)\s+(.+?)"
+            r",?\s+and\s+(?:the\s+)?second\s+(?:is|are|contains?|uses?)\s+(.+)$",
+            cleaned,
+            flags=re.I,
+        )
+        if paired_items:
+            return [
+                re.sub(r"^(?:a|an|the)\s+", "", item, flags=re.I).strip(" ,;.-")
+                for item in paired_items.groups()
+                if item.strip(" ,;.-")
+            ]
+
+        list_cues = (
+            "following",
+            "lists",
+            "listed",
+            "includes",
+            "common",
+            "types",
+            "covers",
+            "shows",
+            "names",
+            "named",
+        )
+        explicit_colon_list = ":" in cleaned and any(
+            cue in lowered.split(":", 1)[0]
+            for cue in list_cues
+        )
+        if explicit_colon_list:
             cleaned = cleaned.split(":", 1)[1].strip()
 
         slash_parts = [part.strip(" ,;.-") for part in cleaned.split("/") if part.strip(" ,;.-")]
@@ -4725,7 +4773,11 @@ class SynthesisService:
                 first, second, noun = coordinated.groups()
                 item = f"{first} {noun} and {second} {noun}"
             words = item.split()
-            if len(words) < 2:
+            if len(words) < 2 and not (
+                explicit_colon_list
+                and len(words) == 1
+                and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", words[0])
+            ):
                 continue
             if len(words) > 34:
                 item = " ".join(words[:34]).rstrip(" ,;:")
@@ -4793,9 +4845,8 @@ class SynthesisService:
             flags=re.I,
         )
         if match:
-            clean_subject = re.sub(r"\s+", " ", subject).strip(" ,.-")
-            scoped_name = clean_subject if clean_subject else f"{match.group(1).title()} {match.group(2).upper()}"
-            return f"{scoped_name} covers these source-backed topics"
+            scoped_name = f"{match.group(1).title()} {match.group(2).upper()}"
+            return f"{scoped_name} contains these source-backed items"
         if re.search(r"\boverview\b", query, re.I):
             clean_subject = re.sub(r"\s+", " ", subject).strip(" ,.-")
             if clean_subject and len(clean_subject.split()) <= 10:

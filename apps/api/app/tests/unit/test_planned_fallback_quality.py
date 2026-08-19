@@ -648,6 +648,59 @@ def test_enumeration_fallback_recovers_a_heading_only_final_item() -> None:
     assert answer.count("[1]") >= 4
 
 
+def test_enumeration_fallback_extracts_paired_first_and_second_items() -> None:
+    query = "What are the two sublayers in each encoder layer?"
+    context = [
+        (
+            2,
+            "[2] doc=doc score=1 source=bm25 pages=3-3\n"
+            "Source heading: Encoder and Decoder Stacks\n"
+            "Each layer has two sub-layers. The first is a multi-head self-attention mechanism, "
+            "and the second is a simple, position-wise fully connected feed-forward network.",
+        )
+    ]
+
+    answer = SynthesisService._fallback_enumeration_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        response_mode="research",
+        context_chunks=context,
+    )
+
+    assert "multi-head self-attention mechanism [2]" in answer
+    assert "position-wise fully connected feed-forward network [2]" in answer
+    assert "Encoder and Decoder Stacks [2]" not in answer
+    assert SynthesisService._verify_cited_claims(answer, context)["state"] == "supported"
+
+
+def test_enumeration_fallback_extracts_single_word_figure_components() -> None:
+    query = "Which components are named in Figure 1 feedback chain?"
+    context = [
+        (
+            1,
+            "[1] doc=doc score=1 source=bm25 pages=4-4\n"
+            "Figure 1 shows the feedback chain: sensor, comparator, controller, and actuator.",
+        ),
+        (
+            2,
+            "[2] doc=doc score=.5 source=bm25 pages=3-3\n"
+            "The drift policy lists low drift, high drift, and a second observation band.",
+        ),
+    ]
+
+    answer = SynthesisService._fallback_enumeration_answer(
+        query=query,
+        answer_plan=build_answer_plan(query, "research"),
+        response_mode="research",
+        context_chunks=context,
+    )
+
+    for component in ("sensor", "comparator", "controller", "actuator"):
+        assert component in answer
+    assert "sensor; comparator; controller; actuator [1]" in answer
+    assert "drift policy" not in answer
+
+
 def test_recommendation_fallback_prefers_direct_optimization_instructions() -> None:
     query = "How should the website assets and animations be optimized?"
     answer = SynthesisService._fallback_planned_answer(

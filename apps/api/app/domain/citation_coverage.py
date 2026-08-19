@@ -98,6 +98,15 @@ def _is_structural_line(line: str) -> bool:
             "document summary from",
             "study guide from",
             "source diagrams",
+            "the source lists these supported items",
+            "the requested overview lists these",
+        )
+    ):
+        return True
+    if lowered.endswith(
+        (
+            "covers these source-backed topics.",
+            "contains these source-backed items.",
         )
     ):
         return True

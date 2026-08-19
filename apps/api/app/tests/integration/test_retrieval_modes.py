@@ -132,3 +132,43 @@ def test_selected_document_query_includes_section_first_diagnostics(tmp_path: Pa
         assert meta["chunk_selection_reasons"]
         assert meta["retrieval_diagnostics"]["returned_chunks"] >= 1
         assert any(reason["section_match"] for reason in meta["chunk_selection_reasons"])
+
+
+def test_selected_document_comparison_recovers_obligation_candidates(tmp_path: Path) -> None:
+    sample = tmp_path / "comparison_methods.txt"
+    sample.write_text(
+        (
+            "Alpha method processes data in batches and waits for a complete input set. "
+            "Beta method processes data continuously as each new item arrives."
+        ),
+        encoding="utf-8",
+    )
+
+    with TestClient(app) as client:
+        ingest_response = client.post(
+            "/ingest",
+            json={
+                "source_path": str(sample),
+                "title": "Comparison Methods",
+                "mime_type": "text/plain",
+            },
+        )
+        assert ingest_response.status_code == 200
+        document_id = ingest_response.json()["document_id"]
+
+        query_response = client.post(
+            "/query",
+            json={
+                "session_id": "comparison-obligation-session",
+                "query": "Compare alpha method and beta method.",
+                "document_id": document_id,
+                "retrieval_mode": "bm25",
+                "debug": True,
+            },
+        )
+
+        assert query_response.status_code == 200
+        body = query_response.json()
+        assert body["grounded"] is True
+        assert body["citations"]
+        assert body["retrieval_meta"]["answer_plan_type"] == "comparison"

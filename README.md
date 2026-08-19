@@ -228,10 +228,10 @@ The golden demo is strong, and the harder real-world seed now shows measurable i
 | MegaSprint Six final offline BM25 path | **0.921** | **1.000** | **1.000** |
 | Hard-document OCR/structure gate | **1.000** | **1.000** | **1.000** |
 | Post-hard-document 40-case regression | **0.934** | **1.000** | **1.000** |
-| Next-Version Sprint One 110-case gate | **0.903** | **0.930** | **0.930** |
+| Current 110-case generalization gate | **0.910** | **0.940** | **0.940** |
 | Next-Version Sprint Five unseen OCR holdout | **0.850** | **0.900** | **0.900** |
 
-The expanded 110-case next-version gate covers `18` query categories across `14` local source files, including definitions, explanations, mechanisms, comparisons, procedures, summaries, factual lookups, limitations, architecture questions, exams, paper drafting, diagrams, equations, tables, scans, handwriting, and unanswerable prompts. The latest offline BM25 gate passes with answer-quality pass rate `0.927`, overall answer score `0.941`, answer relevance `0.841`, concept coverage `0.864`, readability `0.990`, faithfulness `0.998`, and answerability correctness `1.000`. This is a strong measured result on the current corpus, not a production-grade arbitrary-document claim. BM25 remains the safest offline backbone, while hybrid remains optional support rather than the sole source of truth.
+The expanded 110-case next-version gate covers `18` query categories across `14` local source files, including definitions, explanations, mechanisms, comparisons, procedures, summaries, factual lookups, limitations, architecture questions, exams, paper drafting, diagrams, equations, tables, scans, handwriting, and unanswerable prompts. The latest offline BM25 gate passes with answer-quality pass rate `0.909`, overall answer score `0.936`, answer relevance `0.832`, concept coverage `0.858`, readability `0.983`, faithfulness `1.000`, and answerability correctness `1.000`. This is a strong measured result on the current corpus, not a production-grade arbitrary-document claim. BM25 remains the safest offline backbone, while hybrid remains optional support rather than the sole source of truth.
 
 The core issue is not just model quality. Most hallucination risk comes from weak evidence selection: broad chunks, limited section awareness, lexical mismatch, and insufficient real-world labels. The canonical problem log is [`problems_faced.md`](problems_faced.md).
 
@@ -271,10 +271,10 @@ This work belongs to **MegaSprint One, Block B**, not the UI sprint. It is docum
 Remaining measured debt after MegaSprint Six, the six follow-up reliability jobs, and the expanded Sprint One gate:
 
 - Use the real-user QA loop to promote scrubbed `Needs work` feedback into tracked eval labels.
-- Resolve the remaining `8/110` low-answer-relevance cases without tuning only to those exact prompts; weakest categories are explanation, factual lookup, limitations, and mechanism.
+- Resolve the remaining `8/110` low-answer-relevance cases without tuning only to those exact prompts; the current failures span architecture, definition, enumeration, explanation, limitations, and mechanism.
 - Broaden the new generated hard-document gate with independent real scans, noisier notes, additional handwriting styles, equations, tables, diagrams, and textbooks.
 - Expand recursive-summary QA to more real books with malformed or missing heading metadata; parser-truncated titles remain visible rather than guessed.
-- Continue Job 4 runtime optimization after the first BM25/selected-document cache block reduced the strict BM25 gate from `310.8s` to `274.3s`; details: [`docs/eval_runtime_optimization.md`](docs/eval_runtime_optimization.md).
+- Continue Job 4 runtime optimization. The current 110-case clean gate took `642.5s` (`157.8s` source resolution, `484.3s` query evaluation), with p95 query latency `23.206s`; details: [`docs/eval_runtime_optimization.md`](docs/eval_runtime_optimization.md).
 - Keep BM25-only fallback fully usable for offline and low-end devices.
 - Track chunk-selection reasons, section candidates, citation coverage, unsupported claims, latency, and memory behavior.
 - Measure answer relevance, completeness, claim faithfulness, readability, and abstention correctness separately from retrieval rank.
@@ -691,7 +691,7 @@ The current next-version generalization gate expands that evaluation to more que
 
 | Mode | Samples | Sources | Categories | MRR | Recall@8 | Citation expected coverage | Quality pass | Faithfulness |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| BM25 offline | 110 | 14 | 18 | 0.903 | 0.930 | 0.930 | 0.927 | 0.998 |
+| BM25 offline | 110 | 14 | 18 | 0.910 | 0.940 | 0.940 | 0.909 | 1.000 |
 
 Run it with:
 
@@ -699,7 +699,7 @@ Run it with:
 npm.cmd run eval:generalization-gate
 ```
 
-The 110-case gate is the active reliability signal. It still records `8` low-answer-relevance cases, mainly in explanation, factual lookup, limitations, and mechanism prompts, so future accuracy work should target unseen sources in those categories rather than overfitting exact prompts.
+The 110-case gate is the active reliability signal. It still records `8` low-answer-relevance cases across architecture, definition, enumeration, explanation, limitations, and mechanism prompts, so future accuracy work should target unseen sources in those categories rather than overfitting exact prompts.
 
 Run the separate hard-document gate after installing Tesseract OCR:
 

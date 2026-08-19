@@ -238,14 +238,14 @@ class RetrievalService:
                     query=expanded_query,
                     answer_query=requested_query,
                 )
+                core_hits = sum(1 for term in core_subject_terms if term in lowered)
+                core_coverage = core_hits / max(len(core_subject_terms), 1)
                 if (
                     obligation.key.startswith("comparison_side_")
                     and cue_score < 0.32
                     and not (directness >= 0.45 and core_hits >= 1)
                 ):
                     continue
-                core_hits = sum(1 for term in core_subject_terms if term in lowered)
-                core_coverage = core_hits / max(len(core_subject_terms), 1)
                 if normalized_score < 0.2 and cue_score < 0.42:
                     continue
                 if directness < 0.22 and cue_score < 0.42:

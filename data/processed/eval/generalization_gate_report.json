@@ -129,7 +129,7 @@
     {
       "kind": "metric",
       "name": "answer_quality_metrics.answer_relevance",
-      "actual": 0.833,
+      "actual": 0.832,
       "threshold": 0.75,
       "passed": true
     },
@@ -143,49 +143,49 @@
     {
       "kind": "metric",
       "name": "answer_quality_metrics.concept_coverage",
-      "actual": 0.839,
+      "actual": 0.858,
       "threshold": 0.75,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.faithfulness",
-      "actual": 0.998,
+      "actual": 1.0,
       "threshold": 0.95,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.overall_score",
-      "actual": 0.938,
+      "actual": 0.936,
       "threshold": 0.85,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.pass_rate",
-      "actual": 0.927,
+      "actual": 0.909,
       "threshold": 0.9,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.query_focus",
-      "actual": 0.82,
+      "actual": 0.771,
       "threshold": 0.7,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "answer_quality_metrics.readability",
-      "actual": 0.989,
+      "actual": 0.983,
       "threshold": 0.9,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "citation_expected_coverage",
-      "actual": 0.92,
+      "actual": 0.94,
       "threshold": 0.9,
       "passed": true
     },
@@ -199,14 +199,14 @@
     {
       "kind": "metric",
       "name": "mrr",
-      "actual": 0.871667,
+      "actual": 0.91,
       "threshold": 0.7,
       "passed": true
     },
     {
       "kind": "metric",
       "name": "recall@8",
-      "actual": 0.92,
+      "actual": 0.94,
       "threshold": 0.85,
       "passed": true
     }

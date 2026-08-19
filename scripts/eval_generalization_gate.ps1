@@ -68,17 +68,20 @@ function Publish-EvaluationArtifact {
     $destinationDirectory = Split-Path -Parent $Destination
     New-Item -ItemType Directory -Force -Path $destinationDirectory | Out-Null
 
+    $payload = [System.IO.File]::ReadAllBytes([System.IO.Path]::GetFullPath($Source))
     if (Test-Path -LiteralPath $Destination) {
-        $sourceHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
-        $destinationHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
-        if ($sourceHash -eq $destinationHash) {
+        $existingPayload = [System.IO.File]::ReadAllBytes(
+            [System.IO.Path]::GetFullPath($Destination)
+        )
+        if ([System.Collections.StructuralComparisons]::StructuralEqualityComparer.Equals(
+            $payload,
+            $existingPayload
+        )) {
             return
         }
     }
 
-    $sourcePath = [System.IO.Path]::GetFullPath($Source)
     $destinationPath = [System.IO.Path]::GetFullPath($Destination)
-    $payload = [System.IO.File]::ReadAllBytes($sourcePath)
     $lastError = $null
     for ($attempt = 1; $attempt -le 5; $attempt++) {
         try {

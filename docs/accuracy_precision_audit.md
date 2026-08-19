@@ -1,6 +1,6 @@
 # NIRMIQ Accuracy, Precision, and Hallucination Audit
 
-Last updated: 2026-07-25
+Last updated: 2026-08-19
 
 ## Canonical Problem Log
 
@@ -26,6 +26,30 @@ See [`eval_runtime_optimization.md`](eval_runtime_optimization.md) for Job 4 run
 optimization, BM25 corpus reuse, selected-document row reuse, and evaluator telemetry.
 
 See [`real_user_qa.md`](real_user_qa.md) for Job 6's local feedback-to-eval loop.
+
+## 2026-08-19 Generalization Gate Recovery
+
+A clean run exposed an uninitialized comparison-scoring variable and two false
+abstentions caused by enumeration fallback formatting. The comparison branch now
+computes subject coverage before applying its guard, explicit source lists preserve
+paired and single-word items, and generated list labels no longer reduce citation
+coverage. The validated candidate was published as the current gate artifact.
+
+| Samples | Sources | Categories | MRR | Recall@3 | Recall@8 | Expected citation coverage | Quality pass | Relevance | Concept coverage | Faithfulness | Answerability |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 110 | 14 | 18 | 0.910 | 0.940 | 0.940 | 0.940 | 0.909 | 0.832 | 0.858 | 1.000 | 1.000 |
+
+Verification:
+
+- Full backend suite: `285 passed`, with one third-party deprecation warning.
+- Generalization gate validation: passed all dataset and metric thresholds.
+- Remaining low-answer-relevance cases: `8/110`.
+- Clean-run runtime: `642.5s`; source resolution used `157.8s`, query evaluation used
+  `484.3s`, and p95 query latency was `23.206s`.
+
+The next measured work is split: expand reviewed unseen labels for the six categories
+that still contain relevance failures, and profile the long textbook-query tail before
+adding more retrieval work.
 
 ## 2026-07-25 Next-Version Sprint One Generalization Gate
 
