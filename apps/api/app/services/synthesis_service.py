@@ -312,6 +312,7 @@ class SynthesisService:
             exam_context=exam_context,
         )
         verification = self._verify_cited_claims(generated, selected)
+        claim_span_verification = self._verify_claim_to_spans(generated, selected)
         answer_rewritten = False
         answer_repair_mode = "none"
         if self._should_rewrite_for_faithfulness(verification):
@@ -351,6 +352,7 @@ class SynthesisService:
                 answer_repair_mode = "extractive_fallback"
                 used_fallback_answer = True
 
+        claim_span_verification = self._verify_claim_to_spans(generated, selected)
         coverage_meta = citation_coverage(generated)
         citation_context_meta = self._citation_context_meta(
             answer=generated,
@@ -366,6 +368,7 @@ class SynthesisService:
             context_relevance=context_relevance,
             coverage_meta=coverage_meta,
             verification=verification,
+            claim_span_verification=claim_span_verification,
             citation_context_meta=citation_context_meta,
             selected_context=selected,
         )
@@ -399,6 +402,11 @@ class SynthesisService:
                     **coverage_meta,
                     "cited_claims_checked": verification["cited_claims_checked"],
                     "unsupported_claims": verification["unsupported_claims"],
+                    "claim_span_state": claim_span_verification["state"],
+                    "claim_span_claims_checked": claim_span_verification["claims_checked"],
+                    "claim_span_coverage": claim_span_verification["claim_span_coverage"],
+                    "claims_without_spans": claim_span_verification["claims_without_spans"],
+                    "claim_span_unsupported_claims": claim_span_verification["unsupported_claims"],
                     "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
                     "original_unsupported_claims": verification.get("original_unsupported_claims", []),
                     "answer_rewritten_for_faithfulness": answer_rewritten,
@@ -434,6 +442,11 @@ class SynthesisService:
             **coverage_meta,
             "cited_claims_checked": verification["cited_claims_checked"],
             "unsupported_claims": verification["unsupported_claims"],
+            "claim_span_state": claim_span_verification["state"],
+            "claim_span_claims_checked": claim_span_verification["claims_checked"],
+            "claim_span_coverage": claim_span_verification["claim_span_coverage"],
+            "claims_without_spans": claim_span_verification["claims_without_spans"],
+            "claim_span_unsupported_claims": claim_span_verification["unsupported_claims"],
             "original_cited_claims_checked": verification.get("original_cited_claims_checked"),
             "original_unsupported_claims": verification.get("original_unsupported_claims", []),
             "answer_rewritten_for_faithfulness": answer_rewritten,
@@ -764,6 +777,7 @@ class SynthesisService:
         context_relevance: dict[str, object],
         coverage_meta: dict[str, object],
         verification: dict[str, object],
+        claim_span_verification: dict[str, object],
         citation_context_meta: dict[str, object],
         selected_context: list[tuple[int, str]],
     ) -> dict[str, object]:
@@ -789,6 +803,12 @@ class SynthesisService:
             reasons.append("citation_verification_unsupported")
         if verification_state == "unchecked" and sentence_count > 0 and not extractive_fallback:
             reasons.append("citation_verification_unchecked")
+        claim_span_state = str(claim_span_verification.get("state") or "unknown")
+        claims_without_spans = claim_span_verification.get("claims_without_spans")
+        if isinstance(claims_without_spans, list) and claims_without_spans:
+            reasons.append("claim_without_source_span")
+        if claim_span_state == "unsupported":
+            reasons.append("claim_span_verification_unsupported")
         if sentence_count > 0 and anchor_count <= 0:
             reasons.append("no_answer_citation_anchors")
         if sentence_count > 0 and cited_context_count <= 0:
@@ -5585,6 +5605,101 @@ class SynthesisService:
         return {
             "state": state,
             "cited_claims_checked": checked,
+            "unsupported_claims": unsupported,
+        }
+
+    @staticmethod
+    def _verify_claim_to_spans(answer: str, context_chunks: list[tuple[int, str]]) -> dict[str, object]:
+        """Require each substantive answer claim to point to a supporting context span."""
+
+        context_by_anchor = {
+            idx: SynthesisService._context_text(block).lower()
+            for idx, block in context_chunks
+        }
+        normalized_answer = re.sub(r"([.!?])[ \t]+((?:\[\d+\][ \t]*)+)", r" \2\1", answer)
+
+        claims_checked = 0
+        supported_claims = 0
+        claims_without_spans: list[dict[str, object]] = []
+        unsupported: list[dict[str, object]] = []
+
+        sentences = [
+            sentence
+            for raw_line in normalized_answer.splitlines()
+            if not raw_line.strip().lower().startswith(("- d", "figure"))
+            and re.match(r"^q\d+\.", raw_line.strip().lower()) is None
+            for sentence in SynthesisService._split_sentences(raw_line)
+        ]
+        for sentence in sentences:
+            claim_terms = SynthesisService._claim_terms(sentence)
+            lowered_sentence = sentence.lower().strip()
+            if (
+                lowered_sentence.startswith("diagram note")
+                or lowered_sentence.startswith("evidence note")
+                or lowered_sentence.startswith("only items supported by retrieved passages")
+                or lowered_sentence.startswith("open sources to inspect")
+                or lowered_sentence.startswith("study guide from retrieved source topics")
+                or lowered_sentence.startswith("study guide from imported questions")
+                or re.match(r"^q\d+\.", lowered_sentence) is not None
+                or lowered_sentence.startswith("explain nirmiq using the source material")
+                or lowered_sentence.startswith("high-yield source topic")
+                or lowered_sentence.startswith("why this matters:")
+                or lowered_sentence.startswith("source diagrams:")
+                or lowered_sentence.startswith("source note")
+                or lowered_sentence.startswith("exam-ready answer")
+                or lowered_sentence.startswith("stepwise explanation")
+                or (lowered_sentence.startswith("explain ") and "using the source material" in lowered_sentence)
+                or "no source diagram was available" in lowered_sentence
+                or "source diagram on page" in lowered_sentence
+            ):
+                continue
+            if len(claim_terms) < 2 or SynthesisService._looks_like_orphan_heading(sentence):
+                continue
+            claims_checked += 1
+            anchors = SynthesisService._answer_citation_anchors(
+                sentence,
+                allowed_anchors=set(context_by_anchor),
+            )
+            claim = re.sub(r"\s+", " ", sentence).strip()[:220]
+            if not anchors:
+                claims_without_spans.append({"claim": claim, "anchors": []})
+                continue
+
+            cited_contexts = [context_by_anchor[anchor] for anchor in anchors]
+            support_scores = [
+                SynthesisService._claim_support_score(claim_terms, context_text)
+                for context_text in cited_contexts
+            ]
+            combined_score = SynthesisService._claim_support_score(
+                claim_terms,
+                " ".join(cited_contexts),
+            )
+            best_score = max([combined_score, *support_scores]) if support_scores else combined_score
+            matched_terms = int(round(best_score * len(claim_terms)))
+            required_matches = max(3, int(len(claim_terms) * 0.5))
+            if best_score < 0.55 or matched_terms < required_matches:
+                unsupported.append(
+                    {
+                        "claim": claim,
+                        "anchors": anchors,
+                        "support_score": round(best_score, 3),
+                    }
+                )
+                continue
+            supported_claims += 1
+
+        if claims_checked == 0:
+            state = "unchecked"
+        elif claims_without_spans or unsupported:
+            state = "unsupported"
+        else:
+            state = "supported"
+        return {
+            "state": state,
+            "claims_checked": claims_checked,
+            "supported_claims": supported_claims,
+            "claim_span_coverage": round(supported_claims / claims_checked, 3) if claims_checked else 0.0,
+            "claims_without_spans": claims_without_spans,
             "unsupported_claims": unsupported,
         }
 

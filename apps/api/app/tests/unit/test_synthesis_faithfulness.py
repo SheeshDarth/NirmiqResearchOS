@@ -147,6 +147,49 @@ def test_uncited_generated_sentences_are_anchored_to_best_context() -> None:
     assert meta["citation_verification_state"] == "supported"
 
 
+def test_claim_to_span_verification_accepts_supported_claim() -> None:
+    verification = SynthesisService._verify_claim_to_spans(
+        "CNN architectures use convolutional layers for visual features. [1]",
+        [(1, "[1] pages=1-1 CNN architectures use convolutional layers to learn visual features.")],
+    )
+
+    assert verification["state"] == "supported"
+    assert verification["claims_checked"] == 1
+    assert verification["claim_span_coverage"] == 1.0
+    assert verification["claims_without_spans"] == []
+
+
+def test_claim_to_span_verification_rejects_uncited_substantive_claim() -> None:
+    verification = SynthesisService._verify_claim_to_spans(
+        "CNN architectures use convolutional layers for visual features.",
+        [(1, "[1] pages=1-1 CNN architectures use convolutional layers to learn visual features.")],
+    )
+
+    assert verification["state"] == "unsupported"
+    assert len(verification["claims_without_spans"]) == 1
+    assert verification["claim_span_coverage"] == 0.0
+
+
+def test_claim_to_span_verification_rejects_irrelevant_citation() -> None:
+    verification = SynthesisService._verify_claim_to_spans(
+        "CNNs operate an interplanetary payment network. [1]",
+        [(1, "[1] pages=1-1 CNNs use convolutional layers for visual feature extraction.")],
+    )
+
+    assert verification["state"] == "unsupported"
+    assert len(verification["unsupported_claims"]) == 1
+    assert verification["claims_without_spans"] == []
+
+
+def test_claim_to_span_verification_ignores_honest_diagram_note() -> None:
+    verification = SynthesisService._verify_claim_to_spans(
+        "Diagram note\n- No source diagram was available from the uploaded material.",
+        [],
+    )
+
+    assert verification["state"] == "unchecked"
+    assert verification["claims_checked"] == 0
+
 def test_claim_can_be_supported_jointly_by_multiple_citations() -> None:
     verification = SynthesisService._verify_cited_claims(
         (
@@ -696,6 +739,7 @@ def test_low_citation_coverage_fails_evidence_reliability_gate() -> None:
     assert "not enough direct source evidence" in answer
     assert meta["evidence_gate_state"] == "failed"
     assert "low_citation_coverage" in meta["evidence_gate_reasons"]
+    assert "claim_without_source_span" in meta["evidence_gate_reasons"]
     assert meta["citation_coverage"] < meta["evidence_gate_min_citation_coverage"]
 
 
