@@ -90,6 +90,30 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Optional local diagnostic limit. Defaults to the full dataset.",
     )
+    parser.add_argument(
+        "--slowest-samples",
+        type=int,
+        default=5,
+        help="Number of slowest samples to retain in each mode profile.",
+    )
+    parser.add_argument(
+        "--warn-total-seconds",
+        type=float,
+        default=0.0,
+        help="Optional advisory budget for total evaluator runtime.",
+    )
+    parser.add_argument(
+        "--warn-source-resolution-seconds",
+        type=float,
+        default=0.0,
+        help="Optional advisory budget for source resolution runtime.",
+    )
+    parser.add_argument(
+        "--warn-p95-sample-seconds",
+        type=float,
+        default=0.0,
+        help="Optional advisory budget for the slowest per-mode p95 sample latency.",
+    )
     return parser.parse_args()
 
 
@@ -290,6 +314,7 @@ async def run_eval_for_mode(
     container: AppContainer,
     full_query: bool,
     failure_records: list[dict[str, Any]] | None = None,
+    slowest_sample_count: int = 5,
 ) -> dict[str, Any]:
     recall_hits = {k: 0 for k in ks}
     ndcg_sums = {k: 0.0 for k in ks}
@@ -466,13 +491,18 @@ async def run_eval_for_mode(
         else:
             raise ValueError(f"Eval sample missing expectation target: {sample.query}")
 
-        sample_latency_records.append(
-            {
-                "sample_id": sample.sample_id,
-                "category": sample.category or "uncategorized",
-                "seconds": round(time.perf_counter() - sample_started_at, 3),
-            }
-        )
+        latency_record: dict[str, object] = {
+            "sample_id": sample.sample_id,
+            "category": sample.category or "uncategorized",
+            "seconds": round(time.perf_counter() - sample_started_at, 3),
+        }
+        if full_query:
+            stage_timings = normalize_stage_timings(
+                retrieval_meta.get("query_stage_timings_ms")
+            )
+            if stage_timings:
+                latency_record["stages_ms"] = stage_timings
+        sample_latency_records.append(latency_record)
 
     target_level = "mixed"
     if level_counts["chunk"] and not level_counts["document"]:
@@ -504,7 +534,10 @@ async def run_eval_for_mode(
         "citation_expected_coverage": (
             citation_expected_hits / retrieval_target_total if retrieval_target_total else 0.0
         ),
-        "latency_metrics": summarize_sample_latency(sample_latency_records),
+        "latency_metrics": summarize_sample_latency(
+            sample_latency_records,
+            slowest_limit=slowest_sample_count,
+        ),
     }
     if full_query:
         metrics["grounding_metrics"] = {
@@ -524,7 +557,11 @@ async def run_eval_for_mode(
     return metrics
 
 
-def summarize_sample_latency(records: list[dict[str, object]]) -> dict[str, object]:
+def summarize_sample_latency(
+    records: list[dict[str, object]],
+    *,
+    slowest_limit: int = 5,
+) -> dict[str, object]:
     if not records:
         return {
             "samples": 0,
@@ -533,6 +570,7 @@ def summarize_sample_latency(records: list[dict[str, object]]) -> dict[str, obje
             "p95_seconds": 0.0,
             "max_seconds": 0.0,
             "slowest_samples": [],
+            "query_stage_metrics_ms": {},
         }
     values = sorted(float(record["seconds"]) for record in records)
     return {
@@ -545,8 +583,55 @@ def summarize_sample_latency(records: list[dict[str, object]]) -> dict[str, obje
             records,
             key=lambda record: float(record["seconds"]),
             reverse=True,
-        )[:5],
+        )[: max(1, slowest_limit)],
+        "query_stage_metrics_ms": summarize_query_stage_timings(records),
     }
+
+
+def normalize_stage_timings(value: object) -> dict[str, float]:
+    if not isinstance(value, dict):
+        return {}
+    normalized: dict[str, float] = {}
+    for stage, raw_value in value.items():
+        if isinstance(raw_value, bool):
+            continue
+        try:
+            numeric_value = float(raw_value)
+        except (TypeError, ValueError):
+            continue
+        if 0.0 <= numeric_value < float("inf"):
+            normalized[str(stage)] = round(numeric_value, 3)
+    return normalized
+
+
+def summarize_query_stage_timings(
+    records: list[dict[str, object]],
+) -> dict[str, dict[str, float]]:
+    values_by_stage: dict[str, list[float]] = {}
+    total_by_stage: dict[str, list[float]] = {}
+    for record in records:
+        stages = normalize_stage_timings(record.get("stages_ms"))
+        total_ms = stages.get("total", 0.0)
+        for stage, value in stages.items():
+            values_by_stage.setdefault(stage, []).append(value)
+            if stage != "total" and total_ms > 0:
+                total_by_stage.setdefault(stage, []).append(total_ms)
+
+    summaries: dict[str, dict[str, float]] = {}
+    for stage, stage_values in sorted(values_by_stage.items()):
+        ordered = sorted(stage_values)
+        summary = {
+            "samples": float(len(ordered)),
+            "avg": round(sum(ordered) / len(ordered), 3),
+            "p50": round(percentile(ordered, 0.50), 3),
+            "p95": round(percentile(ordered, 0.95), 3),
+            "max": round(ordered[-1], 3),
+        }
+        denominators = total_by_stage.get(stage, [])
+        if denominators and sum(denominators) > 0:
+            summary["share_of_total"] = round(sum(ordered) / sum(denominators), 4)
+        summaries[stage] = summary
+    return summaries
 
 
 def percentile(sorted_values: list[float], percentile_value: float) -> float:
@@ -560,6 +645,82 @@ def percentile(sorted_values: list[float], percentile_value: float) -> float:
     upper = min(lower + 1, len(sorted_values) - 1)
     fraction = index - lower
     return sorted_values[lower] + ((sorted_values[upper] - sorted_values[lower]) * fraction)
+
+
+def assess_performance_budgets(
+    *,
+    total_seconds: float,
+    source_resolution_seconds: float,
+    results: dict[str, Any],
+    total_budget_seconds: float = 0.0,
+    source_resolution_budget_seconds: float = 0.0,
+    p95_sample_budget_seconds: float = 0.0,
+) -> dict[str, object]:
+    p95_by_mode = {
+        mode: float((metrics.get("latency_metrics") or {}).get("p95_seconds", 0.0))
+        for mode, metrics in results.items()
+        if isinstance(metrics, dict)
+    }
+    slowest_mode = max(p95_by_mode, key=p95_by_mode.get) if p95_by_mode else None
+    max_p95_seconds = p95_by_mode.get(slowest_mode, 0.0) if slowest_mode else 0.0
+    thresholds = {
+        "total_seconds": total_budget_seconds if total_budget_seconds > 0 else None,
+        "source_resolution_seconds": (
+            source_resolution_budget_seconds
+            if source_resolution_budget_seconds > 0
+            else None
+        ),
+        "p95_sample_seconds": (
+            p95_sample_budget_seconds if p95_sample_budget_seconds > 0 else None
+        ),
+    }
+    observed = {
+        "total_seconds": round(total_seconds, 3),
+        "source_resolution_seconds": round(source_resolution_seconds, 3),
+        "max_p95_sample_seconds": round(max_p95_seconds, 3),
+        "slowest_mode": slowest_mode,
+        "p95_sample_seconds_by_mode": p95_by_mode,
+    }
+    warnings: list[dict[str, object]] = []
+
+    def add_warning(metric: str, observed_value: float, budget: float) -> None:
+        if budget <= 0 or observed_value <= budget:
+            return
+        warnings.append(
+            {
+                "metric": metric,
+                "observed": round(observed_value, 3),
+                "budget": round(budget, 3),
+                "over_by": round(observed_value - budget, 3),
+                "message": (
+                    f"{metric} was {observed_value:.3f}s, above the advisory "
+                    f"{budget:.3f}s budget"
+                ),
+            }
+        )
+
+    add_warning("total_seconds", total_seconds, total_budget_seconds)
+    add_warning(
+        "source_resolution_seconds",
+        source_resolution_seconds,
+        source_resolution_budget_seconds,
+    )
+    add_warning("p95_sample_seconds", max_p95_seconds, p95_sample_budget_seconds)
+    configured = any(value is not None for value in thresholds.values())
+    return {
+        "advisory": True,
+        "status": (
+            "not_configured"
+            if not configured
+            else "warning"
+            if warnings
+            else "within_budget"
+        ),
+        "thresholds": thresholds,
+        "observed": observed,
+        "warning_count": len(warnings),
+        "warnings": warnings,
+    }
 
 
 def contains_citation_anchor(text: str) -> bool:
@@ -730,6 +891,16 @@ def maybe_record_answer_quality_failure(
 async def main_async() -> int:
     started_at = time.perf_counter()
     args = parse_args()
+    if args.slowest_samples <= 0:
+        raise ValueError("--slowest-samples must be greater than zero.")
+    for option_name in (
+        "warn_total_seconds",
+        "warn_source_resolution_seconds",
+        "warn_p95_sample_seconds",
+    ):
+        if float(getattr(args, option_name)) < 0:
+            raise ValueError(f"--{option_name.replace('_', '-')} cannot be negative.")
+
     ks = sorted(set(int(k) for k in args.k if int(k) > 0))
     if not ks:
         raise ValueError("At least one positive K value is required.")
@@ -765,8 +936,19 @@ async def main_async() -> int:
             container=container,
             full_query=bool(args.full_query),
             failure_records=failure_records if args.failures_output else None,
+            slowest_sample_count=args.slowest_samples,
         )
         runtime_by_mode[mode] = round(time.perf_counter() - mode_started_at, 3)
+
+    total_seconds = round(time.perf_counter() - started_at, 3)
+    performance_budget = assess_performance_budgets(
+        total_seconds=total_seconds,
+        source_resolution_seconds=source_resolution_seconds,
+        results=per_mode,
+        total_budget_seconds=args.warn_total_seconds,
+        source_resolution_budget_seconds=args.warn_source_resolution_seconds,
+        p95_sample_budget_seconds=args.warn_p95_sample_seconds,
+    )
     output_payload: dict[str, Any] = {
         "dataset": str(args.dataset),
         "evaluation_mode": "full_query" if args.full_query else "retrieval",
@@ -774,13 +956,19 @@ async def main_async() -> int:
         "runtime": {
             "source_resolution_seconds": round(source_resolution_seconds, 3),
             "mode_seconds": runtime_by_mode,
-            "total_seconds": round(time.perf_counter() - started_at, 3),
+            "total_seconds": total_seconds,
             "cache": container.retrieval_service.runtime_cache_stats(),
+            "performance_budget": performance_budget,
         },
         "results": per_mode,
     }
     output = json.dumps(output_payload, indent=2)
     print(output)
+    for warning in performance_budget["warnings"]:
+        print(
+            f"retrieval_eval_performance_warning: {warning['message']}",
+            file=sys.stderr,
+        )
     if args.output:
         write_text_if_changed(args.output, output + "\n")
     if args.failures_output:

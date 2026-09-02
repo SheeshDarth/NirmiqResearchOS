@@ -1,6 +1,7 @@
 import hashlib
 import json
 import re
+import time
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -50,7 +51,11 @@ class QueryService:
         return await self._execute(payload=payload, persist=False)
 
     async def _execute(self, payload: QueryRequest, persist: bool) -> QueryResponse:
+        request_started_at = time.perf_counter()
+        memory_started_at = time.perf_counter()
         _ = await self._memory_service.get_summary(payload.session_id)
+        memory_ms = self._elapsed_ms(memory_started_at)
+        planning_started_at = time.perf_counter()
         intent = detect_query_intent(payload.query, payload.mode)
         response_mode = self._resolve_response_mode(payload.mode, intent)
         retrieval_mode = self._resolve_retrieval_mode(
@@ -112,6 +117,8 @@ class QueryService:
 
         exam_context = self._build_exam_context(payload, intent)
         retrieval_query = self._retrieval_query(payload.query, response_mode, exam_context, intent)
+        planning_ms = self._elapsed_ms(planning_started_at)
+        retrieval_started_at = time.perf_counter()
         bundle = await self._retrieval_service.retrieve_with_mode(
             retrieval_query,
             mode=retrieval_mode,
@@ -120,7 +127,11 @@ class QueryService:
             response_mode=response_mode,
             answer_query=payload.query,
         )
+        retrieval_ms = self._elapsed_ms(retrieval_started_at)
+        augmentation_started_at = time.perf_counter()
         bundle = self._augment_selected_summary_bundle(payload=payload, intent=intent, bundle=bundle)
+        bundle_augmentation_ms = self._elapsed_ms(augmentation_started_at)
+        synthesis_started_at = time.perf_counter()
         answer, grounded, synthesis_meta = await self._synthesis_service.synthesize(
             payload.query,
             bundle,
@@ -128,6 +139,8 @@ class QueryService:
             exam_profile=payload.exam_profile.model_dump() if payload.exam_profile else None,
             exam_context=exam_context,
         )
+        synthesis_ms = self._elapsed_ms(synthesis_started_at)
+        response_assembly_started_at = time.perf_counter()
         citations = self._citations_from_synthesis_context(bundle, synthesis_meta, grounded)
         combined_meta = {
             **bundle.meta,
@@ -171,6 +184,17 @@ class QueryService:
             retrieval_meta=combined_meta,
         )
 
+        if payload.debug:
+            combined_meta["query_stage_timings_ms"] = {
+                "memory": memory_ms,
+                "planning": planning_ms,
+                "retrieval": retrieval_ms,
+                "bundle_augmentation": bundle_augmentation_ms,
+                "synthesis": synthesis_ms,
+                "response_assembly": self._elapsed_ms(response_assembly_started_at),
+                "total": self._elapsed_ms(request_started_at),
+            }
+
         if persist:
             self._persist_turn(
                 session_id=payload.session_id,
@@ -188,6 +212,10 @@ class QueryService:
             grounded=grounded,
             retrieval_meta=combined_meta if payload.debug else None,
         )
+
+    @staticmethod
+    def _elapsed_ms(started_at: float) -> float:
+        return round((time.perf_counter() - started_at) * 1000, 3)
 
     def _cached_summary_response(
         self,

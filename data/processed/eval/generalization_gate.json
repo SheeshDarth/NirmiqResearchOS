@@ -71,6 +71,11 @@
       "hard_fixture"
     ]
   },
+  "performance_warning_budgets": {
+    "total_seconds": 660.0,
+    "source_resolution_seconds": 180.0,
+    "p95_sample_seconds": 25.0
+  },
   "thresholds": {
     "mrr": 0.7,
     "recall@8": 0.85,

@@ -219,6 +219,20 @@ Interpretation:
 - nDCG@K: rewards ranking multiple expected evidence phrases near the top.
 - Citation expected coverage: whether returned evidence/citations contain expected support.
 
+## 2026-08-19 Generalization Gate Recovery
+
+The current clean 110-case BM25-only gate passes after repairing an uninitialized
+comparison-scoring branch and two enumeration fallback false abstentions.
+
+| MRR | Recall@8 | Citation expected coverage | Answer pass | Answer relevance | Concept coverage | Faithfulness | Answerability |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.910 | 0.940 | 0.940 | 0.909 | 0.832 | 0.858 | 1.000 | 1.000 |
+
+The gate now grounds every answerable sample and preserves citation anchors at a
+`0.909` rate across all 110 samples. Eight low-answer-relevance cases remain. The clean
+run took `642.5s`, with p95 query latency `23.206s`, so runtime profiling is the next
+engineering priority alongside unseen-label expansion.
+
 ## 2026-07-26 Section-Aware Evidence Selection
 
 The third next-version reliability slice improved answer-used evidence selection for

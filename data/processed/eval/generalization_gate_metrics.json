@@ -5,11 +5,11 @@
     "bm25"
   ],
   "runtime": {
-    "source_resolution_seconds": 63.884,
+    "source_resolution_seconds": 157.783,
     "mode_seconds": {
-      "bm25": 110.065
+      "bm25": 484.304
     },
-    "total_seconds": 174.052,
+    "total_seconds": 642.5,
     "cache": {
       "active_document_rows": {
         "cached_documents": 14,
@@ -30,46 +30,46 @@
       "samples": 110,
       "retrieval_scored_samples": 100,
       "target_level": "phrase",
-      "mrr": 0.8716666666666666,
-      "recall@3": 0.92,
-      "recall@5": 0.92,
-      "recall@8": 0.92,
-      "ndcg@3": 0.7398809542712103,
-      "ndcg@5": 0.7370161987680391,
-      "ndcg@8": 0.7370161987680391,
+      "mrr": 0.91,
+      "recall@3": 0.94,
+      "recall@5": 0.94,
+      "recall@8": 0.94,
+      "ndcg@3": 0.7683588198289786,
+      "ndcg@5": 0.7662283558082552,
+      "ndcg@8": 0.7662283558082552,
       "citation_presence_rate": 1.0,
-      "citation_expected_coverage": 0.92,
+      "citation_expected_coverage": 0.94,
       "latency_metrics": {
         "samples": 110,
-        "avg_seconds": 1.001,
-        "p50_seconds": 0.029,
-        "p95_seconds": 5.84,
-        "max_seconds": 7.413,
+        "avg_seconds": 4.403,
+        "p50_seconds": 0.131,
+        "p95_seconds": 23.206,
+        "max_seconds": 52.641,
         "slowest_samples": [
           {
             "sample_id": "aq-book-003",
             "category": "procedure",
-            "seconds": 7.413
+            "seconds": 52.641
           },
           {
             "sample_id": "aq-book-004",
             "category": "enumeration",
-            "seconds": 6.493
+            "seconds": 29.281
           },
           {
-            "sample_id": "aq-book-001",
-            "category": "summary",
-            "seconds": 6.464
+            "sample_id": "aq-book-005",
+            "category": "explanation",
+            "seconds": 26.873
           },
           {
-            "sample_id": "aq-book-006",
-            "category": "factual_lookup",
-            "seconds": 6.207
+            "sample_id": "aq-book-020",
+            "category": "mechanism",
+            "seconds": 26.163
           },
           {
             "sample_id": "aq-book-013",
             "category": "definition",
-            "seconds": 6.121
+            "seconds": 24.875
           }
         ]
       },
@@ -77,8 +77,8 @@
         "grounded_response_rate": 0.9090909090909091,
         "abstention_rate": 0.09090909090909094,
         "citation_anchor_rate": 0.9090909090909091,
-        "avg_grounding_score": 11.21126356983992,
-        "avg_citation_count": 4.445454545454545,
+        "avg_grounding_score": 11.11171207064304,
+        "avg_citation_count": 5.172727272727273,
         "grounding_state_rates": {
           "strong": 0.9090909090909091,
           "moderate": 0.0,
@@ -92,31 +92,35 @@
       },
       "answer_quality_metrics": {
         "samples": 110,
-        "pass_rate": 0.927,
-        "overall_score": 0.938,
-        "answer_relevance": 0.833,
-        "concept_coverage": 0.839,
-        "query_focus": 0.82,
-        "plan_compliance": 0.997,
-        "readability": 0.989,
-        "faithfulness": 0.998,
+        "pass_rate": 0.909,
+        "overall_score": 0.936,
+        "answer_relevance": 0.832,
+        "concept_coverage": 0.858,
+        "query_focus": 0.771,
+        "plan_compliance": 0.991,
+        "readability": 0.983,
+        "faithfulness": 1.0,
         "answerability_correct": 1.0,
         "failure_reason_counts": {
-          "low_answer_relevance": 8
+          "low_answer_relevance": 8,
+          "poor_readability": 1,
+          "query_plan_not_fulfilled": 1
         },
         "by_category": {
           "architecture": {
             "samples": 4,
-            "pass_rate": 1.0,
-            "overall_score": 0.898,
-            "answer_relevance": 0.708,
-            "concept_coverage": 0.792,
-            "query_focus": 0.513,
+            "pass_rate": 0.5,
+            "overall_score": 0.822,
+            "answer_relevance": 0.491,
+            "concept_coverage": 0.5,
+            "query_focus": 0.472,
             "plan_compliance": 1.0,
             "readability": 1.0,
             "faithfulness": 1.0,
             "answerability_correct": 1.0,
-            "failure_reason_counts": {}
+            "failure_reason_counts": {
+              "low_answer_relevance": 2
+            }
           },
           "comparison": {
             "samples": 7,
@@ -134,10 +138,10 @@
           "definition": {
             "samples": 15,
             "pass_rate": 0.933,
-            "overall_score": 0.921,
-            "answer_relevance": 0.783,
-            "concept_coverage": 0.751,
-            "query_focus": 0.858,
+            "overall_score": 0.929,
+            "answer_relevance": 0.804,
+            "concept_coverage": 0.804,
+            "query_focus": 0.804,
             "plan_compliance": 1.0,
             "readability": 0.987,
             "faithfulness": 1.0,
@@ -148,30 +152,33 @@
           },
           "diagram": {
             "samples": 3,
-            "pass_rate": 1.0,
-            "overall_score": 0.969,
-            "answer_relevance": 0.91,
-            "concept_coverage": 0.933,
-            "query_focus": 0.857,
-            "plan_compliance": 1.0,
-            "readability": 1.0,
-            "faithfulness": 1.0,
-            "answerability_correct": 1.0,
-            "failure_reason_counts": {}
-          },
-          "enumeration": {
-            "samples": 6,
-            "pass_rate": 0.833,
-            "overall_score": 0.927,
-            "answer_relevance": 0.793,
-            "concept_coverage": 0.814,
-            "query_focus": 0.744,
-            "plan_compliance": 1.0,
+            "pass_rate": 0.667,
+            "overall_score": 0.909,
+            "answer_relevance": 0.883,
+            "concept_coverage": 1.0,
+            "query_focus": 0.611,
+            "plan_compliance": 0.667,
             "readability": 1.0,
             "faithfulness": 1.0,
             "answerability_correct": 1.0,
             "failure_reason_counts": {
-              "low_answer_relevance": 1
+              "query_plan_not_fulfilled": 1
+            }
+          },
+          "enumeration": {
+            "samples": 6,
+            "pass_rate": 0.667,
+            "overall_score": 0.875,
+            "answer_relevance": 0.715,
+            "concept_coverage": 0.791,
+            "query_focus": 0.539,
+            "plan_compliance": 1.0,
+            "readability": 0.875,
+            "faithfulness": 1.0,
+            "answerability_correct": 1.0,
+            "failure_reason_counts": {
+              "low_answer_relevance": 1,
+              "poor_readability": 1
             }
           },
           "equation": {
@@ -190,10 +197,10 @@
           "exam": {
             "samples": 4,
             "pass_rate": 1.0,
-            "overall_score": 0.987,
-            "answer_relevance": 0.963,
+            "overall_score": 1.0,
+            "answer_relevance": 1.0,
             "concept_coverage": 1.0,
-            "query_focus": 0.875,
+            "query_focus": 1.0,
             "plan_compliance": 1.0,
             "readability": 1.0,
             "faithfulness": 1.0,
@@ -202,41 +209,39 @@
           },
           "explanation": {
             "samples": 9,
-            "pass_rate": 0.778,
-            "overall_score": 0.902,
-            "answer_relevance": 0.757,
-            "concept_coverage": 0.741,
-            "query_focus": 0.796,
+            "pass_rate": 0.889,
+            "overall_score": 0.93,
+            "answer_relevance": 0.831,
+            "concept_coverage": 0.815,
+            "query_focus": 0.87,
             "plan_compliance": 1.0,
-            "readability": 0.933,
-            "faithfulness": 1.0,
-            "answerability_correct": 1.0,
-            "failure_reason_counts": {
-              "low_answer_relevance": 2
-            }
-          },
-          "factual_lookup": {
-            "samples": 5,
-            "pass_rate": 0.8,
-            "overall_score": 0.9,
-            "answer_relevance": 0.715,
-            "concept_coverage": 0.72,
-            "query_focus": 0.703,
-            "plan_compliance": 1.0,
-            "readability": 1.0,
+            "readability": 0.944,
             "faithfulness": 1.0,
             "answerability_correct": 1.0,
             "failure_reason_counts": {
               "low_answer_relevance": 1
             }
           },
+          "factual_lookup": {
+            "samples": 5,
+            "pass_rate": 1.0,
+            "overall_score": 0.925,
+            "answer_relevance": 0.785,
+            "concept_coverage": 0.82,
+            "query_focus": 0.703,
+            "plan_compliance": 1.0,
+            "readability": 1.0,
+            "faithfulness": 1.0,
+            "answerability_correct": 1.0,
+            "failure_reason_counts": {}
+          },
           "handwriting": {
             "samples": 3,
             "pass_rate": 1.0,
-            "overall_score": 0.969,
-            "answer_relevance": 0.91,
+            "overall_score": 0.945,
+            "answer_relevance": 0.843,
             "concept_coverage": 1.0,
-            "query_focus": 0.7,
+            "query_focus": 0.478,
             "plan_compliance": 1.0,
             "readability": 1.0,
             "faithfulness": 1.0,
@@ -245,32 +250,32 @@
           },
           "limitations": {
             "samples": 7,
-            "pass_rate": 0.714,
-            "overall_score": 0.872,
-            "answer_relevance": 0.655,
-            "concept_coverage": 0.64,
-            "query_focus": 0.69,
-            "plan_compliance": 0.952,
-            "readability": 1.0,
-            "faithfulness": 1.0,
-            "answerability_correct": 1.0,
-            "failure_reason_counts": {
-              "low_answer_relevance": 2
-            }
-          },
-          "mechanism": {
-            "samples": 12,
-            "pass_rate": 0.917,
-            "overall_score": 0.942,
-            "answer_relevance": 0.834,
-            "concept_coverage": 0.822,
-            "query_focus": 0.861,
+            "pass_rate": 0.857,
+            "overall_score": 0.905,
+            "answer_relevance": 0.729,
+            "concept_coverage": 0.774,
+            "query_focus": 0.624,
             "plan_compliance": 1.0,
             "readability": 1.0,
             "faithfulness": 1.0,
             "answerability_correct": 1.0,
             "failure_reason_counts": {
               "low_answer_relevance": 1
+            }
+          },
+          "mechanism": {
+            "samples": 12,
+            "pass_rate": 0.833,
+            "overall_score": 0.936,
+            "answer_relevance": 0.817,
+            "concept_coverage": 0.833,
+            "query_focus": 0.778,
+            "plan_compliance": 1.0,
+            "readability": 1.0,
+            "faithfulness": 1.0,
+            "answerability_correct": 1.0,
+            "failure_reason_counts": {
+              "low_answer_relevance": 2
             }
           },
           "paper_draft": {
@@ -289,23 +294,23 @@
           "procedure": {
             "samples": 8,
             "pass_rate": 1.0,
-            "overall_score": 0.919,
-            "answer_relevance": 0.807,
+            "overall_score": 0.928,
+            "answer_relevance": 0.814,
             "concept_coverage": 0.875,
-            "query_focus": 0.65,
+            "query_focus": 0.671,
             "plan_compliance": 1.0,
             "readability": 0.969,
-            "faithfulness": 0.975,
+            "faithfulness": 1.0,
             "answerability_correct": 1.0,
             "failure_reason_counts": {}
           },
           "scanned_pdf": {
             "samples": 3,
             "pass_rate": 1.0,
-            "overall_score": 0.981,
-            "answer_relevance": 0.947,
+            "overall_score": 0.944,
+            "answer_relevance": 0.84,
             "concept_coverage": 1.0,
-            "query_focus": 0.822,
+            "query_focus": 0.467,
             "plan_compliance": 1.0,
             "readability": 1.0,
             "faithfulness": 1.0,
@@ -315,10 +320,10 @@
           "summary": {
             "samples": 4,
             "pass_rate": 1.0,
-            "overall_score": 0.939,
-            "answer_relevance": 0.825,
-            "concept_coverage": 0.75,
-            "query_focus": 1.0,
+            "overall_score": 0.933,
+            "answer_relevance": 0.81,
+            "concept_coverage": 0.792,
+            "query_focus": 0.854,
             "plan_compliance": 1.0,
             "readability": 1.0,
             "faithfulness": 1.0,
