@@ -143,6 +143,7 @@ NIRMIQ keeps a living engineering problem log in [`problems_faced.md`](problems_
 - [`docs/megasprint_six_plan.md`](docs/megasprint_six_plan.md): query-agnostic evidence obligations, hierarchical summary coverage, and the final 40-case offline reliability result.
 - [`docs/next_version_sprint_one_generalization_gate.md`](docs/next_version_sprint_one_generalization_gate.md): completed 110-case RAG generalization gate, validator, thresholds, and remaining weak-category work.
 - [`docs/next_version_sprint_five_unseen_ocr_sources.md`](docs/next_version_sprint_five_unseen_ocr_sources.md): unseen local scan holdout, OCR hardening, measured gains, and residual risk.
+- [`docs/next_version_sprint_six_claim_span_holdout.md`](docs/next_version_sprint_six_claim_span_holdout.md): fail-closed claim-to-span evidence boundary and frozen blind holdout protocol.
 - [`docs/recursive_summary_architecture.md`](docs/recursive_summary_architecture.md): all-chunk document mapping, recursive chapter reduction, cache behavior, and measured long-textbook results.
 - [`docs/release_manifest_v0.5.md`](docs/release_manifest_v0.5.md): current reproducible tests, retrieval metrics, offline proof, package result, and honest release boundary.
 - [`docs/review_sprints_2026_07_24.md`](docs/review_sprints_2026_07_24.md): current architecture, RAG, UI, security, performance, release, and vision-alignment review.
@@ -274,7 +275,7 @@ Remaining measured debt after MegaSprint Six, the six follow-up reliability jobs
 - Resolve the remaining `8/110` low-answer-relevance cases without tuning only to those exact prompts; the current failures span architecture, definition, enumeration, explanation, limitations, and mechanism.
 - Broaden the new generated hard-document gate with independent real scans, noisier notes, additional handwriting styles, equations, tables, diagrams, and textbooks.
 - Expand recursive-summary QA to more real books with malformed or missing heading metadata; parser-truncated titles remain visible rather than guessed.
-- Continue Job 4 runtime optimization. The current 110-case clean gate took `642.5s` (`157.8s` source resolution, `484.3s` query evaluation), with p95 query latency `23.206s`; details: [`docs/eval_runtime_optimization.md`](docs/eval_runtime_optimization.md).
+- Continue Job 4 runtime optimization using the new stage profile and advisory budgets. The current 110-case clean gate took `642.5s` (`157.8s` source resolution, `484.3s` query evaluation), with p95 query latency `23.206s`; details: [`docs/eval_runtime_optimization.md`](docs/eval_runtime_optimization.md).
 - Keep BM25-only fallback fully usable for offline and low-end devices.
 - Track chunk-selection reasons, section candidates, citation coverage, unsupported claims, latency, and memory behavior.
 - Measure answer relevance, completeness, claim faithfulness, readability, and abstention correctness separately from retrieval rank.
