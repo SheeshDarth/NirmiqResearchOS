@@ -83,6 +83,18 @@ def test_query_can_scope_retrieval_to_selected_document(tmp_path: Path) -> None:
         body = query_response.json()
         assert body["retrieval_meta"]["scope"] == "document"
         assert body["retrieval_meta"]["document_scope"] == selected_document_id
+        timings = body["retrieval_meta"]["query_stage_timings_ms"]
+        assert {
+            "memory",
+            "planning",
+            "retrieval",
+            "bundle_augmentation",
+            "synthesis",
+            "response_assembly",
+            "total",
+        }.issubset(timings)
+        assert all(value >= 0 for value in timings.values())
+        assert timings["total"] >= timings["retrieval"]
         assert body["citations"]
         assert {citation["document_id"] for citation in body["citations"]} == {selected_document_id}
 

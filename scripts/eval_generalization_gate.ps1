@@ -39,6 +39,7 @@ if (-not $GateReportOutput) {
 if ($Modes.Count -eq 0) {
     $Modes = @([string]$manifestJson.mode)
 }
+$performanceBudgets = $manifestJson.performance_warning_budgets
 
 if (-not $UseOllama) {
     $env:USE_OLLAMA_GENERATION = "false"
@@ -118,6 +119,23 @@ $evalArgs += @(
     "--output", $candidateMetrics,
     "--failures-output", $candidateFailures
 )
+if ($null -ne $performanceBudgets) {
+    if ([double]$performanceBudgets.total_seconds -gt 0) {
+        $evalArgs += @("--warn-total-seconds", [string]$performanceBudgets.total_seconds)
+    }
+    if ([double]$performanceBudgets.source_resolution_seconds -gt 0) {
+        $evalArgs += @(
+            "--warn-source-resolution-seconds",
+            [string]$performanceBudgets.source_resolution_seconds
+        )
+    }
+    if ([double]$performanceBudgets.p95_sample_seconds -gt 0) {
+        $evalArgs += @(
+            "--warn-p95-sample-seconds",
+            [string]$performanceBudgets.p95_sample_seconds
+        )
+    }
+}
 
 python @evalArgs
 if ($LASTEXITCODE -ne 0) {

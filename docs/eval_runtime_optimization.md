@@ -1,6 +1,6 @@
 # Evaluation Runtime Optimization
 
-Status: Remaining Job 4 started on 2026-07-21.
+Status: Block 2 implemented on 2026-08-26; targeted optimization remains open.
 
 ## Purpose
 
@@ -11,7 +11,7 @@ Its weakness is runtime: the 40-case BM25-only gate previously took about
 faster and more diagnosable without weakening retrieval, answer quality, or
 offline behavior.
 
-## Implemented Block
+## Implemented Block 1
 
 - Added a bounded in-process BM25 corpus cache.
 - Cache identity includes BM25 parameters, ordered active chunk IDs, document
@@ -32,6 +32,22 @@ offline behavior.
   diagnostic runs.
 - Added `npm run eval:answer-quality` as the canonical package script for the
   strict answer-quality gate.
+
+## Implemented Block 2
+
+- Added debug-only query timing for memory lookup, planning, retrieval, selected-summary
+  augmentation, synthesis, response assembly, and total orchestration.
+- The evaluator now aggregates stage timing by mode with average, p50, p95, maximum,
+  and share of total query time.
+- Slowest-sample profiles include category, total latency, and the stage breakdown;
+  `--slowest-samples` controls how many are retained.
+- Added optional `--warn-total-seconds`, `--warn-source-resolution-seconds`, and
+  `--warn-p95-sample-seconds` budgets. Exceeding them writes a structured warning
+  and stderr notice but does not change the reliability gate exit code.
+- The strict generalization manifest now carries advisory budgets of `660s` total,
+  `180s` source resolution, and `25s` p95 sample latency. These are regression
+  signals for the current Windows host, not portable release requirements.
+- The answer-quality PowerShell wrapper exposes the same controls for local profiling.
 
 ## Measured Local Result
 
@@ -72,9 +88,11 @@ Quick three-sample diagnostic after evaluator telemetry was added:
 
 ## Next Job 4 Blocks
 
-1. Add optional strict-gate performance budgets as warnings, not hard failures.
-2. Add an eval profile that records the slowest samples and retrieval stages.
-3. Consider bounded reuse of section-ranking and direct-evidence scoring only if
-   profiling shows it is still a hotspot.
-4. Keep the full 40-case gate authoritative; use `--sample-limit` only for local
+1. Run the full 110-case strict gate with the new profile and rank retrieval,
+   synthesis, and orchestration hotspots by measured share and p95 latency.
+2. Consider bounded reuse of section ranking or direct-evidence scoring only if the
+   profile shows one remains a repeated hotspot.
+3. Keep the full 110-case gate authoritative; use `--sample-limit` only for local
    debugging.
+4. Keep hardware budgets advisory until Windows, Linux, and low-end profiles have
+   separate measured baselines.
